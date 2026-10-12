@@ -1,0 +1,33 @@
+# Secrets and local settings
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.jks
+secrets/
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Build and dependencies
+**/node_modules/
+**/dist/
+**/target/
+**/.vite/
+**/.pnpm-store/
+**/coverage/
+**/test-results/
+**/playwright-report/
+
+# Runtime data
+runtime/
+data/
+logs/
+backups/
+*.log
+*.hprof
+*.dump
