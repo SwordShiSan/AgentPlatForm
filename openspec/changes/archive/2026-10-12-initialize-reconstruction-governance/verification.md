@@ -13,4 +13,4 @@ Date: 2026-10-12. Scope: documentation, local skeleton and skill guidance only.
 
 ## Remote delivery
 
-Pending initial commit/push verification. Update only after inspecting the actual remote result.
+Initial commit b2a78a601414141cdeeaadafd9dcca0ae6e7e3eb pushed to origin/main; git ls-remote returned the identical SHA. GitHub metadata verified repository id 1415716422, owner SwordShiSan, private visibility and push/admin permission. User explicitly confirmed submission to main after the safety review requested exact authorization. No force push or credential files used. Final archive/closure is a follow-up documentation commit; its remote equality is recorded in the external delivery ledger to avoid a self-referential commit hash.

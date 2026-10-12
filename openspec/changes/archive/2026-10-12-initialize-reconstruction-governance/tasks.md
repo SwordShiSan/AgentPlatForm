@@ -9,4 +9,4 @@
 
 - [x] 2.1 Validate links, identifiers, stage coverage and skill metadata/references.
 - [x] 2.2 Validate OpenSpec and record documentation-only evidence.
-- [ ] 2.3 Review explicit staged skeleton files, commit and push main, verify remote commit.
+- [x] 2.3 Review explicit staged skeleton files, commit and push main, verify remote commit.
