@@ -2,7 +2,7 @@
 
 新一代云端 Agent 平台独立 Git 单仓。R0.1工程、契约生成与健康壳层已通过本地Docker/CI并经PR晋级main；**尚无业务智能体功能、未部署生产**。实时阶段状态以外部局部台账为准。
 
-R0.2默认关闭的SDK适配及离线框架探针已通过本地/CI并经PR晋级，公开页面仍为健康壳层。具体方法签名、38项后端/36项Linux/15项前端/3项UI及晋级证据见归档与局部台账；脚本模型/loopback协议不等于真实供应商。R0.3和生产发布尚未开始。
+R0.2默认关闭的SDK适配及离线框架探针已通过本地/CI并经PR晋级，公开页面仍为健康壳层。脚本模型/loopback协议不等于真实供应商。R0.3正在实施真实存储、云端最低资源与gVisor/XFS基线，验收/晋级状态以局部台账和[当前验收记录](openspec/changes/r0-3-storage-deploy-baseline/verification.md)为准；生产发布仍待R0.4。
 
 ## 方案入口
 
@@ -27,3 +27,5 @@ R0.2默认关闭的SDK适配及离线框架探针已通过本地/CI并经PR晋�
 
 ## 工程布局
 frontend 为 Vue3/TypeScript；backend 为 Java21 六模块 DDD；contracts 为机器契约；openspec 为规格与变更记录；deploy 为本地容器构建与验收。构建及运行命令见各目录README。R0.1只交付健康壳层；AgentScope运行实验、完整中间件和契约冻结分别属于R0.2–R0.4，全部通过并发布后才能进入R1。
+
+R0.3采用云端Linux开发验收替代本机Docker必测；现有4核/3655MiB/40GiB云主机、单执行槽/单活动gVisor sandbox、独立XFS镜像project quota，旧服务仅在获准窗口可逆暂停。详见[部署入口](deploy/README.md)和外部[正式计划](../项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R0.3-存储部署与最小云资源实施计划.md)。

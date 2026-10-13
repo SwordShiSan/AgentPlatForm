@@ -1,6 +1,10 @@
 # AgentPlatForm implementation rules
 
 ## Scope
+R0.3 approved exception (2026-10-13): use the existing cloud Linux host for developer Docker acceptance in place of mandatory workstation Docker acceptance. The user authorized precisely inventoried obsolete image/log cleanup and reversible legacy container pause/restore. Preserve all legacy business data, referenced volumes, current and latest rollback images. No blanket prune, data migration or public-domain change. Production release gates remain independent.
+
+Minimum-host sandbox policy: one execution slot and one on-demand gVisor runsc/systrap sandbox; no runc fallback. Use a preallocated dedicated XFS image filesystem with verified UUID/prjquota mount; missing mount must deny I/O. Full observability is an optional profile. Resource numbers and gates live in the canonical R0.3 plan; budgets are not capacity evidence.
+
 This is an independent monorepo. Keep frontend and backend code in their respective directories. Do not change legacy repositories, databases, containers, or deployments while implementing this platform.
 
 Read the reconstruction navigation and the current R-stage execution document linked in README before implementing. The canonical design body is outside this repo; do not create a duplicate body here.

@@ -1,7 +1,7 @@
 :root {
   font-family: Inter, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
-  color: #24332d;
-  background: #f6f8fa;
+  color: var(--text);
+  background: var(--canvas);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -46,3 +46,19 @@ dd { margin: 0; overflow-wrap: anywhere; }
   .health-card { padding: 22px; }
   .card-heading { align-items: flex-start; gap: 12px; }
 }
+.site-header { background: var(--panel); border-color: var(--border); flex-wrap: wrap; gap: var(--space-4); }
+.brand { color: var(--text); min-height: 44px; }
+.brand-mark { background: var(--accent); color: var(--canvas); }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.skip-link, .health-card { background: var(--panel); border-color: var(--border); }
+.eyebrow, .intro, .status-content p, dt, .page-footer { color: var(--muted); }
+.eyebrow, .stage-label { font-size: 12px; }
+.status-pill { background: var(--canvas); color: var(--muted); }
+.status-pill.healthy { color: var(--success); background: var(--success-bg); }
+.status-pill.unavailable { color: var(--error); background: var(--error-bg); }
+.details { border-color: var(--border); }
+.theme-control { display: flex; align-items: center; gap: var(--space-2); color: var(--muted); font-size: 14px; }
+.theme-control select { min-height: 44px; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px; font: inherit; }
+.error-action { display: inline-flex; align-items: center; min-height: 44px; padding: var(--space-3); }
+@media (max-width: 767px) { .page { margin-top: 40px; } .card-heading { flex-wrap: wrap; } }
