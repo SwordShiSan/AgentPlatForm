@@ -1,0 +1,5 @@
+**
+!backend/platform-app/target/platform-app-0.1.0-SNAPSHOT.jar
+!frontend/dist/**
+!deploy/*.Dockerfile
+!deploy/nginx.conf
