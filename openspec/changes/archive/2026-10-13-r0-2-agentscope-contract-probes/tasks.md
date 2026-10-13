@@ -10,5 +10,7 @@
 ## Verification and delivery
 - [x] 3.1 Pass targeted suites, backend verify, frontend/contracts, Docker probes and UI recovery.
 - [x] 3.2 Record method signatures, resolved dependency versions, case results, source/image hashes and real/Fake evidence.
-- [ ] 3.3 Review/security scan and promote step->phase->main only after checks; sync main back to phase.
-- [ ] 3.4 Update external local/global/risk/evidence/handoff records, then archive the completed change.
+- [x] 3.3 Review/security scan and promote step->phase->main only after checks; sync main back to phase.
+- [x] 3.4 Update external local/global/risk/evidence/handoff records.
+
+Archive this accepted change after promotion; deliver the archive/navigation closeout through the same step/phase PR process.
