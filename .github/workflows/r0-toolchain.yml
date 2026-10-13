@@ -66,6 +66,12 @@ jobs:
           API_BASE_URL=http://127.0.0.1:18080 pnpm contracts:test
           pnpm exec playwright install --with-deps chromium
           pnpm test:e2e
+      - name: R0.3 real storage contracts
+        run: bash deploy/scripts/ci-storage.sh
+      - name: Deployment script syntax
+        run: |
+          for script in deploy/scripts/*.sh; do bash -n "$script"; done
+          python3 -m py_compile deploy/scripts/*.py deploy/probes/*.py
       - name: Preserve failure logs
         if: failure()
         run: docker compose -p agentplatform-app -f deploy/compose.r0.1.yaml logs --no-color
@@ -82,4 +88,5 @@ jobs:
             backend/platform-app/target/surefire-reports
             backend/platform-infrastructure/target/surefire-reports
             evidence/r0.2/linux-reports
+            evidence/r0.3
           retention-days: 7

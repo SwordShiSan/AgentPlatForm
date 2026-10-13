@@ -11,7 +11,10 @@ import org.springframework.context.annotation.Bean;
 @SpringBootApplication(scanBasePackages = "com.agentplatform")
 public class PlatformApplication {
     public static void main(String[] args) {
-        SpringApplication.run(PlatformApplication.class, args);
+        var context = SpringApplication.run(PlatformApplication.class, args);
+        if (context.getEnvironment().matchesProfiles("cloud-migrate")) {
+            System.exit(SpringApplication.exit(context));
+        }
     }
 
     @Bean

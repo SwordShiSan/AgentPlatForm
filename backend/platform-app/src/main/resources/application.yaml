@@ -7,6 +7,19 @@ spring:
 server:
   port: 8080
   shutdown: graceful
+management:
+  server:
+    port: -1
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+    jmx:
+      exposure:
+        exclude: "*"
+  endpoint:
+    health:
+      show-details: never
 platform:
   runtime:
     agentscope:

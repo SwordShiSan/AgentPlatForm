@@ -34,3 +34,5 @@ backups/
 *.log
 *.hprof
 *.dump
+**/__pycache__/
+*.pyc
