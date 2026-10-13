@@ -46,14 +46,24 @@ delete missing.conversationId;
 assert(!validateEvent(missing));
 
 const health = ajv.compile(api.components.schemas.HealthResponse);
+const readiness = ajv.compile(api.components.schemas.ReadinessResponse);
 const problem = ajv.compile(api.components.schemas.Problem);
 assert(health({ status: 'UP' }));
 assert(!health({ status: 'DOWN' }));
 assert(!health({}));
+assert(readiness({ status: 'READY' }));
+assert(readiness({ status: 'NOT_READY' }));
+assert(!readiness({ status: 'UP' }));
+assert(!readiness({ status: 'READY', databaseHost: 'internal' }));
 if (process.env.API_BASE_URL) {
   const response = await fetch(`${process.env.API_BASE_URL}/api/v1/health`);
   assert.equal(response.status, 200);
   assert(health(await response.json()), 'Real health response differs from OpenAPI');
+  const ready = await fetch(`${process.env.API_BASE_URL}/api/v1/readiness`);
+  assert([200, 503].includes(ready.status));
+  const readyBody = await ready.json();
+  assert(readiness(readyBody), 'Real readiness response differs from OpenAPI');
+  assert.equal(readyBody.status, ready.status === 200 ? 'READY' : 'NOT_READY');
   const failure = await fetch(`${process.env.API_BASE_URL}/api/v1/missing`);
   assert.equal(failure.status, 404);
   assert(failure.headers.get('content-type')?.includes('application/problem+json'));

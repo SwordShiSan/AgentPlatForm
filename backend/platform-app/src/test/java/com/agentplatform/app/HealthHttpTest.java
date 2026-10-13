@@ -26,6 +26,15 @@ class HealthHttpTest {
     }
 
     @Test
+    void bootstrapReadinessIsFailClosedAndDoesNotLeakDependencies() throws Exception {
+        var response = get("/api/v1/readiness");
+        assertEquals(503, response.statusCode());
+        var body = JsonMapper.builder().build().readTree(response.body());
+        assertEquals("NOT_READY", body.get("status").asText());
+        assertEquals(1, body.size());
+    }
+
+    @Test
     void unknownApiReturnsSanitizedProblem() throws Exception {
         var response = get("/api/v1/missing");
         assertEquals(404, response.statusCode());

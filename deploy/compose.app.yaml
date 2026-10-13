@@ -1,0 +1,95 @@
+name: agentplatform-app
+x-role: &role
+  image: ${PLATFORM_API_IMAGE:?Set verified API image digest or local immutable tag}
+  user: "10001:10001"
+  restart: "no"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  tmpfs: ["/tmp:rw,noexec,nosuid,size=32m"]
+  networks: [backplane]
+  logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+  pids_limit: 128
+x-storage: &storage
+  PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/agentplatform?connectTimeout=2&socketTimeout=3
+  PLATFORM_RUNTIME_AGENTSCOPE_ENABLED: "false"
+services:
+  migrate:
+    <<: *role
+    profiles: [migration]
+    mem_limit: 256m
+    entrypoint: [java, -Xms16m, -Xmx96m, -jar, /app/platform.jar]
+    environment:
+      <<: *storage
+      SPRING_PROFILES_ACTIVE: cloud-migrate
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      PLATFORM_STORAGE_USER: ap_migration
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/pg_migration
+    secrets: [pg_migration]
+  api:
+    <<: *role
+    mem_limit: 320m
+    cpus: 0.75
+    entrypoint: [java, -Xms32m, -Xmx160m, -jar, /app/platform.jar]
+    environment:
+      <<: *storage
+      SPRING_PROFILES_ACTIVE: cloud-api
+      MANAGEMENT_SERVER_PORT: "8081"
+      PLATFORM_STORAGE_USER: ap_api
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/pg_api
+    secrets: [pg_api]
+    healthcheck: {test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:8080/api/v1/readiness"], interval: 10s, timeout: 6s, retries: 24, start_period: 30s}
+  worker:
+    <<: *role
+    profiles: [worker]
+    mem_limit: 384m
+    cpus: 1.0
+    entrypoint: [java, -Xms32m, -Xmx192m, -jar, /app/platform.jar]
+    environment:
+      <<: *storage
+      SPRING_PROFILES_ACTIVE: cloud-worker
+      PLATFORM_STORAGE_USER: ap_worker
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/pg_worker
+    secrets: [pg_worker]
+  runner:
+    <<: *role
+    profiles: [runner]
+    mem_limit: 192m
+    cpus: 0.5
+    entrypoint: [java, -Xms16m, -Xmx64m, -jar, /app/platform.jar]
+    environment: {SPRING_PROFILES_ACTIVE: cloud-runner, SPRING_MAIN_WEB_APPLICATION_TYPE: none, PLATFORM_RUNTIME_AGENTSCOPE_ENABLED: "false"}
+    healthcheck: {test: [CMD, test, -f, /tmp/role-ready], interval: 10s, timeout: 3s, retries: 12, start_period: 15s}
+    # R0 trusted host probes manage runtime; production command/socket wiring remains gated by R3.
+  egress:
+    <<: *role
+    profiles: [egress]
+    mem_limit: 128m
+    cpus: 0.25
+    entrypoint: [java, -Xms16m, -Xmx48m, -jar, /app/platform.jar]
+    environment: {SPRING_PROFILES_ACTIVE: cloud-egress, SPRING_MAIN_WEB_APPLICATION_TYPE: none, PLATFORM_RUNTIME_AGENTSCOPE_ENABLED: "false"}
+    healthcheck: {test: [CMD, test, -f, /tmp/role-ready], interval: 10s, timeout: 3s, retries: 12, start_period: 15s}
+    networks: [egress-control]
+    # No business DB secrets or public/host network; authorized proxy implementation remains gated by R3.
+  gateway:
+    image: ${PLATFORM_GATEWAY_IMAGE:?Set verified gateway image digest or local immutable tag}
+    user: "101:101"
+    mem_limit: 32m
+    cpus: 0.25
+    pids_limit: 64
+    restart: "no"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=16m"]
+    networks: [backplane, ingress]
+    ports: ["127.0.0.1:${GATEWAY_PORT:-18080}:8080"]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+    depends_on: {api: {condition: service_healthy}}
+networks:
+  backplane: {external: true, name: agentplatform-backplane}
+  ingress: {name: agentplatform-ingress}
+  egress-control: {name: agentplatform-egress-control, internal: true}
+secrets:
+  pg_api: {file: "${PLATFORM_ROOT:-/srv/agentplatform}/secrets/pg_api"}
+  pg_worker: {file: "${PLATFORM_ROOT:-/srv/agentplatform}/secrets/pg_worker"}
+  pg_migration: {file: "${PLATFORM_ROOT:-/srv/agentplatform}/secrets/pg_migration"}

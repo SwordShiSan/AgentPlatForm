@@ -3,6 +3,7 @@
 !frontend/dist/**
 !deploy/*.Dockerfile
 !deploy/nginx.conf
+!deploy/probes/**
 !backend/platform-infrastructure/target/probe-libs/**
 !backend/platform-infrastructure/target/test-classes/**
 !backend/platform-app/target/probe-libs/**
