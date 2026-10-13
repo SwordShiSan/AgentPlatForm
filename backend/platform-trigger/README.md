@@ -2,4 +2,4 @@
 
 HTTP/SSE/调度/事件入口；通过api接口调用用例，不依赖app实现。
 
-本目录为预留骨架，尚无POM与业务代码。R0创建工程，业务按领域包组织。
+R0.1已建立POM、GET /api/v1/health及脱敏Problem错误处理。暂无SSE、任务调度或业务HTTP接口。

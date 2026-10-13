@@ -1,6 +1,6 @@
 # AgentPlatForm
 
-新一代云端 Agent 平台独立 Git 单仓。当前仅为重构文档导航与目录骨架，**无业务实现、不可构建/运行、未部署**。
+新一代云端 Agent 平台独立 Git 单仓。R0.1正在建立Java/Vue工程、契约生成与可运行健康壳层；**尚无业务智能体功能、未部署生产**。实际验收状态以外部局部台账为准，工程文件存在不等于VERIFIED。
 
 ## 方案入口
 
@@ -24,5 +24,4 @@
 初始化基线：30模块、90功能点、R0–R9共40个小阶段；业务实现均未开始。这里仅为2026-10-12快照，实时状态只维护在上述台账。GitHub网页无法打开仓库外相对链接；交接时必须同时提供唯一专项目录，不以克隆成功代替文档交付。
 
 ## 工程布局
-frontend 为 Vue3/TypeScript；backend 为 Java21 六模块 DDD；contracts 为未来唯一机器契约；openspec 为规格与变更记录；deploy 为未来容器构建和部署。各目录 README 描述后续 R0 工作，不代表已实现。
-先执行 R0 框架契约实验，门禁通过后进入 R1。不要运行不存在的 npm/mvn/compose 命令。
+frontend 为 Vue3/TypeScript；backend 为 Java21 六模块 DDD；contracts 为机器契约；openspec 为规格与变更记录；deploy 为本地容器构建与验收。构建及运行命令见各目录README。R0.1只交付健康壳层；AgentScope运行实验、完整中间件和契约冻结分别属于R0.2–R0.4，全部通过并发布后才能进入R1。

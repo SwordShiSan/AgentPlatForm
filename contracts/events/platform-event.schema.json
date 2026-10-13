@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agentplatform:platform-event:v1",
+  "title": "PlatformEvent",
+  "description": "Envelope contract only; R0.1 does not publish runtime events. Payload specifics are added with implemented capabilities.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "eventId", "spaceId", "conversationId", "seq", "type", "occurredAt", "entityVersion", "payload"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "eventId": {"type": "string", "format": "uuid"},
+    "spaceId": {"type": "string", "format": "uuid"},
+    "conversationId": {"type": "string", "format": "uuid"},
+    "taskId": {"type": ["string", "null"], "format": "uuid"},
+    "attemptId": {"type": ["string", "null"], "format": "uuid"},
+    "seq": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+    "type": {
+      "type": "string",
+      "enum": ["task.accepted", "task.state_changed", "message.started", "message.delta", "message.completed", "message.replaced", "tool.prepared", "tool.started", "tool.completed", "interaction.opened", "interaction.resolved", "plan.revised", "artifact.created", "file.changed", "usage.updated", "workspace.state_changed", "preview.state_changed", "capability.binding_changed", "credential.revoked", "membership.changed", "workflow.node_changed", "automation.occurrence_changed", "task.children_changed", "context.updated", "verification.updated"]
+    },
+    "occurredAt": {"type": "string", "format": "date-time"},
+    "entityVersion": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+    "payload": {"type": "object", "additionalProperties": true}
+  }
+}

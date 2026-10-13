@@ -23,7 +23,7 @@ Use OpenSpec proposal/specs/design/tasks/verification for implementation changes
 Do not run blanket git add. Stage explicit scoped files. Never commit credentials, logs, runtime data, node_modules or generated build output.
 
 ## Build
-No build manifests exist in this skeleton. R0 must establish Maven Wrapper, package-manager lockfile, CI and exact scripts. After that use project wrappers and the committed pnpm lockfile.
+R0.1 establishes the Maven Wrapper 3.9.11, pnpm 10.34.7 lockfile and CI. Use backend/mvnw (mvnw.cmd on Windows) and frontend package scripts with the committed pnpm lockfile. Node is pinned by .node-version. Follow each stage's actual acceptance status; having manifests does not mean R0.1 is VERIFIED.
 Java uses four spaces; TypeScript two spaces. UTF-8/LF. Generate API clients from contracts; never hand-maintain divergent DTOs.
 
 ## Safety
