@@ -14,7 +14,11 @@ Harness internals use explicit versioned ports and build-time composition, not r
 ## Workflow and evidence
 Execution status lives only in the canonical reconstruction folder `08-重构进度管控/阶段/`. Read its global rollup and the current local ledger first; update the local step with commit, commands, case results and UI evidence before updating the rollup. The `07-交付与验收/阶段/` files define plans, not duplicate live status. Documentation completion never means R0 is implemented.
 
-Use feature/rN-topic branches off main. Each small stage updates contracts/data, implements UI and backend, tests, and documents evidence before the next stage. Do not report compile-only, mocked success, or skipped real-environment tests as verified behavior.
+For each major phase, create a `phase/rN-topic` integration branch; create a separate `step/rN.n-topic` branch for every small phase. A step starts from the current phase branch. After its local Docker/UI/backend/dependency gates pass, review and PR step→phase, then PR the updated phase snapshot→main so **every accepted small phase advances main**. Record both PRs/SHAs and sync main back into phase before starting the next step. `main` is the latest locally verified stable code and may be ahead of production; keep unfinished capabilities behind disabled feature flags.
+
+At the end of each major phase, run full local regression, build an immutable image, canary that same digest in local Docker, then deploy the digest to cloud and run online tests/observation. Only successful cloud validation creates the immutable production tag and marks the major phase RELEASED; it does not determine when main advances. On cloud failure, roll back the production deployment only; keep main at its latest locally verified small phase and fix through a new step branch, local gates, and PR before rerunning the cloud release gate. Do not start the next major phase until the previous one is RELEASED.
+
+Each small stage updates contracts/data, implements UI and backend, tests, and documents evidence before the next stage. Do not report compile-only, mocked success, or skipped real-environment tests as verified behavior.
 Use OpenSpec proposal/specs/design/tasks/verification for implementation changes; documentation status is not feature completion.
 Do not run blanket git add. Stage explicit scoped files. Never commit credentials, logs, runtime data, node_modules or generated build output.
 
