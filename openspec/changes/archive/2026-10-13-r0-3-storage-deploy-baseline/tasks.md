@@ -16,4 +16,4 @@
 - [x] 12. Run R0.2 host/Linux regression and all real R0.3 probes plus permission scan, failures recorded per case.
 - [x] 13. Run30-minute lightweight sequence/dependency restarts, collect sampled memory/swap/CPU/disk, prove platform survives sandbox exhaustion.
 - [x] 14. Exercise legacy→new→legacy rollback, restore original policies; keep new business shell disabled.
-- [ ] 15. Review/secrets scan; PR step→phase→main, strict CI, sync phase; update local/global/risk/evidence ledgers then archive via PR.
+- [x] 15. Review/secrets scan; PR10 step→phase and PR11 phase→main with strict real-storage CI passed; main adde323 synced to phase; update local/global/risk/evidence ledgers. Completed change archive/navigation closeout follows document PRs.
