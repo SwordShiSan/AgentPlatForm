@@ -1,0 +1,17 @@
+# R0.2 decisions
+
+Plan mode completed in this conversation and the user requested implementation on 2026-10-13. Baseline c464a5bd2e05dc497167ae17d274a14cb3d7c44d, branch step/r0.2-agentscope-probe. Fixed upstream tag v2.0.4 is 0b6743b263ba8e39eb417e35048026f1e0196548.
+
+## Composition and interfaces
+Keep the six modules. types defines immutable run scope, canonical messages/rounds/calls/results and bundle/state manifests. domain owns CompletionStage ports and policy decisions; app composes Context/Memory/Retrieval/CompletionPolicy with a LoopDriver factory. infrastructure alone imports SDK/Reactor/Jackson2. HTTP retains Jackson3. Only infrastructure depends on agentscope-harness and agentscope-extensions-model-openai, both 2.0.4; Enforcer remains enabled. No new wire contract or front-end capability.
+
+## Single execution and commit boundaries
+One prepareRun().stream() per attempt. A Model bridge converts platform messages/results and retains the full validated round. onReasoning awaits beforeModel/context assembly and appends an awaited afterModelCommitted completion before SDK progresses. onActing compares the entire pending list to committed calls. ToolBase permission check and callAsync share a scope-bound gateway; callAsync awaits beforeTool and result persistence. beforeStop evaluates candidate completion, returning PASS/REPAIR/INCOMPLETE without launching another Harness loop. Truncated, unknown, malformed, cancelled or uncommitted rounds execute no tool.
+
+## Isolation and recovery
+Explicitly disable SDK compaction/eviction/memory/filesystem/shell/web/skills/subagents/transcript/workspace/at-path/tools-config mechanisms, enablePendingToolRecovery=false, and use DEFAULT permissions. disableSessionPersistence is a no-op and is not evidence of isolation. The initial SYSTEM-only approval transport was rejected by the real SDK's PreCall validation. Use a metadata-only TOOL SDK control frame with no content, consumed by ConfirmResult extraction before context insertion; it is never a platform USER or TOOL fact and must not reach model input/history. This is a private SDK transport correction, not a permission/contract relaxation. Restore original committed ledger operations: saved success is injected, PREPARED executes the original call, UNKNOWN blocks. No model re-inference may discard existing pending calls or regenerate their identities. Model SYSTEM projections are not conversation history and are excluded from ledger-history reconstruction.
+
+Use scope-bound JSON2 SDK state storage. Test-only atomic file journal/state store uses locks, CAS, atomic snapshots and a final manifest; it is not production PG persistence. Restore checks bundle hash, codec/model compatibility, state schema and watermark. Missing/corrupt/incompatible recovery data is an error, not empty state. Run resources are attempt-owned and cancellation stops downstream work.
+
+## Acceptance and failure
+Actual SDK compile/stream/control/Plan/permission/CAS/state probes; HC-01–07 and EX07-1/2/3/4/6; child JVM recovery after four crash windows; real Docker non-root offline JUnit execution and existing shell/browser regression. Every assertion maps to verification cases. A missing safe hook or incompatibility stops R0.2 and records ADR/risk evidence; do not relax tests or change versions silently. PR step->phase then phase->main is autonomous only after all mandatory checks pass. No R0.3 or cloud release in this change.

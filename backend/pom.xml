@@ -7,12 +7,15 @@
     <java.version>21</java.version>
     <project.build.outputTimestamp>2026-10-13T00:00:00Z</project.build.outputTimestamp>
     <archunit.version>1.4.1</archunit.version>
+    <agentscope.version>2.0.4</agentscope.version>
     <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
   </properties>
   <modules>
     <module>platform-types</module><module>platform-domain</module><module>platform-api</module><module>platform-infrastructure</module><module>platform-trigger</module><module>platform-app</module>
   </modules>
   <dependencyManagement><dependencies>
+    <dependency><groupId>io.agentscope</groupId><artifactId>agentscope-harness</artifactId><version>${agentscope.version}</version></dependency>
+    <dependency><groupId>io.agentscope</groupId><artifactId>agentscope-extensions-model-openai</artifactId><version>${agentscope.version}</version></dependency>
     <dependency><groupId>com.agentplatform</groupId><artifactId>platform-types</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>com.agentplatform</groupId><artifactId>platform-domain</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>com.agentplatform</groupId><artifactId>platform-api</artifactId><version>${project.version}</version></dependency>

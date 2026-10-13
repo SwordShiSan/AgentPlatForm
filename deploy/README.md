@@ -1,5 +1,18 @@
 # Deployment
 
+## R0.2 offline framework probes
+
+先在backend运行Wrapper verify，然后运行 `./mvnw -B -ntp package dependency:copy-dependencies -DskipTests -DincludeScope=test -DoutputDirectory=target/probe-libs`，Windows使用mvnw.cmd。编译测试类和依赖进入固定JDK21镜像，运行期无网络、非root、只读根目录、无socket/用户卷，测试临时文件只写/tmp，报告使用专用probe-reports卷。
+
+```sh
+docker compose -p agentplatform-app -f deploy/compose.r0.1.yaml --profile framework-probe build framework-probe
+docker compose -p agentplatform-app -f deploy/compose.r0.1.yaml --profile framework-probe run --name agentplatform-r02-probe framework-probe
+docker cp agentplatform-r02-probe:/reports evidence/r0.2/linux-reports
+docker rm agentplatform-r02-probe
+```
+
+不修改旧栈，不运行global prune或down -v。报告卷保留用于复核；仅重复本探针时可覆盖其JUnit报告。单次探针容器按精确名称管理，不挂用户工作区。真实模型、PG/MQ/S3、runner/XFS和云端验收不在此profile中。
+
 R0.1 [Compose](compose.r0.1.yaml) 只启动固定构建产物的api和gateway，属于本地应用壳层，不是R0.3完整中间件/runner基线。先在backend执行Wrapper verify，在frontend执行锁文件安装、契约校验、类型/测试/build，再从仓库根目录运行：
 
 ```sh

@@ -1,5 +1,22 @@
 name: agentplatform-app
 services:
+  framework-probe:
+    profiles: [framework-probe]
+    image: agentplatform-framework-probe:${IMAGE_TAG:-r0.2-local}
+    build:
+      context: ..
+      dockerfile: deploy/framework-probe.Dockerfile
+    user: "10001:10001"
+    restart: "no"
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=768m"]
+    volumes: ["probe-reports:/reports"]
+    network_mode: none
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1g
+    cpus: 2.0
+    pids_limit: 128
   api:
     image: agentplatform-api:${IMAGE_TAG:-r0.1-local}
     build:
@@ -42,6 +59,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 6
+volumes:
+  probe-reports:
 networks:
   ingress:
     name: agentplatform-ingress
