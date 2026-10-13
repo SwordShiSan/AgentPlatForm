@@ -1,6 +1,6 @@
 # R0.2 verification
 
-Plan approved; IMPLEMENTING. Baseline c464a5b; SDK2.0.4 source0b6743b. Host backend verify passed 38 cases (29 SDK/state + 9 app/architecture/HTTP), exit0; frontend contracts/typecheck/15 unit tests/build passed. Linux/UI and promotion results are recorded below after actual execution.
+VERIFIED after local/CI acceptance and PR #6/#7 promotion. Baseline c464a5b; SDK2.0.4 source0b6743b. Host backend38, Linux36, frontend15 and real API/UI3 passed; protected main/phase synchronized at e343ce50eab699f2988de86214d52718bfe7a22e. R0 is not RELEASED and R0.3 has not begun.
 
 | Case group | Spec / canonical cases | Expected evidence | Result |
 |---|---|---|---|
@@ -12,7 +12,7 @@ Plan approved; IMPLEMENTING. Baseline c464a5b; SDK2.0.4 source0b6743b. Host back
 | P02-AUTHORITY | Invalid composition; HC06/EX07-3 | disabled defaults, bounded IO footprint, duplicate authorities rejected | HOST PASS |
 | P02-STOP | Evidence before completion | PASS/REPAIR/INCOMPLETE and no unverified success or second outer loop | HOST PASS |
 | P02-LINUX | Real framework acceptance | offline non-root Docker JUnit case reports and existing 3 UI cases | PASS: Linux36/UI3, exit0 |
-| P02-PROMOTION | Real framework acceptance | required CI, two PRs, SHAs, main/phase sync, canonical ledger | NOT_RUN |
+| P02-PROMOTION | Real framework acceptance | required CI, two PRs, SHAs, main/phase sync, canonical ledger | PASS: PR6/7 merged, CI success, main/phase synced |
 
 Record individual parameterized cases, command/exit, model/tool counts, bundle/state/operation hashes, JVM crash/restart facts and Docker image IDs. Real supplier/production PG/MQ/S3/runner/XFS/cloud remain outside this stage. A mandatory unsupported safety boundary requires an ADR stop, not a weakened assertion.
 
@@ -42,3 +42,10 @@ Record individual parameterized cases, command/exit, model/tool counts, bundle/s
 - ToolBase.checkPermissions(Map<String,Object>,PermissionContextState): Mono<PermissionDecision>; callAsync(ToolCallParam): Mono<ToolResultBlock>. Registered SDK tool surface is narrowed to controlled catalog before execution; policy is rechecked at actual call entry.
 - AgentStateStore supportsVersioning/getVersioned/saveIfVersion; absent version0; SDK UNVERSIONED=-1 conflict converted into explicit adapter error. Model SYSTEM projections are not stored history. Private state is scope-validated and bundle/manifest/schema verified before reconstruction.
 - OpenAIChatModel.builder/apiKey/modelName/baseUrl/stream are compiled and exercised only against localhost fixture, not a real supplier. Fake models/tools, real SDK, real JVM exits and Linux execution are distinguished from real supplier/production storage evidence.
+
+## Git and CI acceptance
+
+- Implementation commit6d152cda9bde048e1ef300f59e03f608bf3ddc0f pushed and confirmed. PR #6 https://github.com/SwordShiSan/AgentPlatForm/pull/6 merged to phase08c3e7258790fb92f447fbaf3ed05f09e0f27d78 after step CI38377158415 passed.
+- PR #7 https://github.com/SwordShiSan/AgentPlatForm/pull/7 merged to protected main e343ce50eab699f2988de86214d52718bfe7a22e after integration CI38377695836 completed success. Both flows include engineering/SDK, offline Docker and browser checks. Phase synchronized from main; no bypass or per-PR manual approval.
+- Integration evidence artifact11801749208, digest sha256:befab524ddacdc5bc0569fbc688ded37bbf2e2cc586ab8b58b8d6acfc3e23bb6, expires2026-10-20. Existing artifact/check names remain stable for branch protection; their contents include R0.2 SDK/Linux reports. Run https://github.com/SwordShiSan/AgentPlatForm/actions/runs/38377695836.
+- Canonical design/progress bodies remain outside repository Git. Only new-platform local fixtures/containers changed; no legacy or production deployment. Archive/navigation closeout is documentation-only and follows normal PR/CI promotion.
