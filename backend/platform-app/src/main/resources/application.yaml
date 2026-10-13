@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: agentplatform
+  mvc:
+    problemdetails:
+      enabled: true
+server:
+  port: 8080
+  shutdown: graceful

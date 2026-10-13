@@ -1,0 +1,50 @@
+name: agentplatform-app
+services:
+  api:
+    image: agentplatform-api:${IMAGE_TAG:-r0.1-local}
+    build:
+      context: ..
+      dockerfile: deploy/api.Dockerfile
+    user: "10001:10001"
+    restart: "no"
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=64m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 384m
+    cpus: 1.0
+    networks: [backplane]
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:8080/api/v1/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+  gateway:
+    image: agentplatform-gateway:${IMAGE_TAG:-r0.1-local}
+    build:
+      context: ..
+      dockerfile: deploy/gateway.Dockerfile
+    user: "101:101"
+    restart: "no"
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=32m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    cpus: 0.5
+    ports: ["127.0.0.1:${GATEWAY_PORT:-18080}:8080"]
+    networks: [backplane, ingress]
+    depends_on:
+      api: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:8080/"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+networks:
+  ingress:
+    name: agentplatform-ingress
+  backplane:
+    name: agentplatform-backplane
+    internal: true

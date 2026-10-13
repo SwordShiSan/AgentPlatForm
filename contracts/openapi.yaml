@@ -1,0 +1,47 @@
+openapi: 3.1.0
+info:
+  title: Agent PlatForm shell API
+  version: 0.1.0
+  description: R0.1 shell health only. No model or middleware readiness claim.
+servers:
+  - url: /
+paths:
+  /api/v1/health:
+    get:
+      operationId: getHealth
+      summary: Check application shell health
+      responses:
+        '200':
+          description: The application shell is available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        default:
+          description: Structured failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum: [UP]
+    Problem:
+      type: object
+      required: [type, title, status, code, traceId, retryable]
+      properties:
+        type: {type: string, format: uri}
+        title: {type: string}
+        status: {type: integer, minimum: 400, maximum: 599}
+        code: {type: string}
+        detail: {type: string}
+        traceId: {type: string}
+        retryable: {type: boolean}
+        resourceId: {type: string}
