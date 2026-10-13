@@ -32,6 +32,9 @@ jobs:
       - name: Backend verify
         working-directory: backend
         run: sh ./mvnw -B -ntp verify
+      - name: Package offline framework probes
+        working-directory: backend
+        run: sh ./mvnw -B -ntp package dependency:copy-dependencies -DskipTests -DincludeScope=test -DoutputDirectory=target/probe-libs
       - name: Frontend dependencies
         working-directory: frontend
         run: pnpm install --frozen-lockfile
@@ -50,6 +53,13 @@ jobs:
         run: |
           docker compose -p agentplatform-app -f deploy/compose.r0.1.yaml config --quiet
           docker compose -p agentplatform-app -f deploy/compose.r0.1.yaml up -d --build --wait --wait-timeout 120
+      - name: Offline non-root framework acceptance
+        run: |
+          docker compose -p agentplatform-app -f deploy/compose.r0.1.yaml --profile framework-probe build framework-probe
+          docker compose -p agentplatform-app -f deploy/compose.r0.1.yaml --profile framework-probe run --name agentplatform-r02-ci-probe framework-probe
+          mkdir -p evidence/r0.2
+          docker cp agentplatform-r02-ci-probe:/reports evidence/r0.2/linux-reports
+          docker rm agentplatform-r02-ci-probe
       - name: Real API contracts and browser scenarios
         working-directory: frontend
         run: |
@@ -70,4 +80,6 @@ jobs:
             frontend/test-results
             frontend/playwright-report
             backend/platform-app/target/surefire-reports
+            backend/platform-infrastructure/target/surefire-reports
+            evidence/r0.2/linux-reports
           retention-days: 7
