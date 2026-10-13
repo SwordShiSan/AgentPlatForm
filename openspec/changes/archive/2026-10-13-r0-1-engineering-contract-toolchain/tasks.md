@@ -1,7 +1,7 @@
 ## 1. Preconditions and specification
 - [x] 1.1 Verify remote baseline, create/push phase and step branches, pin runnable pnpm 10 and verify Linux Docker.
 - [x] 1.2 Complete proposal/specs/design/tasks/verification and pass strict OpenSpec validation before implementation.
-- [ ] 1.3 Configure and verify protected main with required PR/CI and no force/direct pushes; retain hosting limitation as blocked if unavailable.
+- [x] 1.3 Configure and verify protected main with required PR/CI and no force/direct pushes; retain hosting limitation as blocked if unavailable.
 
 ## 2. Engineering and contracts
 - [x] 2.1 Establish health/Problem OpenAPI and event schema; validate and generate deterministic frontend client/types.
@@ -12,5 +12,7 @@
 - [x] 3.1 Pass backend verify, frontend typecheck/test/build, schemas, generation drift, OpenSpec and links.
 - [x] 3.2 Build/start fixed Docker artifacts and pass real API/UI normal, failure and restart tests with screenshots.
 - [x] 3.3 Add reproducible CI and run review/secret scan; record tool versions and resolved dependencies.
-- [ ] 3.4 Review and promote through step -> phase and phase -> main PRs only after all gates; sync main back into phase.
-- [ ] 3.5 Update canonical local ledger, rollup, risks and handoff with commands/results, PRs/SHAs and external-doc synchronization boundary; archive only after complete acceptance.
+- [x] 3.4 Review and promote through step -> phase and phase -> main PRs only after all gates; sync main back into phase.
+- [x] 3.5 Update canonical local ledger, rollup, risks and handoff with commands/results, PRs/SHAs and external-doc synchronization boundary.
+
+Archive policy: archive only after complete acceptance. Both promotion PRs have merged; the archive operation records this completed change and is delivered through a documentation PR pair.
