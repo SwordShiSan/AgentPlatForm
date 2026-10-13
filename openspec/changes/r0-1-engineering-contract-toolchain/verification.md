@@ -26,3 +26,10 @@ Record exact commands, exits, tool/fixture versions, source SHA and image identi
 - Screenshots (ignored): frontend/test-results/health-desktop.png (1280x720/full page), health-mobile.png (375x812), health-offline.png, health-api-stopped.png. Desktop/mobile screenshots visually reviewed; normal/error/recovery scenarios passed against fixed dist and real Docker API.
 - Initial failures: internal-only gateway networking suppressed host publishing; added dedicated gateway ingress while keeping API isolated. First browser recovery harness used unsupported compose start --wait; changed to up --no-build --wait and reran all three cases successfully. First dependency-tree download failed with Central TLS interruption; retry succeeded without changing dependency versions/cache artifacts.
 - GitHub main currently protected=false; rulesets request returned 403 requiring Pro or public visibility. Repository stays private, no purchase/visibility change, no bypass or main merge. User decision pending; R0.2 remains blocked by R0.1 promotion.
+
+## Git delivery
+
+- Implementation commit: 4e1e8f461f9890566055b54adf530bd891bb1015; pushed and confirmed by ls-remote. Runtime artifact SHA256 equals the running container jar: c1d95c6b8332766cf00f644cfc3d1de8e0848108a54be95e63941d549a69c84e.
+- Draft review PR: https://github.com/SwordShiSan/AgentPlatForm/pull/2 (step/r0.1-toolchain -> phase/r0-engineering). No merge or phase -> main PR while mandatory hosting protection is missing.
+- GitHub Actions executes the same declared build/contract/Docker/UI commands on Ubuntu. Its final result and review/promotion state belong to the canonical external local ledger; CI has not been declared PASS before completion.
+- Canonical progress/design files were updated locally outside this repository and are not included in these commits or the PR. Main and phase remain at the baseline until all promotion gates pass.
