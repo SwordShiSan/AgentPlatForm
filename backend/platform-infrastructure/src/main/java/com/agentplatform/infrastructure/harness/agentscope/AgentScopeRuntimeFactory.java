@@ -1,0 +1,249 @@
+package com.agentplatform.infrastructure.harness.agentscope;
+
+import com.agentplatform.domain.harness.CompositionRules;
+import com.agentplatform.domain.harness.HarnessPorts.*;
+import com.agentplatform.types.harness.HarnessData.*;
+import io.agentscope.core.agent.Agent;
+import io.agentscope.core.agent.AgentRun;
+import io.agentscope.core.agent.RuntimeContext;
+import io.agentscope.core.event.AgentEvent;
+import io.agentscope.core.event.ConfirmResult;
+import io.agentscope.core.message.*;
+import io.agentscope.core.middleware.*;
+import io.agentscope.core.model.*;
+import io.agentscope.core.permission.*;
+import io.agentscope.core.tool.*;
+import io.agentscope.harness.agent.HarnessAgent;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+/** One SDK run per attempt; SDK objects never escape this boundary. No Spring auto-registration. */
+public final class AgentScopeRuntimeFactory implements LoopDriver {
+    private final ModelGateway model;
+    private final PolicyPort policy;
+    private final ToolExecutionPort tools;
+    private final StateStorage state;
+    private final RuntimeStatePort manifests;
+    private final Map<String, Call> catalog;
+    private final Path workspaceRoot;
+    private final PlatformMessageCodec codec = new PlatformMessageCodec();
+
+    public AgentScopeRuntimeFactory(ModelGateway model, PolicyPort policy, ToolExecutionPort tools,
+                                   StateStorage state, RuntimeStatePort manifests, List<Call> definitions, Path workspaceRoot) {
+        this.model = java.util.Objects.requireNonNull(model); this.policy = java.util.Objects.requireNonNull(policy);
+        this.tools = java.util.Objects.requireNonNull(tools); this.state = java.util.Objects.requireNonNull(state);
+        this.manifests = java.util.Objects.requireNonNull(manifests);
+        this.workspaceRoot = workspaceRoot.toAbsolutePath().normalize();
+        var registered = new LinkedHashMap<String, Call>();
+        for (Call definition : definitions) if (registered.putIfAbsent(definition.name(), definition) != null) throw new IllegalArgumentException("Duplicate tool");
+        this.catalog = Map.copyOf(registered);
+    }
+
+    @Override public PreparedRun prepare(Request request, LoopBoundary boundary) {
+        CompositionRules.validate(request.bundle(), 1, 1, false);
+        if (request.restoring()) manifests.verifyRestore(request.scope(), request.bundle());
+        return new Execution(request, boundary);
+    }
+
+    private final class Execution implements PreparedRun {
+        private final Request request;
+        private final LoopBoundary boundary;
+        private final AtomicBoolean closed = new AtomicBoolean();
+        private final AtomicBoolean started = new AtomicBoolean();
+        private final AtomicReference<Throwable> failure = new AtomicReference<>();
+        private final AtomicReference<Turn> lastTurn = new AtomicReference<>();
+        private final AtomicReference<List<Call>> pendingCalls = new AtomicReference<>(List.of());
+        private final java.util.concurrent.CopyOnWriteArrayList<CompletableFuture<?>> pendingFutures = new java.util.concurrent.CopyOnWriteArrayList<>();
+        private final AtomicLong nextTurn;
+        private final CompletableFuture<Outcome> result = new CompletableFuture<>();
+        private final HarnessAgent agent;
+        private final AgentRun<AgentEvent> run;
+
+        Execution(Request request, LoopBoundary boundary) {
+            this.request = request; this.boundary = boundary; this.nextTurn = new AtomicLong(request.nextTurn());
+            Toolkit toolkit = new Toolkit(ToolkitConfig.builder().parallel(false).build());
+            catalog.values().forEach(definition -> toolkit.registerAgentTool(new GuardedTool(definition)));
+            RuntimeContext context = RuntimeContext.builder().userId(request.scope().actorId()).sessionId(request.scope().conversationId()).build();
+            agent = HarnessAgent.builder().name("platform-runtime").model(new BridgeModel()).toolkit(toolkit)
+                    .stateStore(new ScopeStateStore(state, request.scope()))
+                    .permissionContext(PermissionContextState.builder().mode(PermissionMode.DEFAULT).build())
+                    .workspace(workspaceRoot.resolve(request.scope().spaceId()).resolve(request.scope().conversationId()))
+                    .disableCompaction().disableToolResultEviction().disableMemoryTools().disableMemoryHooks()
+                    .disableFilesystemTools().disableShellTool().disableWebTools().disableDynamicSkills()
+                    .disableDefaultWorkspaceSkills().disableSubagents().disableDynamicSubagents().disableTranscript()
+                    .disableWorkspaceContext().disableAtPathExpansion().disableToolsConfig().enablePendingToolRecovery(false)
+                    .maxRetries(1).maxIters(8).enableAgentTracingLog(false).middleware(new CommitMiddleware()).build();
+            // Some control tools are SDK defaults. Remove them before any run, then check the surface.
+            for (ToolSchema schema : List.copyOf(agent.getDelegate().getToolkit().getToolSchemas())) {
+                if (!catalog.containsKey(schema.getName())) agent.getDelegate().getToolkit().removeTool(schema.getName());
+            }
+            if (request.restoring()) {
+                var privateState = agent.getDelegate().getAgentState(context);
+                var priorTools = privateState.getContext().stream().flatMap(message -> message.getContentBlocks(ToolUseBlock.class).stream())
+                        .collect(java.util.stream.Collectors.toMap(ToolUseBlock::getId, Function.identity(), (a, b) -> b));
+                List<Message> history = manifests.recoveryHistory(request.scope());
+                if (history.isEmpty()) throw new IllegalStateException("CHECKPOINT_NOT_COMMITTED");
+                List<Msg> restored = history.stream().map(codec::encode).map(message -> message.withContent(message.getContent().stream().map(block -> {
+                    if (block instanceof ToolUseBlock tool && priorTools.containsKey(tool.getId())) {
+                        ToolUseBlock prior = priorTools.get(tool.getId());
+                        if (!codec.decodeCall(prior, catalog).equals(codec.decodeCall(tool, catalog))) throw new IllegalStateException("CHECKPOINT_CALL_MISMATCH");
+                        return (ContentBlock) tool.withState(prior.getState());
+                    }
+                    return block;
+                }).toList())).toList();
+                privateState.contextMutable().clear(); privateState.contextMutable().addAll(restored);
+                agent.getDelegate().saveAgentState(context);
+            }
+            if (request.scope().planMode()) agent.enterPlanMode(context);
+            else agent.exitPlanMode(context);
+            List<Msg> input = new ArrayList<>(request.input().stream().map(codec::encode).toList());
+            if (!request.approvals().isEmpty()) {
+                var approvals = request.approvals().stream().map(approval -> new ConfirmResult(approval.allowed(), codec.toolUse(approval.call()), List.of())).toList();
+                input.add(Msg.builder().role(MsgRole.TOOL).metadata(Map.of(Msg.METADATA_CONFIRM_RESULTS, approvals)).build());
+            }
+            run = agent.prepareRun(input, context);
+        }
+
+        private void active() {
+            if (closed.get()) throw new CancellationException("Run cancelled");
+            Throwable error = failure.get();
+            if (error != null) throw new IllegalStateException("BOUNDARY_FAILED", error);
+        }
+        private <T> Mono<T> await(java.util.function.Supplier<CompletionStage<T>> action) {
+            return Mono.defer(() -> {
+                active(); var future = action.get().toCompletableFuture(); pendingFutures.add(future);
+                future.whenComplete((value, error) -> pendingFutures.remove(future));
+                if (closed.get()) future.cancel(true);
+                return Mono.fromFuture(future);
+            })
+                    .doOnError(error -> failure.compareAndSet(null, error));
+        }
+
+        @Override public CompletionStage<Outcome> start() {
+            if (!started.compareAndSet(false, true)) throw new IllegalStateException("Run already subscribed");
+            run.stream().collectList().flatMap(events -> {
+                active();
+                manifests.seal(request.scope(), request.bundle());
+                Turn turn = lastTurn.get();
+                boolean asking = events.stream().anyMatch(event -> event instanceof io.agentscope.core.event.RequireUserConfirmEvent);
+                if (asking) {
+                    List<Call> pending = turn == null ? restoredPending() : turn.round().calls();
+                    return Mono.just(new Outcome(Completion.WAITING_APPROVAL, "", pending));
+                }
+                Message candidate = Message.text(Role.ASSISTANT, turn == null ? "" : turn.round().text());
+                return await(() -> boundary.beforeStop(request.scope(), candidate))
+                        .map(decision -> new Outcome(decision, candidate.text(), List.of()));
+            }).doFinally(signal -> {
+                boundary.release(request.scope());
+                agent.close();
+            }).subscribe(result::complete, error -> {
+                if (error instanceof CancellationException || closed.get()) result.complete(new Outcome(Completion.CANCELLED, "", List.of()));
+                else result.completeExceptionally(error);
+            });
+            return result;
+        }
+        private List<Call> restoredPending() {
+            return agent.getDelegate().getAgentState(RuntimeContext.builder().userId(request.scope().actorId()).sessionId(request.scope().conversationId()).build())
+                    .getContext().stream().flatMap(msg -> msg.getContentBlocks(ToolUseBlock.class).stream())
+                    .filter(tool -> tool.getState() == ToolCallState.ASKING).map(tool -> codec.decodeCall(tool, catalog)).toList();
+        }
+        @Override public boolean cancel() {
+            closed.set(true); boundary.cancelPending(request.scope()); pendingFutures.forEach(future -> future.cancel(true)); return run.cancel();
+        }
+        @Override public boolean interrupt() {
+            boolean interrupted = run.interrupt(); closed.set(true); boundary.cancelPending(request.scope()); pendingFutures.forEach(future -> future.cancel(true)); return interrupted;
+        }
+        @Override public void close() { if (!result.isDone()) cancel(); if (!started.get()) { boundary.release(request.scope()); agent.close(); } }
+
+        private final class BridgeModel implements Model {
+            @Override public String getModelName() { return "platform-scripted"; }
+            @Override public Flux<ChatResponse> stream(List<Msg> messages, List<ToolSchema> definitions, GenerateOptions options) {
+                return await(() -> model.complete(request.scope(), messages.stream().map(msg -> codec.decode(msg, catalog)).toList(), List.copyOf(catalog.values())))
+                        .map(round -> {
+                            codec.validate(round);
+                            var resolved = round.calls().stream().map(call -> codec.decodeCall(codec.toolUse(call), catalog)).toList();
+                            Round canonical = new Round(round.text(), resolved, round.finishReason(), round.inputTokens(), round.outputTokens());
+                            lastTurn.set(new Turn(UUID.randomUUID().toString(), nextTurn.getAndIncrement(), canonical));
+                            return codec.response(canonical);
+                        }).flux();
+            }
+        }
+
+        private final class CommitMiddleware implements MiddlewareBase {
+            @Override public int order() { return Integer.MAX_VALUE; }
+            @Override public Flux<AgentEvent> onReasoning(Agent agent, RuntimeContext context, ReasoningInput input,
+                                                        Function<ReasoningInput, Flux<AgentEvent>> next) {
+                return await(() -> boundary.beforeModel(request.scope(), input.messages().stream().map(msg -> codec.decode(msg, catalog)).toList()))
+                        .flatMapMany(messages -> next.apply(new ReasoningInput(messages.stream().map(codec::encode).toList(), input.tools(), input.options())))
+                        .concatWith(Mono.defer(() -> {
+                            Turn turn = lastTurn.get();
+                            if (turn == null) return Mono.error(new IllegalStateException("MODEL_EMPTY_RESPONSE"));
+                            return await(() -> boundary.afterModelCommitted(request.scope(), turn)).then(Mono.<AgentEvent>empty());
+                        }));
+            }
+            @Override public Flux<AgentEvent> onActing(Agent agent, RuntimeContext context, ActingInput input,
+                                                     Function<ActingInput, Flux<AgentEvent>> next) {
+                return Flux.defer(() -> {
+                    active();
+                    Turn turn = lastTurn.get();
+                    List<Call> pending = input.toolCalls().stream().map(call -> codec.decodeCall(call, catalog)).toList();
+                    pendingCalls.set(pending);
+                    if (turn != null && !turn.round().calls().equals(pending)) return Flux.error(new IllegalStateException("TOOL_BATCH_MISMATCH"));
+                    // Restored pending calls are additionally checked against ledger in beforeTool.
+                    return next.apply(input);
+                });
+            }
+        }
+
+        private final class GuardedTool extends ToolBase {
+            private final Call definition;
+            GuardedTool(Call definition) {
+                super(ToolBase.builder().name(definition.name()).description("Platform controlled tool")
+                        .inputSchema(Map.of("type", "object", "properties", definition.arguments().keySet().stream()
+                                .collect(java.util.stream.Collectors.toMap(key -> key, key -> Map.of("type", "string"))), "required", List.copyOf(definition.arguments().keySet())))
+                        .readOnly(definition.readOnly()).concurrencySafe(false));
+                this.definition = definition;
+            }
+            @Override public Mono<PermissionDecision> checkPermissions(Map<String, Object> args, PermissionContextState context) {
+                return Mono.fromSupplier(() -> {
+                    active();
+                    List<Call> matches = pendingCalls.get().stream().filter(call -> call.name().equals(definition.name()) && call.arguments().equals(args)).toList();
+                    Decision decision = matches.size() == 1 ? decide(matches.getFirst()) : Decision.ASK;
+                    return switch (decision) {
+                        case ALLOW -> PermissionDecision.allow("Platform policy");
+                        case ASK -> PermissionDecision.ask("Platform approval required");
+                        case DENY -> PermissionDecision.deny("Platform policy denied");
+                    };
+                });
+            }
+            private Decision decide(Call call) {
+                if (request.scope().planMode() && !definition.readOnly()) return Decision.DENY;
+                return policy.decide(request.scope(), call);
+            }
+            @Override public Mono<ToolResultBlock> callAsync(ToolCallParam param) {
+                return Mono.defer(() -> {
+                    active();
+                    Call call = codec.decodeCall(param.getToolUseBlock(), catalog);
+                    if (decide(call) != Decision.ALLOW) return Mono.error(new SecurityException("TOOL_POLICY_CHANGED"));
+                    return await(() -> boundary.beforeTool(request.scope(), call))
+                            .then(await(() -> tools.execute(request.scope(), call)))
+                            .flatMap(observation -> await(() -> boundary.afterToolCommitted(request.scope(), call, observation))
+                                    .thenReturn(ToolResultBlock.text(observation.text()).withIdAndName(call.id(), call.name()).withState(ToolResultState.SUCCESS)));
+                }).doOnError(error -> failure.compareAndSet(null, error));
+            }
+        }
+    }
+}

@@ -29,16 +29,16 @@ class ArchitectureTest {
 
     @Test
     void enforceModuleDependencyDirections() {
-        noClasses().that().resideInAPackage("..types..").should().dependOnClassesThat()
-                .resideInAnyPackage("..domain..", "..api..", "..infrastructure..", "..trigger..", "..app..").check(classes);
-        noClasses().that().resideInAPackage("..domain..").should().dependOnClassesThat()
-                .resideInAnyPackage("..api..", "..infrastructure..", "..trigger..", "..app..",
+        noClasses().that().resideInAPackage("com.agentplatform.types..").should().dependOnClassesThat()
+                .resideInAnyPackage("com.agentplatform.domain..", "com.agentplatform.api..", "com.agentplatform.infrastructure..", "com.agentplatform.trigger..", "com.agentplatform.app..").check(classes);
+        noClasses().that().resideInAPackage("com.agentplatform.domain..").should().dependOnClassesThat()
+                .resideInAnyPackage("com.agentplatform.api..", "com.agentplatform.infrastructure..", "com.agentplatform.trigger..", "com.agentplatform.app..",
                         "org.springframework..", "io.agentscope..", "reactor..", "jakarta.persistence..", "java.sql..", "javax.sql..").check(classes);
-        noClasses().that().resideInAPackage("..api..").should().dependOnClassesThat()
-                .resideInAnyPackage("..domain..", "..infrastructure..", "..trigger..", "..app..").check(classes);
-        noClasses().that().resideInAPackage("..infrastructure..").should().dependOnClassesThat()
-                .resideInAnyPackage("..api..", "..trigger..", "..app..").check(classes);
-        noClasses().that().resideInAPackage("..trigger..").should().dependOnClassesThat()
-                .resideInAnyPackage("..infrastructure..", "..app..").check(classes);
+        noClasses().that().resideInAPackage("com.agentplatform.api..").should().dependOnClassesThat()
+                .resideInAnyPackage("com.agentplatform.domain..", "com.agentplatform.infrastructure..", "com.agentplatform.trigger..", "com.agentplatform.app..").check(classes);
+        noClasses().that().resideInAPackage("com.agentplatform.infrastructure..").should().dependOnClassesThat()
+                .resideInAnyPackage("com.agentplatform.api..", "com.agentplatform.trigger..", "com.agentplatform.app..").check(classes);
+        noClasses().that().resideInAPackage("com.agentplatform.trigger..").should().dependOnClassesThat()
+                .resideInAnyPackage("com.agentplatform.infrastructure..", "com.agentplatform.app..").check(classes);
     }
 }
