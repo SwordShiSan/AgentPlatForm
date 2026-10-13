@@ -1,6 +1,6 @@
-# R0.3 Verification — CLOUD GATES PASS, PR PROMOTION PENDING
+# R0.3 Verification — VERIFIED
 
-## Implementation evidence (2026-10-13, pending PR)
+## Implementation evidence (2026-10-13, accepted code snapshot)
 
 - OPS01: cloud inventory20261013T110947Z, protected fresh MySQL/PG SQL backups20261013T110953Z; gzip/definition/checksum verification. Exact obsolete application images and native log retention reclaimed10637934592bytes. All referenced volumes, current6.133/4.79, rollback6.132/4.78, DB/user files and unproved historical packages retained. No global prune.
 - OPS02: first filer startup failure automatically stopped new projects/restored all10legacy containers and originalalways policies; oldvirtual-hostHTTP and backendreadiness200. Current final acceptance window still active, final restore pending.
@@ -13,11 +13,11 @@
 - REG01: finalcloudnetworknone/nonroot/read-onlySDK/JVMregression38/38,0skips/failures. OpenSpec4/4strict; repository19links/13externalreferences and85canonicalMarkdownfiles checked. PublicbusinessAPI/events unchanged exceptminimalreadiness;SDK/shellfeatureflagsfalse.
 - SOAK01: fixedfinalcandidate started2026-10-13T21:29Asia/Shanghai, completed1812.649557seconds/55singletrustedlightweightPythonjobs/55samples. Redis/S3down503/recovery both passed. MinimumsampledMemAvailable1688.5MiB; swapinitial166.1MiB/final153.4MiB/maxsampled171.8MiB. No hostOOM or failed job. Sampled statistics are not a throughput or absolutepeak-memory guarantee; sandbox hard-pressure evidence is separate.
 - Final OPS02: currentfixturecleanup PASS, allnewservices stopped; all10originalcontainer identities/running/always policies restored; oldvirtual-hostHTTP200/backendreadiness200. Oldbusinessdata and rollbackimages preserved; no production newtag.
-- GIT01: stepbranchbasea6d7d5d; noPRpromotion/archive before finalgates. Canonical正文 remainsoutsideGit/local-only.
+- GIT01: stepbasea6d7d5d, code034ed6082093397226297158034156ed01fedfc6+cleanup7137661f83a03f21afd57e8e00969f98796c0784. PR10 requiredCI38412567950/check115348429498completed success→phase05359f5f068b0f55cdbb57a5ec2745b9b9aca6ab. PR11 requiredintegrationCI38414202833/check115354146942success→mainadde323664a0d2da8b2dbc2b3d5af06856aab13d, main/phase/local/remote synced. Initial stale auto-review CI rejection was resolved by fresh exact-head completed-success and clean PR evidence, without bypass. Canonical正文 remainsoutsideGit/local-only; archive/navigation closeout changes only documents.
 
 Failure evidence preserved in ignored `evidence/r0.3`: filer-createTable, memoryalarm, XFS errno assumption, PythonforkmaskingPID, volume-slotgrowth/listener and readiness-order, UIrestartwait and WindowsDockerindex/configidentity. Corrections are requirements-preserving and actualfailure paths remain visible.
 
-Plan approved before implementation. Required cloud gates now passed; documentation or mock tests never substitute for real-host gates. Record command, exit, fixture/version, artifact/hash, case result, failure and repair. No VERIFIED until PR promotion completes.
+Plan approved before implementation. All required cloud and two-stage PR/CI gates passed; R0.3 VERIFIED, R0 not RELEASED. Documentation or mock tests never substitute for real-host gates. Record command, exit, fixture/version, artifact/hash, case result, failure and repair.
 
 | ID | Required evidence |
 |---|---|
@@ -38,3 +38,5 @@ Plan approved before implementation. Required cloud gates now passed; documentat
 | GIT01 | Both reviewed PRs/CI/SHAs, main-phase sync, actual case evidence, archive, local-only canonical boundary |
 
 Commands: backend/mvnw(.cmd) -B -ntp verify; frontend pnpm contracts:generate/check/test,typecheck,test,build,test:e2e; openspec validate --all --strict --json; new deploy scripts include dry-run default and explicit apply. Cloud tests use pinned artifacts built off-host and loopback SSH tunnel. No production tag until R0.4 and full release gate.
+
+Integration CI artifact11824475235 (r0-1-verification), digest sha256:0e963dfe6d4a29bc9811e3c0f0dc053717bd1364296b4c51db6a54fd93c8e627, expires2026-10-20T14:37:37Z. This stable artifact name now includes real R0.3 storage/SQL and UI evidence; cloud-only runsc/XFS/soak reports remain in ignored local evidence and protected cloud operations. Archive/navigation commit does not change accepted runtime artifacts.

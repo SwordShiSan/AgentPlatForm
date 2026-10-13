@@ -2,7 +2,7 @@
 
 ## R0.3 minimal cloud developer acceptance
 
-This step uses the explicitly authorized cloud Linux developer environment, independent of legacy data and the later production release gate. Budgets, architecture decisions and all case evidence are defined in the external [formal plan](../../项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R0.3-存储部署与最小云资源实施计划.md) and [step verification](../openspec/changes/r0-3-storage-deploy-baseline/verification.md).
+This step uses the explicitly authorized cloud Linux developer environment, independent of legacy data and the later production release gate. Budgets, architecture decisions and all case evidence are defined in the external [formal plan](../../项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R0.3-存储部署与最小云资源实施计划.md) and [step verification](../openspec/changes/archive/2026-10-13-r0-3-storage-deploy-baseline/verification.md).
 
 - `compose.env.yaml`: independent PostgreSQL17/pgvector, Redis7.4, RabbitMQ4.3.6 and SeaweedFS4.48; no published ports, per-role credentials, persisted filer metadata, actual Leader/HTTP health ordering, bounded RAM/logging.
 - `compose.app.yaml`: the same Java artifact provides api/worker and minimal non-Web runner/egress profiles. They do not enable R3 command/proxy business capabilities. Only API connects public gateway; metrics are on internal8081. Production socket/mTLS/fence command wiring remains R3-gated.
