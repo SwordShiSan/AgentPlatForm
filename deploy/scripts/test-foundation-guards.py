@@ -48,12 +48,21 @@ class FoundationGuards(unittest.TestCase):
             assessor = module('assess-applicability')
             self.assertEqual(1, assessor.assess(report, sbom, review, root)['unresolvedHighCritical'])
             evidence.write_bytes(b'changed')
-            with self.assertRaises(ValueError):
+            with self.assertRaisesRegex(ValueError, 'Source/evidence changed'):
                 assessor.assess(report, sbom, review, root)
             evidence.write_bytes(b'fixture proof, not a production review')
             data['binding']['product'] = 'candidate:latest'
             review.write_text(json.dumps(data))
-            with self.assertRaises(ValueError):
+            with self.assertRaisesRegex(ValueError, 'Mutable or unrelated product'):
+                assessor.assess(report, sbom, review, root)
+            sbom.write_text(json.dumps({'source': {'metadata': {'imageID': 'candidate:latest'}}}))
+            data['binding']['sbomSha256'] = digest(sbom)
+            data['binding']['product'] = 'pkg:oci/fixture@candidate:latest'
+            review.write_text(json.dumps(data))
+            with self.assertRaisesRegex(ValueError, 'immutable config digest'):
+                assessor.assess(report, sbom, review, root)
+            report.write_text('{}')
+            with self.assertRaisesRegex(ValueError, 'Missing or prefiltered raw'):
                 assessor.assess(report, sbom, review, root)
 
 
