@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "tools": {
+    "syft": {
+      "version": "v1.54.1",
+      "source": "https://github.com/anchore/syft/releases/tag/v1.54.1",
+      "license": "Apache-2.0",
+      "archives": [
+        {
+          "name": "syft_1.54.1_windows_amd64.zip",
+          "url": "https://github.com/anchore/syft/releases/download/v1.54.1/syft_1.54.1_windows_amd64.zip",
+          "sha256": "8b56e8285e295e0bbed26eeea9b16ed51c493be97ccdf42dae6326c84fe8e19f"
+        },
+        {
+          "name": "syft_1.54.1_linux_amd64.tar.gz",
+          "url": "https://github.com/anchore/syft/releases/download/v1.54.1/syft_1.54.1_linux_amd64.tar.gz",
+          "sha256": "c069905b391cc4c20a5ba65ad5c10be2a7ba074f8ea6ad203e24d14e303dad47"
+        }
+      ]
+    },
+    "grype": {
+      "version": "v0.120.1",
+      "source": "https://github.com/anchore/grype/releases/tag/v0.120.1",
+      "license": "Apache-2.0",
+      "archives": [
+        {
+          "name": "grype_0.120.1_windows_amd64.zip",
+          "url": "https://github.com/anchore/grype/releases/download/v0.120.1/grype_0.120.1_windows_amd64.zip",
+          "sha256": "32e3c811f31822d17592908bafdc6288aaaca3d52583c479167a8dc8399ed65d"
+        },
+        {
+          "name": "grype_0.120.1_linux_amd64.tar.gz",
+          "url": "https://github.com/anchore/grype/releases/download/v0.120.1/grype_0.120.1_linux_amd64.tar.gz",
+          "sha256": "0a9ee97ef5ae2ee953b0a80098105052e846cdbe319a57d808b519c33cd1343d"
+        }
+      ]
+    },
+    "cyclonedx-maven": {
+      "version": "2.9.3",
+      "source": "https://github.com/CycloneDX/cyclonedx-maven-plugin/releases/tag/cyclonedx-maven-plugin-2.9.3",
+      "license": "Apache-2.0"
+    }
+  },
+  "actions": {
+    "checkout": {
+      "major": "v5",
+      "sha": "fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+      "source": "https://github.com/actions/checkout"
+    },
+    "setup-java": {
+      "major": "v5",
+      "sha": "b6effb05e454b25005698d916606bdc6ffcbf961",
+      "source": "https://github.com/actions/setup-java"
+    },
+    "setup-node": {
+      "major": "v5",
+      "sha": "a0853c24544627f65ddf259abe73b1d18a591444",
+      "source": "https://github.com/actions/setup-node"
+    },
+    "upload-artifact": {
+      "major": "v4",
+      "sha": "ea165f8d65b6e75b540449e92b4886f43607fa02",
+      "source": "https://github.com/actions/upload-artifact"
+    }
+  }
+}

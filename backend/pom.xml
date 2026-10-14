@@ -31,4 +31,9 @@
       <bannedDependencies><excludes><exclude>org.springframework.ai:*</exclude></excludes></bannedDependencies>
     </rules></configuration></execution></executions></plugin>
   </plugins></build>
+  <profiles><profile><id>audit-sbom</id><build><plugins>
+    <plugin><groupId>org.cyclonedx</groupId><artifactId>cyclonedx-maven-plugin</artifactId><version>2.9.3</version>
+      <configuration><schemaVersion>1.6</schemaVersion><includeLicenseText>true</includeLicenseText><outputFormat>json</outputFormat><skipAttach>true</skipAttach></configuration>
+    </plugin>
+  </plugins></build></profile></profiles>
 </project>

@@ -86,9 +86,9 @@ services:
     logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
     depends_on: {api: {condition: service_healthy}}
 networks:
-  backplane: {external: true, name: agentplatform-backplane}
-  ingress: {name: agentplatform-ingress}
-  egress-control: {name: agentplatform-egress-control, internal: true}
+  backplane: {external: true, name: "${PLATFORM_BACKPLANE:-agentplatform-backplane}"}
+  ingress: {name: "${PLATFORM_INGRESS:-agentplatform-ingress}"}
+  egress-control: {name: "${PLATFORM_EGRESS_CONTROL:-agentplatform-egress-control}", internal: true}
 secrets:
   pg_api: {file: "${PLATFORM_ROOT:-/srv/agentplatform}/secrets/pg_api"}
   pg_worker: {file: "${PLATFORM_ROOT:-/srv/agentplatform}/secrets/pg_worker"}
