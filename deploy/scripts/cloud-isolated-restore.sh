@@ -31,6 +31,7 @@ cleanup() {
 trap cleanup EXIT
 tar -xzf "$backup/data.tgz" -C "$restore"
 cp -a "$backup/protected-keys/secrets" "$restore/"
+cp -a "$backup/protected-keys/config" "$restore/"
 mkdir -m700 "$restore/quota" "$restore/workspaces" "$restore/reports"
 cp --reflink=auto "$backup/workspaces.xfs" "$restore/quota/workspaces.xfs"
 # New UUID belongs only to this copied image; the original image is never formatted or modified.

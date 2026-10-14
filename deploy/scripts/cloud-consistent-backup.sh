@@ -26,10 +26,12 @@ docker cp "$mq:/tmp/r04-definitions.json" "$backup/rabbitmq-definitions.json" >/
 "${env_compose[@]}" stop -t60
 test -z "$("${env_compose[@]}" ps -q --status running)"
 # Cold DB and object data, including PG-held filer metadata, are copied at one quiescent point.
-tar -C "$root" -czf "$backup/data.tgz" data config deploy
+tar -C "$root" -czf "$backup/data.tgz" data deploy
 mkdir -m700 "$backup/protected-keys"
 cp -a "$root/secrets" "$backup/protected-keys/"
+cp -a "$root/config" "$backup/protected-keys/"
 chmod 700 "$backup/protected-keys"
+printf '{"schemaVersion":1,"s3KekVersion":"local-s3-kek-v1","secretsLocation":"protected-keys/secrets","configLocation":"protected-keys/config"}\n' > "$backup/key-version.json"
 frozen=false
 unfreeze() { if [[ "$frozen" == true ]]; then xfs_freeze -u "$root/workspaces"; fi; }
 trap unfreeze EXIT
@@ -43,6 +45,6 @@ frozen=false
 python3 "$root/deploy/scripts/workspace-manifest.py" write "$root/workspaces" "$backup/workspace-files.json"
 cp "$root/reports/object-manifest.json" "$backup/object-manifest.json"
 xfs_quota -x -c 'report -p -b -i' "$root/workspaces" > "$backup/quota-report.txt"
-(cd "$backup" && sha256sum data.tgz workspaces.xfs postgres.sql rabbitmq-definitions.json object-manifest.json workspace-files.json > checksums.sha256)
+(cd "$backup" && sha256sum data.tgz workspaces.xfs postgres.sql rabbitmq-definitions.json object-manifest.json workspace-files.json key-version.json > checksums.sha256)
 printf '%s\n' "$backup" > "$root/operations/r04-latest-backup"
 echo 'Quiescent backup prepared. Secret files are protected separately and are not public evidence.'
