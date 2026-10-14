@@ -28,9 +28,10 @@ work = ROOT / '.cache' / ('audit-source-' + args.tool)
 work.mkdir(exist_ok=False)
 with tarfile.open(archive) as bundle:
     prefix = args.tool + '-' + source['commit']
-    if any(not m.name.startswith(prefix + '/') and m.name != prefix for m in bundle.getmembers()):
-        raise SystemExit('Unexpected source archive root')
-    bundle.extractall(work, filter='data')
+    spec = importlib.util.spec_from_file_location('fixtures', ROOT / 'deploy/scripts/audit-fixture-cache.py')
+    fixtures = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fixtures)
+    fixtures.extract_source(bundle, work, prefix, source['fixtureSymlinks'])
 directory = work / prefix
 environment = dict(os.environ, PATH=str(args.go.resolve().parent) + os.pathsep + os.environ['PATH'],
                    GOTOOLCHAIN='local', CGO_ENABLED='0', GOMAXPROCS='2')
@@ -49,9 +50,6 @@ tools['go'] = {'version': version, 'binarySha256': hashlib.sha256(pathlib.Path(g
 (output / 'test-tools.json').write_text(json.dumps(tools, indent=2) + '\n')
 subprocess.run(['git', 'init', '--quiet'], cwd=directory, check=True)
 if args.tool == 'syft':
-    spec = importlib.util.spec_from_file_location('fixtures', ROOT / 'deploy/scripts/audit-fixture-cache.py')
-    fixtures = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(fixtures)
     fixtures.restore(directory, output / 'fixture-identities.json')
 for name in ['go.mod', 'go.sum']:
     patch = ROOT / 'deploy/security' / (args.tool + '.' + name)
@@ -73,9 +71,14 @@ subprocess.run([go, 'build', '-mod=readonly', '-trimpath', '-tags=containers_ima
                 '-ldflags=' + flags, '-o', str(output / args.tool), './cmd/' + args.tool], cwd=directory, env=environment, check=True)
 (output / 'version.txt').write_text(subprocess.check_output([str(output / args.tool), 'version'], text=True))
 (output / 'build-info.txt').write_text(subprocess.check_output([go, 'version', '-m', str(output / args.tool)], text=True))
+windows_environment = dict(environment, GOOS='windows', GOARCH='amd64')
+subprocess.run([go, 'build', '-mod=readonly', '-trimpath', '-ldflags=' + flags,
+                '-o', str(output / (args.tool + '.exe')), './cmd/' + args.tool],
+               cwd=directory, env=windows_environment, check=True)
+(output / 'windows-build-info.txt').write_text(subprocess.check_output([go, 'version', '-m', str(output / (args.tool + '.exe'))], text=True))
 for name in ['go.mod', 'go.sum', 'LICENSE']:
     shutil.copyfile(directory / name, output / name)
-records = {name: hashlib.sha256((output / name).read_bytes()).hexdigest() for name in [args.tool, 'go.mod', 'go.sum', 'LICENSE']}
+records = {name: hashlib.sha256((output / name).read_bytes()).hexdigest() for name in [args.tool, args.tool + '.exe', 'go.mod', 'go.sum', 'LICENSE']}
 (output / 'binary-identities.json').write_text(json.dumps({'status': 'CANDIDATE_NOT_ACCEPTED', 'officialSourceCommit': source['commit'],
                                                          'note': 'Synthetic Git root only supports test discovery; provenance uses archive/patch hashes.',
                                                          'files': records}, indent=2) + '\n')

@@ -67,3 +67,18 @@ and four fixture safety tests PASS locally (after Windows sandbox realpath
 AccessDenied was rerun outside the sandbox in the same repo temp directory).
 Full corrected source candidate tests NOT_RUN until a fresh exact-head run.
 R0.4 remains IMPLEMENTING; cloud/runtime limits/XFS/soak/restore NOT_RUN.
+# Corrected false CI success signal
+20168c9/run38562275076 Syft job115846048738 badge reported success, but raw
+logs prove AbsoluteLinkError before tests. tee masked the failed exit code.
+This candidate is FAIL and produces no accepted binary. Explicit pipefail and
+exact source symlink reconstruction added; five fixture safety tests PASS.
+Full source candidates still require fresh tests/build and binary identities.
+# Current dependency and CI guard evidence
+Unused Testcontainers removal passes all44 Maven/DDD tests. Six module reports
+and both scoped SBOMs regenerated; actual external lock is130 artifacts, with
+historical139 retained in Git. Testcontainers/Docker Java/HttpCore components
+are absent from the fresh test SBOM and generated probe libraries. Five
+fixture guards, six STS guards, two foundation guards and two actual candidate
+run-block failure injections PASS. The CI guards prove failed commands stop
+before acceptance records rather than merely searching for pipefail text.
+Final candidate Linux SDK/image scans remain NOT_RUN until the fresh run.

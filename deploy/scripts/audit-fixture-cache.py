@@ -11,6 +11,34 @@ import urllib.request
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 
+def extract_source(bundle, work, prefix, expected_links):
+    members = bundle.getmembers()
+    links = {}
+    for member in members:
+        if (not member.name.startswith(prefix + '/') and member.name != prefix
+                or '..' in pathlib.PurePosixPath(member.name).parts or '\\' in member.name):
+            raise ValueError('Unexpected source archive path')
+        if member.islnk():
+            raise ValueError('Unexpected source hardlink')
+        if member.issym():
+            links[member.name[len(prefix) + 1:]] = member.linkname
+    if links != expected_links:
+        raise ValueError('Frozen source fixture links changed')
+
+    def regular_filter(member, destination):
+        return None if member.issym() else tarfile.data_filter(member, destination)
+
+    # Do not let any fixture link redirect extraction. Restore exact trusted
+    # test links only after regular files, including deliberately dangling links.
+    bundle.extractall(work, filter=regular_filter)
+    root = work / prefix
+    for name, target in sorted(links.items()):
+        path = root / name
+        if not path.parent.resolve().is_relative_to(root.resolve()):
+            raise ValueError('Fixture link parent escapes source root')
+        path.symlink_to(target)
+
+
 def sha256(path):
     digest = hashlib.sha256()
     with path.open('rb') as stream:

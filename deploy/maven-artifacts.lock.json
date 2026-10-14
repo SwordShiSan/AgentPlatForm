@@ -278,6 +278,14 @@
       }
     },
     {
+      "coordinate": "org.jetbrains:annotations:jar:13.0",
+      "sha256": "ace2a10dc8e2d5fd34925ecac03e4988b2c0f851650c94b8cef49ba1bd111478",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
       "coordinate": "com.squareup.okio:okio:jar:3.16.4",
       "sha256": "c9964f394c4cd32b79bf338afbfa2f2297221eee08311787061cea55f87dd60e",
       "modules": {
@@ -416,6 +424,38 @@
     {
       "coordinate": "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:jar:2.21.7",
       "sha256": "df2b3e6a194181dc067b7211d750926b4ae9e4f3c892a0005b8219a9b59be681",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.apache.commons:commons-compress:jar:1.27.1",
+      "sha256": "293d80f54b536b74095dcd7ea3cf0a29bbfc3402519281332495f4420d370d16",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "commons-codec:commons-codec:jar:1.19.0",
+      "sha256": "5c3881e4f556855e9c532927ee0c9dfde94cc66760d5805c031a59887070af5f",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "commons-io:commons-io:jar:2.16.1",
+      "sha256": "f41f7baacd716896447ace9758621f62c1c6b0a91d89acee488da26fc477c84f",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.apache.commons:commons-lang3:jar:3.19.0",
+      "sha256": "32733ab4bc90b45b63eb72677d886961003fd4ed113e07b1028f9877cb2ac735",
       "modules": {
         "platform-app": "compile",
         "platform-infrastructure": "compile"
@@ -737,6 +777,15 @@
       }
     },
     {
+      "coordinate": "org.slf4j:slf4j-api:jar:2.0.18",
+      "sha256": "44508fd1576500688c790b190acdd16fec4f8c79a3e0b900afd70503cf055f55",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
       "coordinate": "jakarta.xml.bind:jakarta.xml.bind-api:jar:4.0.5",
       "sha256": "5e489b6c874c4119e003ff1403db523ee3a8959ec499f3de29e77245efccf216",
       "modules": {
@@ -987,115 +1036,6 @@
       "sha256": "558c090b9a29243add7d2eb07eea0323f6f0f11b38457a4837e35228be1b10f2",
       "modules": {
         "platform-app": "test"
-      }
-    },
-    {
-      "coordinate": "org.testcontainers:testcontainers:jar:2.0.5",
-      "sha256": "0466f481343d5f350a91274cd7bf984308cbaf90d706247fd1cf4b1a8010c2e1",
-      "modules": {
-        "platform-app": "test"
-      }
-    },
-    {
-      "coordinate": "org.slf4j:slf4j-api:jar:2.0.18",
-      "sha256": "44508fd1576500688c790b190acdd16fec4f8c79a3e0b900afd70503cf055f55",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile",
-        "platform-trigger": "compile"
-      }
-    },
-    {
-      "coordinate": "org.apache.commons:commons-compress:jar:1.28.0",
-      "sha256": "e1522945218456f3649a39bc4afd70ce4bd466221519dba7d378f2141a4642ca",
-      "modules": {
-        "platform-app": "compile"
-      }
-    },
-    {
-      "coordinate": "commons-codec:commons-codec:jar:1.19.0",
-      "sha256": "5c3881e4f556855e9c532927ee0c9dfde94cc66760d5805c031a59887070af5f",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
-      "coordinate": "commons-io:commons-io:jar:2.20.0",
-      "sha256": "df90bba0fe3cb586b7f164e78fe8f8f4da3f2dd5c27fa645f888100ccc25dd72",
-      "modules": {
-        "platform-app": "compile"
-      }
-    },
-    {
-      "coordinate": "org.apache.commons:commons-lang3:jar:3.19.0",
-      "sha256": "32733ab4bc90b45b63eb72677d886961003fd4ed113e07b1028f9877cb2ac735",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
-      "coordinate": "org.rnorth.duct-tape:duct-tape:jar:1.0.8",
-      "sha256": "31cef12ddec979d1f86d7cf708c41a17da523d05c685fd6642e9d0b2addb7240",
-      "modules": {
-        "platform-app": "test"
-      }
-    },
-    {
-      "coordinate": "org.jetbrains:annotations:jar:17.0.0",
-      "sha256": "195fb0da046d55bb042e91543484cf1da68b02bb7afbfe031f229e45ac84b3f2",
-      "modules": {
-        "platform-app": "compile"
-      }
-    },
-    {
-      "coordinate": "com.github.docker-java:docker-java-api:jar:3.7.1",
-      "sha256": "dad153d484b1f4ef009e2fdbad27e07aeb3191122da52b8985507ac504300081",
-      "modules": {
-        "platform-app": "test"
-      }
-    },
-    {
-      "coordinate": "com.github.docker-java:docker-java-transport-zerodep:jar:3.7.1",
-      "sha256": "b89bdb1754160323597f9ea32a7fe7a4a3aa8f5b3b43b88e8d71fff3b267ab21",
-      "modules": {
-        "platform-app": "test"
-      }
-    },
-    {
-      "coordinate": "com.github.docker-java:docker-java-transport:jar:3.7.1",
-      "sha256": "d15eec8034bf0f92c2a48ca9172691804048115c96dc853272f9486fa2695c3c",
-      "modules": {
-        "platform-app": "test"
-      }
-    },
-    {
-      "coordinate": "net.java.dev.jna:jna:jar:5.18.1",
-      "sha256": "260c4b1e22b1db9e110ee441c4f13ce115f841fa48c41d78750986214b395557",
-      "modules": {
-        "platform-app": "test"
-      }
-    },
-    {
-      "coordinate": "org.jetbrains:annotations:jar:13.0",
-      "sha256": "ace2a10dc8e2d5fd34925ecac03e4988b2c0f851650c94b8cef49ba1bd111478",
-      "modules": {
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
-      "coordinate": "org.apache.commons:commons-compress:jar:1.27.1",
-      "sha256": "293d80f54b536b74095dcd7ea3cf0a29bbfc3402519281332495f4420d370d16",
-      "modules": {
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
-      "coordinate": "commons-io:commons-io:jar:2.16.1",
-      "sha256": "f41f7baacd716896447ace9758621f62c1c6b0a91d89acee488da26fc477c84f",
-      "modules": {
-        "platform-infrastructure": "compile"
       }
     },
     {

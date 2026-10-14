@@ -30,6 +30,7 @@ jobs:
         run: python3 deploy/scripts/foundation-inputs.py --fetch
       - name: Build and test frozen audit source candidate
         run: |
+          set -euo pipefail
           mkdir -p evidence/r0.4/audit-candidate-${{ matrix.tool }}
           compiler='golang:1.27.2-trixie@sha256:2d658507a011f1eadc0114d7a421b312b2e77d9042a24036a26e267cc9231677'
           docker pull "$compiler"
@@ -57,6 +58,7 @@ jobs:
         run: python3 deploy/scripts/foundation-inputs.py --fetch
       - name: Build and test frozen gVisor source candidate
         run: |
+          set -euo pipefail
           mkdir -p evidence/r0.4/runtime-candidate
           docker build --platform linux/amd64 -t agentplatform-gvisor-build:r0.4-ci -f deploy/gvisor-candidate.Dockerfile . 2>&1 | tee evidence/r0.4/runtime-candidate/build.log
           docker create --name r04-runtime-export agentplatform-gvisor-build:r0.4-ci /bin/true
@@ -103,7 +105,9 @@ jobs:
           python3 deploy/scripts/maven-artifact-lock.py
       - name: Package offline framework probes
         working-directory: backend
-        run: sh ./mvnw -B -ntp package dependency:copy-dependencies -DskipTests -DincludeScope=test -DoutputDirectory=target/probe-libs
+        run: |
+          python3 ../deploy/scripts/prepare-probe-libs.py
+          sh ./mvnw -B -ntp package dependency:copy-dependencies -DskipTests -DincludeScope=test -DoutputDirectory=target/probe-libs
       - name: Frontend dependencies
         working-directory: frontend
         run: pnpm install --frozen-lockfile
@@ -156,6 +160,7 @@ jobs:
           python3 deploy/scripts/test-foundation-guards.py
           python3 deploy/scripts/test-sts-denial.py
           python3 deploy/scripts/test-audit-fixtures.py
+          node deploy/scripts/test-ci-candidate-exits.mjs
       - name: R0.4 blocking dependency audit
         run: |
           python3 deploy/scripts/install-audit-tools.py
@@ -172,6 +177,14 @@ jobs:
           sbom_hash=$(sha256sum backend/target/bom-production.json | cut -d' ' -f1)
           python3 deploy/scripts/mcp-applicability.py --sbom backend/target/bom-production.json --product "urn:agentplatform:sbom:sha256:$sbom_hash" --output evidence/r0.4/backend-mcp.vex.json
           python3 deploy/scripts/assess-mcp-report.py --report evidence/r0.4/backend-vulnerabilities.json --sbom backend/target/bom-production.json --vex evidence/r0.4/backend-mcp.vex.json --output evidence/r0.4/backend-assessment.json
+          set +e
+          .tools/audit/grype sbom:backend/target/bom-with-tests.json --fail-on high -o json --file evidence/r0.4/backend-test-vulnerabilities.json
+          test_raw_status=$?
+          set -e
+          [[ "$test_raw_status" == 0 || "$test_raw_status" == 2 ]]
+          test_sbom_hash=$(sha256sum backend/target/bom-with-tests.json | cut -d' ' -f1)
+          python3 deploy/scripts/mcp-applicability.py --sbom backend/target/bom-with-tests.json --product "urn:agentplatform:sbom:sha256:$test_sbom_hash" --output evidence/r0.4/backend-test-mcp.vex.json
+          python3 deploy/scripts/assess-mcp-report.py --report evidence/r0.4/backend-test-vulnerabilities.json --sbom backend/target/bom-with-tests.json --vex evidence/r0.4/backend-test-mcp.vex.json --output evidence/r0.4/backend-test-assessment.json
           docker build -t agentplatform-sandbox:r0.4-ci -f deploy/sandbox.Dockerfile .
           python3 deploy/scripts/audit-baseline.py \
             --target frontend=dir:frontend \

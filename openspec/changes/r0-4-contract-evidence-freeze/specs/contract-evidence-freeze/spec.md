@@ -15,6 +15,14 @@ The platform SHALL use the approved container distributions and compatible patch
 - **THEN** the stage remains FAIL or NOT_RUN, temporary new resources stop and preserved legacy services are restored without an OS upgrade
 
 ### Requirement: Reviewed security patches and scoped applicability
+The framework baseline SHALL remove unused Testcontainers scaffold and stale
+probe jars after source and SBOM ownership review, retain AgentScope2.0.4 and
+all existing tests, and refresh actual dependency/scanning evidence.
+
+#### Scenario: An unused scaffold owns shaded vulnerable classes
+- **WHEN** source and executed test review prove that the scaffold is unused
+- **THEN** remove its declaration, rebuild clean probe classpaths and rerun all regression and production/test scans before acceptance
+
 The platform SHALL use approved Boot4.0.8/Tomcat11.0.25/Jackson2.21.7/Jackson3.1.7/Vitest4.1.11 with Java21/SDK2.0.4, preserving raw scans and exact product-bound applicability evidence.
 
 #### Scenario: MCP server advisory matches

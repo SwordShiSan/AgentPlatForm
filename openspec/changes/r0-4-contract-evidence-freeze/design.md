@@ -1,6 +1,45 @@
 # Accepted Plan
 
+## Current shaded dependency disposition
+Actual SBOM ownership locates both HttpCore matches inside Testcontainers'
+docker-java-transport-zerodep3.7.1, not standalone HttpCore jars. Docker Java
+official latest is still3.7.1. The platform-app test-scoped Testcontainers
+declaration has no source/test references or executed cases; all mandatory
+real Docker/storage/permission cases use the existing explicit CLI probes.
+Remove this unused scaffold and its unused HttpCore property trial, regenerate
+actual dependencies/production+test SBOMs, and clean generated probe-libs before
+copying dependencies so old jars cannot remain on the accepted classpath.
+Preserve all tests and real-service gates. The historical139-item lock remains
+in Git; the current lock must contain exactly actual resolved artifacts.
+No shaded jar is claimed fixed by an external BOM override. Future stages may
+add a reviewed test harness when needed; no R0 Testcontainers behavior existed.
+
+## HttpCore5 compatible security patch
+The actual framework probe scan contains httpcore5/httpcore5-h2 5.3.6 matches
+for GHSA-hf6x-8p5f-cgmf and GHSA-v3jc-474w-2wm6. Use the patched stable
+HttpCore5.4.3 within the existing HttpComponents5 product/major version, via
+the shared parent property; no SDK2.0.4 or serialization format change.
+Regenerate module trees, effective POMs, Maven artifact hashes and SBOMs;
+rerun full Maven/DDD and actual Linux SDK acceptance. Compatibility failure
+or unresolved vulnerability remains blocking; no applicability exemption is
+used for these matches. Boot4.0.8 and all existing public/schema contracts stay.
+
+## Fail-closed test output and source fixture links
+Every candidate command piped through tee SHALL enable pipefail; a successful
+upload or job badge does not establish test success. Require the test/build
+commands and final binary identity file. Source archives contain deliberate
+absolute/dangling symlinks for resolver tests: freeze the exact path/target map,
+extract only regular entries with the data filter first, and restore the exact
+links last after verifying that each link parent stays in the source root.
+Unknown links, hardlinks and paths fail. Never use fully_trusted extraction.
+20168c9 runtime/toolchain results remain pending; its Syft job badge was green
+despite an AbsoluteLinkError and is recorded FAIL, not PASS.
+
 ## Audit candidate test environment correction
+After Linux core/internal acceptance, also cross-build Windows/amd64 using
+the upstream Windows release configuration (no Linux-only storage tags).
+Record separate binary hashes/build-info; actual Windows CLI/SBOM/DB smoke
+and security scans remain mandatory before replacing locally used tools.
 The first source candidates failed because Docker-build RUN lacked Docker/zip/
 zstd, Git repository discovery and generated fixtures; root also invalidated
 permission-denial tests. Run the same complete core/internal suites as the

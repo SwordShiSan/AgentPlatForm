@@ -13,6 +13,18 @@ spec.loader.exec_module(fixtures)
 
 
 class FixtureGuards(unittest.TestCase):
+    def test_unlocked_source_symlink_rejected_before_extraction(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp).resolve()
+            blob = root / 'source.tar'
+            with tarfile.open(blob, 'w') as archive:
+                item = tarfile.TarInfo('source/testdata/link')
+                item.type = tarfile.SYMTYPE
+                item.linkname = '/outside'
+                archive.addfile(item)
+            with tarfile.open(blob) as archive, self.assertRaisesRegex(ValueError, 'fixture links changed'):
+                fixtures.extract_source(archive, root, 'source', {})
+            self.assertFalse((root / 'source').exists())
     def test_archive_layouts_remain_in_named_directory(self):
         for name in ['fixtures/cache/a.txt', 'cache/a.txt', 'a.txt']:
             with tempfile.TemporaryDirectory() as temp:
