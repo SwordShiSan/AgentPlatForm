@@ -23,6 +23,18 @@
       "url": "https://deb.debian.org/debian/pool/main/b/binutils/binutils-common_2.44-3_amd64.deb",
       "version": "2.44-3"
     },
+    "cross-clang-19.deb": {
+      "package": "clang-19",
+      "sha256": "bbb74458d782b7792b61b0eed92746df5e6d033778c045cf8c2b3835b7c4efc4",
+      "url": "https://deb.debian.org/debian/pool/main/l/llvm-toolchain-19/clang-19_19.1.7-3+b1_amd64.deb",
+      "version": "1:19.1.7-3+b1"
+    },
+    "cross-clang.deb": {
+      "package": "clang",
+      "sha256": "5cf22fc7e42face0071b0e83d012dfc675b947a138acfe23a92d0bb39e5b1cdb",
+      "url": "https://deb.debian.org/debian/pool/main/l/llvm-defaults/clang_19.0-63_amd64.deb",
+      "version": "1:19.0-63"
+    },
     "cross-cpp-14-aarch64-linux-gnu.deb": {
       "package": "cpp-14-aarch64-linux-gnu",
       "sha256": "6610dda7938376fefcbc3b49c81cd23c82e86411a488e4c9a69c082f2acd714e",
@@ -83,6 +95,24 @@
       "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/libatomic1-arm64-cross_14.2.0-19cross1_all.deb",
       "version": "14.2.0-19cross1"
     },
+    "cross-libbpf-dev.deb": {
+      "package": "libbpf-dev",
+      "sha256": "87d241407b5bef18e367dbd13e8d0302b865a489ee0cf3d88eae55332ec5b9a1",
+      "url": "https://deb.debian.org/debian/pool/main/libb/libbpf/libbpf-dev_1.5.0-3_amd64.deb",
+      "version": "1:1.5.0-3"
+    },
+    "cross-libbpf1.deb": {
+      "package": "libbpf1",
+      "sha256": "04c96ead3024888d80d08c8d08cc8cf4589f4614627acc69519f87ffb5adc1c2",
+      "url": "https://deb.debian.org/debian/pool/main/libb/libbpf/libbpf1_1.5.0-3_amd64.deb",
+      "version": "1:1.5.0-3"
+    },
+    "cross-libbsd0.deb": {
+      "package": "libbsd0",
+      "sha256": "e5a85986fa6bec3307ab1bc860736b478b331882bc45e17675a7bdf88eecb43a",
+      "url": "https://deb.debian.org/debian/pool/main/libb/libbsd/libbsd0_0.12.2-2_amd64.deb",
+      "version": "0.12.2-2"
+    },
     "cross-libc6-arm64-cross.deb": {
       "package": "libc6-arm64-cross",
       "sha256": "82cd3a0c6754d36cb5a7acbd9fa64c38080a681608c41165736dc88438acfc71",
@@ -94,6 +124,54 @@
       "sha256": "61e0b87dec4929abc9fb345ef324139498bf23ddbf0b10ca3a743b59c8ddf8bb",
       "url": "https://deb.debian.org/debian/pool/main/c/cross-toolchain-base/libc6-dev-arm64-cross_2.41-11cross1_all.deb",
       "version": "2.41-11cross1"
+    },
+    "cross-libclang-common-19-dev.deb": {
+      "package": "libclang-common-19-dev",
+      "sha256": "4018e40e2d4144fe38c45822e68cca63c1bf6c7872c3073ebb262ad4b2f9b8bc",
+      "url": "https://deb.debian.org/debian/pool/main/l/llvm-toolchain-19/libclang-common-19-dev_19.1.7-3+b1_amd64.deb",
+      "version": "1:19.1.7-3+b1"
+    },
+    "cross-libclang-cpp19.deb": {
+      "package": "libclang-cpp19",
+      "sha256": "a7d2b6df51050834f6ea5c0d5e34869c2298b0bcdaa91eff17ba3db2cd545c47",
+      "url": "https://deb.debian.org/debian/pool/main/l/llvm-toolchain-19/libclang-cpp19_19.1.7-3+b1_amd64.deb",
+      "version": "1:19.1.7-3+b1"
+    },
+    "cross-libclang1-19.deb": {
+      "package": "libclang1-19",
+      "sha256": "4e7e2a5fe236e280d32fb529350b3c1cfd9410a964629a57ea079a314c45d7a3",
+      "url": "https://deb.debian.org/debian/pool/main/l/llvm-toolchain-19/libclang1-19_19.1.7-3+b1_amd64.deb",
+      "version": "1:19.1.7-3+b1"
+    },
+    "cross-libedit2.deb": {
+      "package": "libedit2",
+      "sha256": "b002ea172b9c1e34a67bc497c523c67bb74c3f0a4e98113cb083990a1f1d3bfe",
+      "url": "https://deb.debian.org/debian/pool/main/libe/libedit/libedit2_3.1-20250104-1_amd64.deb",
+      "version": "3.1-20250104-1"
+    },
+    "cross-libelf-dev.deb": {
+      "package": "libelf-dev",
+      "sha256": "7a67f944281523d6e3c55c1797449bab223b08665cc6ad8b51293056b65d9bd6",
+      "url": "https://deb.debian.org/debian/pool/main/e/elfutils/libelf-dev_0.192-4_amd64.deb",
+      "version": "0.192-4"
+    },
+    "cross-libelf1t64.deb": {
+      "package": "libelf1t64",
+      "sha256": "94497b7e17b6f574a0605b380d454e20d3f01a9c63b70c2a2263f679d30053e1",
+      "url": "https://deb.debian.org/debian/pool/main/e/elfutils/libelf1t64_0.192-4_amd64.deb",
+      "version": "0.192-4"
+    },
+    "cross-libffi8.deb": {
+      "package": "libffi8",
+      "sha256": "0ebdc340de33333639c3c63874cd4b15ac2e83dfa1ef3053b7eefaf4919f4f68",
+      "url": "https://deb.debian.org/debian/pool/main/libf/libffi/libffi8_3.4.8-2_amd64.deb",
+      "version": "3.4.8-2"
+    },
+    "cross-libgc1.deb": {
+      "package": "libgc1",
+      "sha256": "0279fc16692a3a4a6d5f84051f5e55fc721f3cbb0e2bbc052d8980888f18c698",
+      "url": "https://deb.debian.org/debian/pool/main/libg/libgc/libgc1_8.2.8-1_amd64.deb",
+      "version": "1:8.2.8-1"
     },
     "cross-libgcc-14-dev-arm64-cross.deb": {
       "package": "libgcc-14-dev-arm64-cross",
@@ -125,11 +203,35 @@
       "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/libitm1-arm64-cross_14.2.0-19cross1_all.deb",
       "version": "14.2.0-19cross1"
     },
+    "cross-libllvm19.deb": {
+      "package": "libllvm19",
+      "sha256": "db0d614d61345ca710fb73e75105f1ec6e38898fa7b3aa99fa7eb7d8b0a11d57",
+      "url": "https://deb.debian.org/debian/pool/main/l/llvm-toolchain-19/libllvm19_19.1.7-3+b1_amd64.deb",
+      "version": "1:19.1.7-3+b1"
+    },
     "cross-liblsan0-arm64-cross.deb": {
       "package": "liblsan0-arm64-cross",
       "sha256": "31cb9c474a78ea3233e4ea87badadc33f0c7e48934e39965437091f7f6d5ab78",
       "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/liblsan0-arm64-cross_14.2.0-19cross1_all.deb",
       "version": "14.2.0-19cross1"
+    },
+    "cross-libmd0.deb": {
+      "package": "libmd0",
+      "sha256": "7244ec3839b61fac0c1884fe08aaa040f26e8f1f35f1f5d3482eacefd30d1b44",
+      "url": "https://deb.debian.org/debian/pool/main/libm/libmd/libmd0_1.1.0-2+b1_amd64.deb",
+      "version": "1.1.0-2+b1"
+    },
+    "cross-libobjc-14-dev.deb": {
+      "package": "libobjc-14-dev",
+      "sha256": "60f8a34f94d46b0ae8d48335525bfaae3daef93c56d6b8bce0e76118e44a9136",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14/libobjc-14-dev_14.2.0-19_amd64.deb",
+      "version": "14.2.0-19"
+    },
+    "cross-libobjc4.deb": {
+      "package": "libobjc4",
+      "sha256": "d48411ec79114d5941256dddb1720fc65cbe4733285b29d5ecc87eb452ab30d9",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14/libobjc4_14.2.0-19_amd64.deb",
+      "version": "14.2.0-19"
     },
     "cross-libstdc++-14-dev-arm64-cross.deb": {
       "package": "libstdc++-14-dev-arm64-cross",
@@ -155,11 +257,53 @@
       "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/libubsan1-arm64-cross_14.2.0-19cross1_all.deb",
       "version": "14.2.0-19cross1"
     },
+    "cross-libxml2.deb": {
+      "package": "libxml2",
+      "sha256": "e0c6b63ce4602a036a526f60fe5e6c1586710688058d98fc1001b9b3147b7efd",
+      "url": "https://deb.debian.org/debian/pool/main/libx/libxml2/libxml2_2.12.7+dfsg+really2.9.14-2.1+deb13u3_amd64.deb",
+      "version": "2.12.7+dfsg+really2.9.14-2.1+deb13u3"
+    },
+    "cross-libz3-4.deb": {
+      "package": "libz3-4",
+      "sha256": "71383373523ef62d47eccf660cf6535c3febcbb3f88e54cb7a43124014b57359",
+      "url": "https://deb.debian.org/debian/pool/main/z/z3/libz3-4_4.13.3-1_amd64.deb",
+      "version": "4.13.3-1"
+    },
+    "cross-libzstd-dev.deb": {
+      "package": "libzstd-dev",
+      "sha256": "de5f8aabcf4cb5cd1b441495ea4c24838e88ecbb30ae22c032a1b3b68a9d6f1e",
+      "url": "https://deb.debian.org/debian/pool/main/libz/libzstd/libzstd-dev_1.5.7+dfsg-1_amd64.deb",
+      "version": "1.5.7+dfsg-1"
+    },
+    "cross-libzstd1.deb": {
+      "package": "libzstd1",
+      "sha256": "2f6a2aeacfc925eba8b00ac9139bc4bfccf8cacb09eb93de067074b26948eef9",
+      "url": "https://deb.debian.org/debian/pool/main/libz/libzstd/libzstd1_1.5.7+dfsg-1_amd64.deb",
+      "version": "1.5.7+dfsg-1"
+    },
     "cross-linux-libc-dev-arm64-cross.deb": {
       "package": "linux-libc-dev-arm64-cross",
       "sha256": "fd77c13fedf057038732ef1c4fc06edd753d08092fd5f92c4629551f1f69870f",
       "url": "https://deb.debian.org/debian/pool/main/c/cross-toolchain-base/linux-libc-dev-arm64-cross_6.12.38-1cross1_all.deb",
       "version": "6.12.38-1cross1"
+    },
+    "cross-llvm-19-linker-tools.deb": {
+      "package": "llvm-19-linker-tools",
+      "sha256": "874a0a5cde797cda3e94e9310a0a9958608f526f177637414a8ce9620c804818",
+      "url": "https://deb.debian.org/debian/pool/main/l/llvm-toolchain-19/llvm-19-linker-tools_19.1.7-3+b1_amd64.deb",
+      "version": "1:19.1.7-3+b1"
+    },
+    "cross-zlib1g-dev.deb": {
+      "package": "zlib1g-dev",
+      "sha256": "76ed5c858e1aef38b7be93acce5910e457e77bd6271471b9d05fb42e78826224",
+      "url": "https://deb.debian.org/debian/pool/main/z/zlib/zlib1g-dev_1.3.dfsg+really1.3.1-1+b1_amd64.deb",
+      "version": "1:1.3.dfsg+really1.3.1-1+b1"
+    },
+    "cross-zlib1g.deb": {
+      "package": "zlib1g",
+      "sha256": "015be740d6236ad114582dea500c1d907f29e16d6db00566ca32fb68d71ac90d",
+      "url": "https://deb.debian.org/debian/pool/main/z/zlib/zlib1g_1.3.dfsg+really1.3.1-1+b1_amd64.deb",
+      "version": "1:1.3.dfsg+really1.3.1-1+b1"
     },
     "flex.deb": {
       "package": "flex",

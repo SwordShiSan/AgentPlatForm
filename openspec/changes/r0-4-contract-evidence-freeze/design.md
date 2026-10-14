@@ -1,5 +1,14 @@
 # Accepted Plan
 
+## Frozen runtime build dependencies (2026-10-14)
+The Go1.26.9 fallback passed all199 selected upstream buffer/network tests,
+including static analysis. Full upstream release packaging then required clang
+and libbpf headers. Freeze their Debian13 package closure, versions and SHA256
+from the same saved official index in the container builder; install offline
+with dpkg and verify clang/BPF headers before Bazel. Preserve the full release
+target, tests and lock enforcement. These are build dependencies, not cloud
+host packages. A successful test subset does not accept the runtime candidate.
+
 ## Current foundation replan (2026-10-14; supersedes historical fixed bases)
 Continue5316ba6 under the same change. Container distribution changes are authorized; host OS unchanged. Python3.12.15 and Node22.23.3 use Debian13 Trixie; Temurin21.0.12.1 uses Noble; gateway Nginx1.30.5 uses Alpine3.24, user101 and8080. PostgreSQL17.11/Trixie builds pgvector0.8.1 without schema migration. Redis stays7.4 (start7.4.11), RabbitMQ4.3.6 retains plugins/topology; SeaweedFS4.48 is security-rebuilt without changing storage format. Prefer Go1.27.2; supported1.26 fallback only1.26.9 with project tests. Pin platform manifest, source commit, package versions and patch checksums before builds. No floating source/ref or cloud compilation/scanning. Local Docker failure routes to CI immutable exports.
 

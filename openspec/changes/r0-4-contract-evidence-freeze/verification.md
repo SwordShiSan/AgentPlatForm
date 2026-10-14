@@ -38,3 +38,8 @@ Production domain/TLS/deployment/tag NOT_RUN by accepted scope; R0 cannot RELEAS
 - Grype official DBv6.1.10 built2026-10-13T06:35:20Z. Automatic download failed; curl downloaded official archive and SHA256 ed50c6deedbbe39f815f855fb55208a1f261ebec6a91d2847b1230200bbb7b20 matched before import. Raw backend/frontend reports retained in ignored evidence/r0.4, exit2.
 - Package/advisory matches are not confirmed exploit counts. User chose security baseline replan/full reacceptance; no blanket suppression and no fixed framework version changed. Replan is required before dependency remediation.
 - Docker Desktop startup/restart has not produced a usable local engine; WSL docker-desktop uname works. No cloud services paused or deployed this step. Backup/restore scripts only bash-n checked; runtime/storage/sandbox/UI/soak/restore gates NOT_RUN for R0.4.
+# Runtime packaging follow-up
+Go1.26.9:199/199 selected upstream tests PASS at17a8a91; full release FAIL
+because clang was absent. Frozen clang/libbpf package installation, complete
+release output and runtime security/compatibility acceptance remain NOT_RUN
+until the next candidate provides fresh evidence. No test/target is removed.
