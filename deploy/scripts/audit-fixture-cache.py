@@ -99,11 +99,13 @@ def restore_layer(blob, layer, root):
         raise ValueError('Unsupported frozen fixture layer format')
 
 
-def verify_fingerprints(root, manifest, paths, source_hashes=None):
+def verify_fingerprints(root, manifest, paths, source_hashes=None, orphan_inputs=()):
     if paths['digest'] != manifest['annotations']['fingerprint']:
         raise ValueError('Fixture manifest fingerprint mismatch')
     titles = {layer['annotations']['org.opencontainers.image.title'] for layer in manifest['layers']}
     checks = []
+    orphans = {(item['output'], item['input'], item['sha256']): item for item in orphan_inputs}
+    seen_orphans = set()
     for entry in paths['paths']:
         if entry['path'] not in titles:
             raise ValueError('Unbound fixture source path')
@@ -120,14 +122,37 @@ def verify_fingerprints(root, manifest, paths, source_hashes=None):
             origins = [parent]
             while origins[-1] != root.resolve():
                 origins.append(origins[-1].parent)
-            candidates = {safe_path(origin, name) for origin in origins}
+            relative = pathlib.PurePosixPath(name)
+            if relative.is_absolute() or '\\' in name or '..' in relative.parts:
+                raise ValueError('Unsafe fixture path')
+            # Frozen source links can refer to a shared sibling testdata tree;
+            # the boundary is the source root, not each generator ancestor.
+            candidates = {safe_path(root, (origin.relative_to(root.resolve()) / name).as_posix())
+                          for origin in origins}
             matches = [p for p in candidates if p.is_relative_to(root.resolve()) and p.is_file() and sha256(p) == expected
                        and (source_hashes is None or source_hashes.get(p.relative_to(root).as_posix()) == expected)]
             if not matches:
+                key = (entry['path'], name, expected)
+                if key in orphans and source_hashes is not None:
+                    item = orphans[key]
+                    directory = safe_path(root, item['sourceDirectory']).relative_to(root.resolve()).as_posix()
+                    if any(p == directory or p.startswith(directory + '/') for p in source_hashes):
+                        raise ValueError('Historical fixture source is present; review invalid')
+                    for p, original in source_hashes.items():
+                        if p.endswith('.go'):
+                            file = safe_path(root, p)
+                            if sha256(file) != original or item['referenceToken'] in file.read_text(encoding='utf-8'):
+                                raise ValueError('Historical fixture referenced or source changed; review invalid')
+                    checks.append({'path': directory + '/' + name, 'sha256': expected,
+                                   'status': 'ORPHAN_UNUSED', 'note': 'Exact historical cache input; not verified source.'})
+                    seen_orphans.add(key)
+                    continue
                 raise ValueError('Fixture source changed or absent: ' + entry['path'] + '/' + name)
             if len(matches) != 1:
                 raise ValueError('Ambiguous fixture source fingerprint: ' + name)
-            checks.append({'path': matches[0].relative_to(root).as_posix(), 'sha256': expected})
+            checks.append({'path': matches[0].relative_to(root).as_posix(), 'sha256': expected, 'status': 'VERIFIED'})
+    if seen_orphans != set(orphans):
+        raise ValueError('Historical fixture review no longer matches frozen cache')
     return checks
 
 
@@ -149,7 +174,8 @@ def restore(root, output):
     with opener.open(request, timeout=60) as response:
         if hashlib.sha256(response.read()).hexdigest() != binding['manifestSha256']:
             raise ValueError('Registry fixture manifest mismatch')
-    source_hashes = {path.relative_to(root).as_posix(): sha256(path) for path in root.rglob('*') if path.is_file()}
+    source_hashes = {path.relative_to(root).as_posix(): sha256(path) for path in root.rglob('*')
+                     if path.is_file() and path.resolve().is_relative_to(root.resolve())}
     cache = ROOT / '.cache/audit-fixture-blobs'
     cache.mkdir(parents=True, exist_ok=True)
 
@@ -177,7 +203,9 @@ def restore(root, output):
     for blob, layer in zip(blobs, manifest['layers']):
         restore_layer(blob, layer, root)
     paths = json.loads((root / '.tmp/cache_paths.json').read_text())
-    checks = verify_fingerprints(root, manifest, paths, source_hashes)
+    checks = verify_fingerprints(root, manifest, paths, source_hashes, binding.get('orphanInputs', []))
     output.write_text(json.dumps({'reference': binding['reference'], 'manifestSha256': binding['manifestSha256'],
                                   'layers': len(blobs), 'sourceInputs': checks}, indent=2) + '\n')
-    print('Frozen upstream fixture layers and source fingerprints verified:', len(blobs), len(checks))
+    verified = sum(item['status'] == 'VERIFIED' for item in checks)
+    print('Frozen fixture layers verified:', len(blobs), 'source inputs verified:', verified,
+          'exact unused historical inputs:', len(checks) - verified)

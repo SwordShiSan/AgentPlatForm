@@ -7,7 +7,11 @@ Current foundation replan is approved: Trixie/Noble/Alpine3.24, compatible patch
 
 The preparation history below predates this security replan and does not override this current section.
 
-R0.4 is IMPLEMENTING. Accepted preparation baseline is a1c09fea; no production release or R1 start. Full acceptance remains blocked pending security-baseline replan.
+R0.4 is IMPLEMENTING. Accepted preparation baseline is a1c09fea; no production release or R1 start. The user-approved foundation repair plan is being implemented; full image/security and cloud reacceptance remain blocking. Earlier preparation/replan statements below are historical.
+
+2026-10-14 current evidence: da65f88 Grype source tests and Linux/Windows builds pass. CI ZIP SHA256 8c177a943578f6fbd01923c86a6e257d695308b6b0fae31ea14427a10548e505 and exported binary/import-graph identities were verified before local use. Both raw binary scans retain three high Docker-module matches. Exact per-product OpenVEX reviews prove daemon/API-server/AuthZ packages absent from the matching build graphs; assessed high/critical0 for these Grype binaries only. Medium/unknown findings remain in raw reports. This is not a host Docker assessment or complete toolchain acceptance; Syft source acceptance remains blocked.
+
+Run51 runtime security module update fails full compilation at OCI1.3 PID pointer fields. a46ec0a adds a hashed compatibility patch and cgroup tests for nil/zero/128/unlimited/systemd/controller rejection; fresh full release build and binary scan are required. No cloud runtime installation or old-stack pause occurred.
 
 Use `audit-tools.lock.json`, not latest download in CI. `prepare-audit-tools.py` resolves official stable releases once; `install-audit-tools.py` verifies the locked official archive hashes. CycloneDX2.9.3, Syft1.54.1, Grype0.120.1 are pinned. Artifact retention is30days.
 

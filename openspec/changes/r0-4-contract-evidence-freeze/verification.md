@@ -97,3 +97,8 @@ GHSA-fqw6-gf59-qr4w. Original162-match package scan remains historical, not
 current rebuilt result. Fixed module/full-package reacceptance still NOT_RUN.
 
 Ancestor-relative fixture guards: seven tests PASS on Windows with workspace-local temporary files; sandbox-only realpath denial recorded separately, same tests passed outside filesystem sandbox. Original-source hashes remain mandatory. Run51/da65f88 Grype source mod download/verify/test all exit0; runtime patch build still pending, no candidate accepted.
+
+Run52/65e889b Syft fails closed on historical image-single-ipk input. Exact official source Debian test cases enumerate three current dpkg fixtures; three absent historical input/path/hash pairs recorded in foundation lock. Eight fixture tests and two foundation guards PASS, including changed hash, new source and test-reference invalidation. Full source tests still NOT_RUN for this correction.
+Grype da65f88 Linux and Windows exact exported binaries/graphs verified against CI ZIP8c177a943...; raw scans each have3high daemon matches. Per-product source/import-graph bound OpenVEX assessments PASS0 unresolved high/critical; remaining medium/unknown reports retained. Complete audit tool and final platform acceptance still blocked.
+
+Shared fixture symlink resolution keeps the global frozen source boundary, rather than rejecting legitimate sibling fixture targets at each ancestor. Windows fixture suite:8 PASS/1 real directory symlink test SKIP; that test is mandatory in Linux CI. PID boundary tests preserve an existing pids.max sentinel for nil/zero/v1-negative cases, reflecting real cgroup files rather than expecting file creation. Full release/cgroup runtime tests remain pending.

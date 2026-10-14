@@ -2,6 +2,7 @@ import hashlib
 import importlib.util
 import io
 import pathlib
+import os
 import tarfile
 import tempfile
 import unittest
@@ -13,6 +14,50 @@ spec.loader.exec_module(fixtures)
 
 
 class FixtureGuards(unittest.TestCase):
+    @unittest.skipIf(os.name == 'nt', 'Real frozen directory symlinks are verified on Linux CI')
+    def test_shared_fixture_link_stays_inside_source_root(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp).resolve()
+            (root / 'shared/image').mkdir(parents=True)
+            (root / 'fixtures').mkdir()
+            source = root / 'shared/image/Dockerfile'
+            source.write_bytes(b'original shared input')
+            (root / 'fixtures/image').symlink_to('../shared/image', target_is_directory=True)
+            digest = fixtures.sha256(source)
+            manifest = {'annotations': {'fingerprint': 'frozen'}, 'layers': [
+                {'annotations': {'org.opencontainers.image.title': 'fixtures/cache'}}]}
+            paths = {'digest': 'frozen', 'paths': [{'path': 'fixtures/cache', 'input': {'image/Dockerfile': digest}}]}
+            result = fixtures.verify_fingerprints(root, manifest, paths, {'shared/image/Dockerfile': digest})
+            self.assertEqual('shared/image/Dockerfile', result[0]['path'])
+
+    def test_exact_orphan_review_invalidates_on_reference_or_source(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp).resolve()
+            code = root / 'cataloger_test.go'
+            code.write_text('package fixture\n')
+            digest = hashlib.sha256(b'historical input').hexdigest()
+            manifest = {'annotations': {'fingerprint': 'frozen'}, 'layers': [
+                {'annotations': {'org.opencontainers.image.title': 'fixtures/cache'}}]}
+            paths = {'digest': 'frozen', 'paths': [{'path': 'fixtures/cache', 'input': {'old/Dockerfile': digest}}]}
+            orphan = [{'output': 'fixtures/cache', 'input': 'old/Dockerfile', 'sha256': digest,
+                       'sourceDirectory': 'fixtures/old', 'referenceToken': 'old-fixture'}]
+            inventory = {'cataloger_test.go': fixtures.sha256(code)}
+            result = fixtures.verify_fingerprints(root, manifest, paths, inventory, orphan)
+            self.assertEqual('ORPHAN_UNUSED', result[0]['status'])
+            code.write_text('package fixture // old-fixture\n')
+            inventory['cataloger_test.go'] = fixtures.sha256(code)
+            with self.assertRaisesRegex(ValueError, 'Historical fixture referenced'):
+                fixtures.verify_fingerprints(root, manifest, paths, inventory, orphan)
+            code.write_text('package fixture\n')
+            inventory['cataloger_test.go'] = fixtures.sha256(code)
+            inventory['fixtures/old/new-file'] = digest
+            with self.assertRaisesRegex(ValueError, 'Historical fixture source is present'):
+                fixtures.verify_fingerprints(root, manifest, paths, inventory, orphan)
+            del inventory['fixtures/old/new-file']
+            paths['paths'][0]['input']['old/Dockerfile'] = 'f' * 64
+            with self.assertRaisesRegex(ValueError, 'source changed or absent'):
+                fixtures.verify_fingerprints(root, manifest, paths, inventory, orphan)
+
     def test_nested_output_resolves_original_generator_input(self):
         with tempfile.TemporaryDirectory() as temp:
             root = pathlib.Path(temp).resolve()

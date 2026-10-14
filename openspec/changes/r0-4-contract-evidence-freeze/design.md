@@ -117,6 +117,7 @@ Use fixed Java21/Boot4.0.4/SDK2.0.4, Maven tree/effective POM per module and sep
 
 ## Contract and evidence
 Fixture fingerprint paths are relative to their generator working directory, which may be an ancestor of the output directory (binary/testdata/config.yaml generates classifiers/bin). Resolve only safe relative input names against output ancestors inside the frozen source root; require an exact hash match in both the original source inventory and current file. Reject traversal, absent or changed input and ambiguous matches. Do not use cache-provided files as source evidence.
+The frozen upstream cache also retains three deleted image-single-ipk inputs. Record these exact path/hash pairs as unused historical inputs, bound to the fixed source commit and manifest. Require the input directory absent from the original source and no reference in any original Go test/helper source; all other mismatches still fail. Evidence explicitly separates VERIFIED source inputs from ORPHAN_UNUSED inputs. Debian tests explicitly enumerate image-dpkg, image-distroless-deb and image-single-dpkg; retain the full test suite.
 Existing health/readiness/Problem/envelope and HC-1 remain baseline; future event payloads are not implemented. Collect SDK signatures/source commit and test method assertions, separating mock/offline from real dependencies. Update stale docs and reviewed deviations. CI protected job name stays R0.1 toolchain. Artifacts retained >=30 days plus protected local/cloud hashed copies; no secrets/raw SQL/logs in public Git.
 
 ## Runtime/recovery

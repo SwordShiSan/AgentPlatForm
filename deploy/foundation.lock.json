@@ -462,7 +462,7 @@
       "patchFiles": {
         "deploy/security/gvisor.go.mod": "8f95c9e3be1c393a50ef0cf100053ef77eeadebcde0c0013f76613493817593f",
         "deploy/security/gvisor.go.sum": "2c9684e9fbb78a0526d08f2e4b60a7a6358c3a97f17d4960a270da9e0b565143",
-        "deploy/security/gvisor-pid-pointer.patch": "5f620a0662727f2489f27c5ee84d97769c6cde922e6d26aebb3320f03af2e6f0"
+        "deploy/security/gvisor-pid-pointer.patch": "11b7bfe9fd1a666a32e58b000b90b98b2b5a0ad8c1c213dd595a5261b83207f8"
       },
       "securityModules": {
         "github.com/containerd/containerd/v2": "v2.2.4",
@@ -496,7 +496,30 @@
       "fixtureCache": {
         "manifestSha256": "e6b19adc12b6eb088d78d3cb9cb149c116ceda0191e5ac11609a8d1535f9c6bf",
         "reference": "ghcr.io/anchore/oss-cache/syft-test-fixture-cache@sha256:e6b19adc12b6eb088d78d3cb9cb149c116ceda0191e5ac11609a8d1535f9c6bf",
-        "status": "TEST_INPUT_CANDIDATE_NOT_VERIFIED"
+        "status": "TEST_INPUT_CANDIDATE_NOT_VERIFIED",
+        "orphanInputs": [
+          {
+            "output": "syft/pkg/cataloger/debian/testdata/cache",
+            "input": "image-single-ipk/Dockerfile",
+            "sha256": "ce1353e3a940d7e8a05757e137fb2d3e3572f7bc0c8cbbf9b2357e899a5423c3",
+            "sourceDirectory": "syft/pkg/cataloger/debian/testdata/image-single-ipk",
+            "referenceToken": "image-single-ipk"
+          },
+          {
+            "output": "syft/pkg/cataloger/debian/testdata/cache",
+            "input": "image-single-ipk/control/control",
+            "sha256": "dabdd603e5c616a9794521df2c777b7a8e8361ed6c03a2913170109cdf71cb69",
+            "sourceDirectory": "syft/pkg/cataloger/debian/testdata/image-single-ipk",
+            "referenceToken": "image-single-ipk"
+          },
+          {
+            "output": "syft/pkg/cataloger/debian/testdata/cache",
+            "input": "image-single-ipk/control/postinst",
+            "sha256": "1ded80b320d8b0b0a691da8e63c7c38791567f99b1923c8eba6c4bcaedef67b3",
+            "sourceDirectory": "syft/pkg/cataloger/debian/testdata/image-single-ipk",
+            "referenceToken": "image-single-ipk"
+          }
+        ]
       },
       "fixtureSymlinks": {
         "cmd/syft/internal/test/integration/testdata/elf-testdata": "../../../../../../syft/pkg/cataloger/binary/testdata/elf-testdata",

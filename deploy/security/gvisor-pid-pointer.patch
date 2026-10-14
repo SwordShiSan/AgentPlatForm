@@ -77,7 +77,7 @@
  					err:  "Pids.Limit set but pids cgroup controller not found",
  				},
  			},
-@@ -1269,3 +1269,58 @@
+@@ -1269,3 +1269,62 @@
  		t.Errorf("c.Own[\"memory\"] = false, want true")
  	}
  }
@@ -99,6 +99,10 @@
 +			spec := &specs.LinuxResources{Pids: &specs.LinuxPids{Limit: tc.limit}}
 +			for _, version := range []string{"v1", "v2"} {
 +				dir := t.TempDir()
++				path := filepath.Join(dir, "pids.max")
++				if err := os.WriteFile(path, []byte("unchanged"), 0600); err != nil {
++					t.Fatal(err)
++				}
 +				want := tc.v1
 +				var err error
 +				if version == "v1" {
@@ -110,9 +114,9 @@
 +				if err != nil {
 +					t.Fatalf("%s set: %v", version, err)
 +				}
-+				data, readErr := os.ReadFile(filepath.Join(dir, "pids.max"))
++				data, readErr := os.ReadFile(path)
 +				if want == "" {
-+					if !os.IsNotExist(readErr) {
++					if readErr != nil || string(data) != "unchanged" {
 +						t.Fatalf("%s unexpected write: %q, %v", version, data, readErr)
 +					}
 +				} else if readErr != nil || strings.TrimSpace(string(data)) != want {
