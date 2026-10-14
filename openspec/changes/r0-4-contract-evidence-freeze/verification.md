@@ -88,8 +88,11 @@ after frozen layer downloads; directory layers are unpack-marked tar, while
 the final fingerprint layer is a raw file. Exact marker handling and a sixth
 fixture test added; hashes/paths/source fingerprints remain mandatory.
 # Actual rebuilt runtime scan
+Run38573801766 (b93463e): source Syft fingerprint validation fails closed at classifiers/bin/./config.yaml. Official frozen source stores that config at binary/testdata/config.yaml; generator output nesting is not its working directory. Add ancestor-relative positive coverage and traversal/changed-source rejection before candidate reacceptance. Backend, contracts, Linux SDK, browser and real storage jobs PASS; blocking security audit FAIL, image export skipped. R0.4 remains IMPLEMENTING.
 Source48233a4, GitHub ZIP8cd057e6.../runtime package hash verified; all7 package
 binaries imported for local scanning, no cloud installation. Raw scan FAIL4:
 grpc1.83.1 three matches GHSA-2v4p-qf9q-27wj, shim containerd-v2 2.1.9 one
 GHSA-fqw6-gf59-qr4w. Original162-match package scan remains historical, not
 current rebuilt result. Fixed module/full-package reacceptance still NOT_RUN.
+
+Ancestor-relative fixture guards: seven tests PASS on Windows with workspace-local temporary files; sandbox-only realpath denial recorded separately, same tests passed outside filesystem sandbox. Original-source hashes remain mandatory. Run51/da65f88 Grype source mod download/verify/test all exit0; runtime patch build still pending, no candidate accepted.

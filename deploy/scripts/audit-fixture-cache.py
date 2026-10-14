@@ -108,16 +108,25 @@ def verify_fingerprints(root, manifest, paths, source_hashes=None):
         if entry['path'] not in titles:
             raise ValueError('Unbound fixture source path')
         parent = safe_path(root, entry['path']).parent
+        if not parent.is_relative_to(root.resolve()):
+            raise ValueError('Fixture output must be inside source root')
         if not entry['input']:
             raise ValueError('Missing fixture source fingerprints')
         for name, expected in entry['input'].items():
             if not re.fullmatch('[a-f0-9]{64}', expected):
                 raise ValueError('Invalid source fingerprint')
-            candidates = [(root / name).resolve(), (parent / name).resolve()]
+            # A generator can emit nested output such as classifiers/bin while
+            # fingerprinting ./config.yaml relative to testdata, not classifiers.
+            origins = [parent]
+            while origins[-1] != root.resolve():
+                origins.append(origins[-1].parent)
+            candidates = {safe_path(origin, name) for origin in origins}
             matches = [p for p in candidates if p.is_relative_to(root.resolve()) and p.is_file() and sha256(p) == expected
                        and (source_hashes is None or source_hashes.get(p.relative_to(root).as_posix()) == expected)]
             if not matches:
                 raise ValueError('Fixture source changed or absent: ' + entry['path'] + '/' + name)
+            if len(matches) != 1:
+                raise ValueError('Ambiguous fixture source fingerprint: ' + name)
             checks.append({'path': matches[0].relative_to(root).as_posix(), 'sha256': expected})
     return checks
 

@@ -13,6 +13,27 @@ spec.loader.exec_module(fixtures)
 
 
 class FixtureGuards(unittest.TestCase):
+    def test_nested_output_resolves_original_generator_input(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp).resolve()
+            source = root / 'binary/testdata/config.yaml'
+            source.parent.mkdir(parents=True)
+            source.write_bytes(b'original generator config')
+            digest = fixtures.sha256(source)
+            manifest = {'annotations': {'fingerprint': 'frozen'}, 'layers': [
+                {'annotations': {'org.opencontainers.image.title': 'binary/testdata/classifiers/bin'}}]}
+            paths = {'digest': 'frozen', 'paths': [{'path': 'binary/testdata/classifiers/bin',
+                                                  'input': {'./config.yaml': digest}}]}
+            inventory = {'binary/testdata/config.yaml': digest}
+            self.assertEqual('binary/testdata/config.yaml',
+                             fixtures.verify_fingerprints(root, manifest, paths, inventory)[0]['path'])
+            source.write_bytes(b'changed')
+            with self.assertRaisesRegex(ValueError, 'source changed or absent'):
+                fixtures.verify_fingerprints(root, manifest, paths, inventory)
+            paths['paths'][0]['input'] = {'../../config.yaml': digest}
+            with self.assertRaisesRegex(ValueError, 'Unsafe fixture path'):
+                fixtures.verify_fingerprints(root, manifest, paths, inventory)
+
     def test_oras_raw_fingerprint_file_is_not_a_tar_archive(self):
         with tempfile.TemporaryDirectory() as temp:
             root = pathlib.Path(temp).resolve()
