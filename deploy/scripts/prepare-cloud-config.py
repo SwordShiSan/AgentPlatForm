@@ -12,7 +12,7 @@ def value(name):
  # Compose bind secrets preserve owner: readable file inside root-only directory.
  os.chmod(p,0o444)
  return p.read_text().strip()
-for name in ['pg_admin','pg_api','pg_worker','pg_filer','pg_migration','redis','mq_publisher','mq_execution','mq_asset','mq_maintenance','mq_admin','s3_read','s3_write','s3_admin']:value(name)
+for name in ['pg_admin','pg_api','pg_worker','pg_filer','pg_migration','redis','mq_publisher','mq_execution','mq_asset','mq_maintenance','mq_admin','s3_read','s3_write','s3_admin','s3_kek']:value(name)
 def config_write(name,text):
  p=config/name;p.write_text(text);os.chmod(p,0o444)
 identities=[{'name':'ap-read','credentials':[{'accessKey':'ap-read','secretKey':value('s3_read')}],'actions':['Read:ap-assets','List:ap-assets']},

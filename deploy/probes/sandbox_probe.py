@@ -1,10 +1,12 @@
 """Trusted R0 host acceptance fixtures; not a user command API or production runner."""
-import fcntl,json,os,pathlib,subprocess,sys,time,uuid
-root=pathlib.Path('/srv/agentplatform'); reports=[]
-image='agentplatform-sandbox:r0.3-candidate'
+import fcntl,json,os,pathlib,re,subprocess,sys,time,uuid
+root=pathlib.Path(os.environ.get('PLATFORM_ROOT','/srv/agentplatform')).resolve(); reports=[]
+assert str(root)=='/srv/agentplatform' or re.fullmatch(r'/srv/agentplatform/operations/r04-restore-\d{8}T\d{6}Z',str(root)),'Unapproved probe root'
+image=None
+for line in (root/'deploy/images.env').read_text().splitlines():
+ if line.startswith('SANDBOX_IMAGE='):image=line.split('=',1)[1]
 uid=str(uuid.uuid4()); workspace=root/'workspaces'/uid
 guard_only=len(sys.argv)>1 and sys.argv[1]=='verify-mount'
-if not guard_only:workspace.mkdir();os.chown(workspace,10001,10001)
 project=100001
 name='agentplatform-r03-sandbox-probe'
 def command(args,check=True,timeout=150):return subprocess.run(args,check=check,text=True,capture_output=True,timeout=timeout)
@@ -19,6 +21,7 @@ def admission(active=0,memory=None):
  if active or (available() if memory is None else memory)<1152*1024*1024:return 'QUEUED'
  return 'ALLOW'
 def args():
+ assert image and re.fullmatch(r'sha256:[0-9a-f]{64}',image),'Sandbox requires verified immutable image identity'
  assert admission()=='ALLOW','Insufficient host memory for sandbox and512MiB free floor'
  return ['docker','run','--name',name,'--runtime=runsc','--user','10001:10001','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--memory','512m','--memory-swap','512m','--cpus','1','--pids-limit','128','--ulimit','nproc=128:128','--tmpfs','/tmp:rw,noexec,nosuid,size=64m','--mount',f'type=bind,src={workspace},dst=/workspace','--label','project=agentplatform','--label','role=sandbox-probe','--label',f'workspaceId={uid}','--label','generation=1',image]
 def remove():
@@ -109,6 +112,7 @@ if guard_only:
  quota_verified();print('XFS identity/quota guard:ALLOW');sys.exit(0)
 try:
  quota_verified()
+ workspace.mkdir();os.chown(workspace,10001,10001)
  command(['xfs_quota','-x','-c',f'project -s -p {workspace} {project}',str(root/'workspaces')])
  command(['xfs_quota','-x','-c',f'limit -p bhard=2g ihard=100000 {project}',str(root/'workspaces')])
  case('Python-Node-file-rebuild',compat);case('socket-network-root-proc-isolation',isolation)
@@ -118,7 +122,7 @@ finally:
  remove()
  (root/'reports/sandbox.json').write_text(json.dumps(reports,indent=2))
  # Only this trusted UUID fixture directory, no production workspace cleanup.
- if workspace.parent==root/'workspaces' and workspace.name==uid:
+ if workspace.exists() and workspace.parent==root/'workspaces' and workspace.name==uid:
   for p in workspace.iterdir():
    if p.is_file():p.unlink()
   workspace.rmdir()

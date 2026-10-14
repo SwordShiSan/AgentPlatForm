@@ -1,4 +1,6 @@
 # Verification
+
+2026-10-14 independent security Plan completed and approved. Continue16677a8/same change. Earlier HOST scans are preparation history. Reaccept patched immutable products; mandatory additions: patch convergence/old Jackson2 fixture, exact product MCP no-server proof and VEX invalidation, STS denial/KEK secret protection, restore empty/unusual filenames/bad hash/capacity/missing mount/health failure and actual restored quota rejection.
 All cases initially NOT_RUN. No VERIFIED until every mandatory case and both promotions pass.
 
 | ID | Assertion | Status |
@@ -18,6 +20,9 @@ All cases initially NOT_RUN. No VERIFIED until every mandatory case and both pro
 Production domain/TLS/deployment/tag NOT_RUN by accepted scope; R0 cannot RELEASE or R1 start.
 
 ## 2026-10-14 interim evidence
+- Security replan now implemented: Boot4.0.8/Tomcat11.0.25/Jackson2.21.7+3.1.7/Vitest4.1.11. HOST44/Vue15/contracts/type/build PASS, actual old writer reports Jackson2.21.1 and patched reader proves scope/manifest/CAS. Six module dependency tree/effective POM completed after a transient Central TLS retry. Raw backend now only MCP advisory; exact SBOM/source/HTTP-bound assessment PASS. Frontend raw high/critical0. No claim of full-stage F03 PASS.
+- Initial image audit remains FAIL: Python base74/JRE13/gateway base150/PG418/Redis7/MQ67/SeaweedFS23 high/critical package-advisory matches, requiring individual vendor applicability review. Same current Python Bookworm tag digest unchanged; Debian tracker confirms vulnerable glibc, Trixie fixed. No broad VEX and no hidden unfixed vulnerabilities. Foundation image/distro scope decision pending.
+- Three guard tests PASS including mutable identity, exact SBOM invalidation, unrelated critical blocking, empty/special filenames and corrupted content. Restore cleanup installed before mounts, probe mount guard before workspace mkdir, immutable probe identities required. Runtime restore/limits/STS/cloud/soak remain NOT_RUN.
 - Plan and strict5/5 before implementation; base/remote main/phase a1c09fea match, original worktree clean.
 - Host Maven verify42 tests PASS after unsandboxed retry: first failure was Windows sandbox atomic rename AccessDenied in JUnit temporary directories; preserve both logs. Vue15 tests/type/contracts/frozen-lock/build/links PASS. These are host results only; F05 includes actual Linux/cloud and remains NOT_RUN until complete.
 - CycloneDX2.9.3 production+test BOMs and dependency tree/effective POM generated. Syft1.54.1/Grype0.120.1 archives officially hashed; all Python CPython3.12/linux-amd64 direct/transitive wheels locked.

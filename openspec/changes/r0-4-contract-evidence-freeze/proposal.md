@@ -2,6 +2,7 @@
 R0.1–R0.3 are verified and archived at a1c09fea. R0.4 must freeze reproducible dependencies and contracts and preserve reviewable audit, runtime and recovery evidence.
 
 # What Changes
+- Approved replan replaces Boot4.0.4 with Boot4.0.8/Tomcat11.0.25/Jackson2.21.7+3.1.7/Vitest4.1.11; SDK2.0.4 remains. Artifact-bound MCP non-applicability needs actual no-server proof, not blanket ignore.
 - Pin complete dependencies, audit tools and CI actions; generate module dependency reports and production/test/image SBOMs and vulnerability/license reports.
 - Freeze current HTTP/event/HC-1 contracts and connect real SDK signatures to source and executable cases.
 - Add protected evidence packaging and isolated consistent backup/restore rehearsal; rerun all R0 cloud gates.

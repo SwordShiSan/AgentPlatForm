@@ -35,6 +35,9 @@ for name in ['syft', 'grype']:
                 raise SystemExit('Expected regular executable')
             binary = archive.extractfile(member).read()
     target = destination / binary_name
+    binary_hash_key = 'windowsBinarySha256' if os.name == 'nt' else 'linuxBinarySha256'
+    if binary_hash_key in lock['tools'][name] and hashlib.sha256(binary).hexdigest() != lock['tools'][name][binary_hash_key]:
+        raise SystemExit(f'Executable hash mismatch: {name}')
     target.write_bytes(binary)
     target.chmod(0o755)
     print(f'{name}: {lock["tools"][name]["version"]} verified')

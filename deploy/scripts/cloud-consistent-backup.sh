@@ -40,9 +40,9 @@ frozen=true
 cp --reflink=auto "$root/quota/workspaces.xfs" "$backup/workspaces.xfs"
 unfreeze
 frozen=false
-find "$root/workspaces" -type f -exec sha256sum {} + | sed "s|$root/workspaces/||" > "$backup/workspace-files.sha256"
+python3 "$root/deploy/scripts/workspace-manifest.py" write "$root/workspaces" "$backup/workspace-files.json"
 cp "$root/reports/object-manifest.json" "$backup/object-manifest.json"
 xfs_quota -x -c 'report -p -b -i' "$root/workspaces" > "$backup/quota-report.txt"
-(cd "$backup" && sha256sum data.tgz workspaces.xfs postgres.sql rabbitmq-definitions.json object-manifest.json > checksums.sha256)
+(cd "$backup" && sha256sum data.tgz workspaces.xfs postgres.sql rabbitmq-definitions.json object-manifest.json workspace-files.json > checksums.sha256)
 printf '%s\n' "$backup" > "$root/operations/r04-latest-backup"
 echo 'Quiescent backup prepared. Secret files are protected separately and are not public evidence.'

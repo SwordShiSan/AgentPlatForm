@@ -1,4 +1,22 @@
 ## ADDED Requirements
+### Requirement: Reviewed security patches and scoped applicability
+The platform SHALL use approved Boot4.0.8/Tomcat11.0.25/Jackson2.21.7/Jackson3.1.7/Vitest4.1.11 with Java21/SDK2.0.4, preserving raw scans and exact product-bound applicability evidence.
+
+#### Scenario: MCP server advisory matches
+- **WHEN** GHSA-8jxr-pr72-r468 matches MCP0.17.2
+- **THEN** each product requires source/runtime no-server proof before OpenVEX NOT_AFFECTED, invalidated by changed source/dependency/entry
+
+#### Scenario: Previous private state is restored
+- **WHEN** patched Jackson2 reads previous-baseline state
+- **THEN** scope, framework version, manifest and CAS remain compatible without Flyway V1 changes
+
+### Requirement: Protected object configuration and recovery failure
+The platform SHALL disable unused IAM/STS, protect KEK wrapping material and install restore cleanup before side effects, checking actual restored hashes and quotas.
+
+#### Scenario: Restore precondition or readiness fails
+- **WHEN** capacity, file hash, mount or health validation fails
+- **THEN** temporary resources stop, evidence remains and original XFS UUID/data are unchanged
+
 ### Requirement: Reproducible audited dependency baseline
 The platform SHALL pin complete resolved dependencies, tooling and image identities, preserve scoped SBOM and license provenance, and reject unresolved high or critical vulnerabilities.
 

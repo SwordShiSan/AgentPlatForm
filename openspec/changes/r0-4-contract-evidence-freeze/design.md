@@ -1,4 +1,9 @@
 # Accepted Plan
+
+## Accepted security replan (2026-10-14; supersedes original Boot4.0.4 below)
+User completed independent Plan and approved implementation from16677a8. Java21/SDK2.0.4/schema1 unchanged; Boot4.0.8/BOM Spring7.0.9/Micrometer1.16.7/pgjdbc42.7.13; overrides Tomcat11.0.25/Jackson2 BOM2.21.7/Jackson3 BOM3.1.7; Vitest4.1.11 retains Node22/Vite7. No business/API/migration enablement. MCP0.17.2 remains SDK-compatible: prove no SDK server/transport entry in each platform/probe product, then artifact-bound OpenVEX for GHSA-8jxr-pr72-r468 only. Preserve raw/assessed scans; source/dependency/entry changes invalidate proof. Other high/critical findings block. Disable SeaweedFS embedded IAM, assert STS unavailable, wrap KEK with separately backed-up protected secret.
+
+Re-run all original mandatory gates, including30min and isolated restore. Build/scan locally or CI, never cloud. Every module effective POM/tree; production/test/base/probe/tool SBOM and archive/binary/plugin/image identity hashes. Install restore traps before mounts/start, JSON workspace manifest supports empty/unusual names; actual hard quota/missing mount on copied XFS UUID. Preserve5GiB reserve, single-stack serial restore and legacy recovery. R0 remains unreleased.
 Independent Plan completed and user requested implementation on2026-10-14. Canonical R0.4 formal plan is authoritative. Base a1c09fea; branch step/r0.4-contract-evidence-freeze. R0.4 acceptance only: no public domain/TLS or production tag, R0 stays unreleased and R1 cannot start.
 
 ## Reproducibility and audit

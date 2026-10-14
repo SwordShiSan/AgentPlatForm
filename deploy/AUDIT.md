@@ -1,5 +1,12 @@
 # R0.4 audited baseline
 
+## Accepted security replan and current evidence (2026-10-14)
+Boot4.0.8/Tomcat11.0.25/Jackson2.21.7+3.1.7/Vitest4.1.11 are implemented; Java21/SDK2.0.4/schema1 unchanged. HOST44 (including real old-Jackson2.21.1 fixture readback and real GET/POST MCP denial), Vue15/type/build/contracts PASS. Six modules have actual dependency tree/effective POM. Package raw scan now has only exact MCP GHSA-8jxr-pr72-r468; product/SBOM/source/HTTP-bound assessment PASS with raw retained. Frontend raw scan has no high/critical matches. Guard tests reject mutable products, changed SBOM, unrelated critical, bad workspace hashes and preserve empty/special-name JSON manifests.
+
+Whole-stage audit remains FAIL: actual locked base and middleware scans contain additional high/critical matches, including Debian Bookworm issues with no fix in the same currently published tag. No generic suppression, hidden unfixed packages, cloud deployment, soak or VERIFIED. Report counts are package/advisory matches, not independent confirmed exploit counts. Foundation image/distro revision is a distinct pending scope decision; continue only within accepted boundaries.
+
+The preparation history below predates this security replan and does not override this current section.
+
 R0.4 is IMPLEMENTING. Accepted preparation baseline is a1c09fea; no production release or R1 start. Full acceptance remains blocked pending security-baseline replan.
 
 Use `audit-tools.lock.json`, not latest download in CI. `prepare-audit-tools.py` resolves official stable releases once; `install-audit-tools.py` verifies the locked official archive hashes. CycloneDX2.9.3, Syft1.54.1, Grype0.120.1 are pinned. Artifact retention is30days.

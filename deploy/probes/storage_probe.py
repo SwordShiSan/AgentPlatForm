@@ -179,6 +179,14 @@ def redis():
   c.sendall(b'*2\r\n$4\r\nAUTH\r\n$'+str(len(password)).encode()+b'\r\n'+password+b'\r\n');assert c.recv(1024).startswith(b'+OK')
   c.sendall(b'*1\r\n$4\r\nPING\r\n');assert c.recv(1024).startswith(b'+PONG')
 
+def sts_disabled():
+ # Use an actual SigV4 STS request; no token/grant must be returned by the S3 service.
+ client=boto3.client('sts',endpoint_url='http://s3:8333',aws_access_key_id='ap-write',aws_secret_access_key=secret('s3_write'),region_name='us-east-1',config=Config(connect_timeout=3,read_timeout=3,retries={'max_attempts':0}))
+ try:client.get_caller_identity();raise AssertionError('Disabled STS accepted GetCallerIdentity')
+ except client.exceptions.ClientError as error:
+  assert error.response['ResponseMetadata']['HTTPStatusCode'] in (403,503)
+  assert error.response['Error']['Code'] in ('AccessDenied','ServiceUnavailable')
+
 def cleanup():
  client=s3();m=json.loads(manifest.read_text())
  for key in [m['key'],m['multipart']]:client.delete_object(Bucket='ap-assets',Key=key)
@@ -188,7 +196,7 @@ def cleanup():
 try:
  mode=os.environ.get('PROBE_MODE','initial')
  if mode=='initial':
-  setup();case('DB-rollback',rollback);case('MQ-confirm-duplicate-rollback-fence',dispatch);case('S3-hash-range-multipart-orphan',object_write);case('Redis-auth-ping',redis)
+  setup();case('DB-rollback',rollback);case('MQ-confirm-duplicate-rollback-fence',dispatch);case('S3-hash-range-multipart-orphan',object_write);case('Redis-auth-ping',redis);case('STS-disabled-denial',sts_disabled)
  elif mode=='bootstrap':case('S3-bucket-admin-only',provision_bucket)
  elif mode=='restart':case('S3-restart-persistence',object_after_restart);case('Redis-restart-auth',redis)
  elif mode=='cleanup':case('Probe-fixture-cleanup',cleanup)

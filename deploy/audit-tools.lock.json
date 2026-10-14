@@ -16,7 +16,9 @@
           "url": "https://github.com/anchore/syft/releases/download/v1.54.1/syft_1.54.1_linux_amd64.tar.gz",
           "sha256": "c069905b391cc4c20a5ba65ad5c10be2a7ba074f8ea6ad203e24d14e303dad47"
         }
-      ]
+      ],
+      "windowsBinarySha256": "b7e78564e72dc550301ff221c9e034d9ece77d16f8e5cc0f7782caa302addbc6",
+      "linuxBinarySha256": "dbf75864e7a7ff9e1fbf00552c31483f693188632a9f68f343cd7653dac513d6"
     },
     "grype": {
       "version": "v0.120.1",
@@ -33,12 +35,15 @@
           "url": "https://github.com/anchore/grype/releases/download/v0.120.1/grype_0.120.1_linux_amd64.tar.gz",
           "sha256": "0a9ee97ef5ae2ee953b0a80098105052e846cdbe319a57d808b519c33cd1343d"
         }
-      ]
+      ],
+      "windowsBinarySha256": "96373670a07b8b6cbcfff4331c8b3d8ffb70d570f072450f8548d04bbe2db537",
+      "linuxBinarySha256": "d6e3248b0e788b4da7450a9e03d1e72811771cf97de3640a18e6517bf6507eb7"
     },
     "cyclonedx-maven": {
       "version": "2.9.3",
       "source": "https://github.com/CycloneDX/cyclonedx-maven-plugin/releases/tag/cyclonedx-maven-plugin-2.9.3",
-      "license": "Apache-2.0"
+      "license": "Apache-2.0",
+      "jarSha256": "c452d5eebe28bc86bef2e7c72d129f04f60877bef843eac8120f01fb655be293"
     }
   },
   "actions": {

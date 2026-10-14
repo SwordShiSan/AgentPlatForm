@@ -9,7 +9,8 @@ output = ROOT / 'evidence' / 'r0.4'
 output.mkdir(parents=True, exist_ok=True)
 head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
 diff = subprocess.check_output(['git', 'diff', '--binary'], cwd=ROOT)
-files = list(output.glob('*.json'))
+files = list(output.rglob('*.json'))
+files.extend(output.glob('sdk-method-signatures.txt'))
 for pattern in ['*/target/bom-*.json', '*/target/dependency-tree.txt', '*/target/effective-pom.xml', '*/target/surefire-reports/TEST-*.xml']:
     files.extend((ROOT / 'backend').glob(pattern))
 files.extend((ROOT / 'backend/target').glob('bom-*.json'))

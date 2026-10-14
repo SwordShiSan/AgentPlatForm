@@ -39,10 +39,22 @@ def main():
             raise SystemExit('Unsafe evidence label')
         syft_json = args.output / (label + '.syft.json')
         bom = args.output / (label + '.cdx.json')
-        subprocess.run([executables['syft'], source, '-o', 'syft-json=' + str(syft_json), '-o', 'cyclonedx-json=' + str(bom)], check=True)
+        subprocess.run([executables['syft'], source, '--platform', 'linux/amd64', '-o', 'syft-json=' + str(syft_json), '-o', 'cyclonedx-json=' + str(bom)], check=True)
         report = args.output / (label + '.vulnerabilities.json')
         scan = subprocess.run([executables['grype'], 'sbom:' + str(syft_json), '--fail-on', 'high', '-o', 'json', '--file', str(report)])
-        results.append({'label': label, 'source': source, 'exitCode': scan.returncode, 'status': 'PASS' if scan.returncode == 0 else 'FAIL'})
+        assessed_exit = scan.returncode
+        raw = json.loads(report.read_text(encoding='utf-8')) if report.exists() and scan.returncode in [0, 2] else {}
+        mcp_match = any(m['vulnerability']['id'] == 'GHSA-8jxr-pr72-r468' and m['artifact'].get('purl') == 'pkg:maven/io.modelcontextprotocol.sdk/mcp-core@0.17.2?type=jar' for m in raw.get('matches', []))
+        if scan.returncode == 2 and mcp_match:
+            data = json.loads(syft_json.read_text())
+            image_id = data.get('source', {}).get('metadata', {}).get('imageID')
+            product = ('pkg:oci/' + label + '@' + image_id) if image_id else ('urn:agentplatform:sbom:sha256:' + hashlib.sha256(syft_json.read_bytes()).hexdigest())
+            vex = args.output / (label + '.vex.json')
+            proof = subprocess.run([sys.executable, str(ROOT / 'deploy/scripts/mcp-applicability.py'), '--sbom', str(syft_json), '--product', product, '--output', str(vex)])
+            if proof.returncode == 0:
+                assessed = subprocess.run([sys.executable, str(ROOT / 'deploy/scripts/assess-mcp-report.py'), '--report', str(report), '--sbom', str(syft_json), '--vex', str(vex), '--output', str(args.output / (label + '.assessment.json'))])
+                assessed_exit = assessed.returncode
+        results.append({'label': label, 'source': source, 'rawExitCode': scan.returncode, 'exitCode': assessed_exit, 'status': 'PASS' if assessed_exit == 0 else 'FAIL'})
     (args.output / 'scan-results.json').write_text(json.dumps(results, indent=2) + '\n', encoding='utf-8')
     files = sorted(p for p in args.output.iterdir() if p.is_file() and p.name != 'sha256.json')
     (args.output / 'sha256.json').write_text(json.dumps({p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in files}, indent=2) + '\n', encoding='utf-8')
