@@ -290,10 +290,11 @@
   "sources": {
     "gvisor": {
       "commit": "97e8e896904cb364319cd9758241d3f0bd27a6f4",
-      "compilerCandidate": "1.27.2",
+      "compilerCandidate": "1.26.9",
+      "compilerFallbackReason": "Go1.27.2 rejected by upstream nogo: export data version5 exceeds supported4, run38537157463/job115762717373",
       "crossCompilerIndexSha256": "7778d3e3f303b7ddb8ce0fe7c8d57473a076c6bf2e8f241f75421d2396352498",
       "patchFiles": {
-        "deploy/security/gvisor.go.mod": "6dab4aad9cb5bd2d73151d7d475c42bcd36692872e53812d5b23e7a6e5800249",
+        "deploy/security/gvisor.go.mod": "48c563758be5ba12831a4a3bd76a71240149d82fb2e4f0d1e439d47a08361c7d",
         "deploy/security/gvisor.go.sum": "9d29997993267f802e4800af9a582b86101bca70c5dae8507737e9ad44943e7c"
       },
       "status": "SECURITY_REBUILD_PENDING",

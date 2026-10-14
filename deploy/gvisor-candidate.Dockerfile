@@ -16,4 +16,4 @@ COPY deploy/security/gvisor.go.sum /source/go.sum
 RUN mkdir /out && bazel --batch mod deps && sha256sum MODULE.bazel.lock go.mod go.sum > /out/build-inputs.sha256 && cp MODULE.bazel.lock /out/
 RUN bazel --batch test --lockfile_mode=error --jobs=2 --test_output=errors //pkg/buffer:buffer_test //pkg/tcpip/...
 RUN bazel --batch build --lockfile_mode=error --nostamp --jobs=2 -c opt //debian:gvisor-release-tar-bz2 && cp bazel-bin/debian/gvisor.tar.bz2 /out/
-RUN printf '%s\n' 'Platform security rebuild candidate, NOT accepted: source97e8e896; Go1.27.2; frozen module patches; preserves full sidecar package' > /out/REBUILD.txt && sha256sum /out/gvisor.tar.bz2 > /out/runtime.sha256
+RUN printf '%s\n' 'Platform security rebuild candidate, NOT accepted: source97e8e896; Bazel SDK Go1.26.9 fallback from frozen go.mod; frozen module patches; preserves full sidecar package' > /out/REBUILD.txt && sha256sum /out/gvisor.tar.bz2 > /out/runtime.sha256

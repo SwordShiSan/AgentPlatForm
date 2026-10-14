@@ -32,6 +32,8 @@ def assess(report_path, sbom_path, review_path, root=ROOT):
     image_id = sbom.get('source', {}).get('metadata', {}).get('imageID')
     product = binding['product']
     if image_id:
+        if not re.fullmatch(r'sha256:[a-f0-9]{64}', image_id):
+            raise ValueError('SBOM image identity is not an immutable config digest')
         if not re.fullmatch(r'pkg:oci/[a-zA-Z0-9._/-]+@' + re.escape(image_id), product):
             raise ValueError('Review product does not match actual image config')
     elif product != 'urn:agentplatform:sbom:sha256:' + digest(sbom_path):

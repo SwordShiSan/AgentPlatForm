@@ -8,7 +8,7 @@ permissions:
   contents: read
 concurrency:
   group: r0-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 env:
   OPENSPEC_TELEMETRY: '0'
   POSTGRES_IMAGE: agentplatform-postgres:r0.4-ci
