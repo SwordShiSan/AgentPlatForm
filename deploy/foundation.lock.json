@@ -16,9 +16,9 @@
       "sha256": "4c33cf053329784ba6d992d05c9588b93789e907a7511f20ff5a5a5b8a0703c1",
       "url": "https://codeload.github.com/pgvector/pgvector/tar.gz/778dacf20c07caf904557a88705142631818d8cb"
     },
-    "postgresql.tar.bz2": {
-      "sha256": "dd27f2b3c59e73ed14aa3324901242bf69a032a6347805f274e6260322d42979",
-      "url": "https://ftp.postgresql.org/pub/source/v17.11/postgresql-17.11.tar.bz2"
+    "postgresql.tar.gz": {
+      "sha256": "5367f6fb2ec97efe1eb2e0c7926bb33438e51b0bd3a9733b88498056a7dc9a7e",
+      "url": "https://ftp.postgresql.org/pub/source/v17.11/postgresql-17.11.tar.gz"
     },
     "seaweedfs.tar.gz": {
       "sha256": "217b507e7457d10629e837cebea6542d8b7685819dafbb56ef910330594af0e1",
