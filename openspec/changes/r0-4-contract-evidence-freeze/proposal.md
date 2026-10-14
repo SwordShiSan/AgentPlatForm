@@ -2,6 +2,7 @@
 R0.1–R0.3 are verified and archived at a1c09fea. R0.4 must freeze reproducible dependencies and contracts and preserve reviewable audit, runtime and recovery evidence.
 
 # What Changes
+- Patch actual rebuilt runtime matches with grpc1.83.2/containerd-v2 2.2.4 and fresh locked module/full-runtime tests; preserve Go1.26.9 and complete package.
 - Remove unused test-scoped Testcontainers after SBOM ownership identifies its shaded HttpCore matches; clean generated probe classpaths, refresh actual locks/production+test audits, and keep all existing SDK/Docker/storage tests.
 - Refine disabled STS acceptance to signed HTTP status/body checks for the actual IAM-disabled route; empty405 is allowed only with working S3 checks, and transport/success responses remain failures.
 - Approved foundation replan continues5316ba6: Python3.12.15/Node22.23.3 on Trixie, Temurin21.0.12.1 on Noble, Nginx1.30.5/Alpine3.24, PG17.11+vector0.8.1, Redis7.4.11, RabbitMQ4.3.6 and security-rebuilt SeaweedFS4.48. Host OS unchanged. Exact sources/manifests/packages/patch hashes and full reacceptance precede promotion.

@@ -1,6 +1,7 @@
 ## 1. Preparation
 - [x] 1.1 Record accepted Plan, baseline and strict validation before implementation.
 ## 2. Reproducible audit
+- [ ] 2.8 Repair four actual rebuilt runtime matches with grpc1.83.2/containerd-v2 2.2.4; rerun upstream/full-package and fresh runtime scans/compatibility gates.
 - [ ] 2.7 Remove unused Testcontainers scaffold and stale probe jars after shaded ownership review; refresh actual artifact hashes/trees/SBOMs and full Maven/Linux SDK regression.
 - [ ] 2.6 Correct audit test environment with non-root CI, frozen compiler and fixture cache fingerprint/hash checks; preserve all failed source-candidate evidence and all core/internal tests.
 - [ ] 2.5 Build disclosed Syft/Grype source candidates with locked Go/module patches, core/internal tests, licenses and binary identity; audit before replacing bootstrap tools.

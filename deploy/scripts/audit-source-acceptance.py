@@ -67,18 +67,24 @@ for index, command in enumerate(commands):
         subprocess.run(['tail', '-n', '80', str(output / ('test-' + str(index) + '.log'))], check=True)
         raise SystemExit(result.returncode)
 flags = '-w -s -X main.version=' + source['version'] + '+platform-r04 -X main.gitCommit=' + source['commit'] + ' -X main.gitDescription=platform-security-rebuild'
+(output / 'imports-linux.txt').write_text(subprocess.check_output(
+    [go, 'list', '-mod=readonly', '-deps', '-tags=containers_image_openpgp,exclude_graphdriver_btrfs',
+     '-f={{.ImportPath}}', './cmd/' + args.tool], cwd=directory, env=environment, text=True))
 subprocess.run([go, 'build', '-mod=readonly', '-trimpath', '-tags=containers_image_openpgp,exclude_graphdriver_btrfs',
                 '-ldflags=' + flags, '-o', str(output / args.tool), './cmd/' + args.tool], cwd=directory, env=environment, check=True)
 (output / 'version.txt').write_text(subprocess.check_output([str(output / args.tool), 'version'], text=True))
 (output / 'build-info.txt').write_text(subprocess.check_output([go, 'version', '-m', str(output / args.tool)], text=True))
 windows_environment = dict(environment, GOOS='windows', GOARCH='amd64')
+(output / 'imports-windows.txt').write_text(subprocess.check_output(
+    [go, 'list', '-mod=readonly', '-deps', '-f={{.ImportPath}}', './cmd/' + args.tool],
+    cwd=directory, env=windows_environment, text=True))
 subprocess.run([go, 'build', '-mod=readonly', '-trimpath', '-ldflags=' + flags,
                 '-o', str(output / (args.tool + '.exe')), './cmd/' + args.tool],
                cwd=directory, env=windows_environment, check=True)
 (output / 'windows-build-info.txt').write_text(subprocess.check_output([go, 'version', '-m', str(output / (args.tool + '.exe'))], text=True))
 for name in ['go.mod', 'go.sum', 'LICENSE']:
     shutil.copyfile(directory / name, output / name)
-records = {name: hashlib.sha256((output / name).read_bytes()).hexdigest() for name in [args.tool, args.tool + '.exe', 'go.mod', 'go.sum', 'LICENSE']}
+records = {name: hashlib.sha256((output / name).read_bytes()).hexdigest() for name in [args.tool, args.tool + '.exe', 'go.mod', 'go.sum', 'LICENSE', 'imports-linux.txt', 'imports-windows.txt']}
 (output / 'binary-identities.json').write_text(json.dumps({'status': 'CANDIDATE_NOT_ACCEPTED', 'officialSourceCommit': source['commit'],
                                                          'note': 'Synthetic Git root only supports test discovery; provenance uses archive/patch hashes.',
                                                          'files': records}, indent=2) + '\n')

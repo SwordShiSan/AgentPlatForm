@@ -1,5 +1,13 @@
 ## ADDED Requirements
 ### Requirement: Reviewed foundation security rebuild
+The rebuilt runtime SHALL fix actual grpc1.83.1/containerd-v2 2.1.9 matches
+using compatible grpc1.83.2/containerd-v2 2.2.4 inputs and fresh project/full
+release tests, without removing package components or analysis checks.
+
+#### Scenario: A rebuilt binary still has vulnerable dependencies
+- **WHEN** the exact source-built runtime scan reports the two actual advisories
+- **THEN** freeze compatible fixed versions and require fresh tests and scans before acceptance
+
 The platform SHALL use the approved container distributions and compatible patch families, lock linux/amd64 manifests and source/package/patch identities before building locally or in CI, preserve host OS and storage formats, and disclose rebuilt products.
 
 #### Scenario: Foundation or source identity drifts

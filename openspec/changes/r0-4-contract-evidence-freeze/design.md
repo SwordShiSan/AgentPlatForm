@@ -1,5 +1,15 @@
 # Accepted Plan
 
+## Actual runtime dependency scan follow-up
+The source-built complete runtime at48233a4 is ZIP/source/package-hash verified.
+Its unfiltered scan has4 high matches: grpc1.83.1/ GHSA-2v4p-qf9q-27wj in
+three binaries, and containerd/v2 2.1.9/ GHSA-fqw6-gf59-qr4w in the shim.
+Use grpc1.83.2 and containerd/v2 2.2.4 within the same products/major versions,
+freeze new module sums and rerun all199 upstream tests/static analysis plus
+full release compilation and final runtime/cloud compatibility tests. Preserve
+Go1.26.9 fallback and all package components. Incompatibility or unresolved
+scan results remain blocking; do not replace a real fix with a blanket review.
+
 ## Current shaded dependency disposition
 Actual SBOM ownership locates both HttpCore matches inside Testcontainers'
 docker-java-transport-zerodep3.7.1, not standalone HttpCore jars. Docker Java
@@ -36,6 +46,12 @@ Unknown links, hardlinks and paths fail. Never use fully_trusted extraction.
 despite an AbsoluteLinkError and is recorded FAIL, not PASS.
 
 ## Audit candidate test environment correction
+Export actual Linux/Windows go-list dependency graphs with the same compiler,
+module sums, target and release tags as each binary. Bind graph hashes alongside
+binary hashes. Module-level Docker daemon matches cannot become NOT_AFFECTED
+until exact advisory vulnerable source/package ownership and absence from the
+actual build graph are proved for each product; a client label or internal
+network alone is insufficient. Graph collection itself does not accept a scan.
 The frozen ORAS artifact marks directory layers with
 io.deis.oras.content.unpack=true; its cache_paths.json layer is a raw file.
 Respect that exact format marker, accepting only the frozen raw filename.

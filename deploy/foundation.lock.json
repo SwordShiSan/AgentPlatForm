@@ -460,8 +460,12 @@
       "compilerFallbackReason": "Go1.27.2 rejected by upstream nogo: export data version5 exceeds supported4, run38537157463/job115762717373",
       "crossCompilerIndexSha256": "7778d3e3f303b7ddb8ce0fe7c8d57473a076c6bf2e8f241f75421d2396352498",
       "patchFiles": {
-        "deploy/security/gvisor.go.mod": "48c563758be5ba12831a4a3bd76a71240149d82fb2e4f0d1e439d47a08361c7d",
-        "deploy/security/gvisor.go.sum": "9d29997993267f802e4800af9a582b86101bca70c5dae8507737e9ad44943e7c"
+        "deploy/security/gvisor.go.mod": "8f95c9e3be1c393a50ef0cf100053ef77eeadebcde0c0013f76613493817593f",
+        "deploy/security/gvisor.go.sum": "2c9684e9fbb78a0526d08f2e4b60a7a6358c3a97f17d4960a270da9e0b565143"
+      },
+      "securityModules": {
+        "github.com/containerd/containerd/v2": "v2.2.4",
+        "google.golang.org/grpc": "v1.83.2"
       },
       "status": "SECURITY_REBUILD_PENDING",
       "url": "https://github.com/google/gvisor",

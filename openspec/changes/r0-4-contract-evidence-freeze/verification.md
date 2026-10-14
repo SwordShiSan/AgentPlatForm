@@ -87,3 +87,9 @@ Final candidate Linux SDK/image scans remain NOT_RUN until the fresh run.
 after frozen layer downloads; directory layers are unpack-marked tar, while
 the final fingerprint layer is a raw file. Exact marker handling and a sixth
 fixture test added; hashes/paths/source fingerprints remain mandatory.
+# Actual rebuilt runtime scan
+Source48233a4, GitHub ZIP8cd057e6.../runtime package hash verified; all7 package
+binaries imported for local scanning, no cloud installation. Raw scan FAIL4:
+grpc1.83.1 three matches GHSA-2v4p-qf9q-27wj, shim containerd-v2 2.1.9 one
+GHSA-fqw6-gf59-qr4w. Original162-match package scan remains historical, not
+current rebuilt result. Fixed module/full-package reacceptance still NOT_RUN.
