@@ -61,7 +61,7 @@ def assess(report_path, sbom_path, review_path, root=ROOT):
             raise ValueError('Exactly one component per statement required')
         purl = components[0]['@id']
         advisory = statement['vulnerability']['name']
-        if '@' not in purl or '*' in purl or not re.fullmatch(r'(CVE-\d{4}-\d+|GHSA-[a-z0-9-]+)', advisory):
+        if '@' not in purl or '*' in purl or not re.fullmatch(r'((CVE|GO)-\d{4}-\d+|GHSA-[a-z0-9-]+)', advisory):
             raise ValueError('Exact component version and advisory required')
         key = (advisory, purl)
         if key in statements:

@@ -106,6 +106,8 @@ jobs:
           .tools/audit/grype db update
           mkdir -p evidence/r0.4
           .tools/audit/grype db status -o json > evidence/r0.4/grype-db-status.json
+          mkdir -p .cache/r04-gvisor-binaries
+          tar -xjf .cache/foundation/gvisor.tar.bz2 -C .cache/r04-gvisor-binaries
           set +e
           .tools/audit/grype sbom:backend/target/bom-production.json --fail-on high -o json --file evidence/r0.4/backend-vulnerabilities.json
           raw_status=$?
@@ -126,6 +128,7 @@ jobs:
             --target redis=docker:agentplatform-redis:r0.4-ci \
             --target rabbitmq=registry:${RABBITMQ_IMAGE} \
             --target seaweedfs=docker:agentplatform-seaweedfs:r0.4-ci \
+            --target runsc=dir:.cache/r04-gvisor-binaries \
             --target audit-tools=dir:.tools/audit
       - name: Export same audited immutable images
         run: |

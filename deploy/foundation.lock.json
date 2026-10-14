@@ -1,12 +1,42 @@
 {
   "archives": {
+    "bison.deb": {
+      "package": "bison",
+      "sha256": "ce6eb1f7aad18850e32d223a68f54bcbe756d74f138c8ec5460ad9d220f4d335",
+      "url": "https://deb.debian.org/debian/pool/main/b/bison/bison_3.8.2+dfsg-1+b2_amd64.deb",
+      "version": "2:3.8.2+dfsg-1+b2"
+    },
+    "flex.deb": {
+      "package": "flex",
+      "sha256": "75f963765232c356d0a2fb70e780dfa9de2425aca036ec60eefb7fc98a2c905b",
+      "url": "https://deb.debian.org/debian/pool/main/f/flex/flex_2.6.4-8.2+b4_amd64.deb",
+      "version": "2.6.4-8.2+b4"
+    },
+    "gvisor.tar.bz2": {
+      "release": "20261005.0",
+      "sha256": "bd4eb2ca0ee74f0fbbb5f5273ba011e79c56a29fbb047393b88b981cd3230ede",
+      "status": "AUDIT_BLOCKED",
+      "url": "https://storage.googleapis.com/gvisor/releases/release/20261005.0/x86_64/gvisor.tar.bz2"
+    },
     "libcrypto3-3.5.9-r0.apk": {
       "sha256": "6632d758d8f5e9ea3b650fe966f23bbf9a202f8b8dceecac93da135dec5e3689",
       "url": "https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/libcrypto3-3.5.9-r0.apk"
     },
+    "libfl2.deb": {
+      "package": "libfl2",
+      "sha256": "4c6946a46df35fbf044a376f398499205d160d814806e9bec6cc7cc7cb554e77",
+      "url": "https://deb.debian.org/debian/pool/main/f/flex/libfl2_2.6.4-8.2+b4_amd64.deb",
+      "version": "2.6.4-8.2+b4"
+    },
     "libssl3-3.5.9-r0.apk": {
       "sha256": "05e3393fb95aa5751ca2f9d242f659f6cff82c1cc7767cc2df4a086f7ad01877",
       "url": "https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/libssl3-3.5.9-r0.apk"
+    },
+    "m4.deb": {
+      "package": "m4",
+      "sha256": "221b3e224708c1da2a1a88b6824380593579b2254ae7d914afa14cbd5d343334",
+      "url": "https://deb.debian.org/debian/pool/main/m/m4/m4_1.4.19-8_amd64.deb",
+      "version": "1.4.19-8"
     },
     "pcre2-10.49-r0.apk": {
       "sha256": "2919897914820f42a17a8d7d37df310d2dfad1c82ebe5f539cc5c765f916752a",
@@ -99,6 +129,12 @@
   },
   "schemaVersion": 1,
   "sources": {
+    "gvisor": {
+      "commit": "97e8e896904cb364319cd9758241d3f0bd27a6f4",
+      "status": "SECURITY_REBUILD_PENDING",
+      "url": "https://github.com/google/gvisor",
+      "version": "20261005.0"
+    },
     "pgvector": {
       "commit": "778dacf20c07caf904557a88705142631818d8cb",
       "url": "https://github.com/pgvector/pgvector",
