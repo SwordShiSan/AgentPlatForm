@@ -48,3 +48,10 @@ Exact source and patched module hashes must pass foundation input checks.
 CI core/internal tests and build must pass; version and binary hashes retained.
 Tool replacement, actual CLI behavior and binary security acceptance NOT_RUN
 until exact candidate evidence passes. Original official tools/raw scans remain.
+# STS probe correction
+At5964e5b/run38540384541 Docker startup, Linux SDK and four browser cases
+PASS. PG/vector, rollback, MQ duplicate/fence, S3 hash/Range/multipart and Redis
+PASS before disabled STS failed with ResponseParserError on an empty refusal.
+Wire-level denial validator has six passing failure-boundary tests. Signed
+body/query HTTP refusal and dependency restart/CAS acceptance must rerun in CI.
+The prior failure remains evidence; no scan/cloud acceptance is implied.

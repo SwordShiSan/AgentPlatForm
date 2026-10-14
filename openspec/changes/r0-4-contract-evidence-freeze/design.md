@@ -1,5 +1,14 @@
 # Accepted Plan
 
+## Disabled STS wire-level acceptance
+SeaweedFS4.48 with IAM disabled and no STS handlers registers only GET at
+the root; signed STS POST requests can return empty405 rather than AWS XML.
+The probe must verify the signed HTTP response itself: empty405 for missing
+routes, or XML AccessDenied403/ServiceUnavailable503. Test body/query actions,
+reject every success/token/identity response, malformed other errors and all
+transport failures. Confirm working S3 access before/after so a broken service
+cannot pass this denial gate. No STS capability or public contract is added.
+
 ## Audit tool source candidates
 Preserve the official Syft1.54.1/Grype0.120.1 bootstrap tools and their raw
 reports. Build separate disclosed candidates from their exact official commits,

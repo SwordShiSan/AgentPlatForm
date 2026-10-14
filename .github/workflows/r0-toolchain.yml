@@ -150,6 +150,7 @@ jobs:
           python3 -m py_compile deploy/scripts/*.py deploy/probes/*.py
           python3 deploy/scripts/test-audit-guards.py
           python3 deploy/scripts/test-foundation-guards.py
+          python3 deploy/scripts/test-sts-denial.py
       - name: R0.4 blocking dependency audit
         run: |
           python3 deploy/scripts/install-audit-tools.py

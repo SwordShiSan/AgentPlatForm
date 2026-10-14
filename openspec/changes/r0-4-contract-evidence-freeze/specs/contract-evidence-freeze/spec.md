@@ -26,6 +26,18 @@ The platform SHALL use approved Boot4.0.8/Tomcat11.0.25/Jackson2.21.7/Jackson3.1
 - **THEN** scope, framework version, manifest and CAS remain compatible without Flyway V1 changes
 
 ### Requirement: Protected object configuration and recovery failure
+The system SHALL verify disabled STS using signed wire-level requests and
+healthy S3 access before and after the requests; SDK XML parser errors alone
+SHALL NOT establish non-availability.
+
+#### Scenario: Disabled STS route returns an empty method refusal
+- **WHEN** signed STS POST actions in body and query receive empty405 and S3 remains functional
+- **THEN** the denial probe records the explicit refusal without parsing it as AWS XML
+
+#### Scenario: STS denial transport or success is ambiguous
+- **WHEN** a request times out, cannot connect, returns success or unexpected status/body
+- **THEN** the probe fails rather than treating the parsing or transport failure as denial
+
 The platform SHALL disable unused IAM/STS, protect KEK wrapping material and install restore cleanup before side effects, checking actual restored hashes and quotas.
 
 #### Scenario: Restore precondition or readiness fails

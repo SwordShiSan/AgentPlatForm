@@ -2,6 +2,11 @@
 import concurrent.futures,hashlib,json,os,pathlib,socket,struct,threading,time,uuid
 import boto3,pika,psycopg
 from botocore.config import Config
+from botocore.auth import SigV4Auth
+from botocore.awsrequest import AWSRequest
+from botocore.credentials import Credentials
+from sts_denial import validate_denial
+import urllib.error,urllib.parse,urllib.request
 
 reports=[]
 def case(name,run):
@@ -186,12 +191,31 @@ def redis():
   c.sendall(b'*1\r\n$4\r\nPING\r\n');assert c.recv(1024).startswith(b'+PONG')
 
 def sts_disabled():
- # Use an actual SigV4 STS request; no token/grant must be returned by the S3 service.
- client=boto3.client('sts',endpoint_url='http://s3:8333',aws_access_key_id='ap-write',aws_secret_access_key=secret('s3_write'),region_name='us-east-1',config=Config(connect_timeout=3,read_timeout=3,retries={'max_attempts':0}))
- try:client.get_caller_identity();raise AssertionError('Disabled STS accepted GetCallerIdentity')
- except client.exceptions.ClientError as error:
-  assert error.response['ResponseMetadata']['HTTPStatusCode'] in (403,503)
-  assert error.response['Error']['Code'] in ('AccessDenied','ServiceUnavailable')
+ # Disabled routes may return empty405, which the AWS XML parser cannot parse.
+ # Assert the actual wire refusal and functioning S3 on both sides; never accept
+ # transport errors, arbitrary parser errors, successful identities or grants.
+ client=s3();client.head_bucket(Bucket='ap-assets')
+ credentials=Credentials('ap-write',secret('s3_write'))
+ opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+ for action in ['GetCallerIdentity','AssumeRole','GetFederationToken']:
+  parameters={'Action':action,'Version':'2011-06-15'}
+  if action=='AssumeRole':parameters.update(RoleArn='arn:aws:iam::000000000000:role/r04-disabled',RoleSessionName='r04-denial')
+  if action=='GetFederationToken':parameters['Name']='r04-denial'
+  encoded=urllib.parse.urlencode(parameters)
+  for placement in ['body','query']:
+   url='http://s3:8333/'+('?' + encoded if placement=='query' else '')
+   body=encoded.encode() if placement=='body' else b''
+   request=AWSRequest(method='POST',url=url,data=body,headers={'Content-Type':'application/x-www-form-urlencoded'})
+   SigV4Auth(credentials,'sts','us-east-1').add_auth(request)
+   wire=urllib.request.Request(url,data=body,headers=dict(request.headers),method='POST')
+   try:response=opener.open(wire,timeout=3)
+   except urllib.error.HTTPError as error:response=error
+   with response:
+    payload=response.read(65537)
+    assert len(payload)<=65536
+    validate_denial(response.status,payload)
+    print('STS-'+action+'-'+placement+':HTTP'+str(response.status),flush=True)
+ client.head_bucket(Bucket='ap-assets')
 
 def cleanup():
  client=s3();m=json.loads(manifest.read_text())
