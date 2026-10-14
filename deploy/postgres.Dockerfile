@@ -3,10 +3,12 @@ FROM golang:1.27.2-trixie@sha256:2d658507a011f1eadc0114d7a421b312b2e77d9042a2403
 COPY .cache/foundation/*.deb /build-inputs/
 RUN dpkg -i /build-inputs/*.deb && rm -r /build-inputs
 COPY .cache/foundation/postgresql.tar.gz /tmp/postgresql.tar.gz
-RUN mkdir /postgres-source && tar -xzf /tmp/postgresql.tar.gz -C /postgres-source --strip-components=1 && cd /postgres-source && ./configure --without-readline --without-zlib --without-icu --without-llvm && make -j2 && make install
+RUN mkdir /postgres-source && tar -xzf /tmp/postgresql.tar.gz -C /postgres-source --strip-components=1 && cd /postgres-source && ./configure --prefix=/usr/local --without-readline --without-zlib --without-icu --without-llvm && make -j2 && make install
 COPY .cache/foundation/pgvector.tar.gz /tmp/pgvector.tar.gz
-RUN mkdir /vector-source && tar -xzf /tmp/pgvector.tar.gz -C /vector-source --strip-components=1 && cd /vector-source && make OPTFLAGS="" with_llvm=no PG_CONFIG=/usr/local/bin/pg_config && make install with_llvm=no DESTDIR=/vector
+RUN mkdir /vector-source && tar -xzf /tmp/pgvector.tar.gz -C /vector-source --strip-components=1 && cd /vector-source && make OPTFLAGS="" with_llvm=no PG_CONFIG=/usr/local/bin/pg_config && make install with_llvm=no PG_CONFIG=/usr/local/bin/pg_config DESTDIR=/vector
 FROM postgres
-COPY --from=vector-build /vector/ /
+RUN test -x /usr/lib/postgresql/17/bin/postgres
+COPY --from=vector-build /vector/usr/local/lib/postgresql/vector.so /usr/lib/postgresql/17/lib/vector.so
+COPY --from=vector-build /vector/usr/local/share/postgresql/extension/ /usr/share/postgresql/17/extension/
 COPY --from=vector-build /vector-source/LICENSE /usr/share/doc/pgvector/LICENSE
 LABEL org.agentplatform.rebuild="PostgreSQL17.11/Trixie with pgvector0.8.1 source commit778dacf20c07caf904557a88705142631818d8cb"

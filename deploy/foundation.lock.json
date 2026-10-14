@@ -1,5 +1,10 @@
 {
   "archives": {
+    "bazel-linux": {
+      "sha256": "17247e8a84245f59d3bc633d0cfe0a840992a7760a11af1a30012d03da31604c",
+      "url": "https://github.com/bazelbuild/bazel/releases/download/8.3.1/bazel-8.3.1-linux-x86_64",
+      "version": "8.3.1"
+    },
     "bison.deb": {
       "package": "bison",
       "sha256": "ce6eb1f7aad18850e32d223a68f54bcbe756d74f138c8ec5460ad9d220f4d335",
@@ -11,6 +16,10 @@
       "sha256": "75f963765232c356d0a2fb70e780dfa9de2425aca036ec60eefb7fc98a2c905b",
       "url": "https://deb.debian.org/debian/pool/main/f/flex/flex_2.6.4-8.2+b4_amd64.deb",
       "version": "2.6.4-8.2+b4"
+    },
+    "gvisor-source.tar.gz": {
+      "sha256": "c5dc39958098af75bfdf25ccab48e4ea41034bdc7f2078a4d3be84d2f235e2bd",
+      "url": "https://codeload.github.com/google/gvisor/tar.gz/97e8e896904cb364319cd9758241d3f0bd27a6f4"
     },
     "gvisor.tar.bz2": {
       "release": "20261005.0",
@@ -131,6 +140,11 @@
   "sources": {
     "gvisor": {
       "commit": "97e8e896904cb364319cd9758241d3f0bd27a6f4",
+      "compilerCandidate": "1.27.2",
+      "patchFiles": {
+        "deploy/security/gvisor.go.mod": "6dab4aad9cb5bd2d73151d7d475c42bcd36692872e53812d5b23e7a6e5800249",
+        "deploy/security/gvisor.go.sum": "9d29997993267f802e4800af9a582b86101bca70c5dae8507737e9ad44943e7c"
+      },
       "status": "SECURITY_REBUILD_PENDING",
       "url": "https://github.com/google/gvisor",
       "version": "20261005.0"
