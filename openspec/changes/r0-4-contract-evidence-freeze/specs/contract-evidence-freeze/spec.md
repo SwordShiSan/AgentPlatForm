@@ -1,4 +1,19 @@
 ## ADDED Requirements
+### Requirement: Reviewed foundation security rebuild
+The platform SHALL use the approved container distributions and compatible patch families, lock linux/amd64 manifests and source/package/patch identities before building locally or in CI, preserve host OS and storage formats, and disclose rebuilt products.
+
+#### Scenario: Foundation or source identity drifts
+- **WHEN** a build input differs from its manifest, source commit, package or patch hash lock
+- **THEN** the build fails and cannot export an accepted cloud candidate
+
+#### Scenario: Vendor backport or unreachable component is assessed
+- **WHEN** an exact advisory is proposed as NOT_AFFECTED
+- **THEN** exact product/component and current source or file ownership evidence are hashed, reviewed and invalidated by changed inputs, while raw findings remain available
+
+#### Scenario: Foundation regression fails
+- **WHEN** rebuilt images fail compatibility, audit, quota, recovery or resource acceptance
+- **THEN** the stage remains FAIL or NOT_RUN, temporary new resources stop and preserved legacy services are restored without an OS upgrade
+
 ### Requirement: Reviewed security patches and scoped applicability
 The platform SHALL use approved Boot4.0.8/Tomcat11.0.25/Jackson2.21.7/Jackson3.1.7/Vitest4.1.11 with Java21/SDK2.0.4, preserving raw scans and exact product-bound applicability evidence.
 

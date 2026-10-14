@@ -38,7 +38,7 @@ services:
       PLATFORM_STORAGE_USER: ap_api
       PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/pg_api
     secrets: [pg_api]
-    healthcheck: {test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:8080/api/v1/readiness"], interval: 10s, timeout: 6s, retries: 24, start_period: 30s}
+    healthcheck: {test: [CMD, java, -Xms8m, -Xmx16m, -cp, /app/health, HttpHealthcheck, "http://127.0.0.1:8080/api/v1/readiness"], interval: 10s, timeout: 6s, retries: 24, start_period: 30s}
   worker:
     <<: *role
     profiles: [worker]

@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jdk-alpine@sha256:0bfc69a4758a86710e5c474032d28400a8bd00874766f9e8b1642ac2fd293159
+FROM eclipse-temurin:21.0.12.1_1-jdk-noble@sha256:743b453cb8639d815a8251e128f7d8e88840c684e43fdbde1b1e79788437b5cf
 WORKDIR /opt/probe
 COPY backend/platform-infrastructure/target/probe-libs/ /opt/probe/lib/
 COPY backend/platform-app/target/probe-libs/ /opt/probe/lib/

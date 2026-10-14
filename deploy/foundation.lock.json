@@ -1,0 +1,121 @@
+{
+  "archives": {
+    "libcrypto3-3.5.9-r0.apk": {
+      "sha256": "6632d758d8f5e9ea3b650fe966f23bbf9a202f8b8dceecac93da135dec5e3689",
+      "url": "https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/libcrypto3-3.5.9-r0.apk"
+    },
+    "libssl3-3.5.9-r0.apk": {
+      "sha256": "05e3393fb95aa5751ca2f9d242f659f6cff82c1cc7767cc2df4a086f7ad01877",
+      "url": "https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/libssl3-3.5.9-r0.apk"
+    },
+    "pcre2-10.49-r0.apk": {
+      "sha256": "2919897914820f42a17a8d7d37df310d2dfad1c82ebe5f539cc5c765f916752a",
+      "url": "https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/pcre2-10.49-r0.apk"
+    },
+    "pgvector.tar.gz": {
+      "sha256": "4c33cf053329784ba6d992d05c9588b93789e907a7511f20ff5a5a5b8a0703c1",
+      "url": "https://codeload.github.com/pgvector/pgvector/tar.gz/778dacf20c07caf904557a88705142631818d8cb"
+    },
+    "postgresql.tar.bz2": {
+      "sha256": "dd27f2b3c59e73ed14aa3324901242bf69a032a6347805f274e6260322d42979",
+      "url": "https://ftp.postgresql.org/pub/source/v17.11/postgresql-17.11.tar.bz2"
+    },
+    "seaweedfs.tar.gz": {
+      "sha256": "217b507e7457d10629e837cebea6542d8b7685819dafbb56ef910330594af0e1",
+      "url": "https://codeload.github.com/seaweedfs/seaweedfs/tar.gz/530be3e37337488ecc34d58441e0bc476e121c93"
+    },
+    "zlib-1.3.2-r1.apk": {
+      "sha256": "63aeea03c15a2f9018f81805cfc8aa926bdf5cd68921f22149c2fbb5d0ee9f47",
+      "url": "https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/zlib-1.3.2-r1.apk"
+    }
+  },
+  "buildRuntime": {
+    "linuxJdkSha256": "ce79869e1307ed8ee1e2baa86a412b1eb5b75d10a01006d788a6f968bcfaee94",
+    "nodeVersion": "22.23.3",
+    "temurinVersion": "21.0.12.1+1",
+    "windowsJdkSha256": "f9d6e191ab098c0d416e7d588a24420a8621cd2f4720dab2459b8b7b2d2d8b4e"
+  },
+  "images": {
+    "alpine": {
+      "license": "per-package",
+      "platform": "linux/amd64",
+      "reference": "alpine:3.24@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    },
+    "go": {
+      "license": "BSD-3-Clause",
+      "platform": "linux/amd64",
+      "reference": "golang:1.27.2-trixie@sha256:2d658507a011f1eadc0114d7a421b312b2e77d9042a24036a26e267cc9231677",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    },
+    "jdk": {
+      "license": "GPL-2.0-only WITH Classpath-exception-2.0",
+      "platform": "linux/amd64",
+      "reference": "eclipse-temurin:21.0.12.1_1-jdk-noble@sha256:743b453cb8639d815a8251e128f7d8e88840c684e43fdbde1b1e79788437b5cf",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    },
+    "jre": {
+      "license": "GPL-2.0-only WITH Classpath-exception-2.0",
+      "platform": "linux/amd64",
+      "reference": "eclipse-temurin:21.0.12.1_1-jre-noble@sha256:7fd597bf48c8bb13a7a3fb227f8366dec0423f78775d4b4f7e30409204af8627",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    },
+    "nginx": {
+      "license": "BSD-2-Clause",
+      "platform": "linux/amd64",
+      "reference": "nginxinc/nginx-unprivileged:1.30.5-alpine@sha256:0f5f7068c5f5bf7046dbf649a08810ec1693967a9f488b8ff3998be6dd34bf6c",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    },
+    "node": {
+      "license": "MIT",
+      "platform": "linux/amd64",
+      "reference": "node:22.23.3-trixie-slim@sha256:6b25e0bf3aaee33c18ba3c5d1b71646df1ba485a2a5500fd8376a3be3d110812",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    },
+    "postgres": {
+      "license": "PostgreSQL",
+      "platform": "linux/amd64",
+      "reference": "postgres:17.11-trixie@sha256:3cec7eb015ba8adb28139fa5c83b8489cdf0e666e53dfdf20f598ae0cc8739e3",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    },
+    "python": {
+      "license": "PSF-2.0",
+      "platform": "linux/amd64",
+      "reference": "python:3.12.15-slim-trixie@sha256:2b4f19dae3a777dfc3b76730bda1e82e1f66ab2a2686fa93ca78edbfb4f04ffe",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    },
+    "rabbitmq": {
+      "license": "MPL-2.0",
+      "platform": "linux/amd64",
+      "reference": "rabbitmq:4.3.6-management@sha256:1d306c8f8c55cd3ed50271198f4094220e4caed9a8d04a14aca869339d3d3ca9",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    },
+    "redis": {
+      "license": "RSALv2 OR SSPL-1.0",
+      "platform": "linux/amd64",
+      "reference": "redis:7.4.11-alpine@sha256:ca0acbb137c1dc3339c8b147a58fd6f42775d4599327b50e7b116c23de501af2",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    }
+  },
+  "schemaVersion": 1,
+  "sources": {
+    "pgvector": {
+      "commit": "778dacf20c07caf904557a88705142631818d8cb",
+      "url": "https://github.com/pgvector/pgvector",
+      "version": "0.8.1"
+    },
+    "seaweedfs": {
+      "commit": "530be3e37337488ecc34d58441e0bc476e121c93",
+      "compiler": "1.27.2",
+      "patchFiles": {
+        "deploy/security/seaweedfs.go.mod": "0f87660d3ee0ed812bf826effcb978805a2f078c34150613df2735e99e6f55c6",
+        "deploy/security/seaweedfs.go.sum": "024c79a32333739ad86f61900de25632027d3ad6e557003635b10761c044f8f7"
+      },
+      "patchedModules": {
+        "golang.org/x/net": "v0.60.0"
+      },
+      "url": "https://github.com/seaweedfs/seaweedfs",
+      "version": "4.48"
+    }
+  }
+}

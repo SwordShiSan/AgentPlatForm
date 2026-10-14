@@ -1,5 +1,11 @@
 # Deployment
 
+## R0.4 foundation candidate preparation
+
+Current approved inputs are pinned in `foundation.lock.json`; run `python3 deploy/scripts/foundation-inputs.py --fetch` before any build. Offline signed Alpine packages and exact source/module hashes reject drift. PostgreSQL/vector, Redis and SeaweedFS candidates use dedicated Dockerfiles and disclose rebuilds. Redis7.4 uses RSALv2/SSPLv1; the actual upstream license is retained in the image. Distribution must retain license notices and requires review of the selected license's source/service restrictions; no BSD claim or license waiver.
+
+Compose environment images must be supplied by validated `images.env` (cloud config IDs), or by the CI fixture variables. There is no mutable production default. CI builds and audits locally, exporting only accepted images; failed or incomplete scans retain evidence and block export. New foundations remain candidates until fresh runtime, quota,>=30-minute observation and serial restore gates pass. R0.4 remains IMPLEMENTING and R0 remains unreleased.
+
 ## R0.3 minimal cloud developer acceptance
 
 This step uses the explicitly authorized cloud Linux developer environment, independent of legacy data and the later production release gate. Budgets, architecture decisions and all case evidence are defined in the external [formal plan](../../项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R0.3-存储部署与最小云资源实施计划.md) and [step verification](../openspec/changes/archive/2026-10-13-r0-3-storage-deploy-baseline/verification.md).

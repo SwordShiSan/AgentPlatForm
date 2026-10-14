@@ -15,7 +15,8 @@ for pattern in ['*/target/bom-*.json', '*/target/dependency-tree.txt', '*/target
     files.extend((ROOT / 'backend').glob(pattern))
 files.extend((ROOT / 'backend/target').glob('bom-*.json'))
 files.extend((ROOT / 'contracts').rglob('*.json'))
-files.extend([ROOT / 'contracts/openapi.yaml', ROOT / 'deploy/audit-tools.lock.json', ROOT / 'deploy/probes/requirements.lock'])
+files.extend([ROOT / 'contracts/openapi.yaml', ROOT / 'deploy/audit-tools.lock.json', ROOT / 'deploy/probes/requirements.lock', ROOT / 'deploy/foundation.lock.json', ROOT / 'deploy/maven-artifacts.lock.json'])
+files.extend((ROOT / 'deploy/security').glob('*'))
 records = []
 for path in sorted(set(files)):
     if path.name == 'evidence-index.json' or not path.is_file():

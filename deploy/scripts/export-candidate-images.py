@@ -5,6 +5,7 @@ import json
 import os
 import pathlib
 import subprocess
+import tarfile
 
 root = pathlib.Path(__file__).resolve().parents[2]
 if os.environ.get('GITHUB_ACTIONS') != 'true':
@@ -15,10 +16,10 @@ images = [
     ('FRAMEWORK_PROBE_IMAGE', 'agentplatform-framework-probe:r0.2-local'),
     ('STORAGE_PROBE_IMAGE', 'agentplatform-storage-probe:r0.3-ci'),
     ('SANDBOX_IMAGE', 'agentplatform-sandbox:r0.4-ci'),
-    ('POSTGRES_IMAGE', 'pgvector/pgvector:0.8.1-pg17-trixie'),
-    ('REDIS_IMAGE', 'redis:7.4-alpine'),
-    ('RABBITMQ_IMAGE', 'rabbitmq:4.3.6-management'),
-    ('SEAWEEDFS_IMAGE', 'chrislusf/seaweedfs:4.48'),
+    ('POSTGRES_IMAGE', 'agentplatform-postgres:r0.4-ci'),
+    ('REDIS_IMAGE', 'agentplatform-redis:r0.4-ci'),
+    ('RABBITMQ_IMAGE', 'rabbitmq:4.3.6-management@sha256:1d306c8f8c55cd3ed50271198f4094220e4caed9a8d04a14aca869339d3d3ca9'),
+    ('SEAWEEDFS_IMAGE', 'agentplatform-seaweedfs:r0.4-ci'),
 ]
 output = root / 'evidence/r0.4/images'
 output.mkdir(parents=True, exist_ok=True)
@@ -39,6 +40,33 @@ if process.wait():
 with archive.open('rb') as stream:
     for chunk in iter(lambda: stream.read(1024 * 1024), b''):
         digest.update(chunk)
+config_members = {}
+manifest = None
+expected_ids = {record['configId'] for record in records}
+with tarfile.open(archive, mode='r|gz') as exported:
+    for member in exported:
+        if not member.isfile():
+            continue
+        if member.name == 'manifest.json':
+            manifest = json.load(exported.extractfile(member))
+        elif any(member.name.endswith(identity.removeprefix('sha256:') + suffix)
+                 for identity in expected_ids for suffix in ('', '.json')):
+            if member.size > 10 * 1024 * 1024:
+                raise SystemExit('Unexpectedly large exported config')
+            content = exported.extractfile(member).read()
+            identity = 'sha256:' + hashlib.sha256(content).hexdigest()
+            if identity in expected_ids:
+                config_members[member.name] = identity
+if not isinstance(manifest, list):
+    raise SystemExit('Exported Docker manifest is missing')
+manifest_ids = {config_members.get(entry['Config']) for entry in manifest}
+if not expected_ids.issubset(manifest_ids):
+    raise SystemExit('Exported manifest/config does not match inspected images')
+for record in records:
+    record['exportManifestConfig'] = next(entry['Config'] for entry in manifest
+                                          if config_members.get(entry['Config']) == record['configId'])
+    record['foundationLockSha256'] = hashlib.sha256((root / 'deploy/foundation.lock.json').read_bytes()).hexdigest()
+(output / 'export-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
 (output / 'source-images.json').write_text(json.dumps(records, indent=2) + '\n', encoding='utf-8')
 (output / 'archive.sha256').write_text(digest.hexdigest() + '  candidate-images.tar.gz\n', encoding='utf-8')
 (output / 'source-revision.txt').write_text(subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True), encoding='utf-8')

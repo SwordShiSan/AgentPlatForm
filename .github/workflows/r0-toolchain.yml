@@ -11,17 +11,26 @@ concurrency:
   cancel-in-progress: true
 env:
   OPENSPEC_TELEMETRY: '0'
+  POSTGRES_IMAGE: agentplatform-postgres:r0.4-ci
+  REDIS_IMAGE: agentplatform-redis:r0.4-ci
+  RABBITMQ_IMAGE: rabbitmq:4.3.6-management@sha256:1d306c8f8c55cd3ed50271198f4094220e4caed9a8d04a14aca869339d3d3ca9
+  SEAWEEDFS_IMAGE: agentplatform-seaweedfs:r0.4-ci
 jobs:
   toolchain:
     name: R0.1 toolchain
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Frozen Temurin build archive
+        run: |
+          curl --fail --location --retry 3 'https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz' --output "$RUNNER_TEMP/jdk.tar.gz"
+          echo "ce79869e1307ed8ee1e2baa86a412b1eb5b75d10a01006d788a6f968bcfaee94  $RUNNER_TEMP/jdk.tar.gz" | sha256sum --check
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
-          distribution: temurin
-          java-version: '21.0.10'
+          distribution: jdkfile
+          jdkFile: ${{ runner.temp }}/jdk.tar.gz
+          java-version: '21.0.12.1+1'
           cache: maven
           cache-dependency-path: backend/**/pom.xml
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
@@ -62,6 +71,10 @@ jobs:
           sh ./mvnw -B -ntp -Paudit-sbom cyclonedx:makeAggregateBom -DincludeTestScope=true -DoutputName=bom-with-tests
       - name: Linux Docker acceptance
         run: |
+          python3 deploy/scripts/foundation-inputs.py --fetch
+          docker build --platform linux/amd64 -t agentplatform-postgres:r0.4-ci -f deploy/postgres.Dockerfile .
+          docker build --platform linux/amd64 -t agentplatform-redis:r0.4-ci -f deploy/redis.Dockerfile .
+          docker build --platform linux/amd64 -t agentplatform-seaweedfs:r0.4-ci -f deploy/seaweedfs.Dockerfile .
           docker compose -p agentplatform-app -f deploy/compose.r0.1.yaml config --quiet
           docker compose -p agentplatform-app -f deploy/compose.r0.1.yaml up -d --build --wait --wait-timeout 120
       - name: Offline non-root framework acceptance
@@ -84,6 +97,7 @@ jobs:
           for script in deploy/scripts/*.sh; do bash -n "$script"; done
           python3 -m py_compile deploy/scripts/*.py deploy/probes/*.py
           python3 deploy/scripts/test-audit-guards.py
+          python3 deploy/scripts/test-foundation-guards.py
       - name: R0.4 blocking dependency audit
         run: |
           python3 deploy/scripts/install-audit-tools.py
@@ -106,10 +120,10 @@ jobs:
             --target framework-probe=docker:agentplatform-framework-probe:r0.2-local \
             --target storage-probe=docker:agentplatform-storage-probe:r0.3-ci \
             --target sandbox=docker:agentplatform-sandbox:r0.4-ci \
-            --target postgres=docker:pgvector/pgvector:0.8.1-pg17-trixie \
-            --target redis=docker:redis:7.4-alpine \
-            --target rabbitmq=docker:rabbitmq:4.3.6-management \
-            --target seaweedfs=docker:chrislusf/seaweedfs:4.48 \
+            --target postgres=docker:agentplatform-postgres:r0.4-ci \
+            --target redis=docker:agentplatform-redis:r0.4-ci \
+            --target rabbitmq=registry:${RABBITMQ_IMAGE} \
+            --target seaweedfs=docker:agentplatform-seaweedfs:r0.4-ci \
             --target audit-tools=dir:.tools/audit
       - name: Export same audited immutable images
         run: |
@@ -120,7 +134,7 @@ jobs:
       - name: Stop only the R0 shell
         if: always()
         run: docker compose -p agentplatform-app -f deploy/compose.r0.1.yaml down
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         if: always()
         with:
           name: r0-1-verification
@@ -136,7 +150,7 @@ jobs:
             backend/**/target/dependency-tree.txt
             backend/**/target/effective-pom.xml
           retention-days: 30
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: r0-4-immutable-images
           path: evidence/r0.4/images

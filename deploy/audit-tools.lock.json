@@ -63,8 +63,8 @@
       "source": "https://github.com/actions/setup-node"
     },
     "upload-artifact": {
-      "major": "v4",
-      "sha": "ea165f8d65b6e75b540449e92b4886f43607fa02",
+      "major": "v6",
+      "sha": "b7c566a772e6b6bfb58ed0dc250532a479d7789f",
       "source": "https://github.com/actions/upload-artifact"
     }
   }

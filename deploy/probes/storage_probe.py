@@ -85,6 +85,12 @@ def rollback():
   except psycopg.errors.DivisionByZero:pass
   assert c.execute('SELECT count(*) FROM pf.r03_probe_reference WHERE object_key=%s',(key,)).fetchone()[0]==0
 
+def vector_compatibility():
+ with db() as c:
+  assert c.execute("SELECT extversion FROM pg_extension WHERE extname='vector'").fetchone()[0]=='0.8.1'
+  assert c.execute("SELECT '[1,2,3]'::vector <-> '[1,2,3]'::vector").fetchone()[0]==0.0
+  assert c.execute("SELECT '[1,0]'::vector <-> '[0,1]'::vector").fetchone()[0]>1.4
+
 def dispatch():
  task,event=str(uuid.uuid4()),str(uuid.uuid4());owner=str(uuid.uuid4())
  envelope={'schemaVersion':1,'eventId':event,'spaceId':str(uuid.uuid4()),'aggregateId':task,'generation':1,'kind':'execution.ready','occurredAt':'2026-10-13T00:00:00Z','traceparent':None,'payloadRef':task}
@@ -196,7 +202,7 @@ def cleanup():
 try:
  mode=os.environ.get('PROBE_MODE','initial')
  if mode=='initial':
-  setup();case('DB-rollback',rollback);case('MQ-confirm-duplicate-rollback-fence',dispatch);case('S3-hash-range-multipart-orphan',object_write);case('Redis-auth-ping',redis);case('STS-disabled-denial',sts_disabled)
+  setup();case('DB-vector-version-distance',vector_compatibility);case('DB-rollback',rollback);case('MQ-confirm-duplicate-rollback-fence',dispatch);case('S3-hash-range-multipart-orphan',object_write);case('Redis-auth-ping',redis);case('STS-disabled-denial',sts_disabled)
  elif mode=='bootstrap':case('S3-bucket-admin-only',provision_bucket)
  elif mode=='restart':case('S3-restart-persistence',object_after_restart);case('Redis-restart-auth',redis)
  elif mode=='cleanup':case('Probe-fixture-cleanup',cleanup)

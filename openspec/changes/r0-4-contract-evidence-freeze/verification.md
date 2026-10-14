@@ -1,5 +1,10 @@
 # Verification
 
+## Current foundation replan (2026-10-14)
+Approved from5316ba6: Trixie/Noble/Alpine3.24 container bases and compatible source security rebuilds; host OS unchanged. Previous foundation scope question is resolved. New foundation builds/scans and full runtime reacceptance initially NOT_RUN; historical blocking reports retained. Test manifest/source/package drift rejection, exact applicability evidence invalidation, unrelated critical rejection, real compatibility and restore failure cleanup. No promotion until all mandatory gates pass.
+
+Foundation implementation preparation: exact10 platform manifests, pgvector/SeaweedFS source commits and archive hashes, offline Alpine3.24 OpenSSL3.5.9/zlib1.3.2-r1/pcre2 packages and patched Go module files frozen. Python lock omission fixed: typing-extensions4.16.0 was required by actual CPython3.12 CI (prior run38511174960 failed storage-probe build). All12 wheels downloaded with hashes; complete install/pip-check remains CI-gated. Node22.23.3 and Temurin21.0.12.1 official archives hashed, HOST44/Vue15/type/build/frozen-lock PASS; foundation+MCP/workspace guards5 PASS. Contract eight-file freeze unchanged. New raw foundation audits FAIL; no broad VEX statements created. PG/vector/Redis/SeaweedFS Dockerfiles are candidates pending CI; actual vector distance/version check added. CI artifact Action upgraded to frozen v6 SHA; same protected check and30-day retention. No cloud services paused, no accepted export or promotion.
+
 2026-10-14 independent security Plan completed and approved. Continue16677a8/same change. Earlier HOST scans are preparation history. Reaccept patched immutable products; mandatory additions: patch convergence/old Jackson2 fixture, exact product MCP no-server proof and VEX invalidation, STS denial/KEK secret protection, restore empty/unusual filenames/bad hash/capacity/missing mount/health failure and actual restored quota rejection.
 All cases initially NOT_RUN. No VERIFIED until every mandatory case and both promotions pass.
 
