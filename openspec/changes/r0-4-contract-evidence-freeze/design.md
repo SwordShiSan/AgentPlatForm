@@ -1,5 +1,14 @@
 # Accepted Plan
 
+## Audit tool source candidates
+Preserve the official Syft1.54.1/Grype0.120.1 bootstrap tools and their raw
+reports. Build separate disclosed candidates from their exact official commits,
+Go1.27.2 and frozen x/net0.60.0 module patches. CI tests the complete core and
+internal package suites before building with upstream Linux release tags.
+Record source/module/license/binary hashes and version output. These candidate
+binaries cannot replace the accepted tool lock until tests, actual CLI behavior,
+SBOM and security review pass; a source build is not a scan acceptance.
+
 ## Frozen runtime build dependencies (2026-10-14)
 The Go1.26.9 fallback passed all199 selected upstream buffer/network tests,
 including static analysis. Full upstream release packaging then required clang

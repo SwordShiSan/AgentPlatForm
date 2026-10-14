@@ -16,6 +16,33 @@ env:
   RABBITMQ_IMAGE: rabbitmq:4.3.6-management@sha256:1d306c8f8c55cd3ed50271198f4094220e4caed9a8d04a14aca869339d3d3ca9
   SEAWEEDFS_IMAGE: agentplatform-seaweedfs:r0.4-ci
 jobs:
+  audit-candidate:
+    name: R0.4 audit rebuild candidate (${{ matrix.tool }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [syft, grype]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Verify security rebuild inputs
+        run: python3 deploy/scripts/foundation-inputs.py --fetch
+      - name: Build and test frozen audit source candidate
+        run: |
+          mkdir -p evidence/r0.4/audit-candidate-${{ matrix.tool }}
+          docker build --platform linux/amd64 --build-arg TOOL=${{ matrix.tool }} -t agentplatform-audit-build:${{ matrix.tool }} -f deploy/audit-candidate.Dockerfile . 2>&1 | tee evidence/r0.4/audit-candidate-${{ matrix.tool }}/build.log
+          docker create --name r04-audit-export agentplatform-audit-build:${{ matrix.tool }} /bin/true
+          docker cp r04-audit-export:/out/. evidence/r0.4/audit-candidate-${{ matrix.tool }}/
+          sha256sum deploy/foundation.lock.json > evidence/r0.4/audit-candidate-${{ matrix.tool }}/foundation-lock.sha256
+          git rev-parse HEAD > evidence/r0.4/audit-candidate-${{ matrix.tool }}/source-revision.txt
+          docker rm r04-audit-export
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: r0-4-audit-candidate-${{ matrix.tool }}
+          path: evidence/r0.4/audit-candidate-${{ matrix.tool }}
+          retention-days: 30
   runtime-candidate:
     name: R0.4 runtime rebuild candidate
     runs-on: ubuntu-24.04

@@ -311,6 +311,10 @@
       "url": "https://deb.debian.org/debian/pool/main/f/flex/flex_2.6.4-8.2+b4_amd64.deb",
       "version": "2.6.4-8.2+b4"
     },
+    "grype-source.tar.gz": {
+      "sha256": "7339720bfa80d9bf3abc00b58d92c2803b09508181b1a421945017051b81616b",
+      "url": "https://codeload.github.com/anchore/grype/tar.gz/0d30618ef52e666f1c626f4cc463eb940cb6e498"
+    },
     "gvisor-source.tar.gz": {
       "sha256": "c5dc39958098af75bfdf25ccab48e4ea41034bdc7f2078a4d3be84d2f235e2bd",
       "url": "https://codeload.github.com/google/gvisor/tar.gz/97e8e896904cb364319cd9758241d3f0bd27a6f4"
@@ -356,6 +360,10 @@
     "seaweedfs.tar.gz": {
       "sha256": "217b507e7457d10629e837cebea6542d8b7685819dafbb56ef910330594af0e1",
       "url": "https://codeload.github.com/seaweedfs/seaweedfs/tar.gz/530be3e37337488ecc34d58441e0bc476e121c93"
+    },
+    "syft-source.tar.gz": {
+      "sha256": "b1412dc351c13aa3a1964f1cb8673bddf04fc82e5e812849fa2140f6c765753a",
+      "url": "https://codeload.github.com/anchore/syft/tar.gz/749cd89ef26db65d5102d879f5dd63a174312b1e"
     },
     "zlib-1.3.2-r1.apk": {
       "sha256": "63aeea03c15a2f9018f81805cfc8aa926bdf5cd68921f22149c2fbb5d0ee9f47",
@@ -432,6 +440,17 @@
   },
   "schemaVersion": 1,
   "sources": {
+    "grype": {
+      "commit": "0d30618ef52e666f1c626f4cc463eb940cb6e498",
+      "compiler": "Go1.27.2",
+      "license": "Apache-2.0",
+      "patchFiles": {
+        "deploy/security/grype.go.mod": "46cda1d5887ce9bf216a2aa21cbe04f161edc17697bae473dce6fd7a76f01906",
+        "deploy/security/grype.go.sum": "06dc4b3666110ef715f06184b630784af78f72f719195f940548741ee865e638"
+      },
+      "status": "CANDIDATE_NOT_ACCEPTED",
+      "version": "0.120.1"
+    },
     "gvisor": {
       "commit": "97e8e896904cb364319cd9758241d3f0bd27a6f4",
       "compilerCandidate": "1.26.9",
@@ -462,6 +481,17 @@
       },
       "url": "https://github.com/seaweedfs/seaweedfs",
       "version": "4.48"
+    },
+    "syft": {
+      "commit": "749cd89ef26db65d5102d879f5dd63a174312b1e",
+      "compiler": "Go1.27.2",
+      "license": "Apache-2.0",
+      "patchFiles": {
+        "deploy/security/syft.go.mod": "779a628967e4006a15bb531cbc0a0977be34ad05bd22b95e9d6bf6bd0f768bbc",
+        "deploy/security/syft.go.sum": "013e0648f690429b8258bd69fa86ac541057c5f9eb1ec64ac81c3c70db491184"
+      },
+      "status": "CANDIDATE_NOT_ACCEPTED",
+      "version": "1.54.1"
     }
   }
 }

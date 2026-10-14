@@ -43,3 +43,8 @@ Go1.26.9:199/199 selected upstream tests PASS at17a8a91; full release FAIL
 because clang was absent. Frozen clang/libbpf package installation, complete
 release output and runtime security/compatibility acceptance remain NOT_RUN
 until the next candidate provides fresh evidence. No test/target is removed.
+# Audit tool candidates
+Exact source and patched module hashes must pass foundation input checks.
+CI core/internal tests and build must pass; version and binary hashes retained.
+Tool replacement, actual CLI behavior and binary security acceptance NOT_RUN
+until exact candidate evidence passes. Original official tools/raw scans remain.
