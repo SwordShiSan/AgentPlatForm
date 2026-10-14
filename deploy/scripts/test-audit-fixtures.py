@@ -13,6 +13,17 @@ spec.loader.exec_module(fixtures)
 
 
 class FixtureGuards(unittest.TestCase):
+    def test_oras_raw_fingerprint_file_is_not_a_tar_archive(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp).resolve()
+            blob = root / 'raw-file'
+            blob.write_bytes(b'{"digest":"fixture"}')
+            layer = {'annotations': {'org.opencontainers.image.title': '.tmp/cache_paths.json'}}
+            fixtures.restore_layer(blob, layer, root)
+            self.assertEqual(blob.read_bytes(), (root / '.tmp/cache_paths.json').read_bytes())
+            layer['annotations']['org.opencontainers.image.title'] = 'unexpected.json'
+            with self.assertRaisesRegex(ValueError, 'Unsupported frozen fixture'):
+                fixtures.restore_layer(blob, layer, root)
     def test_unlocked_source_symlink_rejected_before_extraction(self):
         with tempfile.TemporaryDirectory() as temp:
             root = pathlib.Path(temp).resolve()

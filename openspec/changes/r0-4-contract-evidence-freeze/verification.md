@@ -82,3 +82,8 @@ fixture guards, six STS guards, two foundation guards and two actual candidate
 run-block failure injections PASS. The CI guards prove failed commands stop
 before acceptance records rather than merely searching for pipefail text.
 Final candidate Linux SDK/image scans remain NOT_RUN until the fresh run.
+# Frozen ORAS format correction
+98aa43c/run38570730851 Syft fails closed at the raw cache_paths.json layer
+after frozen layer downloads; directory layers are unpack-marked tar, while
+the final fingerprint layer is a raw file. Exact marker handling and a sixth
+fixture test added; hashes/paths/source fingerprints remain mandatory.

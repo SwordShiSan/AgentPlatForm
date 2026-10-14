@@ -86,6 +86,19 @@ def unpack(blob, title, root):
         archive.extractall(destination, filter='data')
 
 
+def restore_layer(blob, layer, root):
+    annotations = layer['annotations']
+    title = annotations['org.opencontainers.image.title']
+    if annotations.get('io.deis.oras.content.unpack') == 'true':
+        unpack(blob, title, root)
+    elif title == '.tmp/cache_paths.json' and 'io.deis.oras.content.unpack' not in annotations:
+        target = safe_path(root, title)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(blob.read_bytes())
+    else:
+        raise ValueError('Unsupported frozen fixture layer format')
+
+
 def verify_fingerprints(root, manifest, paths, source_hashes=None):
     if paths['digest'] != manifest['annotations']['fingerprint']:
         raise ValueError('Fixture manifest fingerprint mismatch')
@@ -153,7 +166,7 @@ def restore(root, output):
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         blobs = list(pool.map(fetch, manifest['layers']))
     for blob, layer in zip(blobs, manifest['layers']):
-        unpack(blob, layer['annotations']['org.opencontainers.image.title'], root)
+        restore_layer(blob, layer, root)
     paths = json.loads((root / '.tmp/cache_paths.json').read_text())
     checks = verify_fingerprints(root, manifest, paths, source_hashes)
     output.write_text(json.dumps({'reference': binding['reference'], 'manifestSha256': binding['manifestSha256'],

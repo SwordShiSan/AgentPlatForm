@@ -36,6 +36,10 @@ Unknown links, hardlinks and paths fail. Never use fully_trusted extraction.
 despite an AbsoluteLinkError and is recorded FAIL, not PASS.
 
 ## Audit candidate test environment correction
+The frozen ORAS artifact marks directory layers with
+io.deis.oras.content.unpack=true; its cache_paths.json layer is a raw file.
+Respect that exact format marker, accepting only the frozen raw filename.
+Never catch malformed tar errors and silently reinterpret them as raw files.
 After Linux core/internal acceptance, also cross-build Windows/amd64 using
 the upstream Windows release configuration (no Linux-only storage tags).
 Record separate binary hashes/build-info; actual Windows CLI/SBOM/DB smoke
