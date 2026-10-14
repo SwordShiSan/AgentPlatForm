@@ -485,6 +485,11 @@
     "syft": {
       "commit": "749cd89ef26db65d5102d879f5dd63a174312b1e",
       "compiler": "Go1.27.2",
+      "fixtureCache": {
+        "manifestSha256": "e6b19adc12b6eb088d78d3cb9cb149c116ceda0191e5ac11609a8d1535f9c6bf",
+        "reference": "ghcr.io/anchore/oss-cache/syft-test-fixture-cache@sha256:e6b19adc12b6eb088d78d3cb9cb149c116ceda0191e5ac11609a8d1535f9c6bf",
+        "status": "TEST_INPUT_CANDIDATE_NOT_VERIFIED"
+      },
       "license": "Apache-2.0",
       "patchFiles": {
         "deploy/security/syft.go.mod": "779a628967e4006a15bb531cbc0a0977be34ad05bd22b95e9d6bf6bd0f768bbc",

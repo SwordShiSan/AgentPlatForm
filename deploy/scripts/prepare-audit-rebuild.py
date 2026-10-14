@@ -22,8 +22,8 @@ for tool, commit in commits.items():
         patch = ROOT / 'deploy/security' / (tool + '.' + module_file)
         shutil.copyfile(ROOT / '.cache/r04-audit-mods' / tool / module_file, patch)
         patches[patch.relative_to(ROOT).as_posix()] = hashlib.sha256(patch.read_bytes()).hexdigest()
-    lock['sources'][tool] = {'commit': commit, 'version': versions[tool],
+    lock['sources'].setdefault(tool, {}).update({'commit': commit, 'version': versions[tool],
                             'patchFiles': patches, 'status': 'CANDIDATE_NOT_ACCEPTED',
-                            'license': 'Apache-2.0', 'compiler': 'Go1.27.2'}
+                            'license': 'Apache-2.0', 'compiler': 'Go1.27.2'})
 lock_path.write_text(json.dumps(lock, indent=2, sort_keys=True) + '\n', encoding='utf-8')
 print('Frozen Syft/Grype source candidates; accepted tool lock unchanged')

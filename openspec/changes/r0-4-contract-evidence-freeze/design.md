@@ -1,5 +1,20 @@
 # Accepted Plan
 
+## Audit candidate test environment correction
+The first source candidates failed because Docker-build RUN lacked Docker/zip/
+zstd, Git repository discovery and generated fixtures; root also invalidated
+permission-denial tests. Run the same complete core/internal suites as the
+non-root CI runner, using Go1.27.2 copied from the frozen compiler image and
+verified source/module hashes. Check host Docker/zip/zstd identity, record
+versions/checksums and fail when tools are missing. Reconstruct a local Git
+root solely for upstream root discovery; source provenance remains the exact
+official archive/commit plus recorded patches, never the synthetic Git HEAD.
+Use the official Syft fixture OCI cache pinned at preparation by registry digest,
+all layer hashes and source-input fingerprints; mismatch fails rather than
+using stale fixtures or fetching a floating replacement. Build and retain
+candidate output only after tests pass. CI Docker access is for disposable
+test fixtures; no cloud build or sandbox Docker socket access is introduced.
+
 ## Disabled STS wire-level acceptance
 SeaweedFS4.48 with IAM disabled and no STS handlers registers only GET at
 the root; signed STS POST requests can return empty405 rather than AWS XML.

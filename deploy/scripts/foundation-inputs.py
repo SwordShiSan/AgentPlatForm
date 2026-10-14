@@ -48,6 +48,14 @@ def verify_dockerfiles(lock):
     for source in lock.get('sources', {}).values():
         if not re.fullmatch(r'[a-f0-9]{40}', source['commit']):
             raise ValueError('Source commit must be exact')
+        if 'fixtureCache' in source:
+            fixture = source['fixtureCache']
+            manifest = ROOT / 'deploy/security/syft-fixture-cache.json'
+            expected = fixture['manifestSha256']
+            if not re.fullmatch(r'[a-f0-9]{64}', expected) or fixture['reference'] != 'ghcr.io/anchore/oss-cache/syft-test-fixture-cache@sha256:' + expected:
+                raise ValueError('Mutable or invalid fixture identity')
+            if hashlib.sha256(manifest.read_bytes()).hexdigest() != expected:
+                raise ValueError('Frozen fixture manifest drift')
         for name, expected in source.get('patchFiles', {}).items():
             path = (ROOT / name).resolve()
             if not path.is_relative_to(ROOT) or hashlib.sha256(path.read_bytes()).hexdigest() != expected:

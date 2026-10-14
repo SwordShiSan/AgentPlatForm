@@ -55,3 +55,15 @@ PASS before disabled STS failed with ResponseParserError on an empty refusal.
 Wire-level denial validator has six passing failure-boundary tests. Signed
 body/query HTTP refusal and dependency restart/CAS acceptance must rerun in CI.
 The prior failure remains evidence; no scan/cloud acceptance is implied.
+# Latest completed CI evidence (2026-10-14)
+48233a4d3d59f6d659a2fbb22ae124cce430593e, run38545592217:
+runtime job115796235320 PASS including the full gVisor release package.
+Toolchain job115796235144 passes host, Docker, Linux SDK, four browser cases,
+real PG/vector/rollback/MQ/fence/S3/Redis, six signed STS body/query405 refusals,
+S3/Redis restart and Java CAS. Blocking dependency audit FAIL; no image export.
+Audit source jobs115796234929/115796235301 FAIL on test prerequisites and root
+permission assumptions. Corrected non-root CI/compiler/fixture-cache execution
+and four fixture safety tests PASS locally (after Windows sandbox realpath
+AccessDenied was rerun outside the sandbox in the same repo temp directory).
+Full corrected source candidate tests NOT_RUN until a fresh exact-head run.
+R0.4 remains IMPLEMENTING; cloud/runtime limits/XFS/soak/restore NOT_RUN.

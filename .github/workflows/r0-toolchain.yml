@@ -31,12 +31,16 @@ jobs:
       - name: Build and test frozen audit source candidate
         run: |
           mkdir -p evidence/r0.4/audit-candidate-${{ matrix.tool }}
-          docker build --platform linux/amd64 --build-arg TOOL=${{ matrix.tool }} -t agentplatform-audit-build:${{ matrix.tool }} -f deploy/audit-candidate.Dockerfile . 2>&1 | tee evidence/r0.4/audit-candidate-${{ matrix.tool }}/build.log
-          docker create --name r04-audit-export agentplatform-audit-build:${{ matrix.tool }} /bin/true
-          docker cp r04-audit-export:/out/. evidence/r0.4/audit-candidate-${{ matrix.tool }}/
+          compiler='golang:1.27.2-trixie@sha256:2d658507a011f1eadc0114d7a421b312b2e77d9042a24036a26e267cc9231677'
+          docker pull "$compiler"
+          docker image inspect "$compiler" > evidence/r0.4/audit-candidate-${{ matrix.tool }}/compiler-image.json
+          docker create --name r04-audit-compiler "$compiler" /bin/true
+          mkdir -p .tools
+          docker cp r04-audit-compiler:/usr/local/go .tools/audit-go
+          docker rm r04-audit-compiler
+          python3 deploy/scripts/audit-source-acceptance.py --tool ${{ matrix.tool }} --go .tools/audit-go/bin/go --output evidence/r0.4/audit-candidate-${{ matrix.tool }} 2>&1 | tee evidence/r0.4/audit-candidate-${{ matrix.tool }}/build.log
           sha256sum deploy/foundation.lock.json > evidence/r0.4/audit-candidate-${{ matrix.tool }}/foundation-lock.sha256
           git rev-parse HEAD > evidence/r0.4/audit-candidate-${{ matrix.tool }}/source-revision.txt
-          docker rm r04-audit-export
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         if: always()
         with:
@@ -151,6 +155,7 @@ jobs:
           python3 deploy/scripts/test-audit-guards.py
           python3 deploy/scripts/test-foundation-guards.py
           python3 deploy/scripts/test-sts-denial.py
+          python3 deploy/scripts/test-audit-fixtures.py
       - name: R0.4 blocking dependency audit
         run: |
           python3 deploy/scripts/install-audit-tools.py
