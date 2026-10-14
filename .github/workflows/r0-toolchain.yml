@@ -29,10 +29,12 @@ jobs:
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           distribution: jdkfile
-          jdkFile: ${{ runner.temp }}/jdk.tar.gz
-          java-version: '21.0.12.1+1'
+          jdk-file: ${{ runner.temp }}/jdk.tar.gz
+          java-version: '21'
           cache: maven
           cache-dependency-path: backend/**/pom.xml
+      - name: Verify actual frozen JDK patch
+        run: java -version 2>&1 | tee "$RUNNER_TEMP/java-version.txt" | grep -F 'Temurin-21.0.12.1+1'
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
           node-version-file: .node-version
