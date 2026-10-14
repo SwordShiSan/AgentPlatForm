@@ -1,0 +1,149 @@
+--- a/runsc/cgroup/cgroup.go
++++ b/runsc/cgroup/cgroup.go
+@@ -1083,17 +1083,17 @@
+ }
+ 
+ func (*pids) skip(spec *specs.LinuxResources) error {
+-	if spec != nil && spec.Pids != nil && spec.Pids.Limit > 0 {
++	if spec != nil && spec.Pids != nil && spec.Pids.Limit != nil && *spec.Pids.Limit > 0 {
+ 		return fmt.Errorf("Pids.Limit set but pids cgroup controller not found")
+ 	}
+ 	return nil
+ }
+ 
+ func (*pids) set(spec *specs.LinuxResources, path string) error {
+-	if spec == nil || spec.Pids == nil || spec.Pids.Limit <= 0 {
++	if spec == nil || spec.Pids == nil || spec.Pids.Limit == nil || *spec.Pids.Limit <= 0 {
+ 		return nil
+ 	}
+-	val := strconv.FormatInt(spec.Pids.Limit, 10)
++	val := strconv.FormatInt(*spec.Pids.Limit, 10)
+ 	return setValue(path, "pids.max", val)
+ }
+ 
+--- a/runsc/cgroup/cgroup_v2.go
++++ b/runsc/cgroup/cgroup_v2.go
+@@ -670,18 +670,18 @@
+ }
+ 
+ func (*pid2) generateProperties(spec *specs.LinuxResources) ([]dbus.Property, error) {
+-	if spec != nil && spec.Pids != nil {
+-		return []dbus.Property{newProp("TasksMax", uint64(spec.Pids.Limit))}, nil
++	if spec != nil && spec.Pids != nil && spec.Pids.Limit != nil {
++		return []dbus.Property{newProp("TasksMax", uint64(*spec.Pids.Limit))}, nil
+ 	}
+ 	return []dbus.Property{}, nil
+ }
+ 
+ func (*pid2) set(spec *specs.LinuxResources, path string) error {
+-	if spec == nil || spec.Pids == nil {
++	if spec == nil || spec.Pids == nil || spec.Pids.Limit == nil {
+ 		return nil
+ 	}
+ 
+-	if val := numToStr(spec.Pids.Limit); val != "" {
++	if val := numToStr(*spec.Pids.Limit); val != "" {
+ 		return setValue(path, "pids.max", val)
+ 	}
+ 
+--- a/runsc/cmd/update.go
++++ b/runsc/cmd/update.go
+@@ -235,7 +235,7 @@
+ 		}
+ 
+ 		if u.pidsLimit > 0 {
+-			r.Pids = &specs.LinuxPids{Limit: u.pidsLimit}
++			r.Pids = &specs.LinuxPids{Limit: &u.pidsLimit}
+ 		}
+ 	}
+ 
+--- a/runsc/cgroup/cgroup_test.go
++++ b/runsc/cgroup/cgroup_test.go
+@@ -692,7 +692,7 @@
+ 	}{
+ 		{
+ 			name: "all",
+-			spec: &specs.LinuxPids{Limit: 1},
++			spec: &specs.LinuxPids{Limit: pidLimitPointer(1)},
+ 			wants: map[string]string{
+ 				"pids.max": "1",
+ 			},
+@@ -884,7 +884,7 @@
+ 			}{
+ 				{
+ 					name: "limit",
+-					spec: &specs.LinuxResources{Pids: &specs.LinuxPids{Limit: 1}},
++					spec: &specs.LinuxResources{Pids: &specs.LinuxPids{Limit: pidLimitPointer(1)}},
+ 					err:  "Pids.Limit set but pids cgroup controller not found",
+ 				},
+ 			},
+@@ -1269,3 +1269,58 @@
+ 		t.Errorf("c.Own[\"memory\"] = false, want true")
+ 	}
+ }
++
++func pidLimitPointer(value int64) *int64 { return &value }
++
++func TestPidPointerBoundaries(t *testing.T) {
++	for _, tc := range []struct {
++		name   string
++		limit  *int64
++		v1, v2 string
++	}{
++		{"nil", nil, "", ""},
++		{"zero", pidLimitPointer(0), "", ""},
++		{"platform128", pidLimitPointer(128), "128", "128"},
++		{"unlimited", pidLimitPointer(-1), "", "max"},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			spec := &specs.LinuxResources{Pids: &specs.LinuxPids{Limit: tc.limit}}
++			for _, version := range []string{"v1", "v2"} {
++				dir := t.TempDir()
++				want := tc.v1
++				var err error
++				if version == "v1" {
++					err = (&pids{}).set(spec, dir)
++				} else {
++					want = tc.v2
++					err = (&pid2{}).set(spec, dir)
++				}
++				if err != nil {
++					t.Fatalf("%s set: %v", version, err)
++				}
++				data, readErr := os.ReadFile(filepath.Join(dir, "pids.max"))
++				if want == "" {
++					if !os.IsNotExist(readErr) {
++						t.Fatalf("%s unexpected write: %q, %v", version, data, readErr)
++					}
++				} else if readErr != nil || strings.TrimSpace(string(data)) != want {
++					t.Fatalf("%s got %q, %v; want %q", version, data, readErr, want)
++				}
++			}
++			props, err := (&pid2{}).generateProperties(spec)
++			if err != nil {
++				t.Fatal(err)
++			}
++			if tc.limit == nil {
++				if len(props) != 0 {
++					t.Fatalf("nil limit must leave systemd unchanged: %v", props)
++				}
++			} else if len(props) != 1 || props[0].Value.Value() != uint64(*tc.limit) {
++				t.Fatalf("systemd PID value changed: %v", props)
++			}
++			if got := (&pids{}).skip(spec); (got != nil) != (tc.limit != nil && *tc.limit > 0) {
++				t.Fatalf("missing controller must reject positive PID limit: %v", got)
++			}
++		})
++	}
++}
+--- a/runsc/cgroup/systemd_test.go
++++ b/runsc/cgroup/systemd_test.go
+@@ -369,7 +369,7 @@
+ 			Shares: &cpuShares,
+ 		},
+ 		Pids: &specs.LinuxPids{
+-			Limit: pidsLimit,
++			Limit: &pidsLimit,
+ 		},
+ 	}
+ 	if err := cg.installCompatDir(res); err != nil {

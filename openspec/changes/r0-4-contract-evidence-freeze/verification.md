@@ -88,6 +88,7 @@ after frozen layer downloads; directory layers are unpack-marked tar, while
 the final fingerprint layer is a raw file. Exact marker handling and a sixth
 fixture test added; hashes/paths/source fingerprints remain mandatory.
 # Actual rebuilt runtime scan
+Run51/da65f88 runtime build FAIL: OCI runtime-spec1.3 changed LinuxPids.Limit to *int64; cgroup and update source still uses integer semantics. No new runtime package accepted. Implement a hashed compatibility patch and add actual upstream cgroup tests; do not roll back containerd security fix or weaken PID admission.
 Run38573801766 (b93463e): source Syft fingerprint validation fails closed at classifiers/bin/./config.yaml. Official frozen source stores that config at binary/testdata/config.yaml; generator output nesting is not its working directory. Add ancestor-relative positive coverage and traversal/changed-source rejection before candidate reacceptance. Backend, contracts, Linux SDK, browser and real storage jobs PASS; blocking security audit FAIL, image export skipped. R0.4 remains IMPLEMENTING.
 Source48233a4, GitHub ZIP8cd057e6.../runtime package hash verified; all7 package
 binaries imported for local scanning, no cloud installation. Raw scan FAIL4:

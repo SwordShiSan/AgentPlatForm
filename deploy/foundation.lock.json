@@ -461,7 +461,8 @@
       "crossCompilerIndexSha256": "7778d3e3f303b7ddb8ce0fe7c8d57473a076c6bf2e8f241f75421d2396352498",
       "patchFiles": {
         "deploy/security/gvisor.go.mod": "8f95c9e3be1c393a50ef0cf100053ef77eeadebcde0c0013f76613493817593f",
-        "deploy/security/gvisor.go.sum": "2c9684e9fbb78a0526d08f2e4b60a7a6358c3a97f17d4960a270da9e0b565143"
+        "deploy/security/gvisor.go.sum": "2c9684e9fbb78a0526d08f2e4b60a7a6358c3a97f17d4960a270da9e0b565143",
+        "deploy/security/gvisor-pid-pointer.patch": "5f620a0662727f2489f27c5ee84d97769c6cde922e6d26aebb3320f03af2e6f0"
       },
       "securityModules": {
         "github.com/containerd/containerd/v2": "v2.2.4",

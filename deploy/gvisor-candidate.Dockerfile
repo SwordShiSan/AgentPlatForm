@@ -11,9 +11,11 @@ COPY .cache/foundation/gvisor-source.tar.gz /tmp/gvisor-source.tar.gz
 RUN tar -xzf /tmp/gvisor-source.tar.gz --strip-components=1 -C /source
 COPY deploy/security/gvisor.go.mod /source/go.mod
 COPY deploy/security/gvisor.go.sum /source/go.sum
+COPY deploy/security/gvisor-pid-pointer.patch /tmp/gvisor-pid-pointer.patch
+RUN git apply --check /tmp/gvisor-pid-pointer.patch && git apply /tmp/gvisor-pid-pointer.patch
 # Resolve/freeze Bazel's transitive analysis lock before test/build. These exact
 # locks are exported as evidence; promotion requires reviewing the resulting lock.
 RUN mkdir /out && bazel --batch mod deps && sha256sum MODULE.bazel.lock go.mod go.sum > /out/build-inputs.sha256 && cp MODULE.bazel.lock /out/
-RUN bazel --batch test --lockfile_mode=error --jobs=2 --test_output=errors //pkg/buffer:buffer_test //pkg/tcpip/...
+RUN bazel --batch test --lockfile_mode=error --jobs=2 --test_output=errors //pkg/buffer:buffer_test //pkg/tcpip/... //runsc/cgroup:cgroup_test
 RUN bazel --batch build --lockfile_mode=error --nostamp --jobs=2 -c opt //debian:gvisor-release-tar-bz2 && cp bazel-bin/debian/gvisor.tar.bz2 /out/
 RUN printf '%s\n' 'Platform security rebuild candidate, NOT accepted: source97e8e896; Bazel SDK Go1.26.9 fallback from frozen go.mod; frozen module patches; preserves full sidecar package' > /out/REBUILD.txt && sha256sum /out/gvisor.tar.bz2 > /out/runtime.sha256
