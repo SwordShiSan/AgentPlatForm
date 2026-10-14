@@ -1,6 +1,8 @@
 FROM python:3.12.15-slim-trixie@sha256:2b4f19dae3a777dfc3b76730bda1e82e1f66ab2a2686fa93ca78edbfb4f04ffe AS python
 FROM golang:1.27.2-trixie@sha256:2d658507a011f1eadc0114d7a421b312b2e77d9042a24036a26e267cc9231677
 COPY --from=python /usr/local/ /usr/local/
+COPY .cache/foundation/cross-*.deb /build-inputs/
+RUN dpkg -i /build-inputs/*.deb && rm -r /build-inputs
 COPY .cache/foundation/bazel-linux /usr/local/bin/bazel
 RUN chmod 0755 /usr/local/bin/bazel && bazel --version
 ENV GOTOOLCHAIN=local
