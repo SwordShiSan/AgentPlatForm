@@ -1,8 +1,8 @@
 ## Governance
-- [ ] 1.1 Record approved HTTP/no-DNS plan and ADR; complete five artifacts and strict before implementation.
+- [x] 1.1 Record approved HTTP/no-DNS plan and ADR; complete five artifacts and strict before implementation.
 ## Implementation and local gates
-- [ ] 2.1 Add HTTP production overrides,Host routing and guarded lifecycle/rollback.
-- [ ] 2.2 Run full engineering/SDK/storage/browser regression and new production boundary/failure tests.
+- [x] 2.1 Add HTTP production overrides,Host routing and guarded lifecycle/rollback.
+- [x] 2.2 Run full engineering/SDK/storage/browser regression and new production boundary/failure tests.
 - [ ] 2.3 Review immutable identities and promote exact configuration step→phase→main.
 ## Cloud release
 - [ ] 3.1 Fresh inventory/backup/capacity admission; pause original legacy stack.
