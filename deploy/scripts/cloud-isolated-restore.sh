@@ -32,11 +32,31 @@ trap cleanup EXIT
 tar -xzf "$backup/data.tgz" -C "$restore"
 cp -a "$backup/protected-keys/secrets" "$restore/"
 cp -a "$backup/protected-keys/config" "$restore/"
-mkdir -m700 "$restore/quota" "$restore/workspaces" "$restore/reports"
+mkdir -m700 "$restore/quota" "$restore/workspaces" "$restore/reports" "$restore/operations"
+python3 - "$backup/protected-keys" "$restore" <<'PY'
+import hashlib,pathlib,sys
+before,after=map(pathlib.Path,sys.argv[1:])
+def manifest(root):
+    return {str(path.relative_to(root)):hashlib.sha256(path.read_bytes()).hexdigest()
+            for folder in ('secrets','config') for path in (root/folder).rglob('*') if path.is_file()}
+assert manifest(before)==manifest(after),'Restored key/config identity differs'
+print('Protected key/config identities:PASS')
+PY
 cp --reflink=auto "$backup/workspaces.xfs" "$restore/quota/workspaces.xfs"
-# New UUID belongs only to this copied image; the original image is never formatted or modified.
-xfs_admin -U generate "$restore/quota/workspaces.xfs" >/dev/null
+# Frozen snapshots can contain an unreplayed log. Replay only the private copy
+# with duplicate-UUID admission, then unmount before assigning its new identity.
+# No service starts during replay; normal mounts below never use nouuid.
+original_uuid=$(cat "$root/quota/filesystem.uuid")
+backup_uuid=$(blkid -p -s UUID -o value "$backup/workspaces.xfs")
+mount -o loop,nouuid,prjquota "$restore/quota/workspaces.xfs" "$restore/workspaces"
+mounted=true
+umount "$restore/workspaces"
+mounted=false
+xfs_admin -U generate "$restore/quota/workspaces.xfs" > "$restore/reports/uuid-change.txt" 2>&1
 blkid -p -s UUID -o value "$restore/quota/workspaces.xfs" > "$restore/quota/filesystem.uuid"
+restored_uuid=$(cat "$restore/quota/filesystem.uuid")
+[[ "$restored_uuid" != "$original_uuid" && "$restored_uuid" != "$backup_uuid" ]]
+[[ $(blkid -p -s UUID -o value "$root/quota/workspaces.xfs") == "$original_uuid" ]]
 mount -o loop,prjquota "$restore/quota/workspaces.xfs" "$restore/workspaces"
 mounted=true
 findmnt -n -t xfs -o OPTIONS --target "$restore/workspaces" | grep -q prjquota
