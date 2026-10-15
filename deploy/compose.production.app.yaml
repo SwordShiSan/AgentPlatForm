@@ -1,0 +1,10 @@
+services:
+  api: {restart: 'on-failure:3'}
+  worker: {restart: 'on-failure:3'}
+  runner: {restart: 'on-failure:3'}
+  egress: {restart: 'on-failure:3'}
+  gateway:
+    restart: 'on-failure:3'
+    ports: !override ["${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-80}:8080"]
+    volumes:
+      - "${PRODUCTION_NGINX_CONFIG:-/srv/agentplatform/deploy/nginx.production.conf}:/etc/nginx/nginx.conf:ro"

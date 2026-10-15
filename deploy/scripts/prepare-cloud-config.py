@@ -14,7 +14,12 @@ def value(name):
  return p.read_text().strip()
 for name in ['pg_admin','pg_api','pg_worker','pg_filer','pg_migration','redis','mq_publisher','mq_execution','mq_asset','mq_maintenance','mq_admin','s3_read','s3_write','s3_admin','s3_kek']:value(name)
 def config_write(name,text):
- p=config/name;p.write_text(text);os.chmod(p,0o444)
+ p=config/name
+ # Windows maps0444 to the read-only attribute; repeat preparation must be safe.
+ if p.exists():os.chmod(p,0o600)
+ try:p.write_text(text)
+ finally:
+  if p.exists():os.chmod(p,0o444)
 identities=[{'name':'ap-read','credentials':[{'accessKey':'ap-read','secretKey':value('s3_read')}],'actions':['Read:ap-assets','List:ap-assets']},
  {'name':'ap-write','credentials':[{'accessKey':'ap-write','secretKey':value('s3_write')}],'actions':['Read:ap-assets','Write:ap-assets','List:ap-assets','Tagging:ap-assets']},
  {'name':'ap-admin','credentials':[{'accessKey':'ap-admin','secretKey':value('s3_admin')}],'actions':['Admin']}]
