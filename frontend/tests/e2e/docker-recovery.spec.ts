@@ -5,7 +5,15 @@ import { fileURLToPath } from 'node:url';
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 const compose = ['compose', '-p', 'agentplatform-app', '-f', 'deploy/compose.r0.1.yaml'];
 function apiAction(action: 'stop' | 'start') {
-  if (process.env.CLOUD_SSH_HOST && process.env.CLOUD_SSH_KEY) {
+  if (process.env.LOCAL_API_CONTAINER) {
+    const container = process.env.LOCAL_API_CONTAINER;
+    if (container !== 'agentplatform-r04-local-app-api-1') throw new Error('Unexpected local acceptance container');
+    const identity = JSON.parse(execFileSync('docker', ['inspect', container], { encoding: 'utf8' }))[0];
+    if (identity.Config.Labels['com.docker.compose.project'] !== 'agentplatform-r04-local-app') {
+      throw new Error('API container is outside the local acceptance project');
+    }
+    execFileSync('docker', action === 'stop' ? ['stop', '-t', '30', container] : ['start', container], { stdio: 'pipe', timeout: 60000 });
+  } else if (process.env.CLOUD_SSH_HOST && process.env.CLOUD_SSH_KEY) {
     const command = action === 'stop' ? 'docker stop -t 30 agentplatform-app-api-1' : 'docker start agentplatform-app-api-1';
     execFileSync('ssh', ['-o', 'BatchMode=yes', '-i', process.env.CLOUD_SSH_KEY, process.env.CLOUD_SSH_HOST, command], { stdio: 'pipe', timeout: 60000 });
   } else {
