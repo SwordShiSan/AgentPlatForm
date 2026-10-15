@@ -28,4 +28,4 @@ Current regression evidence:44 host tests,39 offline non-root Linux SDK/architec
 | Docker Desktop ID differs from exported config | Match platform, layer diff IDs and normalized running config; cloud inspects exact exported config ID | Deployment/R9 provenance |
 | Official vendor findings are informational here | User-approved scope2026-10-15; raw findings retained, no claim that they were fixed | Revisit only on project functional/isolation impact |
 
-STS denial is tested at the signed HTTP boundary. SSE-S3 business encryption is not delivered; retaining a wrapping-password/key-version backup does not establish encryption support. Observation, isolated restore and legacy recovery PASS; see [final acceptance](R0.4-ACCEPTANCE.md). R0.4 remains unverified until two-level PR promotion completes; R0 remains unreleased.
+STS denial is tested at the signed HTTP boundary. SSE-S3 business encryption is not delivered; retaining a wrapping-password/key-version backup does not establish encryption support. Observation, isolated restore, legacy recovery and two-level PR14/15 promotion PASS; see [final acceptance](R0.4-ACCEPTANCE.md). R0.4 VERIFIED; R0 remains unreleased.
