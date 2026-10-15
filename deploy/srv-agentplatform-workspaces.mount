@@ -1,0 +1,13 @@
+[Unit]
+Description=AgentPlatForm dedicated XFS image
+Before=agentplatform-r0.service
+RequiresMountsFor=/srv/agentplatform/quota
+
+[Mount]
+What=/srv/agentplatform/quota/workspaces.xfs
+Where=/srv/agentplatform/workspaces
+Type=xfs
+Options=loop,prjquota,noatime
+
+[Install]
+WantedBy=multi-user.target

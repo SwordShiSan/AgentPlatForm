@@ -1,12 +1,15 @@
 """30-minute single-sandbox baseline observation, samples are evidence not throughput promises."""
-import fcntl,json,pathlib,re,subprocess,time,urllib.request,urllib.error
-root=pathlib.Path('/srv/agentplatform');report=root/'reports/soak.jsonl'
+import fcntl,json,os,pathlib,re,subprocess,time,urllib.request,urllib.error
+production=os.environ.get('PLATFORM_SOAK_PRODUCTION')=='1'
+root=pathlib.Path('/srv/agentplatform');prefix='production-soak' if production else 'soak';report=root/('reports/'+prefix+'.jsonl')
 images=dict(line.split('=',1) for line in (root/'deploy/images.env').read_text().splitlines() if '=' in line)
 assert re.fullmatch(r'sha256:[0-9a-f]{64}',images.get('SANDBOX_IMAGE','')),'Verified immutable sandbox identity required'
 def cmd(args):return subprocess.run(args,check=True,text=True,capture_output=True,timeout=90).stdout
 def health():
  for endpoint in ['health','readiness']:
-  with urllib.request.urlopen('http://127.0.0.1:18080/api/v1/'+endpoint,timeout=10) as r:assert r.status==200
+  url=('http://127.0.0.1' if production else 'http://127.0.0.1:18080')+'/api/v1/'+endpoint
+  request=urllib.request.Request(url,headers={'Host':'agentplatform.lailihao.cloud'} if production else {})
+  with urllib.request.urlopen(request,timeout=10) as r:assert r.status==200
 def dependency_restart(name):
  cmd(['docker','stop','-t','30',name])
  try:
@@ -35,14 +38,14 @@ while time.monotonic()-begin<1800:
  else:mem['admission']='QUEUED'
  elapsed=time.monotonic()-begin
  # Controlled real restarts, once each; no legacy services touched.
- if 600<=elapsed<660 and not (root/'reports/soak-redis-restarted').exists():
+ if not production and 600<=elapsed<660 and not (root/'reports/soak-redis-restarted').exists():
   dependency_restart('agentplatform-env-redis-1');(root/'reports/soak-redis-restarted').touch()
- if 1200<=elapsed<1260 and not (root/'reports/soak-s3-restarted').exists():
+ if not production and 1200<=elapsed<1260 and not (root/'reports/soak-s3-restarted').exists():
   dependency_restart('agentplatform-env-s3-1');(root/'reports/soak-s3-restarted').touch()
  with report.open('a') as f:f.write(json.dumps(mem)+'\n')
  time.sleep(30)
 health();final=sample()
 assert iterations>0
 assert final['swapUsedKiB']<=initial['swapUsedKiB']+64*1024,'Swap growth is not extra capacity'
-(root/'reports/soak-summary.json').write_text(json.dumps({'status':'PASS','seconds':time.monotonic()-begin,'iterations':iterations,'initial':initial,'final':final},indent=2))
+(root/('reports/'+prefix+'-summary.json')).write_text(json.dumps({'status':'PASS','seconds':time.monotonic()-begin,'iterations':iterations,'productionHttp':production,'dependencyInterruptionsInWindow':not production,'initial':initial,'final':final},indent=2))
 print('30-minute minimum-host soak:PASS',flush=True)

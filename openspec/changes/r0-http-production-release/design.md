@@ -1,0 +1,14 @@
+# Design
+Baseline:main f642ca44cd9a1c3591bbd31bdd19d7e6957d4f38; phase has the same tree. This is an R0 release operation,not an additional small stage.
+
+Use independent production override/config files: environment services keep internal networks; gateway ports are fully replaced with80→8080. Read-only mounted Nginx configuration permits the designated domain and IP and rejects other Host values. Existing frontend/API/metrics boundaries stay unchanged. Production configs are independently hashed alongside original image-source and release-source SHAs.
+
+Observed local failure:API stop/start reused a different Docker address while static Nginx retained its old address,leaving healthy API behind502. Production config uses Docker's internal resolver127.0.0.11 with a shared upstream zone and5second refresh. This is internal service discovery,not public DNS administration. Verify actual address replacement recovers without restarting gateway. Separate destructive browser/dependency test windows to avoid fixture contention.
+
+Systemd owns boot ordering via Docker and existing XFS mount unit. ExecStart preflights UUID/prjquota,root free>=5GiB,host memory and exact images before any container starts. Normal services use on-failure:3; migration and sandbox stay non-restarting. No runtime fallback or quota relaxation. Controlled service restart and failed-preflight tests supplement normal runtime gates.
+
+Release driver installs cleanup before mutation,records original legacy IDs/policies and a fresh verified backup,stops old stack then runs new/recovery stacks serially. Before final observation,run dependency interruption and consistent backup/independent recovery. Production observation is a new uninterrupted>=1800s window using one trusted sandbox slot. Any failed gate stops new resources and restores original legacy policies/entry/readiness. On completed acceptance,the success marker prevents restoring the deliberately suspended legacy stack. Git metadata failures retain a healthy deployed candidate as DEPLOYED_PENDING_RELEASE while retrying; they do not fabricate RELEASED or rerun workloads.
+
+DNS is explicitly outside acceptance. Direct-IP requests and --resolve/Host requests establish HTTP routing only. Scope excludes HTTPS,443 and redirect checks. Public capability remains health/readiness/Problem/static shell; business flags remain closed. Skill correction is narrow,at the existing skill and reconstruction reference,with current HTTP/local-cloud/PR rules replacing stale requirements for this project.
+
+Promote configuration through step→phase→main after local checks; bind deployed candidate to those exact sources. On all production gates PASS,create immutable annotated production-r0-<candidate12> tag. Retain local/cloud hashed evidence>=30days,then archive and promote records through the same PR path. Final state:R0 RELEASED,4/40 VERIFIED,1/10 RELEASED,R1 NOT_STARTED.
