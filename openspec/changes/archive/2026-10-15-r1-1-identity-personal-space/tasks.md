@@ -12,5 +12,5 @@
 - [x] 4.2 Run real PG fresh/upgrade/rollback/concurrency/isolation/expiry/revocation tests.
 - [x] 4.3 Run local Docker/API/browser tests and restart/dependency failure/resource checks.
 ## 5. Promotion
-- [ ] 5.1 Bind evidence to exact source/image, review, merge step→phase→main.
-- [ ] 5.2 Archive change, sync phase and update canonical ledgers/handoff without cloud deployment.
+- [x] 5.1 Bind evidence to exact source/image, review, merge step→phase→main.
+- [x] 5.2 Archive change, sync phase and update canonical ledgers/handoff without cloud deployment.
