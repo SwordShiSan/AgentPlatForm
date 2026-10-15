@@ -6,8 +6,9 @@ test.skip(process.env.R11_IDENTITY !== '1', 'Requires isolated R1.1 real API fix
 const secret = (user: string) => readFileSync(resolve(process.cwd(), '../.cache/r11-local', `${user}-password`), 'utf8').trim();
 
 test('real login, refresh, two-user isolation, logout and protected route', async ({ browser }) => {
-  const a = await browser.newContext();
-  const b = await browser.newContext();
+  const baseURL = process.env.BASE_URL ?? 'http://127.0.0.1:18086';
+  const a = await browser.newContext({ baseURL });
+  const b = await browser.newContext({ baseURL });
   try {
     const alice = await a.newPage();
     const bob = await b.newPage();
