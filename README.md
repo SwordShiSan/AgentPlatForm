@@ -1,6 +1,6 @@
 # AgentPlatForm
 
-**R0.4 VERIFIED，R0四个小阶段均VERIFIED**。HOST44/Linux SDK39/真实PG3/Vue15/UI4、云端gVisor/XFS、1813.69秒观察、独立恢复和旧站恢复均PASS，已通过PR14/15晋级main。GitHub Actions已停用，使用官方固定镜像与本地构建；第三方扫描保留原始结果、不作无关源码整改。R0未RELEASED、不创建生产tag、不进入R1，生产域名/TLS及发布门禁后续处理。详见[验收证据](deploy/R0.4-ACCEPTANCE.md)、[契约证据](deploy/CONTRACT-EVIDENCE.md)和[审计记录](deploy/AUDIT.md)。以下阶段记录保留历史。
+**R0 已正式 RELEASED，四个小阶段均 VERIFIED**。HTTP入口：[公网IP](http://124.222.55.140)，域名Host `agentplatform.lailihao.cloud` 已配置；按用户决定不配置HTTPS、不检查或修改DNS，不作为本阶段门禁。完整回归、独立恢复、公网浏览器和新30分钟观察全部PASS，旧栈持续停机保留数据，新栈在线。生产tag `production-r0-c46a73ae4d00`；R1未开始。详见[发行记录](deploy/R0-RELEASE.md)。以下阶段记录保留历史。
 
 新一代云端 Agent 平台独立 Git 单仓。R0.1工程、契约生成与健康壳层已通过本地Docker/CI并经PR晋级main；**尚无业务智能体功能、未部署生产**。实时阶段状态以外部局部台账为准。
 

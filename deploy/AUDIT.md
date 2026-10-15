@@ -1,5 +1,8 @@
 # R0.4 audited baseline
 
+## Current R0 released snapshot2026-10-15
+HTTP release `production-r0-c46a73ae4d00` reuses the exact9 previously inventoried/scanned image identities;functional,isolation,resource,recovery and new production observation pass. Historical raw vendor findings are retained without a claim of remediation or a fresh clean scan. No vendor source rebuild was performed. DNS/TLS are outside the user-approved R0 release scope. See [release evidence](R0-RELEASE.md);earlier unreleased status paragraphs are chronological history.
+
 ## Current approved policy2026-10-15
 Local/cloud functional acceptance replaces hosted builds. Repository Actions are disabled; PR/non-force protections remain and retired CI contexts are removed. Official locked Syft/Grype reports and raw findings are informational where unrelated to required project functionality/isolation; findings are not claimed fixed. Vendor source rebuilds, global vulnerability clearance and package ownership collection are no longer mandatory. Use stable R0.3 official middleware digests, official gVisor20261005.0/systrap and the locally built application/probe/sandbox images. Functional, isolation, quota and recovery gates remain mandatory. The security-rebuild requirements and failures below are preserved history, superseded by this policy. R0 remains unreleased; no production tag or R1.
 
