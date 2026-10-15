@@ -29,7 +29,7 @@ public final class IdentityService implements IdentityApi {
         return result;
     }
     private IdentityStore.Session write(String token, String csrf, String origin) {
-        if (!origins.contains(origin)) throw new IdentityFailure(403, "ORIGIN_REJECTED");
+        if (origin == null || !origins.contains(origin)) throw new IdentityFailure(403, "ORIGIN_REJECTED");
         var session = session(token);
         if (!MessageDigest.isEqual(session.csrfHash().getBytes(StandardCharsets.UTF_8), hash(csrf).getBytes(StandardCharsets.UTF_8))) throw new IdentityFailure(403, "CSRF_REJECTED");
         return session;

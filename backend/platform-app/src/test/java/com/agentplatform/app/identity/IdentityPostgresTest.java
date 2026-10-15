@@ -117,6 +117,7 @@ class IdentityPostgresTest {
     @Test void wrongOriginAndCsrfNeverAuthenticate() {
         provision("alice",false);var pre=service.csrf(null);
         failure(403,()->service.login(pre.cookieToken(),pre.csrfToken(),"https://foreign.example","ip",new IdentityApi.LoginRequest("alice",PASSWORD)));
+        failure(403,()->service.login(pre.cookieToken(),pre.csrfToken(),null,"ip",new IdentityApi.LoginRequest("alice",PASSWORD)));
         failure(403,()->service.login(pre.cookieToken(),null,ORIGIN,"ip",new IdentityApi.LoginRequest("alice",PASSWORD)));
         failure(401,()->service.me(pre.cookieToken(),null));
     }
