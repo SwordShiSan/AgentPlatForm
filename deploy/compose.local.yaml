@@ -1,0 +1,18 @@
+# Local Docker Desktop data uses Linux named volumes; cloud keeps its bind data.
+services:
+  postgres:
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+  rabbitmq:
+    volumes: ["rabbitmq-data:/var/lib/rabbitmq"]
+  master:
+    volumes: ["object-master:/data"]
+  volume:
+    volumes: ["object-volume:/data"]
+  filer:
+    volumes: ["object-filer:/data"]
+volumes:
+  postgres-data:
+  rabbitmq-data:
+  object-master:
+  object-volume:
+  object-filer:

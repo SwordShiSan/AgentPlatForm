@@ -1,4 +1,4 @@
-"""Export only CI's accepted images, retaining digest/config/archive provenance."""
+"""Export local candidates, retaining source/config/manifest/archive provenance."""
 import gzip
 import hashlib
 import json
@@ -8,18 +8,16 @@ import subprocess
 import tarfile
 
 root = pathlib.Path(__file__).resolve().parents[2]
-if os.environ.get('GITHUB_ACTIONS') != 'true':
-    raise SystemExit('CI immutable export only')
+if os.environ.get('GITHUB_ACTIONS') == 'true':
+    raise SystemExit('Use local Docker export; GitHub builds are retired')
+official = json.loads((root / 'deploy/runtime-images.lock.json').read_text())['images']
 images = [
     ('PLATFORM_API_IMAGE', 'agentplatform-api:r0.1-local'),
     ('PLATFORM_GATEWAY_IMAGE', 'agentplatform-gateway:r0.1-local'),
     ('FRAMEWORK_PROBE_IMAGE', 'agentplatform-framework-probe:r0.2-local'),
     ('STORAGE_PROBE_IMAGE', 'agentplatform-storage-probe:r0.3-ci'),
     ('SANDBOX_IMAGE', 'agentplatform-sandbox:r0.4-ci'),
-    ('POSTGRES_IMAGE', 'agentplatform-postgres:r0.4-ci'),
-    ('REDIS_IMAGE', 'agentplatform-redis:r0.4-ci'),
-    ('RABBITMQ_IMAGE', 'rabbitmq:4.3.6-management@sha256:1d306c8f8c55cd3ed50271198f4094220e4caed9a8d04a14aca869339d3d3ca9'),
-    ('SEAWEEDFS_IMAGE', 'agentplatform-seaweedfs:r0.4-ci'),
+    *official.items(),
 ]
 output = root / 'evidence/r0.4/images'
 output.mkdir(parents=True, exist_ok=True)
@@ -70,4 +68,4 @@ for record in records:
 (output / 'source-images.json').write_text(json.dumps(records, indent=2) + '\n', encoding='utf-8')
 (output / 'archive.sha256').write_text(digest.hexdigest() + '  candidate-images.tar.gz\n', encoding='utf-8')
 (output / 'source-revision.txt').write_text(subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True), encoding='utf-8')
-print('Exported same audited images with exact source/config/archive identities')
+print('Exported local candidate images with exact source/config/archive identities; acceptance recorded separately')

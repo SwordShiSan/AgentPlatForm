@@ -1,3 +1,7 @@
+# Current R0.4 acceptance policy (2026-10-15)
+
+Local Docker builds and local/cloud functional acceptance replace GitHub builds. Official middleware identities live in runtime-images.lock.json (stable R0.3 baseline). Use the official gVisor20261005.0 package. Source rebuild candidate Dockerfiles and foundation security patches below are historical, not required startup dependencies. Unrelated third-party scan findings are informational, never reported as fixed. App/SDK/contracts/isolation/quota/restore gates remain mandatory. GitHub Actions workflow is archived; PR promotion uses exact-source local/cloud evidence. R0 remains unreleased.
+
 # Deployment
 
 ## R0.4 foundation candidate preparation

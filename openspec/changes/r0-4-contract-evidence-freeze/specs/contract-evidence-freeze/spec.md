@@ -1,26 +1,21 @@
 ## ADDED Requirements
-### Requirement: Reviewed foundation security rebuild
-The rebuilt runtime SHALL fix actual grpc1.83.1/containerd-v2 2.1.9 matches
-using compatible grpc1.83.2/containerd-v2 2.2.4 inputs and fresh project/full
-release tests, without removing package components or analysis checks.
+### Requirement: Local acceptance and project scope
+The platform SHALL run builds and environment acceptance locally or on the approved cloud host. GitHub SHALL serve version management without automatic push or pull-request builds. The following current user policy supersedes earlier blanket scan-blocking and third-party rebuild requirements in this change: third-party image findings that do not affect project functionality do not require remediation; scans remain informational and SHALL NOT be misreported as clean. Functional failures and the agreed sandbox isolation, permissions, quota, resource and recovery requirements remain blocking. Third-party source modifications and costly environment rebuilds require prior explanation and explicit user agreement.
 
-#### Scenario: A rebuilt binary still has vulnerable dependencies
-- **WHEN** the exact source-built runtime scan reports the two actual advisories
-- **THEN** freeze compatible fixed versions and require fresh tests and scans before acceptance
+#### Scenario: A code branch is pushed
+- **WHEN** project code is pushed or a pull request is opened
+- **THEN** GitHub does not automatically build or provision the environment, and local/cloud acceptance evidence determines readiness
 
-The platform SHALL use the approved container distributions and compatible patch families, lock linux/amd64 manifests and source/package/patch identities before building locally or in CI, preserve host OS and storage formats, and disclose rebuilt products.
+#### Scenario: A third-party image scan has findings without project functional impact
+- **WHEN** the findings do not affect delivered project functions or agreed isolation behavior
+- **THEN** retain the original findings without requiring vendor source repair or declaring the findings resolved
 
-#### Scenario: Foundation or source identity drifts
-- **WHEN** a build input differs from its manifest, source commit, package or patch hash lock
-- **THEN** the build fails and cannot export an accepted cloud candidate
+### Requirement: Official reproducible runtime baseline
+The platform SHALL use the stable R0.3 official middleware identities and gVisor20261005.0 full package, with local project image builds and cloud identity verification. Third-party source-rebuild candidates SHALL NOT be required to start or accept the platform.
 
-#### Scenario: Vendor backport or unreachable component is assessed
-- **WHEN** an exact advisory is proposed as NOT_AFFECTED
-- **THEN** exact product/component and current source or file ownership evidence are hashed, reviewed and invalidated by changed inputs, while raw findings remain available
-
-#### Scenario: Foundation regression fails
-- **WHEN** rebuilt images fail compatibility, audit, quota, recovery or resource acceptance
-- **THEN** the stage remains FAIL or NOT_RUN, temporary new resources stop and preserved legacy services are restored without an OS upgrade
+#### Scenario: Official component fails a required project function
+- **WHEN** a reproducible failure remains after project configuration and script diagnosis
+- **THEN** retain evidence and discuss costly source modification or stack replacement before proceeding with that item
 
 ### Requirement: Reviewed security patches and scoped applicability
 The framework baseline SHALL remove unused Testcontainers scaffold and stale
@@ -61,15 +56,15 @@ The platform SHALL disable unused IAM/STS, protect KEK wrapping material and ins
 - **THEN** temporary resources stop, evidence remains and original XFS UUID/data are unchanged
 
 ### Requirement: Reproducible audited dependency baseline
-The platform SHALL pin complete resolved dependencies, tooling and image identities, preserve scoped SBOM and license provenance, and reject unresolved high or critical vulnerabilities.
+The platform SHALL pin complete resolved dependencies, tooling and image identities, preserve scoped SBOM and license provenance, and retain informational vulnerability reports without requiring unrelated vendor remediation.
 
 #### Scenario: Dependency or image changes
 - **WHEN** a package hash, resolved version or imported image identity differs from the frozen baseline
 - **THEN** acceptance fails and retains diagnostic evidence instead of silently accepting drift
 
 #### Scenario: Audit is incomplete
-- **WHEN** a vulnerability database cannot be obtained or a high/critical finding lacks resolution
-- **THEN** the audit is NOT_RUN or FAIL and the stage cannot be promoted
+- **WHEN** a scanner or vulnerability database is unavailable
+- **THEN** report that audit as NOT_RUN, continue mandatory functional acceptance and never claim the missing scan passed
 
 ### Requirement: Contract and source evidence freeze
 The platform SHALL freeze its implemented HTTP/event envelope and HC-1 baseline and map SDK source signatures to real executable assertions without claiming future business capability.
@@ -79,7 +74,7 @@ The platform SHALL freeze its implemented HTTP/event envelope and HC-1 baseline 
 - **THEN** generated outputs match tracked files and existing readiness and health behavior remains compatible
 
 ### Requirement: Protected durable acceptance evidence
-The platform SHALL preserve hashed, source-bound acceptance evidence on local and cloud storage with CI retention of at least30days, excluding secrets and raw backups from public Git.
+The platform SHALL preserve hashed, source-bound acceptance evidence on local and cloud storage with protected local/cloud retention of at least30days, excluding secrets and raw backups from public Git.
 
 #### Scenario: CI artifact expires
 - **WHEN** a short-lived CI download is unavailable

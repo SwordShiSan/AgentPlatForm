@@ -1,9 +1,6 @@
 name: R0 toolchain
 on:
-  pull_request:
-    branches: [main, 'phase/**']
-  push:
-    branches: ['step/**', 'phase/**']
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -160,9 +157,14 @@ jobs:
           python3 deploy/scripts/test-foundation-guards.py
           python3 deploy/scripts/test-sts-denial.py
           python3 deploy/scripts/test-audit-fixtures.py
+          python3 deploy/scripts/test-image-package-evidence.py
           node deploy/scripts/test-ci-candidate-exits.mjs
       - name: R0.4 blocking dependency audit
         run: |
+          python3 deploy/scripts/image-package-evidence.py \
+            --target storage-probe=agentplatform-storage-probe:r0.3-ci \
+            --target postgres=agentplatform-postgres:r0.4-ci \
+            --target rabbitmq=${RABBITMQ_IMAGE}
           python3 deploy/scripts/install-audit-tools.py
           .tools/audit/grype db update
           mkdir -p evidence/r0.4

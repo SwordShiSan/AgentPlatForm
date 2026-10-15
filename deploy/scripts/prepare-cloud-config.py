@@ -36,5 +36,6 @@ definitions={'users':users,'vhosts':[{'name':'/agentplatform'}],'permissions':pe
 config_write('rabbitmq-definitions.json',json.dumps(definitions))
 config_write('rabbitmq.conf','listeners.tcp.default=5672\nmanagement.tcp.port=15672\ndefinitions.import_backend=local_filesystem\ndefinitions.local.path=/etc/rabbitmq/definitions.json\nvm_memory_high_watermark.absolute=192MB\ndisk_free_limit.absolute=1GB\n')
 for name,uid in [('postgres',999),('redis',999),('rabbitmq',999),('object-master',10001),('object-volume',10001),('object-filer',10001)]:
- p=root/'data'/name;p.mkdir(parents=True,exist_ok=True);os.chown(p,uid,uid)
+ p=root/'data'/name;p.mkdir(parents=True,exist_ok=True)
+ if hasattr(os,'chown'):os.chown(p,uid,uid)
 print('Independent secret files, least-privilege topology and data directories prepared; no credential values emitted.')

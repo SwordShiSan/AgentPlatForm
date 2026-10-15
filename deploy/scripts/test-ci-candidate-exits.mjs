@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const require = createRequire(import.meta.url);
 const yaml = require(path.join(root, 'frontend/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml'));
-const workflow = yaml.parse(fs.readFileSync(path.join(root, '.github/workflows/r0-toolchain.yml'), 'utf8'));
+const workflow = yaml.parse(fs.readFileSync(path.join(root, '.github/workflow-archive/r0-toolchain.yml'), 'utf8'));
 const bash = process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : 'bash';
 for (const job of ['audit-candidate', 'runtime-candidate']) {
   const step = workflow.jobs[job].steps.find(item => item.name?.startsWith('Build and test frozen'));

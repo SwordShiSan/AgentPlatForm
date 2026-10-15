@@ -1,23 +1,19 @@
-## 1. Preparation
-- [x] 1.1 Record accepted Plan, baseline and strict validation before implementation.
-## 2. Reproducible audit
-- [ ] 2.8 Repair four actual rebuilt runtime matches with grpc1.83.2/containerd-v2 2.2.4; rerun upstream/full-package and fresh runtime scans/compatibility gates.
-- [ ] 2.7 Remove unused Testcontainers scaffold and stale probe jars after shaded ownership review; refresh actual artifact hashes/trees/SBOMs and full Maven/Linux SDK regression.
-- [ ] 2.6 Correct audit test environment with non-root CI, frozen compiler and fixture cache fingerprint/hash checks; preserve all failed source-candidate evidence and all core/internal tests.
-- [ ] 2.5 Build disclosed Syft/Grype source candidates with locked Go/module patches, core/internal tests, licenses and binary identity; audit before replacing bootstrap tools.
-- [ ] 2.3 Implement approved foundation replan: exact manifests/source/package hashes, compatible security rebuilds, Redis license and actual binary/tool audit; full regressions before promotion.
-- [ ] 2.4 Generalize precise applicability assessment with evidence invalidation and unrelated finding rejection; preserve raw scans and unresolved blockers.
-- [ ] 2.0 Apply approved security replan after updated strict; patch resolution, old fixture readback and scoped MCP proof completed; SeaweedFS IAM/KEK runtime protection still NOT_RUN.
-- [ ] 2.1 Pin tools/actions and Python transitive hashes; generate dependency/effective-POM/SBOM and image/license inventory.
-- [ ] 2.2 Scan dependencies/images with dated DB; resolve all blocking findings and review STS/SSE exposure.
-## 3. Contracts and evidence
-- [ ] 3.1 Freeze schemas and generated client; collect source signatures and scenario mappings.
-- [ ] 3.2 Protect hashed local/cloud evidence with >=30-day CI retention; synchronize canonical docs.
-## 4. Acceptance
-- [ ] 4.1 Host backend/frontend/contracts/OpenSpec gates.
-- [ ] 4.2 Real Linux SDK/storage/permissions/browser/gVisor/XFS gates.
-- [ ] 4.3 Fixed candidate >=30min observation and dependency failures.
-- [ ] 4.4 Consistent isolated restore and legacy pause/restore rehearsal.
-## 5. Promotion
-- [ ] 5.1 Review exact-head passing CI and step→phase→main PRs.
-- [ ] 5.2 Sync phase, archive and reconcile ledgers; R0 remains unreleased.
+## 1. Approved replacement and workflow
+- [x] 1.1 Record replacement Plan, current user policy and same OpenSpec change.
+- [ ] 1.2 Sync formal plan/ADR/five artifacts and pass strict before implementation.
+- [ ] 1.3 Disable repository Actions/cancel active jobs; retire automatic workflows and required CI contexts while retaining PR protection.
+## 2. Local official environment
+- [ ] 2.1 Fix official image identities, pause third-party rebuilds and review working changes.
+- [ ] 2.2 Local app/probe/sandbox builds; portable immutable export and cloud identity verification.
+- [ ] 2.3 Dependency/effective POM/SBOM/license evidence; optional official scanner results reported independently.
+## 3. Mandatory functional acceptance
+- [ ] 3.1 Maven44/DDD/Enforcer, Vue/type/build, contracts/generation/links/OpenSpec.
+- [ ] 3.2 Linux non-root SDK/recovery/UNKNOWN/Jackson and real PG/vector/Redis/MQ/S3/STS/restart.
+- [ ] 3.3 Real API browser/responsive/keyboard/themes/errors/internal metrics boundary.
+- [ ] 3.4 Cloud gVisor compatibility/isolation/resources/admission/idle and XFS actual quotas/mount guards/recreate/remount.
+- [ ] 3.5 Fixed candidate >=30min sampling and dependency interruption/recovery.
+- [ ] 3.6 Coherent backup/independent serial restore and final legacy identity/policy/entry recovery.
+## 4. Evidence and delivery
+- [ ] 4.1 Hash source/image/environment/results; protected local/cloud copies, no public secrets/backups.
+- [ ] 4.2 Review exact-source evidence and step→phase→main PRs, sync phase/archive/ledgers.
+- [ ] 4.3 R0.4 VERIFIED and R0four steps VERIFIED; R0unreleased/no production tag/noR1.

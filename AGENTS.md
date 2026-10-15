@@ -1,3 +1,6 @@
+# Current user-approved R0.4 workflow exception (2026-10-15)
+GitHub is version management only: Actions disabled, required CI retired, local/cloud exact-source acceptance evidence supports step→phase→main PRs. Preserve PR/non-force protection. No blanket third-party vulnerability remediation or source rebuild requirement; functionality/isolation/quota/resource/recovery gates remain. Same accepted Plan/OpenSpec applies; previous CI instructions below are historical where conflicting.
+
 # AgentPlatForm implementation rules
 
 ## Scope
