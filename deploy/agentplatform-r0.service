@@ -1,0 +1,20 @@
+[Unit]
+Description=AgentPlatForm R0 HTTP baseline
+Requires=docker.service srv-agentplatform-workspaces.mount
+After=docker.service srv-agentplatform-workspaces.mount
+PartOf=docker.service
+StartLimitIntervalSec=120
+StartLimitBurst=3
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash /srv/agentplatform/deploy/scripts/production-stack.sh start
+ExecStop=/bin/bash /srv/agentplatform/deploy/scripts/production-stack.sh stop
+TimeoutStartSec=600
+TimeoutStopSec=240
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
