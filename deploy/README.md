@@ -4,7 +4,9 @@ Local Docker builds and local/cloud functional acceptance replace GitHub builds.
 
 # Deployment
 
-## R0.4 foundation candidate preparation
+## Historical R0.4 foundation candidate preparation (superseded)
+
+The following source-rebuild/CI instructions are retained as history and are not the current startup path. Current local acceptance uses `scripts/local-acceptance.py`; official middleware identities are in `runtime-images.lock.json`, and cloud import uses verified config IDs. Do not invoke paused foundation rebuilds for this acceptance.
 
 Current approved inputs are pinned in `foundation.lock.json`; run `python3 deploy/scripts/foundation-inputs.py --fetch` before any build. Offline signed Alpine packages and exact source/module hashes reject drift. PostgreSQL/vector, Redis and SeaweedFS candidates use dedicated Dockerfiles and disclose rebuilds. Redis7.4 uses RSALv2/SSPLv1; the actual upstream license is retained in the image. Distribution must retain license notices and requires review of the selected license's source/service restrictions; no BSD claim or license waiver.
 

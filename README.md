@@ -1,6 +1,6 @@
 # AgentPlatForm
 
-R0.4本地/云端功能验收收尾中：保留Java21/AgentScope2.0.4及应用补丁/schema1；GitHub Actions已停用，使用官方固定镜像与本地构建。HOST44/Linux SDK39/真实PG3/Vue15/UI4通过，云端gVisor/XFS通过，30分钟观察及独立恢复进行中。第三方扫描保留原始结果、不作无关源码整改。R0未RELEASED、不进入R1。详见[契约证据](deploy/CONTRACT-EVIDENCE.md)和[审计记录](deploy/AUDIT.md)。以下阶段记录保留历史。
+R0.4全部本地/云端功能验收已通过，待两级PR晋级：HOST44/Linux SDK39/真实PG3/Vue15/UI4、云端gVisor/XFS、1813.69秒观察、独立恢复和旧站恢复均PASS。GitHub Actions已停用，使用官方固定镜像与本地构建；第三方扫描保留原始结果、不作无关源码整改。R0未RELEASED、不进入R1。详见[验收证据](deploy/R0.4-ACCEPTANCE.md)、[契约证据](deploy/CONTRACT-EVIDENCE.md)和[审计记录](deploy/AUDIT.md)。以下阶段记录保留历史。
 
 新一代云端 Agent 平台独立 Git 单仓。R0.1工程、契约生成与健康壳层已通过本地Docker/CI并经PR晋级main；**尚无业务智能体功能、未部署生产**。实时阶段状态以外部局部台账为准。
 

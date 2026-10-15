@@ -88,7 +88,7 @@ The platform SHALL validate consistent storage restoration in independent tempor
 - **THEN** new execution stops, evidence is retained and exact legacy containers and policies are restored without deleting user data
 
 ### Requirement: Honest step and production status
-The platform SHALL promote R0.4 only after all mandatory audit/runtime/recovery gates and two PRs pass, and SHALL NOT claim production release without independent domain/TLS and production gates.
+The platform SHALL promote R0.4 only after all mandatory engineering, functional, isolation, resource and recovery gates and two PRs pass, with informational audit results reported separately, and SHALL NOT claim production release without independent domain/TLS and production gates.
 
 #### Scenario: Developer acceptance succeeds
 - **WHEN** R0.4 gates and promotion pass but production entry is not configured

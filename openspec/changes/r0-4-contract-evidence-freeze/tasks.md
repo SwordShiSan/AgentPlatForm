@@ -11,9 +11,9 @@
 - [x] 3.2 Linux non-root SDK/recovery/UNKNOWN/Jackson and real PG/vector/Redis/MQ/S3/STS/restart.
 - [x] 3.3 Real API browser/responsive/keyboard/themes/errors/internal metrics boundary.
 - [x] 3.4 Cloud gVisor compatibility/isolation/resources/admission/idle and XFS actual quotas/mount guards/recreate/remount.
-- [ ] 3.5 Fixed candidate >=30min sampling and dependency interruption/recovery.
-- [ ] 3.6 Coherent backup/independent serial restore and final legacy identity/policy/entry recovery.
+- [x] 3.5 Fixed candidate >=30min sampling and dependency interruption/recovery.
+- [x] 3.6 Coherent backup/independent serial restore and final legacy identity/policy/entry recovery.
 ## 4. Evidence and delivery
-- [ ] 4.1 Hash source/image/environment/results; protected local/cloud copies, no public secrets/backups.
+- [x] 4.1 Hash source/image/environment/results; protected local/cloud copies, no public secrets/backups.
 - [ ] 4.2 Review exact-source evidence and step→phase→main PRs, sync phase/archive/ledgers.
 - [ ] 4.3 R0.4 VERIFIED and R0four steps VERIFIED; R0unreleased/no production tag/noR1.
