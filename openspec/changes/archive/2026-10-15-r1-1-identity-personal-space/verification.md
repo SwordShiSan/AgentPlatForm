@@ -1,6 +1,6 @@
 # Verification
 
-Status: LOCAL_ACCEPTANCE_PASS; PR promotion and archival pending. Runtime source d1f27524ca7c7707e6a07a67b440cfd0298fa8a1; acceptance harness 8297b8ce8ab6ed94099b8df00fd9ba808e74da8b differs only in explicit baseURL for isolated browser contexts. Subsequent record changes do not rebuild deployed/runtime code. Cloud remains R0.
+Status: R1.1 VERIFIED. PR22 merged step→phase at d04c6d80af16b84e2d40609a92af9c14924fc07f; PR23 merged phase→main at 43ebd2cfd34a80b8ff496c11f15d6f9d4e26d4b6; trees identical. Change archived after that promotion; record-only PRs follow the same protected path. Runtime source d1f27524ca7c7707e6a07a67b440cfd0298fa8a1; acceptance harness 8297b8ce8ab6ed94099b8df00fd9ba808e74da8b differs only in explicit baseURL for isolated browser contexts. Subsequent metadata/record changes do not rebuild runtime code. Cloud remains R0. R1 has 1/4 steps VERIFIED, is not RELEASED; R1.2 NOT_STARTED.
 
 | Group | Assertions | State |
 |---|---|---|
@@ -10,7 +10,7 @@ Status: LOCAL_ACCEPTANCE_PASS; PR promotion and archival pending. Runtime source
 | Security | Null/foreign Origin, missing/wrong CSRF, extra login body, current-user/admin/foreign-space boundaries; runtime user tables remain read-only | PASS |
 | Recovery | API container restart; actual PG stop/503 while health stays 200; PG start and same session recovery; real operator reset/logout; original R0 adapter transaction/CAS 3 cases | PASS |
 | Browser | Six real-API Playwright cases including baseline accessibility/contrast, actual API restart, two contexts, refresh/logout/expiry, 375/768/1440 light/dark | PASS |
-| Delivery | Local evidence/hash and production read-only health200/readiness200/identity404 verified; protected PR22 opened, remaining promotion/archive | PENDING |
+| Delivery | Exact source/image/JAR/evidence hashes verified; PR22/23 merged with PR/non-force protection, Actions disabled; archive and canonical ledgers updated; R0 online | PASS |
 
 Conversation/task/file/event endpoint isolation remains NOT_RUN until those endpoints exist in later steps; R1.1 verifies current-user/space facts and the real repository authorizer only.
 
