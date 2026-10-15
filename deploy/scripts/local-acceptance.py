@@ -40,7 +40,7 @@ def probe(mode):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('mode', choices=['prepare', 'start', 'storage', 'restart', 'stop'])
+    parser.add_argument('mode', choices=['prepare', 'start', 'storage', 'java-storage', 'restart', 'stop'])
     mode = parser.parse_args().mode
     if mode == 'prepare':
         run([sys.executable, 'deploy/scripts/prepare-cloud-config.py'])
@@ -64,6 +64,19 @@ def main():
     elif mode == 'storage':
         probe('bootstrap')
         probe('initial')
+    elif mode == 'java-storage':
+        run(['docker', 'run', '--rm', '--network', NETWORK, '--user', '10001:10001',
+             '--read-only', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
+             '--memory', '512m', '--pids-limit', '128', '--tmpfs', '/tmp:rw,noexec,nosuid,size=32m',
+             '-e', 'PLATFORM_PROBE_JDBC_URL=jdbc:postgresql://postgres:5432/agentplatform?connectTimeout=2&socketTimeout=3',
+             '-e', 'PLATFORM_PROBE_PASSWORD_FILE=/run/secrets/pg_api',
+             '--mount', 'type=bind,src=' + (DATA / 'reports').as_posix() + ',dst=/reports',
+             '--mount', 'type=bind,src=' + (DATA / 'secrets/pg_api').as_posix() + ',dst=/run/secrets/pg_api,readonly',
+             '--entrypoint', 'java', 'agentplatform-framework-probe:r0.2-local', '-Xmx256m', '-cp',
+             '/opt/probe/target/test-classes:/opt/probe/classes:/opt/probe/lib/*',
+             'org.junit.platform.console.ConsoleLauncher', 'execute', '--select-class',
+             'com.agentplatform.infrastructure.storage.PostgresStateStorageIT',
+             '--reports-dir=/reports/java-storage', '--fail-if-no-tests'])
     elif mode == 'restart':
         run(compose() + ['stop', 's3', 'filer', 'volume', 'master'])
         run(compose() + ['up', '-d', '--wait', '--wait-timeout', '240', 'master', 'volume', 'filer', 's3'])

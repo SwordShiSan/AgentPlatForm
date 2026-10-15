@@ -50,7 +50,7 @@ def isolation():
 def quota_case():
  command(['xfs_quota','-x','-c',f'limit -p bhard=8m ihard=16 {project}',str(root/'workspaces')])
  # Linux XFS project quota deliberately reports ENOSPC (user quota uses EDQUOT).
- native="import os,errno;os.setgroups([]);os.setgid(10001);os.setuid(10001);failed=False\ntry:\n with open("+repr(str(workspace/'large'))+",'wb') as f:\n  for i in range(32):f.write(b'Z'*(1024*1024));f.flush()\nexcept OSError as e:assert e.errno==errno.ENOSPC;failed=True;print('native-errno='+str(e.errno))\nassert failed"
+ native="import os,errno;os.chdir("+repr(str(workspace))+");os.setgroups([]);os.setgid(10001);os.setuid(10001);failed=False\ntry:\n with open('large','wb') as f:\n  for i in range(32):f.write(b'Z'*(1024*1024));f.flush()\nexcept OSError as e:assert e.errno==errno.ENOSPC;failed=True;print('native-errno='+str(e.errno))\nassert failed"
  native_result=command(['python3','-c',native],False);assert native_result.returncode==0,native_result.stderr
  assert 'native-errno=28' in native_result.stdout
  assert (workspace/'large').stat().st_size<=8*1024*1024

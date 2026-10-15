@@ -1,6 +1,6 @@
 # AgentPlatForm
 
-R0.4安全修订实施中：Java21/AgentScope2.0.4保持，Boot4.0.8/Tomcat11.0.25/Jackson2.21.7与3.1.7/Vitest4.1.11已更新，schema1不变。HOST44/Vue15及契约构建通过，整镜像安全审计仍FAIL、云端完整重验NOT_RUN；不标VERIFIED/RELEASED、不进入R1。详见[审计记录](deploy/AUDIT.md)，下文按阶段保留历史。
+R0.4本地/云端功能验收收尾中：保留Java21/AgentScope2.0.4及应用补丁/schema1；GitHub Actions已停用，使用官方固定镜像与本地构建。HOST44/Linux SDK39/真实PG3/Vue15/UI4通过，云端gVisor/XFS通过，30分钟观察及独立恢复进行中。第三方扫描保留原始结果、不作无关源码整改。R0未RELEASED、不进入R1。详见[契约证据](deploy/CONTRACT-EVIDENCE.md)和[审计记录](deploy/AUDIT.md)。以下阶段记录保留历史。
 
 新一代云端 Agent 平台独立 Git 单仓。R0.1工程、契约生成与健康壳层已通过本地Docker/CI并经PR晋级main；**尚无业务智能体功能、未部署生产**。实时阶段状态以外部局部台账为准。
 

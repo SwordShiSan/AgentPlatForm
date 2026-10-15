@@ -49,6 +49,22 @@ xfs_quota -x -c 'report -p -b -i' "$restore/workspaces" > "$restore/reports/quot
 diff -u <(tail -n +2 "$backup/quota-report.txt") <(tail -n +2 "$restore/reports/quota-report.txt")
 PLATFORM_ROOT="$restore" python3 "$root/deploy/probes/sandbox_probe.py" verify-mount
 PLATFORM_ROOT="$restore" python3 "$root/deploy/probes/sandbox_probe.py"
+# The trusted sandbox probe temporarily changes and then clears project100001.
+# Restore the persisted workspace budget before checking data/remount again.
+xfs_quota -x -c 'limit -p bhard=2g ihard=100000 100001' "$restore/workspaces"
+python3 - "$restore/workspaces/r04-recovery-fixture" <<'PY'
+import errno,os,pathlib,shutil,sys
+root=pathlib.Path(sys.argv[1]);assert root.is_dir()
+assert shutil.disk_usage(root).free>2*1024**3
+probe=root/'quota-denial.tmp'
+try:
+    with probe.open('wb') as stream:
+        try:os.posix_fallocate(stream.fileno(),0,2*1024**3)
+        except OSError as error:assert error.errno==errno.ENOSPC
+        else:raise AssertionError('Restored project quota did not refuse allocation')
+finally:
+    if probe.exists():probe.unlink()
+PY
 umount "$restore/workspaces"
 mounted=false
 if PLATFORM_ROOT="$restore" python3 "$root/deploy/probes/sandbox_probe.py" verify-mount > "$restore/reports/missing-mount.txt" 2>&1; then
@@ -63,6 +79,23 @@ python3 "$root/deploy/scripts/workspace-manifest.py" verify "$restore/workspaces
 "${env_compose[@]}" up -d --wait --wait-timeout 240
 "${app_compose[@]}" up -d --wait --wait-timeout 240
 curl -fsS http://127.0.0.1:18082/api/v1/readiness > "$restore/reports/readiness.json"
+pg=$("${env_compose[@]}" ps -q postgres)
+bash "$root/deploy/scripts/recovery-database-evidence.sh" capture "$pg" > "$restore/reports/recovery-database.txt"
+diff -u "$backup/recovery-database.txt" "$restore/reports/recovery-database.txt"
+mq=$("${env_compose[@]}" ps -q rabbitmq)
+docker exec "$mq" rabbitmqctl export_definitions /tmp/r04-restored-definitions.json >/dev/null
+docker cp "$mq:/tmp/r04-restored-definitions.json" "$restore/rabbitmq-restored-private.json" >/dev/null
+chmod 600 "$restore/rabbitmq-restored-private.json"
+python3 - "$backup/rabbitmq-definitions.json" "$restore/rabbitmq-restored-private.json" <<'PY'
+import json,sys
+def normalized(value):
+    if isinstance(value,dict):return {key:normalized(item) for key,item in value.items()}
+    if isinstance(value,list):return sorted([normalized(item) for item in value],key=lambda item:json.dumps(item,sort_keys=True))
+    return value
+before=json.load(open(sys.argv[1]));after=json.load(open(sys.argv[2]))
+assert normalized(before)==normalized(after),'Restored RabbitMQ definitions differ'
+print('Restored RabbitMQ definitions:PASS')
+PY
 cp "$backup/object-manifest.json" "$restore/reports/object-manifest.json"
 chown -R 10001:10001 "$restore/reports"
 docker run --rm --network "$PLATFORM_BACKPLANE" --user 10001:10001 --read-only --cap-drop ALL --security-opt no-new-privileges --memory 192m --tmpfs /tmp:rw,noexec,nosuid,size=16m \

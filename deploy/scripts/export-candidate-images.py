@@ -64,14 +64,17 @@ with tarfile.open(archive, mode='r|gz') as exported:
                 configs[member.name] = ('sha256:' + hashlib.sha256(content).hexdigest(), value)
 if not isinstance(manifest, list):
     raise SystemExit('Exported Docker manifest is missing')
-keys = ['Env', 'Cmd', 'Entrypoint', 'User', 'WorkingDir', 'Labels', 'Healthcheck', 'Volumes', 'ExposedPorts']
 def normalized_config(config, key):
     value = config.get(key)
     if key in ['Labels', 'Healthcheck', 'Volumes', 'ExposedPorts']:
         return value or {}
-    if key in ['Env', 'Cmd', 'Entrypoint']:
+    if key in ['Env', 'Cmd', 'Entrypoint', 'Shell', 'OnBuild']:
         return value or []
-    return value or ''
+    if key in ['AttachStdin', 'AttachStdout', 'AttachStderr', 'OpenStdin', 'StdinOnce', 'Tty', 'ArgsEscaped', 'NetworkDisabled']:
+        return value or False
+    if key in ['User', 'WorkingDir', 'StopSignal', 'Hostname', 'Domainname']:
+        return value or ''
+    return value
 for record, identity in zip(records, inspected):
     matches = []
     for entry in manifest:
@@ -81,6 +84,7 @@ for record, identity in zip(records, inspected):
         config_id, value = config
         if value['rootfs']['diff_ids'] != identity['RootFS']['Layers']:
             continue
+        keys = set(value['config']) | set(identity['Config'])
         if any(normalized_config(value['config'], key) != normalized_config(identity['Config'], key) for key in keys):
             continue
         matches.append((entry['Config'], config_id))
