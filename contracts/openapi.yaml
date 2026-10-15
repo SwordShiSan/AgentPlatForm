@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
-  title: Agent PlatForm shell API
+  title: Agent PlatForm API
   version: 0.1.0
-  description: Shell liveness and R0.3 storage-schema/dependency transport readiness. No model or task execution readiness claim.
+  description: R0 shell health/readiness and opt-in local R1.1 identity. No model or task execution readiness claim.
 servers:
   - url: /
 paths:
