@@ -1,4 +1,8 @@
-# Current R0.4 acceptance policy (2026-10-15)
+# Current R0 HTTP production release (2026-10-15)
+
+R0 RELEASED at `production-r0-c46a73ae4d00`;new stack online,legacy retained stopped. HTTP80 only at124.222.55.140 and the configured Host agentplatform.lailihao.cloud. User explicitly excludes DNS/TLS checks/configuration from this release;no443/certificate/redirect requirement. Guarded systemd lifecycle and bounded retries are active. See [release evidence](R0-RELEASE.md). R1 remains NOT_STARTED.
+
+# R0.4 acceptance policy retained as preparation history
 
 Local Docker builds and local/cloud functional acceptance replace GitHub builds. Official middleware identities live in runtime-images.lock.json (stable R0.3 baseline). Use the official gVisor20261005.0 package. Source rebuild candidate Dockerfiles and foundation security patches below are historical, not required startup dependencies. Unrelated third-party scan findings are informational, never reported as fixed. App/SDK/contracts/isolation/quota/restore gates remain mandatory. GitHub Actions workflow is archived; PR promotion uses exact-source local/cloud evidence. R0 remains unreleased.
 
