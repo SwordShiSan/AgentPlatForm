@@ -75,7 +75,9 @@ xfs_quota -x -c 'limit -p bhard=2g ihard=100000 100001' "$restore/workspaces"
 python3 - "$restore/workspaces/r04-recovery-fixture" <<'PY'
 import errno,os,pathlib,shutil,sys
 root=pathlib.Path(sys.argv[1]);assert root.is_dir()
-assert shutil.disk_usage(root).free>2*1024**3
+# XFS statfs on a project directory is quota-aware. Measure global free space
+# on the unassigned mount root, not the already limited workspace itself.
+assert shutil.disk_usage(root.parent).free>2*1024**3
 probe=root/'quota-denial.tmp'
 try:
     with probe.open('wb') as stream:
