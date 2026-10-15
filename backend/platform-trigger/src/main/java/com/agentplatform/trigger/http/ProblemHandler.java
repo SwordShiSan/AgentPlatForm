@@ -8,6 +8,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public final class ProblemHandler extends ResponseEntityExceptionHandler {
+    @org.springframework.web.bind.annotation.ExceptionHandler(com.agentplatform.domain.identity.IdentityFailure.class)
+    org.springframework.http.ResponseEntity<ProblemDetail> identityFailure(com.agentplatform.domain.identity.IdentityFailure failure) {
+        var problem = ProblemDetail.forStatusAndDetail(org.springframework.http.HttpStatusCode.valueOf(failure.status()), "The identity request could not be completed.");
+        problem.setType(URI.create("urn:agentplatform:error:" + failure.code().toLowerCase(java.util.Locale.ROOT).replace('_', '-')));
+        problem.setProperty("code", failure.code());
+        problem.setProperty("traceId", UUID.randomUUID().toString());
+        problem.setProperty("retryable", failure.status() == 503 || failure.status() == 429);
+        return org.springframework.http.ResponseEntity.status(failure.status()).header("Cache-Control", "no-store").body(problem);
+    }
     @Override
     protected org.springframework.http.ResponseEntity<Object> handleExceptionInternal(
             Exception exception, Object body, org.springframework.http.HttpHeaders headers,

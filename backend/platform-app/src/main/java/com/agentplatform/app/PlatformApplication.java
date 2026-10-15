@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Bean;
 public class PlatformApplication {
     public static void main(String[] args) {
         var context = SpringApplication.run(PlatformApplication.class, args);
-        if (context.getEnvironment().matchesProfiles("cloud-migrate")) {
+        if (context.getEnvironment().matchesProfiles("cloud-migrate", "identity-ops")) {
             System.exit(SpringApplication.exit(context));
         }
     }

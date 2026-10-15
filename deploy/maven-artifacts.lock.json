@@ -166,6 +166,22 @@
       }
     },
     {
+      "coordinate": "org.springframework.security:spring-security-crypto:jar:7.0.7",
+      "sha256": "e03b7570b6bac4a7d4837542e9317bc65158cfc96485564a29e7bb6747f218aa",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.bouncycastle:bcprov-jdk18on:jar:1.83",
+      "sha256": "82cf3a2af766c3bc874f6d36b9f20a8b99a8f09762dc776e8a227a45d8daaafb",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
       "coordinate": "org.postgresql:postgresql:jar:42.7.13",
       "sha256": "6e0e4cc2d8cae902084f8a2b18728b073a6fd9d1f87c9d8bff8f298c18185b93",
       "modules": {
