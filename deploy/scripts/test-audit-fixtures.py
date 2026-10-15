@@ -1,0 +1,149 @@
+import hashlib
+import importlib.util
+import io
+import pathlib
+import os
+import tarfile
+import tempfile
+import unittest
+
+script = pathlib.Path(__file__).with_name('audit-fixture-cache.py')
+spec = importlib.util.spec_from_file_location('fixtures', script)
+fixtures = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(fixtures)
+
+
+class FixtureGuards(unittest.TestCase):
+    @unittest.skipIf(os.name == 'nt', 'Real frozen directory symlinks are verified on Linux CI')
+    def test_shared_fixture_link_stays_inside_source_root(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp).resolve()
+            (root / 'shared/image').mkdir(parents=True)
+            (root / 'fixtures').mkdir()
+            source = root / 'shared/image/Dockerfile'
+            source.write_bytes(b'original shared input')
+            (root / 'fixtures/image').symlink_to('../shared/image', target_is_directory=True)
+            digest = fixtures.sha256(source)
+            manifest = {'annotations': {'fingerprint': 'frozen'}, 'layers': [
+                {'annotations': {'org.opencontainers.image.title': 'fixtures/cache'}}]}
+            paths = {'digest': 'frozen', 'paths': [{'path': 'fixtures/cache', 'input': {'image/Dockerfile': digest}}]}
+            result = fixtures.verify_fingerprints(root, manifest, paths, {'shared/image/Dockerfile': digest})
+            self.assertEqual('shared/image/Dockerfile', result[0]['path'])
+
+    def test_exact_orphan_review_invalidates_on_reference_or_source(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp).resolve()
+            code = root / 'cataloger_test.go'
+            code.write_text('package fixture\n')
+            digest = hashlib.sha256(b'historical input').hexdigest()
+            manifest = {'annotations': {'fingerprint': 'frozen'}, 'layers': [
+                {'annotations': {'org.opencontainers.image.title': 'fixtures/cache'}}]}
+            paths = {'digest': 'frozen', 'paths': [{'path': 'fixtures/cache', 'input': {'old/Dockerfile': digest}}]}
+            orphan = [{'output': 'fixtures/cache', 'input': 'old/Dockerfile', 'sha256': digest,
+                       'sourceDirectory': 'fixtures/old', 'referenceToken': 'old-fixture'}]
+            inventory = {'cataloger_test.go': fixtures.sha256(code)}
+            result = fixtures.verify_fingerprints(root, manifest, paths, inventory, orphan)
+            self.assertEqual('ORPHAN_UNUSED', result[0]['status'])
+            code.write_text('package fixture // old-fixture\n')
+            inventory['cataloger_test.go'] = fixtures.sha256(code)
+            with self.assertRaisesRegex(ValueError, 'Historical fixture referenced'):
+                fixtures.verify_fingerprints(root, manifest, paths, inventory, orphan)
+            code.write_text('package fixture\n')
+            inventory['cataloger_test.go'] = fixtures.sha256(code)
+            inventory['fixtures/old/new-file'] = digest
+            with self.assertRaisesRegex(ValueError, 'Historical fixture source is present'):
+                fixtures.verify_fingerprints(root, manifest, paths, inventory, orphan)
+            del inventory['fixtures/old/new-file']
+            paths['paths'][0]['input']['old/Dockerfile'] = 'f' * 64
+            with self.assertRaisesRegex(ValueError, 'source changed or absent'):
+                fixtures.verify_fingerprints(root, manifest, paths, inventory, orphan)
+
+    def test_nested_output_resolves_original_generator_input(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp).resolve()
+            source = root / 'binary/testdata/config.yaml'
+            source.parent.mkdir(parents=True)
+            source.write_bytes(b'original generator config')
+            digest = fixtures.sha256(source)
+            manifest = {'annotations': {'fingerprint': 'frozen'}, 'layers': [
+                {'annotations': {'org.opencontainers.image.title': 'binary/testdata/classifiers/bin'}}]}
+            paths = {'digest': 'frozen', 'paths': [{'path': 'binary/testdata/classifiers/bin',
+                                                  'input': {'./config.yaml': digest}}]}
+            inventory = {'binary/testdata/config.yaml': digest}
+            self.assertEqual('binary/testdata/config.yaml',
+                             fixtures.verify_fingerprints(root, manifest, paths, inventory)[0]['path'])
+            source.write_bytes(b'changed')
+            with self.assertRaisesRegex(ValueError, 'source changed or absent'):
+                fixtures.verify_fingerprints(root, manifest, paths, inventory)
+            paths['paths'][0]['input'] = {'../../config.yaml': digest}
+            with self.assertRaisesRegex(ValueError, 'Unsafe fixture path'):
+                fixtures.verify_fingerprints(root, manifest, paths, inventory)
+
+    def test_oras_raw_fingerprint_file_is_not_a_tar_archive(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp).resolve()
+            blob = root / 'raw-file'
+            blob.write_bytes(b'{"digest":"fixture"}')
+            layer = {'annotations': {'org.opencontainers.image.title': '.tmp/cache_paths.json'}}
+            fixtures.restore_layer(blob, layer, root)
+            self.assertEqual(blob.read_bytes(), (root / '.tmp/cache_paths.json').read_bytes())
+            layer['annotations']['org.opencontainers.image.title'] = 'unexpected.json'
+            with self.assertRaisesRegex(ValueError, 'Unsupported frozen fixture'):
+                fixtures.restore_layer(blob, layer, root)
+    def test_unlocked_source_symlink_rejected_before_extraction(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp).resolve()
+            blob = root / 'source.tar'
+            with tarfile.open(blob, 'w') as archive:
+                item = tarfile.TarInfo('source/testdata/link')
+                item.type = tarfile.SYMTYPE
+                item.linkname = '/outside'
+                archive.addfile(item)
+            with tarfile.open(blob) as archive, self.assertRaisesRegex(ValueError, 'fixture links changed'):
+                fixtures.extract_source(archive, root, 'source', {})
+            self.assertFalse((root / 'source').exists())
+    def test_archive_layouts_remain_in_named_directory(self):
+        for name in ['fixtures/cache/a.txt', 'cache/a.txt', 'a.txt']:
+            with tempfile.TemporaryDirectory() as temp:
+                root = pathlib.Path(temp).resolve()
+                blob = root / 'layer.tar'
+                with tarfile.open(blob, 'w') as archive:
+                    item = tarfile.TarInfo(name)
+                    item.size = 3
+                    archive.addfile(item, io.BytesIO(b'abc'))
+                fixtures.unpack(blob, 'fixtures/cache', root)
+                self.assertEqual(b'abc', (root / 'fixtures/cache/a.txt').read_bytes())
+
+    def test_traversal_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp).resolve()
+            blob = root / 'layer.tar'
+            with tarfile.open(blob, 'w') as archive:
+                archive.addfile(tarfile.TarInfo('../../escape'))
+            with self.assertRaises(ValueError):
+                fixtures.unpack(blob, 'fixtures/cache', root)
+
+    def test_fingerprint_requires_original_source_not_restored_cache(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp).resolve()
+            (root / 'fixtures').mkdir()
+            (root / 'fixtures/input.c').write_bytes(b'original')
+            digest = hashlib.sha256(b'original').hexdigest()
+            manifest = {'annotations': {'fingerprint': 'frozen'}, 'layers': [
+                {'annotations': {'org.opencontainers.image.title': 'fixtures/cache'}}]}
+            paths = {'digest': 'frozen', 'paths': [{'path': 'fixtures/cache', 'input': {'input.c': digest}}]}
+            result = fixtures.verify_fingerprints(root, manifest, paths, {'fixtures/input.c': digest})
+            self.assertEqual('fixtures/input.c', result[0]['path'])
+            with self.assertRaisesRegex(ValueError, 'source changed or absent'):
+                fixtures.verify_fingerprints(root, manifest, paths, {})
+            (root / 'fixtures/input.c').write_bytes(b'changed')
+            with self.assertRaisesRegex(ValueError, 'source changed or absent'):
+                fixtures.verify_fingerprints(root, manifest, paths, {'fixtures/input.c': digest})
+
+    def test_unrelated_manifest_fingerprint_rejected(self):
+        with self.assertRaisesRegex(ValueError, 'manifest fingerprint mismatch'):
+            fixtures.verify_fingerprints(pathlib.Path('.'), {'annotations': {'fingerprint': 'a'}}, {'digest': 'b'})
+
+
+if __name__ == '__main__':
+    unittest.main()

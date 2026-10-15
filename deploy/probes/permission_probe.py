@@ -13,6 +13,9 @@ for container in ids:
  assert cfg['Memory']>0 and cfg['PidsLimit']>0,name
  assert cfg['LogConfig']['Config'].get('max-size')=='10m' and cfg['LogConfig']['Config'].get('max-file')=='3',name
  mounts=data['Mounts']
+ if labels.get('com.docker.compose.service')=='s3':
+  assert '-iam=false' in ' '.join(data['Config'].get('Cmd') or []),'S3 advanced IAM/STS must stay disabled'
+  assert any(m['Destination']=='/run/secrets/s3_kek' and not m['RW'] for m in mounts),'KEK wrapping secret must be readonly'
  assert all(m['Destination'] not in ['/var/run/docker.sock','/','/home'] for m in mounts),name
  if project=='agentplatform-app':assert cfg['ReadonlyRootfs'],name
  if 'runner' in name or 'egress' in name:

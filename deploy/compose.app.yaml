@@ -38,7 +38,7 @@ services:
       PLATFORM_STORAGE_USER: ap_api
       PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/pg_api
     secrets: [pg_api]
-    healthcheck: {test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:8080/api/v1/readiness"], interval: 10s, timeout: 6s, retries: 24, start_period: 30s}
+    healthcheck: {test: [CMD, java, -Xms8m, -Xmx16m, -cp, /app/health, HttpHealthcheck, "http://127.0.0.1:8080/api/v1/readiness"], interval: 10s, timeout: 6s, retries: 24, start_period: 30s}
   worker:
     <<: *role
     profiles: [worker]
@@ -86,9 +86,9 @@ services:
     logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
     depends_on: {api: {condition: service_healthy}}
 networks:
-  backplane: {external: true, name: agentplatform-backplane}
-  ingress: {name: agentplatform-ingress}
-  egress-control: {name: agentplatform-egress-control, internal: true}
+  backplane: {external: true, name: "${PLATFORM_BACKPLANE:-agentplatform-backplane}"}
+  ingress: {name: "${PLATFORM_INGRESS:-agentplatform-ingress}"}
+  egress-control: {name: "${PLATFORM_EGRESS_CONTROL:-agentplatform-egress-control}", internal: true}
 secrets:
   pg_api: {file: "${PLATFORM_ROOT:-/srv/agentplatform}/secrets/pg_api"}
   pg_worker: {file: "${PLATFORM_ROOT:-/srv/agentplatform}/secrets/pg_worker"}

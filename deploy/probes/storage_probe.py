@@ -2,6 +2,11 @@
 import concurrent.futures,hashlib,json,os,pathlib,socket,struct,threading,time,uuid
 import boto3,pika,psycopg
 from botocore.config import Config
+from botocore.auth import SigV4Auth
+from botocore.awsrequest import AWSRequest
+from botocore.credentials import Credentials
+from sts_denial import validate_denial
+import urllib.error,urllib.parse,urllib.request
 
 reports=[]
 def case(name,run):
@@ -84,6 +89,12 @@ def rollback():
     c.execute('SELECT 1/0')
   except psycopg.errors.DivisionByZero:pass
   assert c.execute('SELECT count(*) FROM pf.r03_probe_reference WHERE object_key=%s',(key,)).fetchone()[0]==0
+
+def vector_compatibility():
+ with db() as c:
+  assert c.execute("SELECT extversion FROM pg_extension WHERE extname='vector'").fetchone()[0]=='0.8.1'
+  assert c.execute("SELECT '[1,2,3]'::vector <-> '[1,2,3]'::vector").fetchone()[0]==0.0
+  assert c.execute("SELECT '[1,0]'::vector <-> '[0,1]'::vector").fetchone()[0]>1.4
 
 def dispatch():
  task,event=str(uuid.uuid4()),str(uuid.uuid4());owner=str(uuid.uuid4())
@@ -179,6 +190,33 @@ def redis():
   c.sendall(b'*2\r\n$4\r\nAUTH\r\n$'+str(len(password)).encode()+b'\r\n'+password+b'\r\n');assert c.recv(1024).startswith(b'+OK')
   c.sendall(b'*1\r\n$4\r\nPING\r\n');assert c.recv(1024).startswith(b'+PONG')
 
+def sts_disabled():
+ # Disabled routes may return empty405, which the AWS XML parser cannot parse.
+ # Assert the actual wire refusal and functioning S3 on both sides; never accept
+ # transport errors, arbitrary parser errors, successful identities or grants.
+ client=s3();client.head_bucket(Bucket='ap-assets')
+ credentials=Credentials('ap-write',secret('s3_write'))
+ opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+ for action in ['GetCallerIdentity','AssumeRole','GetFederationToken']:
+  parameters={'Action':action,'Version':'2011-06-15'}
+  if action=='AssumeRole':parameters.update(RoleArn='arn:aws:iam::000000000000:role/r04-disabled',RoleSessionName='r04-denial')
+  if action=='GetFederationToken':parameters['Name']='r04-denial'
+  encoded=urllib.parse.urlencode(parameters)
+  for placement in ['body','query']:
+   url='http://s3:8333/'+('?' + encoded if placement=='query' else '')
+   body=encoded.encode() if placement=='body' else b''
+   request=AWSRequest(method='POST',url=url,data=body,headers={'Content-Type':'application/x-www-form-urlencoded'})
+   SigV4Auth(credentials,'sts','us-east-1').add_auth(request)
+   wire=urllib.request.Request(url,data=body,headers=dict(request.headers),method='POST')
+   try:response=opener.open(wire,timeout=3)
+   except urllib.error.HTTPError as error:response=error
+   with response:
+    payload=response.read(65537)
+    assert len(payload)<=65536
+    validate_denial(response.status,payload)
+    print('STS-'+action+'-'+placement+':HTTP'+str(response.status),flush=True)
+ client.head_bucket(Bucket='ap-assets')
+
 def cleanup():
  client=s3();m=json.loads(manifest.read_text())
  for key in [m['key'],m['multipart']]:client.delete_object(Bucket='ap-assets',Key=key)
@@ -188,7 +226,7 @@ def cleanup():
 try:
  mode=os.environ.get('PROBE_MODE','initial')
  if mode=='initial':
-  setup();case('DB-rollback',rollback);case('MQ-confirm-duplicate-rollback-fence',dispatch);case('S3-hash-range-multipart-orphan',object_write);case('Redis-auth-ping',redis)
+  setup();case('DB-vector-version-distance',vector_compatibility);case('DB-rollback',rollback);case('MQ-confirm-duplicate-rollback-fence',dispatch);case('S3-hash-range-multipart-orphan',object_write);case('Redis-auth-ping',redis);case('STS-disabled-denial',sts_disabled)
  elif mode=='bootstrap':case('S3-bucket-admin-only',provision_bucket)
  elif mode=='restart':case('S3-restart-persistence',object_after_restart);case('Redis-restart-auth',redis)
  elif mode=='cleanup':case('Probe-fixture-cleanup',cleanup)

@@ -1,4 +1,16 @@
+# Current R0.4 acceptance policy (2026-10-15)
+
+Local Docker builds and local/cloud functional acceptance replace GitHub builds. Official middleware identities live in runtime-images.lock.json (stable R0.3 baseline). Use the official gVisor20261005.0 package. Source rebuild candidate Dockerfiles and foundation security patches below are historical, not required startup dependencies. Unrelated third-party scan findings are informational, never reported as fixed. App/SDK/contracts/isolation/quota/restore gates remain mandatory. GitHub Actions workflow is archived; PR promotion uses exact-source local/cloud evidence. R0 remains unreleased.
+
 # Deployment
+
+## Historical R0.4 foundation candidate preparation (superseded)
+
+The following source-rebuild/CI instructions are retained as history and are not the current startup path. Current local acceptance uses `scripts/local-acceptance.py`; official middleware identities are in `runtime-images.lock.json`, and cloud import uses verified config IDs. Do not invoke paused foundation rebuilds for this acceptance.
+
+Current approved inputs are pinned in `foundation.lock.json`; run `python3 deploy/scripts/foundation-inputs.py --fetch` before any build. Offline signed Alpine packages and exact source/module hashes reject drift. PostgreSQL/vector, Redis and SeaweedFS candidates use dedicated Dockerfiles and disclose rebuilds. Redis7.4 uses RSALv2/SSPLv1; the actual upstream license is retained in the image. Distribution must retain license notices and requires review of the selected license's source/service restrictions; no BSD claim or license waiver.
+
+Compose environment images must be supplied by validated `images.env` (cloud config IDs), or by the CI fixture variables. There is no mutable production default. CI builds and audits locally, exporting only accepted images; failed or incomplete scans retain evidence and block export. New foundations remain candidates until fresh runtime, quota,>=30-minute observation and serial restore gates pass. R0.4 remains IMPLEMENTING and R0 remains unreleased.
 
 ## R0.3 minimal cloud developer acceptance
 

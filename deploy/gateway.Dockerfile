@@ -1,4 +1,4 @@
-FROM nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8
+FROM nginxinc/nginx-unprivileged:1.30.5-alpine@sha256:0f5f7068c5f5bf7046dbf649a08810ec1693967a9f488b8ff3998be6dd34bf6c
 COPY --chown=101:101 frontend/dist/ /usr/share/nginx/html/
 COPY --chown=101:101 deploy/nginx.conf /etc/nginx/nginx.conf
 USER 101:101

@@ -1,0 +1,10 @@
+{
+  "baseline": "a1c09fea29f557d16b5787c9d2efed4f916202d2",
+  "platform": "linux/amd64",
+  "images": {
+    "POSTGRES_IMAGE": "pgvector/pgvector:0.8.1-pg17-trixie@sha256:137f044b0efe3d57f39b972b9b53641b1f2045b99d879e298bbf514a25787dcf",
+    "REDIS_IMAGE": "redis:7.4-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499",
+    "RABBITMQ_IMAGE": "rabbitmq:4.3.6-management@sha256:8dd6e3570ddaa2ef82a6c3a8950e79c1f73893adfbdddbc374fc1f1ac8a0f5dd",
+    "SEAWEEDFS_IMAGE": "chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d"
+  }
+}
