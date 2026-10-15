@@ -48,13 +48,13 @@ case "$mode" in
    --mount "type=bind,src=$root/secrets/s3_read,dst=/run/secrets/s3_read,readonly" \
    --mount "type=bind,src=$root/secrets/s3_write,dst=/run/secrets/s3_write,readonly" \
    "${admin_mount[@]}" \
-   agentplatform-storage-probe:r0.3-candidate
+   "$(sed -n 's/^STORAGE_PROBE_IMAGE=//p' "$root/deploy/images.env")"
   ;;
  java-storage)
   docker run --rm --name agentplatform-r03-java-storage --network agentplatform-backplane --user 10001:10001 --read-only --cap-drop ALL --security-opt no-new-privileges --memory 512m --pids-limit 128 --tmpfs /tmp:rw,noexec,nosuid,size=32m \
    -e PLATFORM_PROBE_JDBC_URL='jdbc:postgresql://postgres:5432/agentplatform?connectTimeout=2&socketTimeout=3' -e PLATFORM_PROBE_PASSWORD_FILE=/run/secrets/pg_api \
    --mount "type=bind,src=$root/reports,dst=/reports" --mount "type=bind,src=$root/secrets/pg_api,dst=/run/secrets/pg_api,readonly" \
-   --entrypoint java agentplatform-framework-probe:r0.3-candidate -Xmx256m -cp '/opt/probe/target/test-classes:/opt/probe/classes:/opt/probe/lib/*' org.junit.platform.console.ConsoleLauncher execute --select-class com.agentplatform.infrastructure.storage.PostgresStateStorageIT --reports-dir=/reports/java-storage --fail-if-no-tests
+   --entrypoint java "$(sed -n 's/^FRAMEWORK_PROBE_IMAGE=//p' "$root/deploy/images.env")" -Xmx256m -cp '/opt/probe/target/test-classes:/opt/probe/classes:/opt/probe/lib/*' org.junit.platform.console.ConsoleLauncher execute --select-class com.agentplatform.infrastructure.storage.PostgresStateStorageIT --reports-dir=/reports/java-storage --fail-if-no-tests
   ;;
  restart)
   "${env_compose[@]}" stop s3 filer volume master

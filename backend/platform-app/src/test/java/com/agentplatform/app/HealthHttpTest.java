@@ -7,6 +7,8 @@ import java.net.http.HttpResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import tools.jackson.databind.json.JsonMapper;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -14,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class HealthHttpTest {
     @LocalServerPort
     private int port;
+
+    @Autowired private ApplicationContext context;
 
     @Test
     void healthIsRealJsonAndDoesNotNeedDatabase() throws Exception {
@@ -32,6 +36,22 @@ class HealthHttpTest {
         var body = JsonMapper.builder().build().readTree(response.body());
         assertEquals("NOT_READY", body.get("status").asText());
         assertEquals(1, body.size());
+    }
+
+    @Test
+    void platformDoesNotExposeMcpServerTransports() throws Exception {
+        for (String name : context.getBeanDefinitionNames()) {
+            Class<?> type = context.getType(name);
+            if (type != null) assertFalse(type.getName().matches(".*(McpServer|ServerTransport).*"), type.getName());
+        }
+        for (String path : new String[]{"/mcp", "/sse", "/api/v1/mcp", "/api/v1/sse"}) {
+            assertEquals(404, get(path).statusCode(), path);
+            var post = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\"}"))
+                    .build();
+            assertEquals(404, HttpClient.newHttpClient().send(post, HttpResponse.BodyHandlers.ofString()).statusCode(), path);
+        }
     }
 
     @Test

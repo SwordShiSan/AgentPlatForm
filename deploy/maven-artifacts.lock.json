@@ -1,0 +1,1049 @@
+{
+  "schemaVersion": 1,
+  "scope": "External compile/runtime/test artifacts; own modules bound by source SHA",
+  "artifacts": [
+    {
+      "coordinate": "org.springframework.boot:spring-boot-starter-webmvc:jar:4.0.8",
+      "sha256": "30e6b265f5f697d7403e0f978a89425ad26513543f7df89246cf2a9b3d8a17eb",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-starter-jackson:jar:4.0.8",
+      "sha256": "440f0eba9127e876473b165140139e52ec658f5ca5a2d4fada4382d618148894",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-jackson:jar:4.0.8",
+      "sha256": "f846da1dc1f78acd3e9446b19d049f0a3a5bd79dac7eb2cff921b256f9dc4b01",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "tools.jackson.core:jackson-databind:jar:3.1.7",
+      "sha256": "48c781de87e2016e1f0d973748a27130f11643e7ac080173f40e2d9669d84be3",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "tools.jackson.core:jackson-core:jar:3.1.7",
+      "sha256": "7608c367fd8a92666d28711519599543c180298259963184ce04d2947a8f71e7",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-starter-tomcat:jar:4.0.8",
+      "sha256": "9948ef03e61c044d9f2f5676d2e521c130386a4a74d1a134a645ebe053a82f2d",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-starter-tomcat-runtime:jar:4.0.8",
+      "sha256": "6bdd09547e4577a8e702f4ce305bd72e93cd502cd3e133fcc5bdd25463ceb62c",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-web-server:jar:4.0.8",
+      "sha256": "634e37eb6e53cc9d30e54bb8e3969faec289a0cf222e4929446d2af38e6fb6ce",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.apache.tomcat.embed:tomcat-embed-core:jar:11.0.25",
+      "sha256": "282b65b9fe43647b1459c0df11101f8599a58de5832075acff485c3705ba4894",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.apache.tomcat.embed:tomcat-embed-el:jar:11.0.25",
+      "sha256": "5f84c660ff9a8f85b1c28e1ebe75bb2df486f2457d00257c823888a2e964a793",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.apache.tomcat.embed:tomcat-embed-websocket:jar:11.0.25",
+      "sha256": "7d05c8cac38f39e2e0ac6e6d7d0920823372b3f9dc4fac53aaea96727107601a",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-tomcat:jar:4.0.8",
+      "sha256": "2c704a61e44768d6b5101b2ac0ae0b87399a30abb96712d9fb746b506efcee1e",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-http-converter:jar:4.0.8",
+      "sha256": "ea94cd0d84162603266b7ab97f8a4de5661ad0425d0d8a50c50a18f4610dc0be",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework:spring-web:jar:7.0.9",
+      "sha256": "941ced476427bde2533872f293da535fd0258de3f3a650a7f1bfe01ed2927302",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework:spring-beans:jar:7.0.9",
+      "sha256": "ff218b827a25c9e8929b0cd56dfb56916cea9d5b669ed97dc7cb262508ff548b",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "test",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-webmvc:jar:4.0.8",
+      "sha256": "92052c430ea18f39f34c4f05feaebb108ee1a145263f46bbc3b3506fed598b81",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-servlet:jar:4.0.8",
+      "sha256": "c632f7a95fb68edd0803ed9b40c0e93591ee572cc755fd78ca4c9a039369661b",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework:spring-webmvc:jar:7.0.9",
+      "sha256": "8f114c1461692c5e534e82b27de23b7fb23370db8dee7ce0c92d5106906c9555",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework:spring-aop:jar:7.0.9",
+      "sha256": "b8c5d6bfcb1f4993f2cc124f7ab7fac40edf5256b9e43c2f7250a733cb5510e9",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "test",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework:spring-expression:jar:7.0.9",
+      "sha256": "046434c40f43819729b9b1db0e6c659dfa68184c1c2c2efa5f7b3a5b27c4e2e2",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "test",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.postgresql:postgresql:jar:42.7.13",
+      "sha256": "6e0e4cc2d8cae902084f8a2b18728b073a6fd9d1f87c9d8bff8f298c18185b93",
+      "modules": {
+        "platform-app": "runtime",
+        "platform-infrastructure": "runtime"
+      }
+    },
+    {
+      "coordinate": "org.checkerframework:checker-qual:jar:3.55.1",
+      "sha256": "857658c8bdcbff794949a8d9922f88d63ee3751c203c7cd7d21ea97f9e745288",
+      "modules": {
+        "platform-app": "runtime",
+        "platform-infrastructure": "runtime"
+      }
+    },
+    {
+      "coordinate": "io.agentscope:agentscope-harness:jar:2.0.4",
+      "sha256": "a280595d75d328ed5562ef8f34a1cfc22ee8cb338fecd3df09f80669796ed361",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.agentscope:agentscope-core:jar:2.0.4",
+      "sha256": "032a90cb1510b30f52f344a8e6a1047fa969314feb97c43c3da753e0505617a5",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "com.github.victools:jsonschema-generator:jar:4.38.0",
+      "sha256": "ade4aeb301db4028ac6bcba016c31405677e37aae6eebaf13c99de3fdb3531b4",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "com.fasterxml:classmate:jar:1.7.3",
+      "sha256": "75fbda45456f123fb6e2028a6189442d8d0730b357adce4c0a6d7e789f70669b",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "com.github.victools:jsonschema-module-jackson:jar:4.38.0",
+      "sha256": "36fbd3f1c27379c3ba8420ac2cb0b42411f7bc3b3df8bdd11d8d7e024a1c28ca",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:jar:2.21.7",
+      "sha256": "5989b937f0aa5b6407e7a061077c9bfcac0590dc0a32e54b2fac6a3e2d49e812",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.modelcontextprotocol.sdk:mcp:jar:0.17.2",
+      "sha256": "03933059322e5d64f2d305701338f0a3b894a2c983079b44b675b63ea12798b0",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.modelcontextprotocol.sdk:mcp-json-jackson2:jar:0.17.2",
+      "sha256": "dbe542c16244de30872ce5edcf1795ef4101acd4ac400e8c8081b0048feac0a7",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.modelcontextprotocol.sdk:mcp-json:jar:0.17.2",
+      "sha256": "6df99ef400836bd213d63895684eb066d36e1a9b759bd38342c32a6b9b0b6e4f",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.modelcontextprotocol.sdk:mcp-core:jar:0.17.2",
+      "sha256": "2489902b00d9cfb77a9ec991adf5c3387da298a4154f526dc63cda9c187891ff",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "com.squareup.okhttp3:okhttp:jar:5.3.2",
+      "sha256": "e720a383fdc3eb1df4aac77a085e61b7730837364151de867093fdbcafcb44aa",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.jetbrains.kotlin:kotlin-stdlib:jar:2.2.21",
+      "sha256": "6558a3d233da56a20934b32159f9db5f86ed5816ef098f78a2c223dc6abb79dd",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.jetbrains:annotations:jar:13.0",
+      "sha256": "ace2a10dc8e2d5fd34925ecac03e4988b2c0f851650c94b8cef49ba1bd111478",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "com.squareup.okio:okio:jar:3.16.4",
+      "sha256": "c9964f394c4cd32b79bf338afbfa2f2297221eee08311787061cea55f87dd60e",
+      "modules": {
+        "platform-app": "runtime",
+        "platform-infrastructure": "runtime"
+      }
+    },
+    {
+      "coordinate": "com.squareup.okhttp3:okhttp-jvm:jar:5.3.2",
+      "sha256": "c771f48075b763f6c322055e21129a94b7de4c1faf3f8f58ace320b0c9517a30",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "com.squareup.okio:okio-jvm:jar:3.16.4",
+      "sha256": "2196b993cd34dbbd919e7e01f57a4781b58bee80f86106163e287c20343a96a7",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "com.networknt:json-schema-validator:jar:2.0.0",
+      "sha256": "ee940241043ae01801df5954bc3744bf723c449ff0da719f97e1b9a6889739d7",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "com.ethlo.time:itu:jar:1.14.0",
+      "sha256": "5cf40ab0cc77828ab2b875b1f3ecd71c8295d7721933476abc2e08fddcea164a",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.github.bonede:tree-sitter:jar:0.24.4",
+      "sha256": "1dfebefc616049956ade6c4e85534d8c656a391da2a3a56a610f8d345e715745",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.github.bonede:tree-sitter-bash:jar:0.23.3",
+      "sha256": "b8a9b604722836699322ad9aaf124cf1d20336b421f1f38d54bd1662060830c8",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.opentelemetry:opentelemetry-api:jar:1.55.0",
+      "sha256": "387b4bf98631fc2ede9470879a8ff28dd8c5cb2d3dcf5b6ef77f5ee2bdb7b4f1",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.opentelemetry:opentelemetry-context:jar:1.55.0",
+      "sha256": "f34a4718b70446ec462703ced5cc2c9ad4c9b7c69dcb41d0f032ba51c625a3dd",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.opentelemetry:opentelemetry-common:jar:1.55.0",
+      "sha256": "fca14bb87309d1193347d179b91c63045fa05a856f1fbeec6ef61c4a7f81b227",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.opentelemetry.instrumentation:opentelemetry-reactor-3.1:jar:2.27.0-alpha",
+      "sha256": "be1db19d7861a5a878c2329fb7b2c9ad35a15d898460b6a1e70a399b95af54a5",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.opentelemetry.instrumentation:opentelemetry-instrumentation-api:jar:2.27.0",
+      "sha256": "e9928acbe8867fa84102c6a40c35266f39eef7f72c566884270565434b315c07",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.opentelemetry:opentelemetry-api-incubator:jar:1.61.0-alpha",
+      "sha256": "0f3f4eacb0a29579cb56e94bfbb75fab6aa4e893e7c1e37e91da874d06dbc7ce",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.opentelemetry.semconv:opentelemetry-semconv:jar:1.40.0",
+      "sha256": "27eb65c14b91487cc25d35bd6f455193aac981d1ebe1b9472d5160cece573ba4",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.opentelemetry.instrumentation:opentelemetry-instrumentation-api-incubator:jar:2.27.0-alpha",
+      "sha256": "991a817ef0cf97aa53e35744c8ab47667526c665701ab3084af00336cec7e3ed",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations-support:jar:2.27.0-alpha",
+      "sha256": "e144b9e11b70d2c0090ab0ccf32432e78f8311910f31b6a304d9cb90a2e02e17",
+      "modules": {
+        "platform-app": "runtime",
+        "platform-infrastructure": "runtime"
+      }
+    },
+    {
+      "coordinate": "io.opentelemetry.semconv:opentelemetry-semconv-incubating:jar:1.40.0-alpha",
+      "sha256": "b73e725e970e3120670d3e64b8ff058fba495b0e8040b259b50dd38e030380e4",
+      "modules": {
+        "platform-app": "runtime",
+        "platform-infrastructure": "runtime"
+      }
+    },
+    {
+      "coordinate": "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:jar:2.21.7",
+      "sha256": "df2b3e6a194181dc067b7211d750926b4ae9e4f3c892a0005b8219a9b59be681",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.apache.commons:commons-compress:jar:1.27.1",
+      "sha256": "293d80f54b536b74095dcd7ea3cf0a29bbfc3402519281332495f4420d370d16",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "commons-codec:commons-codec:jar:1.19.0",
+      "sha256": "5c3881e4f556855e9c532927ee0c9dfde94cc66760d5805c031a59887070af5f",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "commons-io:commons-io:jar:2.16.1",
+      "sha256": "f41f7baacd716896447ace9758621f62c1c6b0a91d89acee488da26fc477c84f",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.apache.commons:commons-lang3:jar:3.19.0",
+      "sha256": "32733ab4bc90b45b63eb72677d886961003fd4ed113e07b1028f9877cb2ac735",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.xerial:sqlite-jdbc:jar:3.50.3.0",
+      "sha256": "a3f53a2aa15ae9425a9e793bbe9c8e5288febeb4b65ef5c1a4e80d4c2045cf08",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.agentscope:agentscope-extensions-model-openai:jar:2.0.4",
+      "sha256": "b815c797400ee112382b841fa908196908c946bff58a97b72cdf6cd1e8522c3e",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.projectreactor:reactor-core:jar:3.8.7",
+      "sha256": "9a5f1bfc5ad0416a410ff63beaa279cc30c2da3ae9b111a678c83c99298a1551",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.reactivestreams:reactive-streams:jar:1.0.4",
+      "sha256": "f75ca597789b3dac58f61857b9ac2e1034a68fa672db35055a8fb4509e325f28",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.flywaydb:flyway-core:jar:11.14.1",
+      "sha256": "45148edbcb55016418ff1ef7ecca3331b55f5216b3af4bd2db40063904db3715",
+      "modules": {
+        "platform-app": "compile"
+      }
+    },
+    {
+      "coordinate": "com.fasterxml.jackson.core:jackson-databind:jar:2.21.7",
+      "sha256": "1290c2795e93e8a6861a6c4d9ff0d844d32f5ea178362cb2721edf5561e828b1",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "com.fasterxml.jackson.core:jackson-annotations:jar:2.21",
+      "sha256": "53ca085f4a150f703f49e1aabd935bd03b43e1ea3d55d135438292af22cef56b",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "com.fasterxml.jackson.core:jackson-core:jar:2.21.7",
+      "sha256": "8c5623b98f32d5f7e1287ff61ed50e08ab7b11381e991fff89327faabba42261",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-starter-actuator:jar:4.0.8",
+      "sha256": "565334d63775756451bc0183356be14820d8b166467bab18a8d5449b1503ea94",
+      "modules": {
+        "platform-app": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-starter:jar:4.0.8",
+      "sha256": "f910a1b87c6c39097f5125d96c019135e8dc3bee0322c20f9271e0777aa70ee1",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "test",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-starter-logging:jar:4.0.8",
+      "sha256": "6c1f7cd8e38ac0dfbc92979c1b2eb8df5b11b026299d763c8864c8a473ef76d8",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "test",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "ch.qos.logback:logback-classic:jar:1.5.38",
+      "sha256": "afb439c61fa287c9e1925523b13baab03617e724406a389d48b61c2c3e46b700",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "test",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "ch.qos.logback:logback-core:jar:1.5.38",
+      "sha256": "a855a0fc97b1d06f4efb1c3bba5ebd0eb508d8b58e68e89e4bbc23a85135c883",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "test",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.apache.logging.log4j:log4j-to-slf4j:jar:2.25.5",
+      "sha256": "b68e8b47342dbc9b35644a14fe2efc0b7bf18da703910cd05ad5501ffe07bba1",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "test",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.apache.logging.log4j:log4j-api:jar:2.25.5",
+      "sha256": "64777f73ea0b3104c04eb82befbdccc30a425a19e83ad06cb2f93aa303511863",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "test",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.slf4j:jul-to-slf4j:jar:2.0.18",
+      "sha256": "cbb7d1aaaa9e871eb1a06594abd911bf97027152976edf1edc315be75239204e",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "test",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-autoconfigure:jar:4.0.8",
+      "sha256": "6beeb105cceae1df37957d35e1bf8d060e7bde61537569decae3f976f6b54919",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "test",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "jakarta.annotation:jakarta.annotation-api:jar:3.0.0",
+      "sha256": "b01f55552284cfb149411e64eabca75e942d26d2e1786b32914250e4330afaa2",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "test",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.yaml:snakeyaml:jar:2.5",
+      "sha256": "e6682acf1ace77508ef13649cbf4f8d09d2cf5457bdb61d25ffb6ac0233d78dd",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-starter-micrometer-metrics:jar:4.0.8",
+      "sha256": "bb9844760eeaa2618e9b83db0f543a19b5a11cee754a1cfb74ddaa167cd8f5a9",
+      "modules": {
+        "platform-app": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-micrometer-metrics:jar:4.0.8",
+      "sha256": "30eb8f95ebcd29375e49eb1834dcc176a8f824cba01214c37d899e2ad5e598f7",
+      "modules": {
+        "platform-app": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-micrometer-observation:jar:4.0.8",
+      "sha256": "4ba481c61798a353114925be837b27b709da5e6b9bdddbd786e7761949d4c2b6",
+      "modules": {
+        "platform-app": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-actuator-autoconfigure:jar:4.0.8",
+      "sha256": "f9c3c760c2ac7a8d7b33ac1ad0c886e36f4573c7674e1fd5ca46f81443e5d58e",
+      "modules": {
+        "platform-app": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-actuator:jar:4.0.8",
+      "sha256": "1f3bd61015e1a6346a7f3b12547b07b47ea312392cfbccbcfa3cbadbe7cc7a4a",
+      "modules": {
+        "platform-app": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-health:jar:4.0.8",
+      "sha256": "85dcca38f6d9b33f96af895bfdc99ecfe862f591e677047d58e025b3a94a786c",
+      "modules": {
+        "platform-app": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot:jar:4.0.8",
+      "sha256": "ef1a4917ff5dfd41de20b7441a7830eaeae0a01229998c3aa2f471b96bc2b38f",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "test",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework:spring-context:jar:7.0.9",
+      "sha256": "7552a2fcfa30cea53eb14d7a65a7a8e1b1dd82e832a7164fb7e6fb105f438858",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "test",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "io.micrometer:micrometer-observation:jar:1.16.7",
+      "sha256": "74f9e4d51ef30c141de8a2409879282e572eef98665e033e8922c2fbee16862d",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "test",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.jspecify:jspecify:jar:1.0.1",
+      "sha256": "070d75f261fe4c5b8202508366715f7f2d4660f88c8ef7e6d3575e48c9683b66",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "io.micrometer:micrometer-commons:jar:1.16.7",
+      "sha256": "cd1ad64a94650a2ed3988a4ab48c9a7fad40c4986a81e328194dd757b5170273",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "test",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "io.micrometer:micrometer-jakarta9:jar:1.16.7",
+      "sha256": "100b600eed6ef9ceafeacee9687b6fd41dd59007f23d1483739b6d9480705863",
+      "modules": {
+        "platform-app": "compile"
+      }
+    },
+    {
+      "coordinate": "io.micrometer:micrometer-core:jar:1.16.7",
+      "sha256": "6a1971bc92310cf8e387118a79d0b9146695d6f8d89d03990e180f9dcb374284",
+      "modules": {
+        "platform-app": "compile"
+      }
+    },
+    {
+      "coordinate": "org.hdrhistogram:HdrHistogram:jar:2.2.2",
+      "sha256": "22d1d4316c4ec13a68b559e98c8256d69071593731da96136640f864fa14fad8",
+      "modules": {
+        "platform-app": "runtime"
+      }
+    },
+    {
+      "coordinate": "org.latencyutils:LatencyUtils:jar:2.0.3",
+      "sha256": "a32a9ffa06b2f4e01c5360f8f9df7bc5d9454a5d373cd8f361347fa5a57165ec",
+      "modules": {
+        "platform-app": "runtime"
+      }
+    },
+    {
+      "coordinate": "org.flywaydb:flyway-database-postgresql:jar:11.14.1",
+      "sha256": "d7142273706f225e6890ff971f0c8ccc4e7fe253ab6ab9f20556b155c68bca8a",
+      "modules": {
+        "platform-app": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-starter-test:jar:4.0.8",
+      "sha256": "4d342a17b9081d05d2a141335ac8d07cbc44c5f5639c22c151124a6e35a99e07",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-test:jar:4.0.8",
+      "sha256": "e5d44883859e54fd74906de6227bb4bc295813b0160e78fb782834a5f367cc45",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-test-autoconfigure:jar:4.0.8",
+      "sha256": "4c11c84092c5c675e80cc436aef153fe3693879a05ed7ffb315ad7e925300fe7",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "com.jayway.jsonpath:json-path:jar:2.10.0",
+      "sha256": "890daa95dd3892d34d9fabc27cd5153656e6f369358625c88f4dc7b79cbd6c5a",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.slf4j:slf4j-api:jar:2.0.18",
+      "sha256": "44508fd1576500688c790b190acdd16fec4f8c79a3e0b900afd70503cf055f55",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "jakarta.xml.bind:jakarta.xml.bind-api:jar:4.0.5",
+      "sha256": "5e489b6c874c4119e003ff1403db523ee3a8959ec499f3de29e77245efccf216",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "jakarta.activation:jakarta.activation-api:jar:2.1.4",
+      "sha256": "c9db52100ce6c8aac95cc39075f95720d2e561b11f8051b81c121ad4effd7004",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "net.minidev:json-smart:jar:2.6.0",
+      "sha256": "1ae4b561458afb540be8ec5c6dbb4f2e715a319a7ae64854998aaf924770d61b",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "net.minidev:accessors-smart:jar:2.6.0",
+      "sha256": "222c9f547bb20a99fc486403a398352d1306fb671b38abd7ecab6401df170e61",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.ow2.asm:asm:jar:9.7.1",
+      "sha256": "8cadd43ac5eb6d09de05faecca38b917a040bb9139c7edeb4cc81c740b713281",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.assertj:assertj-core:jar:3.27.7",
+      "sha256": "c4a445426c3c2861666863b842cc4ec7bbb1c4226fefd370b6d2fe83d6c4ff0f",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "net.bytebuddy:byte-buddy:jar:1.17.8",
+      "sha256": "2b5ddc8c1f4234bdb7cb45338a8e10a13e0e3ca473e91d5d821d681127ea8ba1",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.awaitility:awaitility:jar:4.3.0",
+      "sha256": "ee58568ea5945dcf988551501655183dc184e23e45a8e013fdfd9036194e6f7b",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.hamcrest:hamcrest:jar:3.0",
+      "sha256": "5d66b6a4a680755cb6ed7cb104fa7835ef644667586ff0737adeb977c39ecdbc",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.junit.jupiter:junit-jupiter:jar:6.0.3",
+      "sha256": "784b65815f479a0c99a9d3a573b142e2a525efb6025d97f751b19e72f90aeda3",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.junit.jupiter:junit-jupiter-api:jar:6.0.3",
+      "sha256": "d655d7e6f0c7ae07f10a2f3bbaaebb6d30e9b26204a068ad9e9b3950aa28792c",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.opentest4j:opentest4j:jar:1.3.0",
+      "sha256": "48e2df636cab6563ced64dcdff8abb2355627cb236ef0bf37598682ddf742f1b",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.junit.platform:junit-platform-commons:jar:6.0.3",
+      "sha256": "39f262d09c3d52719fe0b77f080e90a3695e285d779a41b232e17963ae5da200",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.apiguardian:apiguardian-api:jar:1.1.2",
+      "sha256": "b509448ac506d607319f182537f0b35d71007582ec741832a1f111e5b5b70b38",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.junit.jupiter:junit-jupiter-params:jar:6.0.3",
+      "sha256": "cf2947e2302b9f8c8a059259a277881c1cadae8fbc2514c16a925cfeb7beb2e5",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.junit.jupiter:junit-jupiter-engine:jar:6.0.3",
+      "sha256": "1e2fab61ad27ea08fc7c70dd9677cf8c6d1ae5434d42dcfdd633b12c7e7c04d0",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.junit.platform:junit-platform-engine:jar:6.0.3",
+      "sha256": "491e9e4f745f161b8a8e4186a1a7c6a450ea12c70930c9aedae427215301d947",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.mockito:mockito-core:jar:5.20.0",
+      "sha256": "d1a96d252128d3a4247cfd8a2e76412efa3cc103977be17933c942117a24f374",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "net.bytebuddy:byte-buddy-agent:jar:1.17.8",
+      "sha256": "5b17113e66e77ca6f8af07ff367c216df964a980f0e9f11e3b1aa793253aa64f",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.objenesis:objenesis:jar:3.3",
+      "sha256": "02dfd0b0439a5591e35b708ed2f5474eb0948f53abf74637e959b8e4ef69bfeb",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.mockito:mockito-junit-jupiter:jar:5.20.0",
+      "sha256": "fd6c703c2b00b914f3adbc27b18077a708f3d6992f19242c444e737c6cce024e",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.skyscreamer:jsonassert:jar:1.5.3",
+      "sha256": "719095c07d4203961320da593441d8b3b643c18eb1d81aa98ea933bb7eb351ba",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "com.vaadin.external.google:android-json:jar:0.0.20131108.vaadin1",
+      "sha256": "dfb7bae2f404cfe0b72b4d23944698cb716b7665171812a0a4d0f5926c0fac79",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.springframework:spring-core:jar:7.0.9",
+      "sha256": "5195f4722699b39878d99a832549fe65df2890b159d063b88fff31b1ca65ae36",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "test",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "commons-logging:commons-logging:jar:1.3.6",
+      "sha256": "f8ead8943401081dea0aa824b5b1ba40a0e4ed297a572a0f02258150a0b62357",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "test",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework:spring-test:jar:7.0.9",
+      "sha256": "6ce8fc116f5d309b9ac50a6738bd1b15ea4012a4a5563c0ee89b795bfc9af0dc",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "org.xmlunit:xmlunit-core:jar:2.10.4",
+      "sha256": "208e0cee82aedd9183937e4b9ae44b83884179f724a706bef5795477acfcca91",
+      "modules": {
+        "platform-app": "test",
+        "platform-infrastructure": "test"
+      }
+    },
+    {
+      "coordinate": "com.tngtech.archunit:archunit-junit5:jar:1.4.1",
+      "sha256": "6dd27babf04eaa2bc86e8f7d32961754651643bf625ec17943ac28696b00ffdd",
+      "modules": {
+        "platform-app": "test"
+      }
+    },
+    {
+      "coordinate": "com.tngtech.archunit:archunit-junit5-api:jar:1.4.1",
+      "sha256": "599eb08497235773ca63905f530d4e8a7384b8b429eaa991375850222a71efed",
+      "modules": {
+        "platform-app": "test"
+      }
+    },
+    {
+      "coordinate": "com.tngtech.archunit:archunit:jar:1.4.1",
+      "sha256": "6a92458c544308e42ca534cfcbdb6f1947ea4a9ca8717e087cd671d31f2d9b0c",
+      "modules": {
+        "platform-app": "test"
+      }
+    },
+    {
+      "coordinate": "com.tngtech.archunit:archunit-junit5-engine:jar:1.4.1",
+      "sha256": "e000e7113480f3d412bc2c8a258f90fe0e2b5ef005fbc3179791e391861096d7",
+      "modules": {
+        "platform-app": "test"
+      }
+    },
+    {
+      "coordinate": "com.tngtech.archunit:archunit-junit5-engine-api:jar:1.4.1",
+      "sha256": "558c090b9a29243add7d2eb07eea0323f6f0f11b38457a4837e35228be1b10f2",
+      "modules": {
+        "platform-app": "test"
+      }
+    },
+    {
+      "coordinate": "org.junit.platform:junit-platform-console-standalone:jar:6.0.3",
+      "sha256": "3ba0d6150af79214a1411f9ea2fbef864eef68b68c89a17f672c0b89bff9d3a2",
+      "modules": {
+        "platform-infrastructure": "test"
+      }
+    }
+  ]
+}

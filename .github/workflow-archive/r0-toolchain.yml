@@ -1,0 +1,233 @@
+name: R0 toolchain
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: r0-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  OPENSPEC_TELEMETRY: '0'
+  POSTGRES_IMAGE: agentplatform-postgres:r0.4-ci
+  REDIS_IMAGE: agentplatform-redis:r0.4-ci
+  RABBITMQ_IMAGE: rabbitmq:4.3.6-management@sha256:1d306c8f8c55cd3ed50271198f4094220e4caed9a8d04a14aca869339d3d3ca9
+  SEAWEEDFS_IMAGE: agentplatform-seaweedfs:r0.4-ci
+jobs:
+  audit-candidate:
+    name: R0.4 audit rebuild candidate (${{ matrix.tool }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [syft, grype]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Verify security rebuild inputs
+        run: python3 deploy/scripts/foundation-inputs.py --fetch
+      - name: Build and test frozen audit source candidate
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/r0.4/audit-candidate-${{ matrix.tool }}
+          compiler='golang:1.27.2-trixie@sha256:2d658507a011f1eadc0114d7a421b312b2e77d9042a24036a26e267cc9231677'
+          docker pull "$compiler"
+          docker image inspect "$compiler" > evidence/r0.4/audit-candidate-${{ matrix.tool }}/compiler-image.json
+          docker create --name r04-audit-compiler "$compiler" /bin/true
+          mkdir -p .tools
+          docker cp r04-audit-compiler:/usr/local/go .tools/audit-go
+          docker rm r04-audit-compiler
+          python3 deploy/scripts/audit-source-acceptance.py --tool ${{ matrix.tool }} --go .tools/audit-go/bin/go --output evidence/r0.4/audit-candidate-${{ matrix.tool }} 2>&1 | tee evidence/r0.4/audit-candidate-${{ matrix.tool }}/build.log
+          sha256sum deploy/foundation.lock.json > evidence/r0.4/audit-candidate-${{ matrix.tool }}/foundation-lock.sha256
+          git rev-parse HEAD > evidence/r0.4/audit-candidate-${{ matrix.tool }}/source-revision.txt
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: r0-4-audit-candidate-${{ matrix.tool }}
+          path: evidence/r0.4/audit-candidate-${{ matrix.tool }}
+          retention-days: 30
+  runtime-candidate:
+    name: R0.4 runtime rebuild candidate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Verify security rebuild inputs
+        run: python3 deploy/scripts/foundation-inputs.py --fetch
+      - name: Build and test frozen gVisor source candidate
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/r0.4/runtime-candidate
+          docker build --platform linux/amd64 -t agentplatform-gvisor-build:r0.4-ci -f deploy/gvisor-candidate.Dockerfile . 2>&1 | tee evidence/r0.4/runtime-candidate/build.log
+          docker create --name r04-runtime-export agentplatform-gvisor-build:r0.4-ci /bin/true
+          docker cp r04-runtime-export:/out/. evidence/r0.4/runtime-candidate/
+          sha256sum deploy/foundation.lock.json > evidence/r0.4/runtime-candidate/foundation-lock.sha256
+          git rev-parse HEAD > evidence/r0.4/runtime-candidate/source-revision.txt
+          docker rm r04-runtime-export
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: r0-4-runtime-candidate
+          path: evidence/r0.4/runtime-candidate
+          retention-days: 30
+  toolchain:
+    name: R0.1 toolchain
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Frozen Temurin build archive
+        run: |
+          curl --fail --location --retry 3 'https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz' --output "$RUNNER_TEMP/jdk.tar.gz"
+          echo "ce79869e1307ed8ee1e2baa86a412b1eb5b75d10a01006d788a6f968bcfaee94  $RUNNER_TEMP/jdk.tar.gz" | sha256sum --check
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: jdkfile
+          jdk-file: ${{ runner.temp }}/jdk.tar.gz
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/**/pom.xml
+      - name: Verify actual frozen JDK patch
+        run: java -version 2>&1 | tee "$RUNNER_TEMP/java-version.txt" | grep -F 'Temurin-21.0.12.1+1'
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version-file: .node-version
+      - name: Pinned tools
+        run: npm install --global pnpm@10.34.7 @fission-ai/openspec@1.3.0
+      - name: Backend verify
+        working-directory: backend
+        run: sh ./mvnw -B -ntp install
+      - name: Per-module dependency evidence
+        run: |
+          python3 deploy/scripts/module-dependency-reports.py
+          python3 deploy/scripts/maven-artifact-lock.py
+      - name: Package offline framework probes
+        working-directory: backend
+        run: |
+          python3 ../deploy/scripts/prepare-probe-libs.py
+          sh ./mvnw -B -ntp package dependency:copy-dependencies -DskipTests -DincludeScope=test -DoutputDirectory=target/probe-libs
+      - name: Frontend dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Contracts and frontend
+        working-directory: frontend
+        run: |
+          pnpm contracts:check
+          pnpm contracts:test
+          pnpm typecheck
+          pnpm test
+          pnpm build
+          pnpm links:check
+      - name: OpenSpec strict validation
+        run: openspec validate --all --strict --json
+      - name: Frozen R0 contract baseline
+        run: python3 deploy/scripts/freeze-contracts.py
+      - name: Scoped Maven SBOM
+        working-directory: backend
+        run: |
+          sh ./mvnw -B -ntp -Paudit-sbom cyclonedx:makeAggregateBom -DincludeTestScope=false -DoutputName=bom-production
+          sh ./mvnw -B -ntp -Paudit-sbom cyclonedx:makeAggregateBom -DincludeTestScope=true -DoutputName=bom-with-tests
+      - name: Linux Docker acceptance
+        run: |
+          python3 deploy/scripts/foundation-inputs.py --fetch
+          docker build --platform linux/amd64 -t agentplatform-postgres:r0.4-ci -f deploy/postgres.Dockerfile .
+          docker build --platform linux/amd64 -t agentplatform-redis:r0.4-ci -f deploy/redis.Dockerfile .
+          docker build --platform linux/amd64 -t agentplatform-seaweedfs:r0.4-ci -f deploy/seaweedfs.Dockerfile .
+          docker compose -p agentplatform-app -f deploy/compose.r0.1.yaml config --quiet
+          docker compose -p agentplatform-app -f deploy/compose.r0.1.yaml up -d --build --wait --wait-timeout 120
+      - name: Offline non-root framework acceptance
+        run: |
+          docker compose -p agentplatform-app -f deploy/compose.r0.1.yaml --profile framework-probe build framework-probe
+          docker compose -p agentplatform-app -f deploy/compose.r0.1.yaml --profile framework-probe run --name agentplatform-r02-ci-probe framework-probe
+          mkdir -p evidence/r0.2
+          docker cp agentplatform-r02-ci-probe:/reports evidence/r0.2/linux-reports
+          docker rm agentplatform-r02-ci-probe
+      - name: Real API contracts and browser scenarios
+        working-directory: frontend
+        run: |
+          API_BASE_URL=http://127.0.0.1:18080 pnpm contracts:test
+          pnpm exec playwright install --with-deps chromium
+          pnpm test:e2e
+      - name: R0.3 real storage contracts
+        run: bash deploy/scripts/ci-storage.sh
+      - name: Deployment script syntax
+        run: |
+          for script in deploy/scripts/*.sh; do bash -n "$script"; done
+          python3 -m py_compile deploy/scripts/*.py deploy/probes/*.py
+          python3 deploy/scripts/test-audit-guards.py
+          python3 deploy/scripts/test-foundation-guards.py
+          python3 deploy/scripts/test-sts-denial.py
+          python3 deploy/scripts/test-audit-fixtures.py
+          python3 deploy/scripts/test-image-package-evidence.py
+          node deploy/scripts/test-ci-candidate-exits.mjs
+      - name: R0.4 blocking dependency audit
+        run: |
+          python3 deploy/scripts/image-package-evidence.py \
+            --target storage-probe=agentplatform-storage-probe:r0.3-ci \
+            --target postgres=agentplatform-postgres:r0.4-ci \
+            --target rabbitmq=${RABBITMQ_IMAGE}
+          python3 deploy/scripts/install-audit-tools.py
+          .tools/audit/grype db update
+          mkdir -p evidence/r0.4
+          .tools/audit/grype db status -o json > evidence/r0.4/grype-db-status.json
+          mkdir -p .cache/r04-gvisor-binaries
+          tar -xjf .cache/foundation/gvisor.tar.bz2 -C .cache/r04-gvisor-binaries
+          set +e
+          .tools/audit/grype sbom:backend/target/bom-production.json --fail-on high -o json --file evidence/r0.4/backend-vulnerabilities.json
+          raw_status=$?
+          set -e
+          [[ "$raw_status" == 0 || "$raw_status" == 2 ]]
+          sbom_hash=$(sha256sum backend/target/bom-production.json | cut -d' ' -f1)
+          python3 deploy/scripts/mcp-applicability.py --sbom backend/target/bom-production.json --product "urn:agentplatform:sbom:sha256:$sbom_hash" --output evidence/r0.4/backend-mcp.vex.json
+          python3 deploy/scripts/assess-mcp-report.py --report evidence/r0.4/backend-vulnerabilities.json --sbom backend/target/bom-production.json --vex evidence/r0.4/backend-mcp.vex.json --output evidence/r0.4/backend-assessment.json
+          set +e
+          .tools/audit/grype sbom:backend/target/bom-with-tests.json --fail-on high -o json --file evidence/r0.4/backend-test-vulnerabilities.json
+          test_raw_status=$?
+          set -e
+          [[ "$test_raw_status" == 0 || "$test_raw_status" == 2 ]]
+          test_sbom_hash=$(sha256sum backend/target/bom-with-tests.json | cut -d' ' -f1)
+          python3 deploy/scripts/mcp-applicability.py --sbom backend/target/bom-with-tests.json --product "urn:agentplatform:sbom:sha256:$test_sbom_hash" --output evidence/r0.4/backend-test-mcp.vex.json
+          python3 deploy/scripts/assess-mcp-report.py --report evidence/r0.4/backend-test-vulnerabilities.json --sbom backend/target/bom-with-tests.json --vex evidence/r0.4/backend-test-mcp.vex.json --output evidence/r0.4/backend-test-assessment.json
+          docker build -t agentplatform-sandbox:r0.4-ci -f deploy/sandbox.Dockerfile .
+          python3 deploy/scripts/audit-baseline.py \
+            --target frontend=dir:frontend \
+            --target api=docker:agentplatform-api:r0.1-local \
+            --target gateway=docker:agentplatform-gateway:r0.1-local \
+            --target framework-probe=docker:agentplatform-framework-probe:r0.2-local \
+            --target storage-probe=docker:agentplatform-storage-probe:r0.3-ci \
+            --target sandbox=docker:agentplatform-sandbox:r0.4-ci \
+            --target postgres=docker:agentplatform-postgres:r0.4-ci \
+            --target redis=docker:agentplatform-redis:r0.4-ci \
+            --target rabbitmq=registry:${RABBITMQ_IMAGE} \
+            --target seaweedfs=docker:agentplatform-seaweedfs:r0.4-ci \
+            --target runsc=dir:.cache/r04-gvisor-binaries \
+            --target audit-tools=dir:.tools/audit
+      - name: Export same audited immutable images
+        run: |
+          python3 deploy/scripts/export-candidate-images.py
+      - name: Preserve failure logs
+        if: failure()
+        run: docker compose -p agentplatform-app -f deploy/compose.r0.1.yaml logs --no-color
+      - name: Stop only the R0 shell
+        if: always()
+        run: docker compose -p agentplatform-app -f deploy/compose.r0.1.yaml down
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: r0-1-verification
+          path: |
+            frontend/test-results
+            frontend/playwright-report
+            backend/platform-app/target/surefire-reports
+            backend/platform-infrastructure/target/surefire-reports
+            evidence/r0.2/linux-reports
+            evidence/r0.3
+            evidence/r0.4
+            backend/**/target/bom-*.json
+            backend/**/target/dependency-tree.txt
+            backend/**/target/effective-pom.xml
+          retention-days: 30
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: r0-4-immutable-images
+          path: evidence/r0.4/images
+          retention-days: 30

@@ -1,6 +1,8 @@
 """30-minute single-sandbox baseline observation, samples are evidence not throughput promises."""
-import fcntl,json,pathlib,subprocess,time,urllib.request,urllib.error
+import fcntl,json,pathlib,re,subprocess,time,urllib.request,urllib.error
 root=pathlib.Path('/srv/agentplatform');report=root/'reports/soak.jsonl'
+images=dict(line.split('=',1) for line in (root/'deploy/images.env').read_text().splitlines() if '=' in line)
+assert re.fullmatch(r'sha256:[0-9a-f]{64}',images.get('SANDBOX_IMAGE','')),'Verified immutable sandbox identity required'
 def cmd(args):return subprocess.run(args,check=True,text=True,capture_output=True,timeout=90).stdout
 def health():
  for endpoint in ['health','readiness']:
@@ -28,7 +30,7 @@ while time.monotonic()-begin<1800:
  if mem['memAvailableKiB']>=1152*1024:
   with (root/'operations/sandbox-slot.lock').open('a') as slot:
    fcntl.flock(slot,fcntl.LOCK_EX|fcntl.LOCK_NB)
-   cmd(['docker','run','--rm','--name','agentplatform-r03-soak-sandbox','--runtime=runsc','--user','10001:10001','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--memory','512m','--memory-swap','512m','--cpus','1','--pids-limit','128','--ulimit','nproc=128:128','--tmpfs','/tmp:rw,noexec,nosuid,size=64m','--label','project=agentplatform','--label','sandbox=true','agentplatform-sandbox:r0.3-candidate','python','-c','import hashlib;assert len(hashlib.sha256(b"baseline").digest())==32;print(666)'])
+   cmd(['docker','run','--rm','--name','agentplatform-r03-soak-sandbox','--runtime=runsc','--user','10001:10001','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--memory','512m','--memory-swap','512m','--cpus','1','--pids-limit','128','--ulimit','nproc=128:128','--tmpfs','/tmp:rw,noexec,nosuid,size=64m','--label','project=agentplatform','--label','sandbox=true',images['SANDBOX_IMAGE'],'python','-c','import hashlib;assert len(hashlib.sha256(b"baseline").digest())==32;print(666)'])
   iterations+=1
  else:mem['admission']='QUEUED'
  elapsed=time.monotonic()-begin

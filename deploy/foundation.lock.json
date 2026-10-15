@@ -1,0 +1,586 @@
+{
+  "archives": {
+    "bazel-linux": {
+      "sha256": "17247e8a84245f59d3bc633d0cfe0a840992a7760a11af1a30012d03da31604c",
+      "url": "https://github.com/bazelbuild/bazel/releases/download/8.3.1/bazel-8.3.1-linux-x86_64",
+      "version": "8.3.1"
+    },
+    "bison.deb": {
+      "package": "bison",
+      "sha256": "ce6eb1f7aad18850e32d223a68f54bcbe756d74f138c8ec5460ad9d220f4d335",
+      "url": "https://deb.debian.org/debian/pool/main/b/bison/bison_3.8.2+dfsg-1+b2_amd64.deb",
+      "version": "2:3.8.2+dfsg-1+b2"
+    },
+    "cross-binutils-aarch64-linux-gnu.deb": {
+      "package": "binutils-aarch64-linux-gnu",
+      "sha256": "6e5a9be38121213dda42189a525db01aad4dc52194b577d7d73d659a5843ce6c",
+      "url": "https://deb.debian.org/debian/pool/main/b/binutils/binutils-aarch64-linux-gnu_2.44-3_amd64.deb",
+      "version": "2.44-3"
+    },
+    "cross-binutils-common.deb": {
+      "package": "binutils-common",
+      "sha256": "002da5d23f8757dee97a2c0a40e0e1d4d85a43da094488ee2ee7068d4d3691f9",
+      "url": "https://deb.debian.org/debian/pool/main/b/binutils/binutils-common_2.44-3_amd64.deb",
+      "version": "2.44-3"
+    },
+    "cross-clang-19.deb": {
+      "package": "clang-19",
+      "sha256": "bbb74458d782b7792b61b0eed92746df5e6d033778c045cf8c2b3835b7c4efc4",
+      "url": "https://deb.debian.org/debian/pool/main/l/llvm-toolchain-19/clang-19_19.1.7-3+b1_amd64.deb",
+      "version": "1:19.1.7-3+b1"
+    },
+    "cross-clang.deb": {
+      "package": "clang",
+      "sha256": "5cf22fc7e42face0071b0e83d012dfc675b947a138acfe23a92d0bb39e5b1cdb",
+      "url": "https://deb.debian.org/debian/pool/main/l/llvm-defaults/clang_19.0-63_amd64.deb",
+      "version": "1:19.0-63"
+    },
+    "cross-cpp-14-aarch64-linux-gnu.deb": {
+      "package": "cpp-14-aarch64-linux-gnu",
+      "sha256": "6610dda7938376fefcbc3b49c81cd23c82e86411a488e4c9a69c082f2acd714e",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/cpp-14-aarch64-linux-gnu_14.2.0-19cross1_amd64.deb",
+      "version": "14.2.0-19cross1"
+    },
+    "cross-cpp-aarch64-linux-gnu.deb": {
+      "package": "cpp-aarch64-linux-gnu",
+      "sha256": "4480016c11678c1a391f8b3d77d8c87915af5e5aaa96c21dcf69a9c516979e63",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-defaults/cpp-aarch64-linux-gnu_14.2.0-1_amd64.deb",
+      "version": "4:14.2.0-1"
+    },
+    "cross-g++-14-aarch64-linux-gnu.deb": {
+      "package": "g++-14-aarch64-linux-gnu",
+      "sha256": "edbb7ab8e432a4a5b2ca2b7cce97bb643bd6fb1ae75e65bb0e889bae1c6d40eb",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/g++-14-aarch64-linux-gnu_14.2.0-19cross1_amd64.deb",
+      "version": "14.2.0-19cross1"
+    },
+    "cross-g++-aarch64-linux-gnu.deb": {
+      "package": "g++-aarch64-linux-gnu",
+      "sha256": "7bf2009e0449b44b12856a9d5521bc3f352abb422a3280e11c3be296e22d2eb5",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-defaults/g++-aarch64-linux-gnu_14.2.0-1_amd64.deb",
+      "version": "4:14.2.0-1"
+    },
+    "cross-gcc-14-aarch64-linux-gnu-base.deb": {
+      "package": "gcc-14-aarch64-linux-gnu-base",
+      "sha256": "4a40a7a5429a03f58bdb1f49df9b7aeecb86770f5585d88dcf6a27b5979a6d5d",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/gcc-14-aarch64-linux-gnu-base_14.2.0-19cross1_amd64.deb",
+      "version": "14.2.0-19cross1"
+    },
+    "cross-gcc-14-aarch64-linux-gnu.deb": {
+      "package": "gcc-14-aarch64-linux-gnu",
+      "sha256": "489acd3a7479d7e55c01e7f3af10176b70a99ec8c2230ba63cacdbcf2e6e0692",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/gcc-14-aarch64-linux-gnu_14.2.0-19cross1_amd64.deb",
+      "version": "14.2.0-19cross1"
+    },
+    "cross-gcc-14-cross-base.deb": {
+      "package": "gcc-14-cross-base",
+      "sha256": "a6c277ad0961c1e69bebd2509151733961ea49bb53ff64aa1dac72b5929babf0",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/gcc-14-cross-base_14.2.0-19cross1_all.deb",
+      "version": "14.2.0-19cross1"
+    },
+    "cross-gcc-aarch64-linux-gnu.deb": {
+      "package": "gcc-aarch64-linux-gnu",
+      "sha256": "ff536dd2b6a7f2879cf83ebadd7cc4af3e7234a87226a2ba97bbf0a857e930da",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-defaults/gcc-aarch64-linux-gnu_14.2.0-1_amd64.deb",
+      "version": "4:14.2.0-1"
+    },
+    "cross-libasan8-arm64-cross.deb": {
+      "package": "libasan8-arm64-cross",
+      "sha256": "e223a6c4aa71aa8754abb845cba3de9ae175a213e36a98b67b1aad558ac818be",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/libasan8-arm64-cross_14.2.0-19cross1_all.deb",
+      "version": "14.2.0-19cross1"
+    },
+    "cross-libatomic1-arm64-cross.deb": {
+      "package": "libatomic1-arm64-cross",
+      "sha256": "4a8636b3c0ab2b0a568d0b7fc6ab089d5b22f7a3e696fe8784acef594c88dc1c",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/libatomic1-arm64-cross_14.2.0-19cross1_all.deb",
+      "version": "14.2.0-19cross1"
+    },
+    "cross-libbpf-dev.deb": {
+      "package": "libbpf-dev",
+      "sha256": "87d241407b5bef18e367dbd13e8d0302b865a489ee0cf3d88eae55332ec5b9a1",
+      "url": "https://deb.debian.org/debian/pool/main/libb/libbpf/libbpf-dev_1.5.0-3_amd64.deb",
+      "version": "1:1.5.0-3"
+    },
+    "cross-libbpf1.deb": {
+      "package": "libbpf1",
+      "sha256": "04c96ead3024888d80d08c8d08cc8cf4589f4614627acc69519f87ffb5adc1c2",
+      "url": "https://deb.debian.org/debian/pool/main/libb/libbpf/libbpf1_1.5.0-3_amd64.deb",
+      "version": "1:1.5.0-3"
+    },
+    "cross-libbsd0.deb": {
+      "package": "libbsd0",
+      "sha256": "e5a85986fa6bec3307ab1bc860736b478b331882bc45e17675a7bdf88eecb43a",
+      "url": "https://deb.debian.org/debian/pool/main/libb/libbsd/libbsd0_0.12.2-2_amd64.deb",
+      "version": "0.12.2-2"
+    },
+    "cross-libc6-arm64-cross.deb": {
+      "package": "libc6-arm64-cross",
+      "sha256": "82cd3a0c6754d36cb5a7acbd9fa64c38080a681608c41165736dc88438acfc71",
+      "url": "https://deb.debian.org/debian/pool/main/c/cross-toolchain-base/libc6-arm64-cross_2.41-11cross1_all.deb",
+      "version": "2.41-11cross1"
+    },
+    "cross-libc6-dev-arm64-cross.deb": {
+      "package": "libc6-dev-arm64-cross",
+      "sha256": "61e0b87dec4929abc9fb345ef324139498bf23ddbf0b10ca3a743b59c8ddf8bb",
+      "url": "https://deb.debian.org/debian/pool/main/c/cross-toolchain-base/libc6-dev-arm64-cross_2.41-11cross1_all.deb",
+      "version": "2.41-11cross1"
+    },
+    "cross-libclang-common-19-dev.deb": {
+      "package": "libclang-common-19-dev",
+      "sha256": "4018e40e2d4144fe38c45822e68cca63c1bf6c7872c3073ebb262ad4b2f9b8bc",
+      "url": "https://deb.debian.org/debian/pool/main/l/llvm-toolchain-19/libclang-common-19-dev_19.1.7-3+b1_amd64.deb",
+      "version": "1:19.1.7-3+b1"
+    },
+    "cross-libclang-cpp19.deb": {
+      "package": "libclang-cpp19",
+      "sha256": "a7d2b6df51050834f6ea5c0d5e34869c2298b0bcdaa91eff17ba3db2cd545c47",
+      "url": "https://deb.debian.org/debian/pool/main/l/llvm-toolchain-19/libclang-cpp19_19.1.7-3+b1_amd64.deb",
+      "version": "1:19.1.7-3+b1"
+    },
+    "cross-libclang1-19.deb": {
+      "package": "libclang1-19",
+      "sha256": "4e7e2a5fe236e280d32fb529350b3c1cfd9410a964629a57ea079a314c45d7a3",
+      "url": "https://deb.debian.org/debian/pool/main/l/llvm-toolchain-19/libclang1-19_19.1.7-3+b1_amd64.deb",
+      "version": "1:19.1.7-3+b1"
+    },
+    "cross-libedit2.deb": {
+      "package": "libedit2",
+      "sha256": "b002ea172b9c1e34a67bc497c523c67bb74c3f0a4e98113cb083990a1f1d3bfe",
+      "url": "https://deb.debian.org/debian/pool/main/libe/libedit/libedit2_3.1-20250104-1_amd64.deb",
+      "version": "3.1-20250104-1"
+    },
+    "cross-libelf-dev.deb": {
+      "package": "libelf-dev",
+      "sha256": "7a67f944281523d6e3c55c1797449bab223b08665cc6ad8b51293056b65d9bd6",
+      "url": "https://deb.debian.org/debian/pool/main/e/elfutils/libelf-dev_0.192-4_amd64.deb",
+      "version": "0.192-4"
+    },
+    "cross-libelf1t64.deb": {
+      "package": "libelf1t64",
+      "sha256": "94497b7e17b6f574a0605b380d454e20d3f01a9c63b70c2a2263f679d30053e1",
+      "url": "https://deb.debian.org/debian/pool/main/e/elfutils/libelf1t64_0.192-4_amd64.deb",
+      "version": "0.192-4"
+    },
+    "cross-libffi8.deb": {
+      "package": "libffi8",
+      "sha256": "0ebdc340de33333639c3c63874cd4b15ac2e83dfa1ef3053b7eefaf4919f4f68",
+      "url": "https://deb.debian.org/debian/pool/main/libf/libffi/libffi8_3.4.8-2_amd64.deb",
+      "version": "3.4.8-2"
+    },
+    "cross-libgc1.deb": {
+      "package": "libgc1",
+      "sha256": "0279fc16692a3a4a6d5f84051f5e55fc721f3cbb0e2bbc052d8980888f18c698",
+      "url": "https://deb.debian.org/debian/pool/main/libg/libgc/libgc1_8.2.8-1_amd64.deb",
+      "version": "1:8.2.8-1"
+    },
+    "cross-libgcc-14-dev-arm64-cross.deb": {
+      "package": "libgcc-14-dev-arm64-cross",
+      "sha256": "44d31567993f2f138638e3088cc75240d13c7d8a2ebe69032aafd37bc35c7a6f",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/libgcc-14-dev-arm64-cross_14.2.0-19cross1_all.deb",
+      "version": "14.2.0-19cross1"
+    },
+    "cross-libgcc-s1-arm64-cross.deb": {
+      "package": "libgcc-s1-arm64-cross",
+      "sha256": "272751f04dc1669c6368005ccea3496b28626c720c64c98980f705350f4c6b6b",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/libgcc-s1-arm64-cross_14.2.0-19cross1_all.deb",
+      "version": "14.2.0-19cross1"
+    },
+    "cross-libgomp1-arm64-cross.deb": {
+      "package": "libgomp1-arm64-cross",
+      "sha256": "6ef2c0825f2edd319d333fe6db721e1efa79bd595a5149c9f5a17af04dd40978",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/libgomp1-arm64-cross_14.2.0-19cross1_all.deb",
+      "version": "14.2.0-19cross1"
+    },
+    "cross-libhwasan0-arm64-cross.deb": {
+      "package": "libhwasan0-arm64-cross",
+      "sha256": "c0a783cec783df2ac0bae56887f3afd43f2f0047daf0aa8e51cb3147c2bcbbac",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/libhwasan0-arm64-cross_14.2.0-19cross1_all.deb",
+      "version": "14.2.0-19cross1"
+    },
+    "cross-libitm1-arm64-cross.deb": {
+      "package": "libitm1-arm64-cross",
+      "sha256": "61e0bc450632165ef442d0db2902831c878fe24bb89f08e7257e02d4eff92b40",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/libitm1-arm64-cross_14.2.0-19cross1_all.deb",
+      "version": "14.2.0-19cross1"
+    },
+    "cross-libllvm19.deb": {
+      "package": "libllvm19",
+      "sha256": "db0d614d61345ca710fb73e75105f1ec6e38898fa7b3aa99fa7eb7d8b0a11d57",
+      "url": "https://deb.debian.org/debian/pool/main/l/llvm-toolchain-19/libllvm19_19.1.7-3+b1_amd64.deb",
+      "version": "1:19.1.7-3+b1"
+    },
+    "cross-liblsan0-arm64-cross.deb": {
+      "package": "liblsan0-arm64-cross",
+      "sha256": "31cb9c474a78ea3233e4ea87badadc33f0c7e48934e39965437091f7f6d5ab78",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/liblsan0-arm64-cross_14.2.0-19cross1_all.deb",
+      "version": "14.2.0-19cross1"
+    },
+    "cross-libmd0.deb": {
+      "package": "libmd0",
+      "sha256": "7244ec3839b61fac0c1884fe08aaa040f26e8f1f35f1f5d3482eacefd30d1b44",
+      "url": "https://deb.debian.org/debian/pool/main/libm/libmd/libmd0_1.1.0-2+b1_amd64.deb",
+      "version": "1.1.0-2+b1"
+    },
+    "cross-libobjc-14-dev.deb": {
+      "package": "libobjc-14-dev",
+      "sha256": "60f8a34f94d46b0ae8d48335525bfaae3daef93c56d6b8bce0e76118e44a9136",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14/libobjc-14-dev_14.2.0-19_amd64.deb",
+      "version": "14.2.0-19"
+    },
+    "cross-libobjc4.deb": {
+      "package": "libobjc4",
+      "sha256": "d48411ec79114d5941256dddb1720fc65cbe4733285b29d5ecc87eb452ab30d9",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14/libobjc4_14.2.0-19_amd64.deb",
+      "version": "14.2.0-19"
+    },
+    "cross-libstdc++-14-dev-arm64-cross.deb": {
+      "package": "libstdc++-14-dev-arm64-cross",
+      "sha256": "dc2d2e1e59f2687a6cb30f3f5ed25e795f2769482ee8f7c5835f00481bf5ad65",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/libstdc++-14-dev-arm64-cross_14.2.0-19cross1_all.deb",
+      "version": "14.2.0-19cross1"
+    },
+    "cross-libstdc++6-arm64-cross.deb": {
+      "package": "libstdc++6-arm64-cross",
+      "sha256": "81e667b7dad2d378defcc502e9772fe4f435a27e62b7a33a20576885b02e9693",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/libstdc++6-arm64-cross_14.2.0-19cross1_all.deb",
+      "version": "14.2.0-19cross1"
+    },
+    "cross-libtsan2-arm64-cross.deb": {
+      "package": "libtsan2-arm64-cross",
+      "sha256": "a93d548f6a34d1afb6f1dda193fe841c0d6225363af55e6106f333986c906169",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/libtsan2-arm64-cross_14.2.0-19cross1_all.deb",
+      "version": "14.2.0-19cross1"
+    },
+    "cross-libubsan1-arm64-cross.deb": {
+      "package": "libubsan1-arm64-cross",
+      "sha256": "c9f76887373bf39380605cdbbbe2942f4a2ba434eb4aefdf3a573d9bed930ffb",
+      "url": "https://deb.debian.org/debian/pool/main/g/gcc-14-cross/libubsan1-arm64-cross_14.2.0-19cross1_all.deb",
+      "version": "14.2.0-19cross1"
+    },
+    "cross-libxml2.deb": {
+      "package": "libxml2",
+      "sha256": "e0c6b63ce4602a036a526f60fe5e6c1586710688058d98fc1001b9b3147b7efd",
+      "url": "https://deb.debian.org/debian/pool/main/libx/libxml2/libxml2_2.12.7+dfsg+really2.9.14-2.1+deb13u3_amd64.deb",
+      "version": "2.12.7+dfsg+really2.9.14-2.1+deb13u3"
+    },
+    "cross-libz3-4.deb": {
+      "package": "libz3-4",
+      "sha256": "71383373523ef62d47eccf660cf6535c3febcbb3f88e54cb7a43124014b57359",
+      "url": "https://deb.debian.org/debian/pool/main/z/z3/libz3-4_4.13.3-1_amd64.deb",
+      "version": "4.13.3-1"
+    },
+    "cross-libzstd-dev.deb": {
+      "package": "libzstd-dev",
+      "sha256": "de5f8aabcf4cb5cd1b441495ea4c24838e88ecbb30ae22c032a1b3b68a9d6f1e",
+      "url": "https://deb.debian.org/debian/pool/main/libz/libzstd/libzstd-dev_1.5.7+dfsg-1_amd64.deb",
+      "version": "1.5.7+dfsg-1"
+    },
+    "cross-libzstd1.deb": {
+      "package": "libzstd1",
+      "sha256": "2f6a2aeacfc925eba8b00ac9139bc4bfccf8cacb09eb93de067074b26948eef9",
+      "url": "https://deb.debian.org/debian/pool/main/libz/libzstd/libzstd1_1.5.7+dfsg-1_amd64.deb",
+      "version": "1.5.7+dfsg-1"
+    },
+    "cross-linux-libc-dev-arm64-cross.deb": {
+      "package": "linux-libc-dev-arm64-cross",
+      "sha256": "fd77c13fedf057038732ef1c4fc06edd753d08092fd5f92c4629551f1f69870f",
+      "url": "https://deb.debian.org/debian/pool/main/c/cross-toolchain-base/linux-libc-dev-arm64-cross_6.12.38-1cross1_all.deb",
+      "version": "6.12.38-1cross1"
+    },
+    "cross-llvm-19-linker-tools.deb": {
+      "package": "llvm-19-linker-tools",
+      "sha256": "874a0a5cde797cda3e94e9310a0a9958608f526f177637414a8ce9620c804818",
+      "url": "https://deb.debian.org/debian/pool/main/l/llvm-toolchain-19/llvm-19-linker-tools_19.1.7-3+b1_amd64.deb",
+      "version": "1:19.1.7-3+b1"
+    },
+    "cross-zlib1g-dev.deb": {
+      "package": "zlib1g-dev",
+      "sha256": "76ed5c858e1aef38b7be93acce5910e457e77bd6271471b9d05fb42e78826224",
+      "url": "https://deb.debian.org/debian/pool/main/z/zlib/zlib1g-dev_1.3.dfsg+really1.3.1-1+b1_amd64.deb",
+      "version": "1:1.3.dfsg+really1.3.1-1+b1"
+    },
+    "cross-zlib1g.deb": {
+      "package": "zlib1g",
+      "sha256": "015be740d6236ad114582dea500c1d907f29e16d6db00566ca32fb68d71ac90d",
+      "url": "https://deb.debian.org/debian/pool/main/z/zlib/zlib1g_1.3.dfsg+really1.3.1-1+b1_amd64.deb",
+      "version": "1:1.3.dfsg+really1.3.1-1+b1"
+    },
+    "flex.deb": {
+      "package": "flex",
+      "sha256": "75f963765232c356d0a2fb70e780dfa9de2425aca036ec60eefb7fc98a2c905b",
+      "url": "https://deb.debian.org/debian/pool/main/f/flex/flex_2.6.4-8.2+b4_amd64.deb",
+      "version": "2.6.4-8.2+b4"
+    },
+    "grype-source.tar.gz": {
+      "sha256": "7339720bfa80d9bf3abc00b58d92c2803b09508181b1a421945017051b81616b",
+      "url": "https://codeload.github.com/anchore/grype/tar.gz/0d30618ef52e666f1c626f4cc463eb940cb6e498"
+    },
+    "gvisor-source.tar.gz": {
+      "sha256": "c5dc39958098af75bfdf25ccab48e4ea41034bdc7f2078a4d3be84d2f235e2bd",
+      "url": "https://codeload.github.com/google/gvisor/tar.gz/97e8e896904cb364319cd9758241d3f0bd27a6f4"
+    },
+    "gvisor.tar.bz2": {
+      "release": "20261005.0",
+      "sha256": "bd4eb2ca0ee74f0fbbb5f5273ba011e79c56a29fbb047393b88b981cd3230ede",
+      "status": "AUDIT_BLOCKED",
+      "url": "https://storage.googleapis.com/gvisor/releases/release/20261005.0/x86_64/gvisor.tar.bz2"
+    },
+    "libcrypto3-3.5.9-r0.apk": {
+      "sha256": "6632d758d8f5e9ea3b650fe966f23bbf9a202f8b8dceecac93da135dec5e3689",
+      "url": "https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/libcrypto3-3.5.9-r0.apk"
+    },
+    "libfl2.deb": {
+      "package": "libfl2",
+      "sha256": "4c6946a46df35fbf044a376f398499205d160d814806e9bec6cc7cc7cb554e77",
+      "url": "https://deb.debian.org/debian/pool/main/f/flex/libfl2_2.6.4-8.2+b4_amd64.deb",
+      "version": "2.6.4-8.2+b4"
+    },
+    "libssl3-3.5.9-r0.apk": {
+      "sha256": "05e3393fb95aa5751ca2f9d242f659f6cff82c1cc7767cc2df4a086f7ad01877",
+      "url": "https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/libssl3-3.5.9-r0.apk"
+    },
+    "m4.deb": {
+      "package": "m4",
+      "sha256": "221b3e224708c1da2a1a88b6824380593579b2254ae7d914afa14cbd5d343334",
+      "url": "https://deb.debian.org/debian/pool/main/m/m4/m4_1.4.19-8_amd64.deb",
+      "version": "1.4.19-8"
+    },
+    "pcre2-10.49-r0.apk": {
+      "sha256": "2919897914820f42a17a8d7d37df310d2dfad1c82ebe5f539cc5c765f916752a",
+      "url": "https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/pcre2-10.49-r0.apk"
+    },
+    "pgvector.tar.gz": {
+      "sha256": "4c33cf053329784ba6d992d05c9588b93789e907a7511f20ff5a5a5b8a0703c1",
+      "url": "https://codeload.github.com/pgvector/pgvector/tar.gz/778dacf20c07caf904557a88705142631818d8cb"
+    },
+    "postgresql.tar.gz": {
+      "sha256": "5367f6fb2ec97efe1eb2e0c7926bb33438e51b0bd3a9733b88498056a7dc9a7e",
+      "url": "https://ftp.postgresql.org/pub/source/v17.11/postgresql-17.11.tar.gz"
+    },
+    "seaweedfs.tar.gz": {
+      "sha256": "217b507e7457d10629e837cebea6542d8b7685819dafbb56ef910330594af0e1",
+      "url": "https://codeload.github.com/seaweedfs/seaweedfs/tar.gz/530be3e37337488ecc34d58441e0bc476e121c93"
+    },
+    "syft-source.tar.gz": {
+      "sha256": "b1412dc351c13aa3a1964f1cb8673bddf04fc82e5e812849fa2140f6c765753a",
+      "url": "https://codeload.github.com/anchore/syft/tar.gz/749cd89ef26db65d5102d879f5dd63a174312b1e"
+    },
+    "zlib-1.3.2-r1.apk": {
+      "sha256": "63aeea03c15a2f9018f81805cfc8aa926bdf5cd68921f22149c2fbb5d0ee9f47",
+      "url": "https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/zlib-1.3.2-r1.apk"
+    }
+  },
+  "buildRuntime": {
+    "linuxJdkSha256": "ce79869e1307ed8ee1e2baa86a412b1eb5b75d10a01006d788a6f968bcfaee94",
+    "nodeVersion": "22.23.3",
+    "temurinVersion": "21.0.12.1+1",
+    "windowsJdkSha256": "f9d6e191ab098c0d416e7d588a24420a8621cd2f4720dab2459b8b7b2d2d8b4e"
+  },
+  "images": {
+    "alpine": {
+      "license": "per-package",
+      "platform": "linux/amd64",
+      "reference": "alpine:3.24@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    },
+    "go": {
+      "license": "BSD-3-Clause",
+      "platform": "linux/amd64",
+      "reference": "golang:1.27.2-trixie@sha256:2d658507a011f1eadc0114d7a421b312b2e77d9042a24036a26e267cc9231677",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    },
+    "jdk": {
+      "license": "GPL-2.0-only WITH Classpath-exception-2.0",
+      "platform": "linux/amd64",
+      "reference": "eclipse-temurin:21.0.12.1_1-jdk-noble@sha256:743b453cb8639d815a8251e128f7d8e88840c684e43fdbde1b1e79788437b5cf",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    },
+    "jre": {
+      "license": "GPL-2.0-only WITH Classpath-exception-2.0",
+      "platform": "linux/amd64",
+      "reference": "eclipse-temurin:21.0.12.1_1-jre-noble@sha256:7fd597bf48c8bb13a7a3fb227f8366dec0423f78775d4b4f7e30409204af8627",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    },
+    "nginx": {
+      "license": "BSD-2-Clause",
+      "platform": "linux/amd64",
+      "reference": "nginxinc/nginx-unprivileged:1.30.5-alpine@sha256:0f5f7068c5f5bf7046dbf649a08810ec1693967a9f488b8ff3998be6dd34bf6c",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    },
+    "node": {
+      "license": "MIT",
+      "platform": "linux/amd64",
+      "reference": "node:22.23.3-trixie-slim@sha256:6b25e0bf3aaee33c18ba3c5d1b71646df1ba485a2a5500fd8376a3be3d110812",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    },
+    "postgres": {
+      "license": "PostgreSQL",
+      "platform": "linux/amd64",
+      "reference": "postgres:17.11-trixie@sha256:3cec7eb015ba8adb28139fa5c83b8489cdf0e666e53dfdf20f598ae0cc8739e3",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    },
+    "python": {
+      "license": "PSF-2.0",
+      "platform": "linux/amd64",
+      "reference": "python:3.12.15-slim-trixie@sha256:2b4f19dae3a777dfc3b76730bda1e82e1f66ab2a2686fa93ca78edbfb4f04ffe",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    },
+    "rabbitmq": {
+      "license": "MPL-2.0",
+      "platform": "linux/amd64",
+      "reference": "rabbitmq:4.3.6-management@sha256:1d306c8f8c55cd3ed50271198f4094220e4caed9a8d04a14aca869339d3d3ca9",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    },
+    "redis": {
+      "license": "RSALv2 OR SSPL-1.0",
+      "platform": "linux/amd64",
+      "reference": "redis:7.4.11-alpine@sha256:ca0acbb137c1dc3339c8b147a58fd6f42775d4599327b50e7b116c23de501af2",
+      "status": "CANDIDATE_NOT_ACCEPTED"
+    }
+  },
+  "schemaVersion": 1,
+  "sources": {
+    "grype": {
+      "commit": "0d30618ef52e666f1c626f4cc463eb940cb6e498",
+      "compiler": "Go1.27.2",
+      "fixtureSymlinks": {
+        "test/quality/.yardstick/labels": "../vulnerability-match-labels/labels"
+      },
+      "license": "Apache-2.0",
+      "patchFiles": {
+        "deploy/security/grype.go.mod": "46cda1d5887ce9bf216a2aa21cbe04f161edc17697bae473dce6fd7a76f01906",
+        "deploy/security/grype.go.sum": "06dc4b3666110ef715f06184b630784af78f72f719195f940548741ee865e638"
+      },
+      "status": "CANDIDATE_NOT_ACCEPTED",
+      "version": "0.120.1"
+    },
+    "gvisor": {
+      "commit": "97e8e896904cb364319cd9758241d3f0bd27a6f4",
+      "compilerCandidate": "1.26.9",
+      "compilerFallbackReason": "Go1.27.2 rejected by upstream nogo: export data version5 exceeds supported4, run38537157463/job115762717373",
+      "crossCompilerIndexSha256": "7778d3e3f303b7ddb8ce0fe7c8d57473a076c6bf2e8f241f75421d2396352498",
+      "patchFiles": {
+        "deploy/security/gvisor.go.mod": "8f95c9e3be1c393a50ef0cf100053ef77eeadebcde0c0013f76613493817593f",
+        "deploy/security/gvisor.go.sum": "2c9684e9fbb78a0526d08f2e4b60a7a6358c3a97f17d4960a270da9e0b565143",
+        "deploy/security/gvisor-pid-pointer.patch": "11b7bfe9fd1a666a32e58b000b90b98b2b5a0ad8c1c213dd595a5261b83207f8"
+      },
+      "securityModules": {
+        "github.com/containerd/containerd/v2": "v2.2.4",
+        "google.golang.org/grpc": "v1.83.2"
+      },
+      "status": "SECURITY_REBUILD_PENDING",
+      "url": "https://github.com/google/gvisor",
+      "version": "20261005.0"
+    },
+    "pgvector": {
+      "commit": "778dacf20c07caf904557a88705142631818d8cb",
+      "url": "https://github.com/pgvector/pgvector",
+      "version": "0.8.1"
+    },
+    "seaweedfs": {
+      "commit": "530be3e37337488ecc34d58441e0bc476e121c93",
+      "compiler": "1.27.2",
+      "patchFiles": {
+        "deploy/security/seaweedfs.go.mod": "0f87660d3ee0ed812bf826effcb978805a2f078c34150613df2735e99e6f55c6",
+        "deploy/security/seaweedfs.go.sum": "024c79a32333739ad86f61900de25632027d3ad6e557003635b10761c044f8f7"
+      },
+      "patchedModules": {
+        "golang.org/x/net": "v0.60.0"
+      },
+      "url": "https://github.com/seaweedfs/seaweedfs",
+      "version": "4.48"
+    },
+    "syft": {
+      "commit": "749cd89ef26db65d5102d879f5dd63a174312b1e",
+      "compiler": "Go1.27.2",
+      "fixtureCache": {
+        "manifestSha256": "e6b19adc12b6eb088d78d3cb9cb149c116ceda0191e5ac11609a8d1535f9c6bf",
+        "reference": "ghcr.io/anchore/oss-cache/syft-test-fixture-cache@sha256:e6b19adc12b6eb088d78d3cb9cb149c116ceda0191e5ac11609a8d1535f9c6bf",
+        "status": "TEST_INPUT_CANDIDATE_NOT_VERIFIED",
+        "orphanInputs": [
+          {
+            "output": "syft/pkg/cataloger/debian/testdata/cache",
+            "input": "image-single-ipk/Dockerfile",
+            "sha256": "ce1353e3a940d7e8a05757e137fb2d3e3572f7bc0c8cbbf9b2357e899a5423c3",
+            "sourceDirectory": "syft/pkg/cataloger/debian/testdata/image-single-ipk",
+            "referenceToken": "image-single-ipk"
+          },
+          {
+            "output": "syft/pkg/cataloger/debian/testdata/cache",
+            "input": "image-single-ipk/control/control",
+            "sha256": "dabdd603e5c616a9794521df2c777b7a8e8361ed6c03a2913170109cdf71cb69",
+            "sourceDirectory": "syft/pkg/cataloger/debian/testdata/image-single-ipk",
+            "referenceToken": "image-single-ipk"
+          },
+          {
+            "output": "syft/pkg/cataloger/debian/testdata/cache",
+            "input": "image-single-ipk/control/postinst",
+            "sha256": "1ded80b320d8b0b0a691da8e63c7c38791567f99b1923c8eba6c4bcaedef67b3",
+            "sourceDirectory": "syft/pkg/cataloger/debian/testdata/image-single-ipk",
+            "referenceToken": "image-single-ipk"
+          }
+        ]
+      },
+      "fixtureSymlinks": {
+        "cmd/syft/internal/test/integration/testdata/elf-testdata": "../../../../../../syft/pkg/cataloger/binary/testdata/elf-testdata",
+        "cmd/syft/internal/test/integration/testdata/files/somewhere/there/is/a-symlink-to-a-small-file": "./a-small-file",
+        "cmd/syft/internal/test/integration/testdata/files/somewhere/there/is/a-symlink-to-file": "./a/file",
+        "internal/relationship/binary/testdata/elf-testdata": "../../../../syft/pkg/cataloger/binary/testdata/elf-testdata",
+        "syft/file/cataloger/internal/testdata/symlinked-root/nested/link-root": "../real-root",
+        "syft/file/cataloger/internal/testdata/symlinked-root/real-root/nested/linked-file1.txt": "../file1.txt",
+        "syft/file/testdata/req-resp/path/to/rel-inside.txt": "./the/file.txt",
+        "syft/file/testdata/req-resp/path/to/the/rel-outside.txt": "../../../somewhere/outside.txt",
+        "syft/file/testdata/req-resp/root-link": "./",
+        "syft/internal/fileresolver/testdata/bad-symlinks/root/place/fd": "../somewhere/self/fd",
+        "syft/internal/fileresolver/testdata/image-files-deleted/file-3.txt": "file-1.txt",
+        "syft/internal/fileresolver/testdata/req-resp/path/to/rel-inside.txt": "./the/file.txt",
+        "syft/internal/fileresolver/testdata/req-resp/path/to/the/rel-outside.txt": "../../../somewhere/outside.txt",
+        "syft/internal/fileresolver/testdata/req-resp/root-link": "./",
+        "syft/internal/fileresolver/testdata/symlinked-root/nested/link-root": "../real-root",
+        "syft/internal/fileresolver/testdata/symlinked-root/real-root/nested/linked-file1.txt": "../file1.txt",
+        "syft/internal/fileresolver/testdata/symlinks-base/bar": "../../base",
+        "syft/internal/fileresolver/testdata/symlinks-base/baz": "/../../base",
+        "syft/internal/fileresolver/testdata/symlinks-base/chain": "/foo",
+        "syft/internal/fileresolver/testdata/symlinks-base/foo": "/base",
+        "syft/internal/fileresolver/testdata/symlinks-base/sub/link": "../sub/item",
+        "syft/internal/fileresolver/testdata/symlinks-from-image-symlinks-fixture/link-1": "file-1.txt",
+        "syft/internal/fileresolver/testdata/symlinks-from-image-symlinks-fixture/link-2": "file-2.txt",
+        "syft/internal/fileresolver/testdata/symlinks-from-image-symlinks-fixture/link-dead": "./i-dont-exist.txt",
+        "syft/internal/fileresolver/testdata/symlinks-from-image-symlinks-fixture/link-indirect": "./link-2",
+        "syft/internal/fileresolver/testdata/symlinks-from-image-symlinks-fixture/link-within": "file-3.txt",
+        "syft/internal/fileresolver/testdata/symlinks-from-image-symlinks-fixture/parent-link": "parent",
+        "syft/internal/fileresolver/testdata/symlinks-loop/block/loop0": "../devices/loop0",
+        "syft/internal/fileresolver/testdata/symlinks-loop/devices/loop0/subsystem": "../../block",
+        "syft/internal/fileresolver/testdata/symlinks-multiple-roots/outside/link_to_readme": "../root/readme",
+        "syft/internal/fileresolver/testdata/symlinks-multiple-roots/root/link_to_link_to_readme": "../outside/link_to_readme",
+        "syft/internal/fileresolver/testdata/symlinks-prune-indexing/before-path": "path",
+        "syft/internal/fileresolver/testdata/symlinks-prune-indexing/c-file.txt": "before-path/file.txt",
+        "syft/internal/fileresolver/testdata/symlinks-prune-indexing/c-path": "before-path",
+        "syft/internal/fileresolver/testdata/symlinks-simple/link_to_link_to_new_readme": "./link_to_new_readme",
+        "syft/internal/fileresolver/testdata/symlinks-simple/link_to_new_readme": "./readme",
+        "syft/internal/fileresolver/testdata/system_paths/target/link/a-symlink": "../../outside_root/link_target",
+        "syft/internal/fileresolver/testdata/system_paths/target/symlinks-to-dev": "dev",
+        "syft/internal/fileresolver/testdata/system_paths/target/symlinks-to-hierarchical-dev": "hierarchical-dev",
+        "syft/pkg/cataloger/binary/testdata/classifiers/snippets/busybox/1.36.1/linux-amd64/busybox": "./[",
+        "syft/pkg/cataloger/binary/testdata/classifiers/snippets/julia/1.10.11/linux-amd64/libjulia-internal.so": "libjulia-internal.so.1.10.11",
+        "syft/pkg/cataloger/binary/testdata/classifiers/snippets/julia/1.11.9/linux-amd64/libjulia-internal.so": "libjulia-internal.so.1.11.9",
+        "syft/pkg/cataloger/binary/testdata/classifiers/snippets/julia/1.12.6/linux-amd64/libjulia-internal.so": "libjulia-internal.so.1.12.6",
+        "syft/pkg/cataloger/binary/testdata/classifiers/snippets/julia/1.13.0-alpha2/linux-amd64/libjulia-internal.so": "libjulia-internal.so.1.13.0",
+        "syft/pkg/cataloger/binary/testdata/classifiers/snippets/julia/1.13.0-beta3/linux-amd64/libjulia-internal.so": "libjulia-internal.so.1.13.0",
+        "syft/pkg/cataloger/binary/testdata/classifiers/snippets/julia/1.8.5/linux-amd64/libjulia-internal.so": "libjulia-internal.so.1.8",
+        "syft/pkg/cataloger/binary/testdata/classifiers/snippets/julia/1.9.0-alpha1/linux-amd64/libjulia-internal.so": "libjulia-internal.so.1.9",
+        "syft/pkg/cataloger/internal/dotnet/pe/testdata/image-net8-app": "../../../../dotnet/testdata/image-net8-app",
+        "syft/pkg/cataloger/internal/dotnet/pe/testdata/image-net8-app-single-file": "../../../../dotnet/testdata/image-net8-app-single-file",
+        "syft/source/testdata/symlink": "actual-path",
+        "test/cli/testdata/image-pkg-coverage": "../../../cmd/syft/internal/test/integration/testdata/image-pkg-coverage"
+      },
+      "license": "Apache-2.0",
+      "patchFiles": {
+        "deploy/security/syft.go.mod": "779a628967e4006a15bb531cbc0a0977be34ad05bd22b95e9d6bf6bd0f768bbc",
+        "deploy/security/syft.go.sum": "013e0648f690429b8258bd69fa86ac541057c5f9eb1ec64ac81c3c70db491184"
+      },
+      "status": "CANDIDATE_NOT_ACCEPTED",
+      "version": "1.54.1"
+    }
+  }
+}
