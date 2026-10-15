@@ -1,0 +1,72 @@
+name: agentplatform-r11-local
+x-identity: &identity
+  image: ${R11_API_IMAGE:?Build and identify the local R1.1 API image}
+  user: "10001:10001"
+  read_only: true
+  restart: "no"
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  pids_limit: 128
+  mem_limit: 320m
+  tmpfs: ["/tmp:rw,noexec,nosuid,size=16m,uid=10001,gid=10001,mode=700"]
+  networks: [identity]
+  logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.1-pg17-trixie@sha256:137f044b0efe3d57f39b972b9b53641b1f2045b99d879e298bbf514a25787dcf
+    restart: "no"
+    mem_limit: 320m
+    environment: {POSTGRES_DB: identity, POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password}
+    secrets: [postgres_password]
+    ports: ["127.0.0.1:15441:5432"]
+    volumes: ["identity-data:/var/lib/postgresql/data"]
+    networks: [identity]
+    healthcheck: {test: [CMD-SHELL, pg_isready -U postgres -d identity], interval: 2s, timeout: 3s, retries: 30}
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+  api:
+    <<: *identity
+    entrypoint: [java, -Xms32m, -Xmx160m, -jar, /app/platform.jar]
+    cpus: 0.75
+    environment:
+      SPRING_PROFILES_ACTIVE: identity-local
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/identity?connectTimeout=2&socketTimeout=5
+      PLATFORM_STORAGE_USER: ap_identity
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/api_password
+      PLATFORM_IDENTITY_ORIGINS: http://127.0.0.1:18086,http://localhost:18086
+      PLATFORM_IDENTITY_SECURE_COOKIE: "false"
+      SERVER_TOMCAT_THREADS_MAX: "16"
+      SERVER_TOMCAT_MAX_HTTP_FORM_POST_SIZE: "4096"
+    secrets: [api_password]
+    healthcheck: {test: [CMD, java, -Xms8m, -Xmx16m, -cp, /app/health, HttpHealthcheck, "http://127.0.0.1:8080/api/v1/readiness"], interval: 5s, timeout: 4s, retries: 30, start_period: 15s}
+  operator:
+    <<: *identity
+    profiles: [operator]
+    environment:
+      SPRING_PROFILES_ACTIVE: identity-ops
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/identity?connectTimeout=2&socketTimeout=5
+      PLATFORM_STORAGE_USER: postgres
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+  gateway:
+    image: ${R11_GATEWAY_IMAGE:?Build and identify the local R1.1 gateway image}
+    user: "101:101"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: "no"
+    mem_limit: 32m
+    pids_limit: 64
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=8m"]
+    ports: ["127.0.0.1:18086:8080"]
+    volumes: ["./nginx.identity-local.conf:/etc/nginx/nginx.conf:ro"]
+    networks: [identity]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+secrets:
+  postgres_password: {file: "${R11_ROOT:?Set isolated local fixture directory}/postgres-password"}
+  api_password: {file: "${R11_ROOT}/api-password"}
+volumes:
+  identity-data:
+networks:
+  identity:
+    name: agentplatform-r11-local
