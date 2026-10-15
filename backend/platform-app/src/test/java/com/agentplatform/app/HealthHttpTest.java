@@ -67,6 +67,12 @@ class HealthHttpTest {
         assertFalse(response.body().contains("NoResourceFoundException"));
     }
 
+    @Test
+    void identityEndpointsAreClosedWithoutExplicitProfile() throws Exception {
+        assertEquals(404, get("/api/v1/me").statusCode());
+        assertEquals(404, get("/api/v1/auth/csrf").statusCode());
+    }
+
     private HttpResponse<String> get(String path) throws Exception {
         return HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + path)).GET().build(),
                 HttpResponse.BodyHandlers.ofString());

@@ -7,9 +7,10 @@ const compose = ['compose', '-p', 'agentplatform-app', '-f', 'deploy/compose.r0.
 function apiAction(action: 'stop' | 'start') {
   if (process.env.LOCAL_API_CONTAINER) {
     const container = process.env.LOCAL_API_CONTAINER;
-    if (container !== 'agentplatform-r04-local-app-api-1') throw new Error('Unexpected local acceptance container');
+    if (!['agentplatform-r04-local-app-api-1', 'agentplatform-r11-local-api-1'].includes(container)) throw new Error('Unexpected local acceptance container');
     const identity = JSON.parse(execFileSync('docker', ['inspect', container], { encoding: 'utf8' }))[0];
-    if (identity.Config.Labels['com.docker.compose.project'] !== 'agentplatform-r04-local-app') {
+    const expectedProject = container === 'agentplatform-r11-local-api-1' ? 'agentplatform-r11-local' : 'agentplatform-r04-local-app';
+    if (identity.Config.Labels['com.docker.compose.project'] !== expectedProject) {
       throw new Error('API container is outside the local acceptance project');
     }
     execFileSync('docker', action === 'stop' ? ['stop', '-t', '30', container] : ['start', container], { stdio: 'pipe', timeout: 60000 });
