@@ -35,7 +35,7 @@ printf '{"schemaVersion":1,"s3KekVersion":"local-s3-kek-v1","secretsLocation":"p
 frozen=false
 unfreeze() { if [[ "$frozen" == true ]]; then xfs_freeze -u "$root/workspaces"; fi; }
 trap unfreeze EXIT
-python3 "$root/deploy/scripts/sandbox_probe.py" verify-mount >/dev/null
+python3 "$root/deploy/probes/sandbox_probe.py" verify-mount >/dev/null
 sync
 xfs_freeze -f "$root/workspaces"
 frozen=true

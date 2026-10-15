@@ -47,11 +47,11 @@ app_compose=(docker compose --env-file "$restore/deploy/images.env" -p agentplat
 python3 "$root/deploy/scripts/workspace-manifest.py" verify "$restore/workspaces" "$backup/workspace-files.json"
 xfs_quota -x -c 'report -p -b -i' "$restore/workspaces" > "$restore/reports/quota-report.txt"
 diff -u <(tail -n +2 "$backup/quota-report.txt") <(tail -n +2 "$restore/reports/quota-report.txt")
-PLATFORM_ROOT="$restore" python3 "$root/deploy/scripts/sandbox_probe.py" verify-mount
-PLATFORM_ROOT="$restore" python3 "$root/deploy/scripts/sandbox_probe.py"
+PLATFORM_ROOT="$restore" python3 "$root/deploy/probes/sandbox_probe.py" verify-mount
+PLATFORM_ROOT="$restore" python3 "$root/deploy/probes/sandbox_probe.py"
 umount "$restore/workspaces"
 mounted=false
-if PLATFORM_ROOT="$restore" python3 "$root/deploy/scripts/sandbox_probe.py" verify-mount > "$restore/reports/missing-mount.txt" 2>&1; then
+if PLATFORM_ROOT="$restore" python3 "$root/deploy/probes/sandbox_probe.py" verify-mount > "$restore/reports/missing-mount.txt" 2>&1; then
  echo 'Restored missing mount incorrectly admitted' >&2; exit 1
 fi
 test -z "$(find "$restore/workspaces" -mindepth 1 -maxdepth 1 -print -quit)"
