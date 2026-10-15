@@ -15,5 +15,5 @@
 - [x] 3.6 Coherent backup/independent serial restore and final legacy identity/policy/entry recovery.
 ## 4. Evidence and delivery
 - [x] 4.1 Hash source/image/environment/results; protected local/cloud copies, no public secrets/backups.
-- [ ] 4.2 Review exact-source evidence and step→phase→main PRs, sync phase/archive/ledgers.
-- [ ] 4.3 R0.4 VERIFIED and R0four steps VERIFIED; R0unreleased/no production tag/noR1.
+- [x] 4.2 Review exact-source evidence and step→phase→main PRs, sync phase/archive/ledgers.
+- [x] 4.3 R0.4 VERIFIED and R0four steps VERIFIED; R0unreleased/no production tag/noR1.
