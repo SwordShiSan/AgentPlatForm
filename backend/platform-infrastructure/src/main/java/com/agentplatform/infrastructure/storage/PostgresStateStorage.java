@@ -17,14 +17,20 @@ public final class PostgresStateStorage implements StateStorage {
     private final String url;
     private final String user;
     private final String password;
+    private final javax.sql.DataSource dataSource;
 
     public PostgresStateStorage(String url, String user, String password) {
         this.url = url;
         this.user = user;
         this.password = password;
+        this.dataSource = null;
+    }
+    public PostgresStateStorage(javax.sql.DataSource dataSource) {
+        this.url = null; this.user = null; this.password = null;
+        this.dataSource = java.util.Objects.requireNonNull(dataSource);
     }
 
-    public Connection connect() throws SQLException { return DriverManager.getConnection(url, user, password); }
+    public Connection connect() throws SQLException { return dataSource == null ? DriverManager.getConnection(url, user, password) : dataSource.getConnection(); }
 
     private static void identity(PreparedStatement statement, Scope scope, String key) throws SQLException {
         statement.setObject(1, UUID.fromString(scope.spaceId()));

@@ -77,4 +77,5 @@ public final class IdentityService implements IdentityApi {
                 .map(s -> new SpaceResponse(s.id().toString(), s.type(), s.role(), s.objectLimitBytes())).toList());
     }
     @Override public void logout(String token, String csrf, String origin) { var session = write(token, csrf, origin); store.revoke(session.tokenHash(), clock.instant()); }
+    @Override public void verifyWrite(String token,String csrf,String origin) { write(token,csrf,origin); }
 }

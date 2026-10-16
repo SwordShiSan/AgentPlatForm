@@ -1,0 +1,5 @@
+# SDK HTTP diagnostics may include raw provider error bodies. Platform-owned
+# call IDs and sanitized reason codes are the only model failure log surface.
+logging:
+  level:
+    io.agentscope: OFF
