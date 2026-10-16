@@ -46,6 +46,9 @@ class DeepSeekChatProviderTest {
             assertEquals("stop", result.round().finishReason());
             assertEquals("Bearer provider-test-sentinel", authorization.get());
             var body = tools.jackson.databind.json.JsonMapper.builder().build().readTree(request.get());
+            var strict = new com.fasterxml.jackson.databind.ObjectMapper();
+            strict.enable(com.fasterxml.jackson.core.JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
+            assertDoesNotThrow(() -> strict.readTree(request.get()), "Provider wire JSON must not repeat SDK-owned fields");
             assertEquals("deepseek-flash", body.path("model").asText()); assertTrue(body.path("stream").asBoolean());
             assertTrue(body.path("stream_options").path("include_usage").asBoolean());
             assertEquals("disabled", body.path("thinking").path("type").asText());

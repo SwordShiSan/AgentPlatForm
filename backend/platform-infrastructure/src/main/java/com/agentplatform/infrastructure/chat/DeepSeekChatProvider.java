@@ -28,8 +28,9 @@ public final class DeepSeekChatProvider implements ChatProvider {
         var transport=new JdkHttpTransport(http,HttpTransportConfig.defaults());
         var options=GenerateOptions.builder().stream(true).maxTokens(1024)
                 .executionConfig(ExecutionConfig.builder().maxAttempts(1).retryOn(error->false).timeout(Duration.ofSeconds(120)).build())
-                .additionalBodyParam("thinking",java.util.Map.of("type","disabled"))
-                .additionalBodyParam("stream_options",java.util.Map.of("include_usage",true)).build();
+                // AgentScope 2.0.4 emits stream_options.include_usage itself for
+                // streaming. Repeating it as an extra body param creates duplicate JSON keys.
+                .additionalBodyParam("thinking",java.util.Map.of("type","disabled")).build();
         var model=OpenAIChatModel.builder().apiKey(key).baseUrl(endpoint).endpointPath("/chat/completions").modelName("deepseek-flash")
                 .httpTransport(transport).stream(true).generateOptions(options).build();
         StringBuilder text=new StringBuilder();AtomicReference<String> finish=new AtomicReference<>(),id=new AtomicReference<>();

@@ -9,6 +9,15 @@ COUNTS = Counter()
 LOCK = threading.Lock()
 
 
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError('Duplicate JSON field')
+        result[key] = value
+    return result
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -30,7 +39,11 @@ class Handler(BaseHTTPRequestHandler):
         if self.path != '/chat/completions' or not 0 < length <= 98304:
             self.send_error(400)
             return
-        body = json.loads(self.rfile.read(length))
+        try:
+            body = json.loads(self.rfile.read(length), object_pairs_hook=unique_object)
+        except (ValueError, UnicodeError):
+            self.send_error(422)
+            return
         if body.get('model') != 'deepseek-flash' or body.get('thinking') != {'type': 'disabled'} or not body.get('stream'):
             self.send_error(422)
             return
