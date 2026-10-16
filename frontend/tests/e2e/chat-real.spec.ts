@@ -21,13 +21,15 @@ test('real DeepSeek text stream, persisted multi-turn history and token usage', 
   const started = Date.now();
   await page.getByLabel('消息', { exact: true }).fill('请记住暗号“青竹”，然后用约150字介绍持久化消息的作用。不要输出思考过程。');
   await page.getByRole('button', { name: '发送', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('已完成', { timeout: 120_000 });
+  await expect(page.getByRole('status')).toContainText(/已完成|失败|已取消|需要处理/, { timeout: 120_000 });
+  await expect(page.getByRole('status')).toContainText('已完成');
   const firstDuration = Date.now() - started;
   await expect(page.locator('.chat-message.assistant .chat-text').last()).not.toHaveText('');
   await page.getByLabel('消息', { exact: true }).fill('刚才我请你记住的暗号是什么？只回复暗号。');
   await page.getByRole('button', { name: '发送', exact: true }).click();
-  await expect(page.locator('.chat-message.assistant .chat-text').last()).toContainText('青竹', { timeout: 120_000 });
-  await expect(page.getByRole('status')).toContainText('已完成', { timeout: 120_000 });
+  await expect(page.getByRole('status')).toContainText(/已完成|失败|已取消|需要处理/, { timeout: 120_000 });
+  await expect(page.getByRole('status')).toContainText('已完成');
+  await expect(page.locator('.chat-message.assistant .chat-text').last()).toContainText('青竹');
   await page.reload();
   await expect(page.locator('.chat-message.assistant .chat-text').last()).toContainText('青竹');
   const snapshot = await page.request.get(`/api/v1/conversations/${conversation}/snapshot`);

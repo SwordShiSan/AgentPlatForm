@@ -49,13 +49,22 @@ public final class DeepSeekChatProvider implements ChatProvider {
         result.whenComplete((value,error)->{if(result.isCancelled())subscription.dispose();});return result;
     }
     private static RuntimeException classify(Throwable error){
-        if(error instanceof ChatFailure failure)return failure;
-        // SDK diagnostics can contain headers/body; never persist or return the original message.
-        String name=error.getClass().getSimpleName();String message=String.valueOf(error.getMessage());
-        if(message.matches("(?s).*\\b429\\b.*"))return new ChatFailure(503,"PROVIDER_RATE_LIMITED");
-        if(message.matches("(?s).*\\b(401|403)\\b.*"))return new ChatFailure(503,"PROVIDER_AUTH_REJECTED");
-        if(message.matches("(?s).*\\b(500|502|503|504)\\b.*"))return new ChatFailure(503,"PROVIDER_SERVER_REJECTED");
-        if(name.contains("Timeout"))return new ChatFailure(504,"PROVIDER_TIMEOUT");
+        Integer status=null;boolean timeout=false;String lastType=error.getClass().getName();
+        // Read typed status only. SDK messages/response bodies can contain secrets
+        // and must never participate in logging or the public failure surface.
+        for(Throwable cause=error;cause!=null;cause=cause.getCause()){
+            if(cause instanceof ChatFailure failure)return failure;
+            if(cause instanceof HttpTransportException http&&http.getStatusCode()!=null)status=http.getStatusCode();
+            if(cause instanceof ModelHttpException http&&http.getStatusCode()!=null)status=http.getStatusCode();
+            timeout|=cause.getClass().getSimpleName().contains("Timeout");lastType=cause.getClass().getName();
+        }
+        System.getLogger(DeepSeekChatProvider.class.getName()).log(System.Logger.Level.WARNING,
+                "Provider failure type="+error.getClass().getName()+", cause="+lastType+", httpStatus="+status);
+        if(status!=null&&status==429)return new ChatFailure(503,"PROVIDER_RATE_LIMITED");
+        if(status!=null&&(status==401||status==403))return new ChatFailure(503,"PROVIDER_AUTH_REJECTED");
+        if(status!=null&&status>=500&&status<=599)return new ChatFailure(503,"PROVIDER_SERVER_REJECTED");
+        if(status!=null&&status>=400&&status<=499)return new ChatFailure(503,"PROVIDER_REQUEST_REJECTED");
+        if(timeout)return new ChatFailure(504,"PROVIDER_TIMEOUT");
         return new ChatFailure(503,"PROVIDER_REQUEST_FAILED");
     }
 }

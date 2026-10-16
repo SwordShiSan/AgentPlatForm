@@ -63,7 +63,7 @@ class DeepSeekChatProviderTest {
     }
 
     @Test void retryableHttpErrorsRemainOnePhysicalRequestPerLedgerCall() throws Exception {
-        for(int status : List.of(429, 503)) {
+        for(int status : List.of(400, 429, 503)) {
             var server = com.sun.net.httpserver.HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
             var calls = new AtomicInteger();
             server.createContext("/chat/completions", exchange -> {
@@ -77,7 +77,7 @@ class DeepSeekChatProviderTest {
                         List.of(Message.text(Role.USER, "retry")), text -> fail("No text expected"))
                         .toCompletableFuture().get(8, TimeUnit.SECONDS));
                 assertInstanceOf(com.agentplatform.domain.chat.ChatFailure.class, failure.getCause());
-                assertEquals(status == 429 ? "PROVIDER_RATE_LIMITED" : "PROVIDER_SERVER_REJECTED",
+                assertEquals(status == 400 ? "PROVIDER_REQUEST_REJECTED" : status == 429 ? "PROVIDER_RATE_LIMITED" : "PROVIDER_SERVER_REJECTED",
                         ((com.agentplatform.domain.chat.ChatFailure) failure.getCause()).code());
                 assertEquals(1, calls.get(), "Only platform ledger may schedule a subsequent physical request");
             } finally { server.stop(0); }
