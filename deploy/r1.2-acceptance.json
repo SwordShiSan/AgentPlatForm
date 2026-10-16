@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "FUNCTIONAL_ACCEPTANCE_PASS_PENDING_PROMOTION",
+  "status": "VERIFIED",
   "runtimeSource": "f480758e974c96a2472c7d88c17e6dc40e9b1350",
   "runtimeJarSha256": "04c9939906e5de423953176b86fcaeeeabf3ab7be118006c210e0c64d00f1d9a",
   "gates": {
@@ -168,5 +168,26 @@
     "R1.3": "NOT_RUN",
     "R2FullCheckpointRecovery": "NOT_RUN",
     "toolsFilesBusinessShell": "NOT_RUN"
-  }
+  },
+  "promotion": {
+    "stepToPhase": {
+      "number": 26,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/26",
+      "base": "phase/r1-identity-chat",
+      "head": "step/r1.2-chat-execution",
+      "headSha": "bd4b8e5513602898fde7eaeb7e887abe0d5fe6f9",
+      "merged": true,
+      "mergeSha": "b2a54a8065cf6771b916efbecd218c5bdfe459db"
+    },
+    "phaseToMain": {
+      "number": 27,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/27",
+      "base": "main",
+      "head": "phase/r1-identity-chat",
+      "headSha": "b2a54a8065cf6771b916efbecd218c5bdfe459db",
+      "merged": true,
+      "mergeSha": "567b94f87bcacede21d756f5bb40823a2bc01a0d"
+    }
+  },
+  "phaseState": "R1 2/4 VERIFIED; not RELEASED"
 }

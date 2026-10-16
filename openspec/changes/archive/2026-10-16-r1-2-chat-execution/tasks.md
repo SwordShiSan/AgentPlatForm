@@ -15,5 +15,5 @@
 - [x] 4.3 Run deterministic model failures/stream/cancel/context and real DeepSeek within caps.
 - [x] 4.4 Run multiuser/browser/resources/leak checks, bind exact source/image/evidence.
 ## 5. Delivery
-- [ ] 5.1 Review and protected step→phase→main PR promotion without hosted CI.
-- [ ] 5.2 Archive/sync/ledgers/handoff; R1.2 VERIFIED only on all mandatory PASS.
+- [x] 5.1 Review and protected step→phase→main PR promotion without hosted CI.
+- [x] 5.2 Archive/sync/ledgers/handoff; R1.2 VERIFIED only on all mandatory PASS.

@@ -1,5 +1,5 @@
 # Verification
-Status FUNCTIONAL_ACCEPTANCE_PASS_PENDING_PROMOTION. Approved baseline ee741e3; runtime source f480758, acceptance scripts364358b. Mandatory functional gates below PASS; PR promotion/archive are still pending. Historical failures/checkpoints follow the current evidence section.
+Status VERIFIED. All mandatory functional gates passed; protected PR26/27 merged. Implementation main 567b94f87bcacede21d756f5bb40823a2bc01a0d, phase b2a54a8065cf6771b916efbecd218c5bdfe459db. Runtime source f480758, test scripts364358b. Historical failures remain below; no R1 deployment/tag.
 
 | Group | Mandatory normal/boundary/failure/recovery assertions | State |
 |---|---|---|
@@ -10,7 +10,7 @@ Status FUNCTIONAL_ACCEPTANCE_PASS_PENDING_PROMOTION. Approved baseline ee741e3; 
 | Provider | Empty/truncation/429/5xx/missing usage/after-output disconnect/timeout/cancel; real DeepSeek stream/history/usage | PASS |
 | Authorization | Two users all list/detail/submit/SSE/cancel/usage; current revoke/disable/CSRF; encrypted secret/AAD/foreign reference rejection | PASS |
 | Resources | Total<=2887MiB, one execution/hash slot, login+chat overlap, sequential tasks, bounded memory/cancel cleanup/OOM/swap, no build overlap | PASS |
-| Delivery | Source/image/evidence/secret checks PASS; protected PR promotion and archive pending | PENDING_PROMOTION |
+| Delivery | Source/image/evidence/secret checks and protected PR26/27 promotion PASS; administrative archive/handoff follows | PASS |
 
 ## Current functional evidence (2026-10-16)
 
