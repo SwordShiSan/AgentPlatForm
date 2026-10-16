@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "provider": "DeepSeek",
+  "endpoint": "https://api.deepseek.com/chat/completions",
+  "model": "deepseek-flash",
+  "upstreamModelVersionObserved": "DeepSeek-V4.1-Flash",
+  "sdk": "io.agentscope:agentscope-extensions-model-openai:2.0.4",
+  "thinking": "disabled",
+  "stream": true,
+  "includeUsage": true,
+  "sdkMaxAttempts": 1,
+  "platformContextTokens": 8192,
+  "maxOutputTokens": 1024,
+  "safetyTokens": 1024,
+  "pricing": {
+    "version": "deepseek-flash-2026-10-16-peak-bound",
+    "source": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/",
+    "checkedDate": "2026-10-16",
+    "currency": "CNY",
+    "unitTokens": 1000000,
+    "peakCacheMissInput": 2,
+    "peakOutput": 8,
+    "calculation": "Conservative estimate uses peak cache-miss prices; actual billed cost may be lower. Unknown usage remains null."
+  },
+  "acceptance": { "maxPhysicalRequests": 20, "maxReservedAndConsumedMicros": 1000000 }
+}

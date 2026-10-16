@@ -3,7 +3,9 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 test.skip(process.env.R11_IDENTITY !== '1', 'Requires isolated R1.1 real API fixture');
-const secret = (user: string) => readFileSync(resolve(process.cwd(), '../.cache/r11-local', `${user}-password`), 'utf8').trim();
+test.use({ trace: 'off', screenshot: 'off' });
+const secretRoot = process.env.IDENTITY_SECRET_ROOT ?? resolve(process.cwd(), '../.cache/r11-local');
+const secret = (user: string) => readFileSync(resolve(secretRoot, `${user}-password`), 'utf8').trim();
 
 test('real login, refresh, two-user isolation, logout and protected route', async ({ browser }) => {
   const baseURL = process.env.BASE_URL ?? 'http://127.0.0.1:18086';
@@ -52,7 +54,7 @@ test('login errors, keyboard, responsive themes and session loss', async ({ page
       await page.getByLabel('主题').selectOption(theme);
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      await page.screenshot({ path: `test-results/identity-${width}-${theme}.png`, fullPage: true });
+      await page.screenshot({ path: resolve(process.env.IDENTITY_SCREENSHOT_ROOT ?? 'test-results', `identity-${width}-${theme}.png`), fullPage: true });
     }
   }
   await context.clearCookies();

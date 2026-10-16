@@ -31,11 +31,11 @@ public class CloudBaselineConfiguration {
     }
 
     @Bean
-    @Profile("!cloud-api & !cloud-worker & !identity-local")
+    @Profile("!cloud-api & !cloud-worker & !identity-local & !chat-local")
     ReadinessProbe unavailableReadiness() { return () -> false; }
 
     @Bean
-    @Profile("identity-local & !cloud-api & !cloud-worker")
+    @Profile("identity-local & !cloud-api & !cloud-worker & !chat-local")
     ReadinessProbe identityReadiness(com.agentplatform.domain.identity.IdentityStore store) { return store::ready; }
 
     @Bean

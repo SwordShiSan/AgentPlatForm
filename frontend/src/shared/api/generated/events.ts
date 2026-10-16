@@ -1,9 +1,11 @@
 /* Generated from contracts. Do not edit manually. */
 
 /**
- * Envelope contract only; R0.1 does not publish runtime events. Payload specifics are added with implemented capabilities.
+ * Version1 envelope; R1.2 freezes task/text/usage payloads below. Other enumerated capabilities remain unimplemented.
  */
-export interface PlatformEvent {
+export type PlatformEvent = {
+  [k: string]: unknown;
+} & {
   schemaVersion: 1;
   eventId: string;
   spaceId: string;
@@ -42,4 +44,4 @@ export interface PlatformEvent {
   payload: {
     [k: string]: unknown;
   };
-}
+};

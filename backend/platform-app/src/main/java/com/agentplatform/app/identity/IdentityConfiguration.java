@@ -20,8 +20,10 @@ import org.springframework.context.annotation.Profile;
 public class IdentityConfiguration {
     @Bean IdentitySecrets identitySecrets() { return new ArgonIdentitySecrets(); }
     @Bean IdentityStore identityStore(@Value("${platform.storage.jdbc-url}") String url,
-            @Value("${platform.storage.user}") String user, @Value("${platform.storage.password-file}") String file) throws Exception {
-        return new JdbcIdentityStore(url, user, Files.readString(Path.of(file)).strip());
+            @Value("${platform.storage.user}") String user, @Value("${platform.storage.password-file}") String file,
+            org.springframework.beans.factory.ObjectProvider<javax.sql.DataSource> pool) throws Exception {
+        var source = pool.getIfAvailable();
+        return source == null ? new JdbcIdentityStore(url, user, Files.readString(Path.of(file)).strip()) : new JdbcIdentityStore(source);
     }
     @Bean @Profile("identity-local")
     IdentityApi identityApi(IdentityStore store, IdentitySecrets secrets,

@@ -134,19 +134,19 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
 
         @Override public CompletionStage<Outcome> start() {
             if (!started.compareAndSet(false, true)) throw new IllegalStateException("Run already subscribed");
-            run.stream().collectList().flatMap(events -> {
+            AtomicBoolean asking = new AtomicBoolean();
+            run.stream().doOnNext(event -> { if(event instanceof io.agentscope.core.event.RequireUserConfirmEvent) asking.set(true); }).then(Mono.defer(() -> {
                 active();
                 manifests.seal(request.scope(), request.bundle());
                 Turn turn = lastTurn.get();
-                boolean asking = events.stream().anyMatch(event -> event instanceof io.agentscope.core.event.RequireUserConfirmEvent);
-                if (asking) {
+                if (asking.get()) {
                     List<Call> pending = turn == null ? restoredPending() : turn.round().calls();
                     return Mono.just(new Outcome(Completion.WAITING_APPROVAL, "", pending));
                 }
                 Message candidate = Message.text(Role.ASSISTANT, turn == null ? "" : turn.round().text());
                 return await(() -> boundary.beforeStop(request.scope(), candidate))
                         .map(decision -> new Outcome(decision, candidate.text(), List.of()));
-            }).doFinally(signal -> {
+            })).doFinally(signal -> {
                 boundary.release(request.scope());
                 agent.close();
             }).subscribe(result::complete, error -> {
@@ -171,14 +171,26 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
         private final class BridgeModel implements Model {
             @Override public String getModelName() { return "platform-scripted"; }
             @Override public Flux<ChatResponse> stream(List<Msg> messages, List<ToolSchema> definitions, GenerateOptions options) {
-                return await(() -> model.complete(request.scope(), messages.stream().map(msg -> codec.decode(msg, catalog)).toList(), List.copyOf(catalog.values())))
-                        .map(round -> {
+                return Flux.create(sink -> {
+                    AtomicBoolean emitted = new AtomicBoolean();
+                    var future = model.stream(request.scope(), messages.stream().map(msg -> codec.decode(msg, catalog)).toList(), List.copyOf(catalog.values()), text -> {
+                        active(); emitted.set(true); sink.next(ChatResponse.builder().content(List.of(TextBlock.builder().text(text).build())).build());
+                    }).toCompletableFuture();
+                    pendingFutures.add(future);sink.onCancel(() -> future.cancel(true));
+                    future.whenComplete((round,error) -> {
+                        pendingFutures.remove(future);
+                        if(error!=null){failure.compareAndSet(null,error);sink.error(error);return;}
+                        try {
+                            active();
                             codec.validate(round);
                             var resolved = round.calls().stream().map(call -> codec.decodeCall(codec.toolUse(call), catalog)).toList();
                             Round canonical = new Round(round.text(), resolved, round.finishReason(), round.inputTokens(), round.outputTokens());
                             lastTurn.set(new Turn(UUID.randomUUID().toString(), nextTurn.getAndIncrement(), canonical));
-                            return codec.response(canonical);
-                        }).flux();
+                            sink.next(codec.response(emitted.get()?new Round("",resolved,round.finishReason(),round.inputTokens(),round.outputTokens()):canonical));
+                            sink.complete();
+                        } catch(Throwable rejected){failure.compareAndSet(null,rejected);sink.error(rejected);}
+                    });
+                });
             }
         }
 

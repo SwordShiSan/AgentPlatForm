@@ -27,10 +27,14 @@ public final class ScopeStateStore implements AgentStateStore {
     }
     @Override public boolean supportsVersioning() { return true; }
     @Override public void save(String user, String session, String key, State value) {
-        authorize(user, session); storage.compareAndSwap(scope, key, -1, bytes(bound(value)));
+        authorize(user, session); saveCurrent(key, bytes(bound(value)));
     }
     @Override public void save(String user, String session, String key, List<? extends State> values) {
-        authorize(user, session); storage.compareAndSwap(scope, key, -1, bytes(values));
+        authorize(user, session); saveCurrent(key, bytes(values));
+    }
+    private void saveCurrent(String key, byte[] body) {
+        long expected = storage.load(scope, key).version();
+        if (storage.compareAndSwap(scope, key, expected, body) < 0) throw new IllegalStateException("STATE_CAS_CONFLICT");
     }
     @Override public long saveIfVersion(String user, String session, String key, State value, long expected) {
         authorize(user, session);

@@ -18,10 +18,12 @@ public final class JdbcIdentityStore implements IdentityStore {
     private final String url;
     private final String username;
     private final String password;
-    public JdbcIdentityStore(String url, String username, String password) { this.url = url; this.username = username; this.password = password; }
+    private final javax.sql.DataSource dataSource;
+    public JdbcIdentityStore(String url, String username, String password) { this.url = url; this.username = username; this.password = password; this.dataSource = null; }
+    public JdbcIdentityStore(javax.sql.DataSource dataSource) { this.url = null; this.username = null; this.password = null; this.dataSource = java.util.Objects.requireNonNull(dataSource); }
     private interface Work<T> { T run(Connection connection) throws SQLException; }
     private <T> T transaction(Work<T> work) {
-        try (var c = DriverManager.getConnection(url, username, password)) {
+        try (var c = dataSource == null ? DriverManager.getConnection(url, username, password) : dataSource.getConnection()) {
             c.setAutoCommit(false);
             try { T value = work.run(c); c.commit(); return value; }
             catch (SQLException | RuntimeException failure) { c.rollback(); throw failure; }

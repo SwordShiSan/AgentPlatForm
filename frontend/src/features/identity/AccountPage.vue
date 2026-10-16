@@ -9,6 +9,7 @@ const router = useRouter();
 const queryClient = useQueryClient();
 const error = ref('');
 const busy = ref(false);
+const chatEnabled = import.meta.env.VITE_CHAT_ENABLED === 'true';
 const me = useQuery({ queryKey: ['identity', 'me'], queryFn: async () => {
   const result = await api.GET('/api/v1/me');
   if (!result.data) throw new Error('Account unavailable');
@@ -34,6 +35,7 @@ async function logout() {
     <aside class="account-sidebar" aria-label="账号导航">
       <p class="eyebrow">个人空间</p>
       <RouterLink to="/app/settings/account" aria-current="page">账号信息</RouterLink>
+      <RouterLink v-if="chatEnabled" to="/app/chat">普通聊天</RouterLink>
       <div v-if="me.data.value" class="user-menu">
         <span>{{ me.data.value.username }}</span>
         <button :disabled="busy" @click="logout">退出登录</button>

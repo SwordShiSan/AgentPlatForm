@@ -11,6 +11,11 @@ public final class HarnessPorts {
 
     public interface ModelGateway {
         CompletionStage<Round> complete(Scope scope, List<Message> messages, List<Call> toolDefinitions);
+        /** Legacy complete-only adapters remain valid; production adapters deliver live deltas. */
+        default CompletionStage<Round> stream(Scope scope, List<Message> messages, List<Call> toolDefinitions,
+                                              java.util.function.Consumer<String> onText) {
+            return complete(scope, messages, toolDefinitions);
+        }
     }
     public interface ContextAssembler { CompletionStage<List<Message>> assemble(Scope scope, List<Message> history, List<Message> candidates); }
     public interface MemoryPort { CompletionStage<List<Message>> recall(Scope scope); }

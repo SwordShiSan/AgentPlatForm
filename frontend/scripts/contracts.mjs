@@ -35,7 +35,8 @@ for (const [name, content] of Object.entries(outputs)) {
 const fixture = {
   schemaVersion: 1, eventId: '0199db83-0000-7000-8000-000000000001', spaceId: '0199db83-0000-7000-8000-000000000002',
   conversationId: '0199db83-0000-7000-8000-000000000003', seq: 1, type: 'task.accepted',
-  occurredAt: '2026-10-13T00:00:00Z', entityVersion: 1, payload: {},
+  occurredAt: '2026-10-13T00:00:00Z', entityVersion: 1,
+  payload: { taskId: '0199db83-0000-7000-8000-000000000004', status: 'QUEUED' },
 };
 assert(validateEvent(fixture));
 for (const patch of [{ type: 'unknown' }, { schemaVersion: 2 }, { seq: 0 }, { seq: 1.5 }, { spaceId: 'invalid' }, { occurredAt: 'yesterday' }, { entityVersion: 0 }]) {
@@ -44,6 +45,13 @@ for (const patch of [{ type: 'unknown' }, { schemaVersion: 2 }, { seq: 0 }, { se
 const missing = { ...fixture };
 delete missing.conversationId;
 assert(!validateEvent(missing));
+for (const payload of [{}, { ...fixture.payload, apiKey: 'forbidden' }, { ...fixture.payload, status: 'RUNNING' }]) {
+  assert(!validateEvent({ ...fixture, payload }), 'Invalid or secret-bearing task payload accepted');
+}
+const delta = { ...fixture, type: 'message.delta', payload: { messageId: fixture.payload.taskId, blockId: fixture.payload.taskId, offset: 1, text: '😀' } };
+assert(validateEvent(delta));
+assert(!validateEvent({ ...delta, payload: { ...delta.payload, offset: -1 } }));
+assert(!validateEvent({ ...delta, payload: { ...delta.payload, reasoning: 'hidden' } }));
 
 const health = ajv.compile(api.components.schemas.HealthResponse);
 const readiness = ajv.compile(api.components.schemas.ReadinessResponse);

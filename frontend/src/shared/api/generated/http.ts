@@ -99,6 +99,150 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getModels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getConversations"];
+        put?: never;
+        post: operations["createConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getConversation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{id}/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getConversationSnapshot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["submitChatTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTask"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{id}/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTaskUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cancelTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getConversationEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -145,6 +289,107 @@ export interface components {
             retryable: boolean;
             resourceId?: string;
         };
+        ChatModel: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            capabilities: "TEXT"[];
+            available: boolean;
+        };
+        ChatModels: {
+            items: components["schemas"]["ChatModel"][];
+        };
+        ChatConversation: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            version: number;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ChatConversations: {
+            items: components["schemas"]["ChatConversation"][];
+            nextCursor: string | null;
+        };
+        CreateConversation: {
+            title?: string;
+            workspaceId?: null;
+        };
+        ChatTask: {
+            /** Format: uuid */
+            taskId: string;
+            /** Format: uuid */
+            conversationId: string;
+            /** @enum {string} */
+            status: "QUEUED" | "RUNNING" | "BLOCKED" | "SUCCEEDED" | "FAILED" | "CANCELLED";
+            cancelRequested: boolean;
+            reasonCode: string | null;
+            version: number;
+        };
+        ChatAccepted: {
+            /** Format: uuid */
+            taskId: string;
+            /** Format: uuid */
+            conversationId: string;
+            /** @enum {string} */
+            status: "QUEUED" | "RUNNING" | "BLOCKED" | "SUCCEEDED" | "FAILED" | "CANCELLED";
+            cursor: number;
+        };
+        SubmitChatTask: {
+            input: {
+                text: string;
+                attachments?: unknown[];
+            };
+            options: {
+                /** Format: uuid */
+                modelId: string;
+                /** @constant */
+                planMode?: false;
+                /** @constant */
+                permissionMode?: "RISK_BASED";
+            };
+        };
+        ChatTextBlock: {
+            /** @constant */
+            type: "TEXT";
+            /** Format: uuid */
+            blockId: string;
+            text: string;
+        };
+        ChatMessage: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            taskId: string;
+            /** @enum {string} */
+            role: "USER" | "ASSISTANT";
+            blocks: components["schemas"]["ChatTextBlock"][];
+            /** @enum {string} */
+            status: "COMPLETED" | "STREAMING" | "PARTIAL" | "FAILED";
+            version: number;
+        };
+        ChatSnapshot: {
+            /** @constant */
+            schemaVersion: 1;
+            cursor: number;
+            messages: components["schemas"]["ChatMessage"][];
+            tasks: components["schemas"]["ChatTask"][];
+            pending: unknown[];
+            artifacts: unknown[];
+        };
+        ChatUsage: {
+            /** Format: uuid */
+            callId: string;
+            /** @enum {string} */
+            status: "PREPARED" | "STARTED" | "COMPLETED" | "FAILED" | "UNKNOWN";
+            inputTokens: number | null;
+            outputTokens: number | null;
+            costMicros: number | null;
+            estimated: boolean;
+        };
+        ChatUsages: {
+            items: components["schemas"]["ChatUsage"][];
+        };
     };
     responses: {
         /** @description Identity request rejected (400/401/403/404/409/429/503) */
@@ -160,6 +405,10 @@ export interface components {
     parameters: {
         /** @description Session-bound token; writes also require an exact allowed Origin */
         CsrfToken: string;
+        /** @description Optional selector; current membership and credential policy are always checked. */
+        SpaceSelector: string;
+        /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+        IdempotencyKey: string;
     };
     requestBodies: never;
     headers: never;
@@ -316,6 +565,291 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getModels: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized committed platform state; no provider secrets or internal reasoning */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatModels"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getConversations: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized committed platform state; no provider secrets or internal reasoning */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatConversations"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    createConversation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateConversation"];
+            };
+        };
+        responses: {
+            /** @description Authorized committed platform state; no provider secrets or internal reasoning */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatConversation"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getConversation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized committed platform state; no provider secrets or internal reasoning */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatConversation"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getConversationSnapshot: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized committed platform state; no provider secrets or internal reasoning */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatSnapshot"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    submitChatTask: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitChatTask"];
+            };
+        };
+        responses: {
+            /** @description Authorized committed platform state; no provider secrets or internal reasoning */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatAccepted"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getTask: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized committed platform state; no provider secrets or internal reasoning */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatTask"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getTaskUsage: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized committed platform state; no provider secrets or internal reasoning */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatUsages"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    cancelTask: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Authorized committed platform state; no provider secrets or internal reasoning */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatTask"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getConversationEvents: {
+        parameters: {
+            query?: {
+                /** @description Committed cursor; wins over Last-Event-ID. Expired cursor returns410 and requires a fresh snapshot. */
+                after?: number;
+            };
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                "Last-Event-ID"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description SSE event platform_event; id is seq. Only committed events, Unicode codepoint offsets. Disconnect does not cancel. Bounded connections reconnect from cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
             };
             default: components["responses"]["IdentityProblem"];
         };

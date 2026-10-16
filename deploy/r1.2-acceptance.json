@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "status": "FUNCTIONAL_ACCEPTANCE_PASS_PENDING_PROMOTION",
+  "runtimeSource": "f480758e974c96a2472c7d88c17e6dc40e9b1350",
+  "runtimeJarSha256": "04c9939906e5de423953176b86fcaeeeabf3ab7be118006c210e0c64d00f1d9a",
+  "gates": {
+    "browser": "PASS",
+    "real_browser": "PASS",
+    "linux": "PASS",
+    "linux_state": "PASS",
+    "resource": "PASS",
+    "oom": "PASS",
+    "outage": "PASS",
+    "active_db": "PASS",
+    "secret": "PASS",
+    "smoke": "PASS",
+    "frontend": "PASS",
+    "docker": "PASS",
+    "provider": "PASS",
+    "contracts": "PASS",
+    "strict": "PASS",
+    "links": "PASS",
+    "frozen_lockfile": "PASS"
+  },
+  "testCounts": {
+    "maven": 105,
+    "realPgIdentity": 24,
+    "realPgMqChat": 24,
+    "linuxFramework": 46,
+    "linuxPgState": 3,
+    "vueUnit": 18,
+    "browserRegression": 9,
+    "realModelBrowser": 1,
+    "dockerPreflight": 5
+  },
+  "modelMeter": {
+    "id": 1,
+    "physical_calls": 4,
+    "reserved_micros": 49152,
+    "consumed_micros": 1432
+  },
+  "realModelCostNote": "Consumed1432micros is conservative peak cache-miss estimate;49152micros for two prior failed requests remains held, never reported as zero.",
+  "realIncrementalBatches": [
+    11,
+    2
+  ],
+  "residentLimitsMiB": {
+    "api": 512,
+    "worker": 512,
+    "postgres": 320,
+    "rabbitmq": 256,
+    "redis": 64,
+    "gateway": 32,
+    "fixture": 64
+  },
+  "resourceSampleCount": 8,
+  "resourceDurationSeconds": 32.42,
+  "resourceClaim": "Container limits only; sampled values are not absolute peaks or a cloud host capacity promise.",
+  "workspaceQuotaOrSandboxChanged": false,
+  "cloudDeployment": "R0 unchanged; no R1 deployment/tag",
+  "images": [
+    {
+      "service": "api",
+      "configId": "sha256:8a06cc7f26e95bcaf55ac837868b36c8dac4bfa96750f492a38be552fa2afe87",
+      "sourceRevision": "f480758e974c96a2472c7d88c17e6dc40e9b1350",
+      "repoDigests": [
+        "agentplatform-api@sha256:8a06cc7f26e95bcaf55ac837868b36c8dac4bfa96750f492a38be552fa2afe87"
+      ],
+      "platform": "linux/amd64",
+      "memoryBytes": 536870912,
+      "memorySwapBytes": 536870912,
+      "swapCurrentBytes": 0,
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "service": "worker",
+      "configId": "sha256:8a06cc7f26e95bcaf55ac837868b36c8dac4bfa96750f492a38be552fa2afe87",
+      "sourceRevision": "f480758e974c96a2472c7d88c17e6dc40e9b1350",
+      "repoDigests": [
+        "agentplatform-api@sha256:8a06cc7f26e95bcaf55ac837868b36c8dac4bfa96750f492a38be552fa2afe87"
+      ],
+      "platform": "linux/amd64",
+      "memoryBytes": 536870912,
+      "memorySwapBytes": 536870912,
+      "swapCurrentBytes": 0,
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "service": "postgres",
+      "configId": "sha256:137f044b0efe3d57f39b972b9b53641b1f2045b99d879e298bbf514a25787dcf",
+      "sourceRevision": null,
+      "repoDigests": [
+        "pgvector/pgvector@sha256:137f044b0efe3d57f39b972b9b53641b1f2045b99d879e298bbf514a25787dcf"
+      ],
+      "platform": "linux/amd64",
+      "memoryBytes": 335544320,
+      "memorySwapBytes": 335544320,
+      "swapCurrentBytes": 0,
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "service": "rabbitmq",
+      "configId": "sha256:8dd6e3570ddaa2ef82a6c3a8950e79c1f73893adfbdddbc374fc1f1ac8a0f5dd",
+      "sourceRevision": null,
+      "repoDigests": [
+        "rabbitmq@sha256:8dd6e3570ddaa2ef82a6c3a8950e79c1f73893adfbdddbc374fc1f1ac8a0f5dd"
+      ],
+      "platform": "linux/amd64",
+      "memoryBytes": 268435456,
+      "memorySwapBytes": 268435456,
+      "swapCurrentBytes": 0,
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "service": "redis",
+      "configId": "sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499",
+      "sourceRevision": null,
+      "repoDigests": [
+        "redis@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499"
+      ],
+      "platform": "linux/amd64",
+      "memoryBytes": 67108864,
+      "memorySwapBytes": 67108864,
+      "swapCurrentBytes": 0,
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "service": "gateway",
+      "configId": "sha256:f099ef7fd45dd5278790c57e0279790393d18763659124152dd7751427956538",
+      "sourceRevision": "f480758e974c96a2472c7d88c17e6dc40e9b1350",
+      "repoDigests": [
+        "agentplatform-gateway@sha256:f099ef7fd45dd5278790c57e0279790393d18763659124152dd7751427956538"
+      ],
+      "platform": "linux/amd64",
+      "memoryBytes": 33554432,
+      "memorySwapBytes": 33554432,
+      "swapCurrentBytes": 0,
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "service": "fixture",
+      "configId": "sha256:ff5fa642e242c95059763753f0132e8802759703827777d3b32dc0d919774006",
+      "sourceRevision": "f480758e974c96a2472c7d88c17e6dc40e9b1350",
+      "repoDigests": [
+        "agentplatform-provider-fixture@sha256:ff5fa642e242c95059763753f0132e8802759703827777d3b32dc0d919774006"
+      ],
+      "platform": "linux/amd64",
+      "memoryBytes": 67108864,
+      "memorySwapBytes": 67108864,
+      "swapCurrentBytes": 0,
+      "running": true,
+      "oomKilled": false
+    }
+  ],
+  "protectedPackage": {
+    "name": "r1.2-local-acceptance-20261016.zip",
+    "sha256": "5d07ba2b51552ed1f1322e694270ec522a73864134bb228b65dc2f71e56f6181",
+    "retainUntil": "2026-11-16"
+  },
+  "secrets": "PASS source, runtime logs, DB/private state/events and selected evidence; no raw SQL backup/credentials/traces packaged",
+  "futureGates": {
+    "R1.3": "NOT_RUN",
+    "R2FullCheckpointRecovery": "NOT_RUN",
+    "toolsFilesBusinessShell": "NOT_RUN"
+  }
+}
