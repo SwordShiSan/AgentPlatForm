@@ -12,4 +12,5 @@ public interface IdentityApi {
     SessionResult login(String token, String csrf, String origin, String ip, LoginRequest request);
     MeResponse me(String token, String selectedSpace);
     void logout(String token, String csrf, String origin);
+    void verifyWrite(String token, String csrf, String origin);
 }

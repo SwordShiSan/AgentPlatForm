@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "scope": "r1.2 implemented HTTP, event envelope, generated types and HC-1",
+  "sha256": {
+    "backend/platform-domain/src/main/java/com/agentplatform/domain/harness/CompositionRules.java": "7c8375947ae92a19ddd15b8232ef8ab25620293cf23a8963980a1be468e18a27",
+    "backend/platform-domain/src/main/java/com/agentplatform/domain/harness/HarnessPorts.java": "2679cb155d0ed2a454e44ef295e0c59c0bf586c3c37489f2eb5eea5505b78f3a",
+    "backend/platform-types/src/main/java/com/agentplatform/types/harness/HarnessData.java": "8654830000f1766b612600469634c0a01e0b42b2a88bafebcae4498f0040c1c1",
+    "contracts/events/platform-event.schema.json": "4b54faea5321fa95e999092ef657b66e2f5af45ffe303ba3317d82397fb1c360",
+    "contracts/openapi.yaml": "849aea04e6cf0f51d39bb7a9bc9ed6057d2ab71233a10eae691538c03daee28e",
+    "frontend/src/shared/api/generated/client.ts": "64f93d9bee7c55e1d1511f8be7b364ec79619622140df799acf7e24b4b3da350",
+    "frontend/src/shared/api/generated/events.ts": "a8a3907d4d119380653c77c8ea79ff5bfac3626db082784244d3c81480893052",
+    "frontend/src/shared/api/generated/http.ts": "7167266dbbd136e15f6f3840b1415224adeda2ada336cc7bf3375c6992d53b15"
+  }
+}

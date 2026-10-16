@@ -1,0 +1,28 @@
+package com.agentplatform.api.chat;
+
+import java.util.List;
+import java.util.Map;
+
+public interface ChatApi {
+    record Caller(String userId,String spaceId) {}
+    record ModelView(String id,String name,List<String> capabilities,boolean available) {}
+    record Models(List<ModelView> items) {}
+    record ConversationView(String id,String title,long version,String updatedAt) {}
+    record Conversations(List<ConversationView> items,String nextCursor) {}
+    record TaskView(String taskId,String conversationId,String status,boolean cancelRequested,String reasonCode,long version) {}
+    record Accepted(String taskId,String conversationId,String status,long cursor) {}
+    record MessageView(String id,String taskId,String role,List<Map<String,Object>> blocks,String status,long version) {}
+    record Snapshot(int schemaVersion,long cursor,List<MessageView> messages,List<TaskView> tasks,List<Object> pending,List<Object> artifacts) {}
+    record EventView(int schemaVersion,String eventId,String spaceId,String conversationId,String taskId,long seq,String type,String occurredAt,long entityVersion,Map<String,Object> payload) {}
+    record UsageView(String callId,String status,Long inputTokens,Long outputTokens,Long costMicros,boolean estimated) {}
+    Models models(Caller caller);
+    ConversationView create(Caller caller,String key,String title);
+    Conversations conversations(Caller caller,String cursor,int limit);
+    ConversationView conversation(Caller caller,String id);
+    Accepted submit(Caller caller,String conversation,String key,String model,String text);
+    TaskView task(Caller caller,String id);
+    TaskView cancel(Caller caller,String id,String key);
+    Snapshot snapshot(Caller caller,String id);
+    List<EventView> events(Caller caller,String id,long after);
+    List<UsageView> usage(Caller caller,String id);
+}
