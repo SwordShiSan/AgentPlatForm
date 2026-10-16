@@ -76,6 +76,19 @@ def main():
         assert bob.request('GET', path)[0] == 404, 'Foreign data exposed'
     assert bob.request('POST', '/tasks/' + first['taskId'] + '/cancel', {}, str(uuid.uuid4()))[0] == 404
     assert alice.request('POST', '/conversations', {'title': 'Rejected'}, str(uuid.uuid4()), {'X-CSRF-Token': 'invalid'})[0] == 403
+    _, models = alice.request('GET', '/models')
+    body = {'input': {'text': 'Must not execute', 'attachments': []}, 'options': {'modelId': models['items'][0]['id'], 'planMode': False, 'permissionMode': 'RISK_BASED'}}
+    writes = [('/conversations', {'title': 'Rejected'}), ('/conversations/' + conversation + '/tasks', body), ('/tasks/' + first['taskId'] + '/cancel', {})]
+    for path, payload in writes:
+        assert alice.request('POST', path, payload, str(uuid.uuid4()), {'Origin': 'https://foreign.invalid'})[0] == 403
+        assert alice.request('POST', path, payload, str(uuid.uuid4()), {'X-CSRF-Token': 'invalid'})[0] == 403
+        assert alice.request('POST', path, payload)[0] == 428
+    _, other = bob.request('GET', '/me')
+    foreign_space = other['spaces'][0]['id']
+    assert alice.request('GET', '/conversations', extra={'X-Space-Id': foreign_space})[0] in [403, 404]
+    assert alice.request('POST', '/conversations', {'title': 'Rejected', 'userId': other['id']}, str(uuid.uuid4()))[0] == 400
+    _, own_list = alice.request('GET', '/conversations', extra={'X-User-Id': other['id']})
+    assert any(item['id'] == conversation for item in own_list['items']), 'Forged identity header changed owner'
     assert alice.request('GET', '/metrics')[0] == 404
     history = alice.submit(conversation, 'fixture:history')
     assert alice.terminal(history['taskId'])['status'] == 'SUCCEEDED'

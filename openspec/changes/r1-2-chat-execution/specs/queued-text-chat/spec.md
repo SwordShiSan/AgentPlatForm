@@ -46,4 +46,3 @@ The platform SHALL use the approved DeepSeek model and real RabbitMQ/PostgreSQL 
 #### Scenario: Model test cap reached
 - **WHEN** real acceptance consumes its request or cost cap
 - **THEN** further physical calls are denied and incomplete cases remain NOT_RUN
-

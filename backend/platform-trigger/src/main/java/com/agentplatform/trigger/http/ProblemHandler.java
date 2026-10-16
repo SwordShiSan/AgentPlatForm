@@ -8,6 +8,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public final class ProblemHandler extends ResponseEntityExceptionHandler {
+    @org.springframework.web.bind.annotation.ExceptionHandler(org.springframework.core.task.TaskRejectedException.class)
+    org.springframework.http.ResponseEntity<ProblemDetail> streamCapacity(org.springframework.core.task.TaskRejectedException failure) {
+        return chatFailure(new com.agentplatform.domain.chat.ChatFailure(503,"STREAM_CAPACITY_EXCEEDED"));
+    }
     @org.springframework.web.bind.annotation.ExceptionHandler(com.agentplatform.domain.chat.ChatFailure.class)
     org.springframework.http.ResponseEntity<ProblemDetail> chatFailure(com.agentplatform.domain.chat.ChatFailure failure) {
         var problem=ProblemDetail.forStatusAndDetail(org.springframework.http.HttpStatusCode.valueOf(failure.status()),"The chat request could not be completed.");

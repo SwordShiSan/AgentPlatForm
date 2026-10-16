@@ -8,7 +8,7 @@ import jakarta.servlet.http.*;
 
 @Configuration @Profile("chat-local")
 public class ChatWebConfiguration implements WebMvcConfigurer {
-    @Bean ThreadPoolTaskExecutor sseExecutor(){var pool=new ThreadPoolTaskExecutor();pool.setCorePoolSize(4);pool.setMaxPoolSize(8);pool.setQueueCapacity(16);pool.setThreadNamePrefix("chat-sse-");pool.initialize();return pool;}
+    @Bean ThreadPoolTaskExecutor sseExecutor(){var pool=new ThreadPoolTaskExecutor();pool.setCorePoolSize(4);pool.setMaxPoolSize(8);pool.setQueueCapacity(0);pool.setThreadNamePrefix("chat-sse-");pool.initialize();return pool;}
     @Override public void configureAsyncSupport(AsyncSupportConfigurer configurer){configurer.setTaskExecutor(sseExecutor()).setDefaultTimeout(30000);}
     @Override public void addInterceptors(InterceptorRegistry registry){registry.addInterceptor(new HandlerInterceptor(){@Override public boolean preHandle(HttpServletRequest request,HttpServletResponse response,Object handler){response.setHeader("Cache-Control","no-store");return true;}}).addPathPatterns("/api/v1/**");}
 }

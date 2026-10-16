@@ -23,10 +23,11 @@ import org.springframework.context.annotation.*;
         properties = {"spring.profiles.active=chat-local,chat-stream-test", "server.shutdown=immediate"})
 class ChatStreamingHttpTest {
     @LocalServerPort int port;
+    @org.springframework.beans.factory.annotation.Autowired org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor executor;
     @Configuration(proxyBeanMethods = false)
     @Profile("chat-stream-test")
     @EnableAutoConfiguration
-    @Import(ChatController.class)
+    @Import({ChatController.class, ChatWebConfiguration.class, com.agentplatform.trigger.http.ProblemHandler.class})
     static class Config {
         @Bean ChatApi chat() {
             var chat = mock(ChatApi.class);
@@ -57,5 +58,28 @@ class ChatStreamingHttpTest {
                 assertEquals(": connected\n\n",first.get(3,TimeUnit.SECONDS));
             }
         }
+    }
+
+    private void awaitDisconnectedStreams() throws Exception {
+        long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(9);
+        while(executor.getActiveCount()!=0&&System.nanoTime()<deadline)Thread.sleep(50);
+        assertEquals(0,executor.getActiveCount(),"Disconnected sockets must release the bounded workers promptly");
+    }
+
+    @Test void eightStreamsStartWithoutQueueingAndExcessCapacityFailsExplicitly() throws Exception {
+        awaitDisconnectedStreams();
+        var responses=new java.util.ArrayList<HttpResponse<java.io.InputStream>>();
+        try(var client=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build()) {
+            var request=HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api/v1/conversations/0199e000-0000-7000-8000-000000000003/events?after=0"))
+                    .header("Accept","text/event-stream").timeout(Duration.ofSeconds(3)).build();
+            try {
+                for(int i=0;i<8;i++)responses.add(client.sendAsync(request,HttpResponse.BodyHandlers.ofInputStream()).get(3,TimeUnit.SECONDS));
+                assertTrue(responses.stream().allMatch(response->response.statusCode()==200));
+                var rejected=client.sendAsync(request,HttpResponse.BodyHandlers.ofString()).get(3,TimeUnit.SECONDS);
+                assertEquals(503,rejected.statusCode()); assertTrue(rejected.body().contains("STREAM_CAPACITY_EXCEEDED"));
+                assertTrue(rejected.body().contains("\"retryable\":true"));
+            } finally { for(var response:responses)response.body().close(); }
+        }
+        awaitDisconnectedStreams();
     }
 }

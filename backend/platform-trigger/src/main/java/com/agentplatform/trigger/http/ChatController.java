@@ -51,7 +51,7 @@ public final class ChatController {
             output.write(": connected\n\n".getBytes(StandardCharsets.UTF_8));output.flush();response.flushBuffer();
             try{while(System.nanoTime()<end){identity.me(cookie,selected);var events=chat.events(who,id,cursor);int bytes=0;
                 for(var event:events){byte[] wire=("id: "+event.seq()+"\nevent: platform_event\ndata: "+JSON.writeValueAsString(event)+"\n\n").getBytes(StandardCharsets.UTF_8);bytes+=wire.length;if(bytes>1048576)return;output.write(wire);cursor=event.seq();}if(!events.isEmpty()){output.flush();response.flushBuffer();}
-                if(System.nanoTime()-heartbeat>15_000_000_000L){output.write(": heartbeat\n\n".getBytes(StandardCharsets.UTF_8));output.flush();response.flushBuffer();heartbeat=System.nanoTime();}Thread.sleep(250);
+                if(System.nanoTime()-heartbeat>2_000_000_000L){output.write(": heartbeat\n\n".getBytes(StandardCharsets.UTF_8));output.flush();response.flushBuffer();heartbeat=System.nanoTime();}Thread.sleep(250);
             }}catch(InterruptedException interrupted){Thread.currentThread().interrupt();}catch(com.agentplatform.domain.identity.IdentityFailure|ChatFailure revoked){/* Close without leaking internal error text; reconnect reauthorizes. */}
         };
         return ResponseEntity.ok().contentType(org.springframework.http.MediaType.TEXT_EVENT_STREAM).header("Cache-Control","no-store").header("X-Accel-Buffering","no").body(body);

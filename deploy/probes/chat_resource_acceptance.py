@@ -43,7 +43,7 @@ def main():
         start = time.monotonic(); watcher = threading.Thread(target=sample); watcher.start()
         latencies = []
         try:
-            for index in range(8):
+            for index in range(24):
                 task = client.submit(client.conversation(), 'fixture:normal:resource:' + str(uuid.uuid4()))['taskId']
                 if index < 4:
                     before = time.monotonic(); Client('bob'); latencies.append(round(time.monotonic() - before, 3))
@@ -61,7 +61,7 @@ def main():
             done.set(); watcher.join()
         assert samples and not sampling_errors
         assert all(inspect(name)['State']['Running'] and not inspect(name)['State']['OOMKilled'] for name in names)
-        result.update({'samples': samples, 'sequential_tasks': 8, 'login_overlap_seconds': latencies, 'cancel_then_next_task': 'PASS',
+        result.update({'samples': samples, 'sequential_tasks': 24, 'login_overlap_seconds': latencies, 'cancel_then_next_task': 'PASS',
                        'duration_seconds': round(time.monotonic() - start, 2), 'sampling_errors': sampling_errors})
     elif mode == 'oom':
         name = 'agentplatform-r12-local-worker-1'; before = inspect(name)
