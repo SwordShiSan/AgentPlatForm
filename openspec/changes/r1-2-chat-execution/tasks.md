@@ -10,10 +10,10 @@
 - [x] 3.1 Implement ordinary chat UI with cursor reducer, states, history, cancellation and cache isolation.
 - [x] 3.2 Build isolated opt-in local profile with redistributable measured memory and safe secrets.
 ## 4. Acceptance
-- [ ] 4.1 Run full engineering/R1.1/old SDK/state/Jackson/contract/strict regression.
-- [ ] 4.2 Run real MQ/PG atomicity/duplicate/confirm/ACK/fence/outage/order/budget cases.
-- [ ] 4.3 Run deterministic model failures/stream/cancel/context and real DeepSeek within caps.
-- [ ] 4.4 Run multiuser/browser/resources/leak checks, bind exact source/image/evidence.
+- [x] 4.1 Run full engineering/R1.1/old SDK/state/Jackson/contract/strict regression.
+- [x] 4.2 Run real MQ/PG atomicity/duplicate/confirm/ACK/fence/outage/order/budget cases.
+- [x] 4.3 Run deterministic model failures/stream/cancel/context and real DeepSeek within caps.
+- [x] 4.4 Run multiuser/browser/resources/leak checks, bind exact source/image/evidence.
 ## 5. Delivery
 - [ ] 5.1 Review and protected step→phase→main PR promotion without hosted CI.
 - [ ] 5.2 Archive/sync/ledgers/handoff; R1.2 VERIFIED only on all mandatory PASS.

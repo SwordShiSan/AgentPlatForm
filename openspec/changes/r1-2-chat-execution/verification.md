@@ -1,16 +1,26 @@
 # Verification
-Status IMPLEMENTING. Approved baseline ee741e3; final candidate/whole-stage acceptance has not completed. Partial development results below do not mark any mandatory group PASS.
+Status FUNCTIONAL_ACCEPTANCE_PASS_PENDING_PROMOTION. Approved baseline ee741e3; runtime source f480758, acceptance scripts364358b. Mandatory functional gates below PASS; PR promotion/archive are still pending. Historical failures/checkpoints follow the current evidence section.
 
 | Group | Mandatory normal/boundary/failure/recovery assertions | State |
 |---|---|---|
-| Engineering | Maven/DDD/Enforcer, Vue type/test/build, schemas/invalid fixtures/generation, strict/links, R1.1/old state/Jackson | NOT_RUN |
-| PG/MQ | Submission rollback/idempotency races, actual confirm/ACK loss, inbox transaction rollback, old generation/fence, queue order, single slot, broker/DB outage recovery, no DB execute bypass | NOT_RUN |
-| Budget | Concurrent reservation, per-call unique settlement, unknown usage/retry accounting, real cap20/1CNY across restarts | NOT_RUN |
-| Streaming | Unicode split offsets, committed batch before final, snapshot consistency, reconnect/duplicates/gaps, bounded buffers, no hidden reasoning | NOT_RUN |
-| Provider | Empty/truncation/429/5xx/missing usage/after-output disconnect/timeout/cancel; real DeepSeek stream/history/usage | NOT_RUN |
-| Authorization | Two users all list/detail/submit/SSE/cancel/usage; current revoke/disable/CSRF; encrypted secret/AAD/foreign reference rejection | NOT_RUN |
-| Resources | Total<=2887MiB, one execution/hash slot, login+chat overlap, sequential tasks, bounded memory/cancel cleanup/OOM/swap, no build overlap | NOT_RUN |
-| Delivery | Accurate SHA/image/command/assertion/hash, no real key/traces/backups in public repo, PR protection/Actions off, R0 unchanged | NOT_RUN |
+| Engineering | Maven/DDD/Enforcer, Vue type/test/build, schemas/invalid fixtures/generation, strict/links, R1.1/old state/Jackson | PASS |
+| PG/MQ | Submission rollback/idempotency races, actual confirm/ACK loss, inbox transaction rollback, old generation/fence, queue order, single slot, broker/DB outage recovery, no DB execute bypass | PASS |
+| Budget | Concurrent reservation, per-call unique settlement, unknown usage/retry accounting, real cap20/1CNY across restarts | PASS |
+| Streaming | Unicode split offsets, committed batch before final, snapshot consistency, reconnect/duplicates/gaps, bounded buffers, no hidden reasoning | PASS |
+| Provider | Empty/truncation/429/5xx/missing usage/after-output disconnect/timeout/cancel; real DeepSeek stream/history/usage | PASS |
+| Authorization | Two users all list/detail/submit/SSE/cancel/usage; current revoke/disable/CSRF; encrypted secret/AAD/foreign reference rejection | PASS |
+| Resources | Total<=2887MiB, one execution/hash slot, login+chat overlap, sequential tasks, bounded memory/cancel cleanup/OOM/swap, no build overlap | PASS |
+| Delivery | Source/image/evidence/secret checks PASS; protected PR promotion and archive pending | PENDING_PROMOTION |
+
+## Current functional evidence (2026-10-16)
+
+- Full Maven Wrapper install (includes verify/DDD/Enforcer)105/105, zero skipped; includes24 real identity PG and24 real chat PG/MQ cases. Vue18/typecheck/frozen install/build/contracts/negative fixtures/links and OpenSpec strict PASS. Docker preflight5 PASS.
+- Final non-root Linux SDK/provider/crypto/framework46/46; final Linux private PG state/CAS3/3. Real API browser regression9/9 (R0 health/error/contrast/keyboard/themes, R1.1 identity/logout, R1.2 chat/cancel/reconnect/admin isolation); separate real-model browser1/1 with two successful physical calls and11/2 committed delta batches.
+- Strict-JSON deterministic provider7 cases PASS:429/5xx bounded retries, one empty repair, truncation/partial UNKNOWN, missing usage and120s timeout. Actual MQ unobserved confirm/ACK loss, duplicate owner prevention, transaction rollback, generation/fence, conversation order and budget competition PASS. Idle and active DB interruption, broker outage, stopped-owner reconciliation and no replay PASS.
+- API/worker512/512MiB, other resident caps672MiB =>1696MiB, fixture64MiB; total1760<2887MiB.24 consecutive tasks/login overlap/cancel cleanup PASS. Actual fault injection lowers only worker to64MiB, proves cgroup OOM, restores512MiB, reconciles UNKNOWN after the exact stopped owner and successfully executes a new task. Current swap0 and no swap-backed allowance. Samples are not absolute peaks or cloud capacity claims.
+- Actual provider meter4 calls: two historical failed diagnostic calls remain UNKNOWN with49152micros held; two completed calls estimated1432micros at peak cache-miss prices. Unknown amounts are not zeroed, old attempts are not replayed,20-call/1CNY limits never reset. Raw key is encrypted as PLATFORM in DB; USER scope/AAD/foreign owner/admin-bypass tests pass. Source/log/DB/private-state/event/selected-package secret checks PASS.
+- Root cause of real422 was duplicate stream_options generated by SDK plus extra params. Remove duplicate and enforce strict raw JSON validation; typed status/class diagnostics reveal no provider body or key. No third-party source modifications or stack replacement.
+- Runtime source and images, JAR, locks, commands/results/hashes are recorded in deploy/r1.2-acceptance.json. Protected local package: r1.2-local-acceptance-20261016.zip, SHA256 5d07ba2b51552ed1f1322e694270ec522a73864134bb228b65dc2f71e56f6181, retain through2026-11-16. Canonical design body remains outside Git and will be handed off separately. Actions remain disabled; no cloud operation/R1 tag/deployment. R1.3/R2/tools/files/shell remain NOT_RUN.
 
 R1.3 full configuration UI and R2 full checkpoint recovery remain NOT_RUN; no tools/Plan/files/shell. Real key source is private operator configuration only, never recorded here. Evidence packages explicitly select safe artifacts, not whole fixture directories.
 
