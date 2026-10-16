@@ -45,7 +45,9 @@ def main():
     env = config['services']['worker']['environment']
     assert str(env['PLATFORM_CHAT_FIXTURE_PROVIDER']).lower() == 'true'
     assert env['PLATFORM_CHAT_PROVIDER_BASE'] == 'http://fixture:8080'
-    client = Client('alice')
+    # Keep repeated deterministic UNKNOWN reservations in Bob's fixture budget;
+    # Alice owns the separately capped real-provider acceptance evidence.
+    client = Client('bob' if mode == 'provider' else 'alice')
     results = []
     if mode == 'provider':
         cases = [('429', 'SUCCEEDED', 3), ('5xx', 'SUCCEEDED', 3), ('empty', 'FAILED', 2),
@@ -98,6 +100,38 @@ def main():
         assert client.terminal(task)['status'] == 'SUCCEEDED'
         results.append({'case': 'database-outage', 'result': 'authentication-and-write-fail-closed-then-recovered'})
         print('PASS broker/database outage recovery', flush=True)
+    elif mode == 'active-db':
+        prompt = 'fixture:slow:active-db:' + str(uuid.uuid4())
+        task = client.submit(client.conversation(), prompt)['taskId']
+        deadline = time.monotonic() + 15
+        while '(0 rows)' in admin.sql("SELECT 1 FROM pf.platform_event WHERE task_id='" + task + "' AND type='message.delta' LIMIT 1;"):
+            assert time.monotonic() < deadline
+            time.sleep(0.2)
+        try:
+            compose('stop', '-t', '20', 'postgres')
+            assert client.request('GET', '/models')[0] == 503
+        finally:
+            compose('up', '-d', '--wait', '--wait-timeout', '120', 'postgres')
+        wait_ready(client)
+        deadline = time.monotonic() + 15
+        while True:
+            try:
+                compose('exec', '-T', 'worker', 'test', '-s', '/tmp/chat-worker-ready')
+                break
+            except subprocess.CalledProcessError:
+                assert time.monotonic() < deadline
+                time.sleep(1)
+        admin.run([sys.executable, str(ROOT / 'deploy/scripts/chat-local.py'), 'reconcile-stopped'], capture_output=True, text=True)
+        assert client.request('GET', '/tasks/' + task)[1]['status'] == 'FAILED'
+        _, usage = client.request('GET', '/tasks/' + task + '/usage')
+        assert len(usage['items']) == 1 and usage['items'][0]['status'] == 'UNKNOWN'
+        compose('up', '-d', '--wait', '--wait-timeout', '120', 'worker')
+        next_task = client.submit(client.conversation(), 'fixture:normal:after-active-db:' + str(uuid.uuid4()))['taskId']
+        assert client.terminal(next_task)['status'] == 'SUCCEEDED'
+        assert fixture_counts().get(prompt) == 1, 'Unknown interrupted call was replayed'
+        results.append({'case': 'active-database-outage', 'interrupted_call': 'UNKNOWN', 'physical_calls': 1,
+                        'stopped_owner_reconciled': True, 'replay': False, 'next_task': 'SUCCEEDED'})
+        print('PASS active database outage, stopped-owner reconciliation and no call replay', flush=True)
     else:
         raise ValueError('Unknown acceptance mode')
     (DATA / ('failure-' + mode + '.json')).write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding='utf-8')
