@@ -12,7 +12,8 @@ import java.util.concurrent.atomic.*;
 import org.junit.jupiter.api.Test;
 
 class DeepSeekChatProviderTest {
-    @Test void sdkDeliversTextBeforeFinalUsageAndDoesNotExposeReasoning() throws Exception {
+    @org.junit.jupiter.params.ParameterizedTest @org.junit.jupiter.params.provider.ValueSource(strings={"deepseek-flash","deepseek-v4-pro"})
+    void sdkDeliversTextBeforeFinalUsageAndDoesNotExposeReasoning(String modelName) throws Exception {
         var server = com.sun.net.httpserver.HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         var release = new CountDownLatch(1); var firstText = new CountDownLatch(1);
         var request = new AtomicReference<String>(); var authorization = new AtomicReference<String>();
@@ -35,7 +36,7 @@ class DeepSeekChatProviderTest {
         var received = new StringBuffer();
         try {
             var provider = new DeepSeekChatProvider("http://127.0.0.1:" + server.getAddress().getPort(), true);
-            var future = provider.stream("provider-test-sentinel", List.of(Message.text(Role.USER, "hello")), value -> {
+            var future = provider.stream(modelName,"provider-test-sentinel", List.of(Message.text(Role.USER, "hello")), value -> {
                 received.append(value); firstText.countDown();
             }).toCompletableFuture();
             assertTrue(firstText.await(5, TimeUnit.SECONDS), "SDK must emit before provider completion");
@@ -46,10 +47,11 @@ class DeepSeekChatProviderTest {
             assertEquals("stop", result.round().finishReason());
             assertEquals("Bearer provider-test-sentinel", authorization.get());
             var body = tools.jackson.databind.json.JsonMapper.builder().build().readTree(request.get());
+            assertEquals(modelName,body.get("model").asText());
             var strict = new com.fasterxml.jackson.databind.ObjectMapper();
             strict.enable(com.fasterxml.jackson.core.JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
             assertDoesNotThrow(() -> strict.readTree(request.get()), "Provider wire JSON must not repeat SDK-owned fields");
-            assertEquals("deepseek-flash", body.path("model").asText()); assertTrue(body.path("stream").asBoolean());
+            assertEquals(modelName, body.path("model").asText()); assertTrue(body.path("stream").asBoolean());
             assertTrue(body.path("stream_options").path("include_usage").asBoolean());
             assertEquals("disabled", body.path("thinking").path("type").asText());
             assertEquals(1024, body.path("max_tokens").asInt());

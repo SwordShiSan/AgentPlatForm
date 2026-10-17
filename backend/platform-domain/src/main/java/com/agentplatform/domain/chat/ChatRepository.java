@@ -34,5 +34,15 @@ public interface ChatRepository {
     UUID importCredential(Credential credential);
     void revokeCredential(UUID credential);
     void bind(UUID model, Actor actor, UUID credential, String sourcePolicy);
+    record First(Conversation conversation, Task task) {}
+    First first(Actor actor, UUID key, String title, UUID model, String source, String text);
+    Task submitConfigured(Actor actor, UUID conversation, UUID key, UUID model, String source, String text);
+    java.util.Map<String,Object> preferences(Actor actor);
+    java.util.Map<String,Object> preferences(Actor actor, long expected, java.util.Map<String,Object> patch);
+    java.util.Map<String,Object> effective(Actor actor);
+    java.util.Map<String,Object> configuration(Actor actor, UUID task);
+    java.util.Map<String,Object> credentialMetadata(Actor actor);
+    java.util.Map<String,Object> replaceUserCredential(Actor actor, long expected, Credential encrypted);
+    String modelName(Lease lease);
     boolean ready();
 }

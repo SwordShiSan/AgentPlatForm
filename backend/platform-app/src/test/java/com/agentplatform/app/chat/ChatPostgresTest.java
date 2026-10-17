@@ -41,7 +41,7 @@ class ChatPostgresTest {
         // Destructive reset is restricted above to this explicitly named, isolated test database.
         Flyway.configure().dataSource(url, "postgres", password).defaultSchema("pf").schemas("pf", "pf_runtime")
                 .cleanDisabled(false).load().clean();
-        for (String target : List.of("1", "2", "3")) {
+        for (String target : List.of("1", "2", "3", "4")) {
             Flyway.configure().dataSource(url, "postgres", password).defaultSchema("pf")
                     .schemas("pf", "pf_runtime").target(target).load().migrate();
         }
@@ -49,6 +49,7 @@ class ChatPostgresTest {
 
     @BeforeEach void provision() throws Exception {
         sql("TRUNCATE pf.app_user CASCADE");
+        sql("DELETE FROM pf.model_definition WHERE model_name='deepseek-v4-pro'");
         sql("INSERT INTO pf.execution_slot(id) VALUES(1) ON CONFLICT(id) DO NOTHING");
         sql("UPDATE pf.execution_slot SET task_id=NULL,owner_id=NULL,lease_until=NULL");
         sql("UPDATE pf.acceptance_model_meter SET physical_calls=0,reserved_micros=0,consumed_micros=0");
@@ -470,5 +471,65 @@ class ChatPostgresTest {
         assertEquals(1, count("SELECT count(*) FROM pf.event_outbox"));
         assertEquals(36864, count("SELECT reserved_tokens FROM pf.budget_account"));
         assertEquals(98304, count("SELECT reserved_micros FROM pf.budget_account"));
+    }
+    @Test void firstTaskIsAtomicAndExactBodyReplayIgnoresChangedDefaults() throws Exception {
+        repository.bind(MODEL, alice, key("PLATFORM", null), "PLATFORM");UUID request=UUID.randomUUID();
+        var first=repository.first(alice,request,"Draft",null,null,"First 🧪");
+        repository.preferences(alice,0,java.util.Map.of("defaultCredentialSource","USER"));
+        var again=repository.first(alice,request,"Draft",null,null,"First 🧪");
+        assertEquals(first.task().id(),again.task().id());assertEquals(1,count("SELECT count(*) FROM pf.conversation"));
+        assertEquals(1,count("SELECT count(*) FROM pf.task"));assertEquals(1,count("SELECT count(*) FROM pf.event_outbox"));
+        assertEquals(List.of("USER","ASSISTANT"),repository.snapshot(alice,first.conversation().id()).messages().stream().map(Message::role).toList());
+        denied("IDEMPOTENCY_CONFLICT",()->repository.first(alice,request,"Draft",null,null,"changed"));
+        assertEquals("PLATFORM",((java.util.Map<?,?>)repository.configuration(alice,first.task().id()).get("values")).get("credentialSource"));
+    }
+    @Test void firstTaskFailureRollsBackConversationBudgetAndOutbox() throws Exception {
+        repository.bind(MODEL,alice,key("PLATFORM",null),"PLATFORM");
+        denied("CREDENTIAL_SOURCE_UNAVAILABLE",()->repository.first(alice,UUID.randomUUID(),"Draft",MODEL,"USER","hello"));
+        assertEquals(0,count("SELECT count(*) FROM pf.conversation"));assertEquals(0,count("SELECT count(*) FROM pf.task"));assertEquals(0,count("SELECT sum(reserved_micros) FROM pf.budget_account"));
+        sql("UPDATE pf.budget_account SET cost_limit_micros=1");
+        denied("QUOTA_EXCEEDED",()->repository.first(alice,UUID.randomUUID(),"Draft",MODEL,"PLATFORM","hello"));
+        assertEquals(0,count("SELECT count(*) FROM pf.event_outbox"));assertEquals(0,count("SELECT count(*) FROM pf.chat_config_snapshot"));
+    }
+    @Test void concurrentInitialSubmissionCreatesExactlyOneConversation() throws Exception {
+        repository.bind(MODEL,alice,key("PLATFORM",null),"PLATFORM");UUID request=UUID.randomUUID();var gate=new CountDownLatch(1);
+        try(var pool=Executors.newFixedThreadPool(2)){
+            var a=pool.submit(()->{gate.await();return repository.first(alice,request,"Draft",MODEL,"PLATFORM","same");});
+            var b=pool.submit(()->{gate.await();return repository.first(alice,request,"Draft",MODEL,"PLATFORM","same");});gate.countDown();
+            assertEquals(a.get().task().id(),b.get().task().id());
+        }assertEquals(1,count("SELECT count(*) FROM pf.conversation"));assertEquals(1,count("SELECT count(*) FROM pf.task"));
+    }
+    @Test void preferenceCasRejectsConcurrentStaleAndInvalidFields() {
+        assertEquals(0L,repository.preferences(alice).get("version"));
+        repository.preferences(alice,0,java.util.Map.of("defaultCredentialSource","USER"));
+        denied("PREFERENCE_VERSION_CONFLICT",()->repository.preferences(alice,0,java.util.Map.of("defaultCredentialSource","PLATFORM")));
+        denied("UNSUPPORTED_PREFERENCE",()->repository.preferences(alice,1,java.util.Map.of("defaultPlanEnabled",true)));
+        denied("INVALID_CREDENTIAL_SOURCE",()->repository.preferences(alice,1,java.util.Map.of("defaultCredentialSource","ANY")));
+        assertEquals("USER",repository.preferences(alice).get("defaultCredentialSource"));assertEquals("PLATFORM",repository.preferences(bob).get("defaultCredentialSource"));
+    }
+    @Test void userKeyReplacementRetainsSnapshotAndNeverFallsBack() throws Exception {
+        repository.bind(MODEL,bob,key("PLATFORM",null),"PLATFORM");
+        var old=cipher.encrypt(UUID.randomUUID(),"USER",bob.spaceId(),bob.userId(),SENTINEL);
+        repository.replaceUserCredential(bob,0,old);var first=repository.first(bob,UUID.randomUUID(),"User",MODEL,"USER","hi");
+        var next=cipher.encrypt(UUID.randomUUID(),"USER",bob.spaceId(),bob.userId(),"different-sentinel");
+        repository.replaceUserCredential(bob,1,next);var config=repository.configuration(bob,first.task().id());
+        assertEquals(old.id().toString(),((java.util.Map<?,?>)config.get("values")).get("credentialId"));assertEquals(false,((java.util.Map<?,?>)config.get("restrictions")).get("credentialActive"));
+        denied("CREDENTIAL_VERSION_CONFLICT",()->repository.replaceUserCredential(bob,1,null));
+        denied("CREDENTIAL_SCOPE_REJECTED",()->repository.replaceUserCredential(alice,0,next));
+        denied("RESOURCE_NOT_FOUND",()->repository.configuration(alice,first.task().id()));
+        var lease=claim(first.task());denied("CREDENTIAL_REVOKED",()->repository.check(lease));
+        repository.replaceUserCredential(bob,2,null);
+        denied("CREDENTIAL_SOURCE_UNAVAILABLE",()->repository.first(bob,UUID.randomUUID(),"No fallback",MODEL,"USER","hi"));
+        assertFalse(repository.credentialMetadata(bob).toString().contains(SENTINEL));
+    }
+    @Test void proRequestAndSettlementUseFrozenModelAndPrices() throws Exception {
+        UUID pro=UUID.fromString("0199e000-0000-7000-8000-000000000003");
+        sql("INSERT INTO pf.model_definition(id,model_name,endpoint_alias,input_micros_per_million,output_micros_per_million,pricing_version) VALUES('"+pro+"','deepseek-v4-pro','DEEPSEEK',9000000,27000000,'pro-2026-10-17-peak-bound')");
+        repository.bind(pro,alice,key("PLATFORM",null),"PLATFORM");var first=repository.first(alice,UUID.randomUUID(),"Pro",pro,"PLATFORM","hi");
+        sql("UPDATE pf.model_definition SET input_micros_per_million=1,output_micros_per_million=1,version=version+1 WHERE id='"+pro+"'");
+        var lease=claim(first.task());assertEquals("deepseek-v4-pro",repository.modelName(lease));var call=repository.beginCall(lease,true);repository.startCall(lease,call,true);
+        repository.settle(lease,call,new Round("ok",List.of(),"stop",100,10),"safe-id",null,true);
+        assertEquals(1170,count("SELECT cost_micros FROM pf.model_call WHERE id='"+call.id()+"'"));assertEquals(1170,count("SELECT consumed_micros FROM pf.acceptance_model_meter"));
+        repository.finish(lease,"SUCCEEDED",null);
     }
 }

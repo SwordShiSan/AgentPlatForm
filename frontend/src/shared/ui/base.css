@@ -91,6 +91,11 @@ a { color: var(--accent); }
 .chat-actions { display: flex; gap: 12px; }
 .chat-actions button, .chat-sidebar button { min-height: 44px; padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: var(--text); font: inherit; cursor: pointer; }
 .chat-actions button:disabled, .chat-sidebar button:disabled { opacity: .65; cursor: default; }
+.chat-options { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.chat-options select, .model-settings input, .chat-options button, .model-settings button { min-height: 44px; max-width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: var(--text); font: inherit; }
+.model-settings { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+.model-settings form { display: grid; gap: 10px; }
+.model-settings summary, .chat-content summary { min-height: 44px; cursor: pointer; overflow-wrap: anywhere; }
 @media (max-width: 640px) {
   .chat-layout { grid-template-columns: minmax(0, 1fr); }
   .chat-sidebar { border-right: 0; border-bottom: 1px solid var(--border); padding: 16px; }

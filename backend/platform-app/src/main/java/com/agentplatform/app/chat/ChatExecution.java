@@ -90,7 +90,7 @@ public final class ChatExecution implements AutoCloseable {
         catch(Throwable error){try{repository.settle(l,call,null,null,"CALL_NOT_SENT",false);}catch(Exception ignored){}result.completeExceptionally(error);return;}
         AtomicBoolean emitted=new AtomicBoolean();
         CompletableFuture<ChatProvider.Result> future;
-        try{future=provider.stream(key,messages,value->{emitted.set(true);text.accept(value);}).toCompletableFuture();}
+        try{future=provider.stream(repository.modelName(l),key,messages,value->{emitted.set(true);text.accept(value);}).toCompletableFuture();}
         catch(Throwable error){future=CompletableFuture.failedFuture(error);}
         pending.set(future);if(result.isCancelled())future.cancel(true);
         future.whenComplete((value,error)->{

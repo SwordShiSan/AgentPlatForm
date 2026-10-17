@@ -15,10 +15,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('mode', choices=['prepare', 'restore'])
     parser.add_argument('--private-key-file', type=Path)
+    parser.add_argument('--username', default='alice')
     args = parser.parse_args()
+    if not re.fullmatch(r'[a-z][a-z0-9_]{2,31}', args.username):
+        raise ValueError('Invalid local acceptance username')
     assert '(0 rows)' in local.sql("SELECT 1 FROM pf.task WHERE status IN ('QUEUED','RUNNING');"), 'Finish pending work before switching the worker'
     local.run(local.COMPOSE + ['stop', '-t', '20', 'worker'], capture_output=True)
-    actor = local.sql("SELECT u.id::text||','||s.id::text FROM pf.app_user u JOIN pf.space s ON s.owner_user_id=u.id WHERE u.username_norm='alice' AND s.type='PERSONAL';")
+    actor = local.sql("SELECT u.id::text||','||s.id::text FROM pf.app_user u JOIN pf.space s ON s.owner_user_id=u.id WHERE u.username_norm='" + args.username + "' AND s.type='PERSONAL';")
     user, space = re.search(r'([0-9a-f-]{36}),([0-9a-f-]{36})', actor).groups()
     record = local.DATA / 'real-credential-id'
     if args.mode == 'prepare':
@@ -38,8 +41,9 @@ def main():
     else:
         credential = (local.DATA / 'fixture-credential-id').read_text().strip()
         local.ENV.update(R12_PROVIDER_BASE='http://fixture:8080', R12_FIXTURE_PROVIDER='true')
-    local.operator(['--chat-action=bind-model', '--source-policy=PLATFORM', '--credential-id=' + credential,
-                    '--model-id=0199e000-0000-7000-8000-000000000002', '--user-id=' + user, '--space-id=' + space])
+    for model in ['0199e000-0000-7000-8000-000000000002', '0199e000-0000-7000-8000-000000000003']:
+        local.operator(['--chat-action=bind-model', '--source-policy=PLATFORM', '--credential-id=' + credential,
+                        '--model-id=' + model, '--user-id=' + user, '--space-id=' + space])
     local.run(local.COMPOSE + ['up', '-d', '--wait', '--wait-timeout', '120', 'worker'], capture_output=True)
     print('Real provider prepared with durable20-call/1CNY cap; no calls made by this command.' if args.mode == 'prepare'
           else 'Deterministic provider and fixture binding restored; encrypted real credential remains protected in database.')

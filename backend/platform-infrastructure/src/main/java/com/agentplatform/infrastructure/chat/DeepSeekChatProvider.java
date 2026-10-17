@@ -24,6 +24,10 @@ public final class DeepSeekChatProvider implements ChatProvider {
     }
     @Override public boolean real(){return real;}
     @Override public CompletionStage<Result> stream(String key,List<Message> input,Consumer<String> onText){
+        return stream("deepseek-flash",key,input,onText);
+    }
+    @Override public CompletionStage<Result> stream(String modelName,String key,List<Message> input,Consumer<String> onText){
+        if(!List.of("deepseek-flash","deepseek-v4-pro").contains(modelName))throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");
         var http=HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).connectTimeout(Duration.ofSeconds(10)).build();
         var transport=new JdkHttpTransport(http,HttpTransportConfig.defaults());
         var options=GenerateOptions.builder().stream(true).maxTokens(1024)
@@ -31,7 +35,7 @@ public final class DeepSeekChatProvider implements ChatProvider {
                 // AgentScope 2.0.4 emits stream_options.include_usage itself for
                 // streaming. Repeating it as an extra body param creates duplicate JSON keys.
                 .additionalBodyParam("thinking",java.util.Map.of("type","disabled")).build();
-        var model=OpenAIChatModel.builder().apiKey(key).baseUrl(endpoint).endpointPath("/chat/completions").modelName("deepseek-flash")
+        var model=OpenAIChatModel.builder().apiKey(key).baseUrl(endpoint).endpointPath("/chat/completions").modelName(modelName)
                 .httpTransport(transport).stream(true).generateOptions(options).build();
         StringBuilder text=new StringBuilder();AtomicReference<String> finish=new AtomicReference<>(),id=new AtomicReference<>();
         AtomicLong in=new AtomicLong(),out=new AtomicLong();AtomicBoolean usage=new AtomicBoolean();

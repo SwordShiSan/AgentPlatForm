@@ -1,13 +1,14 @@
 """Bounded local chat/login and exact-worker OOM recovery checks. Fixture only."""
 import concurrent.futures
 import json
+import os
 import subprocess
 import sys
 import threading
 import time
 import uuid
 
-from chat_failure_acceptance import admin, compose
+from chat_failure_acceptance import admin, compose, require_fixture_runtime
 from chat_local_smoke import Client, DATA, ROOT
 
 
@@ -16,6 +17,7 @@ def inspect(name):
 
 
 def main():
+    require_fixture_runtime()
     mode = sys.argv[1] if len(sys.argv) > 1 else 'continuous'
     config = json.loads(subprocess.check_output(admin.COMPOSE + ['--profile', 'fixture', 'config', '--format', 'json'], cwd=ROOT, env=admin.ENV))
     assert str(config['services']['worker']['environment']['PLATFORM_CHAT_FIXTURE_PROVIDER']).lower() == 'true'
@@ -23,7 +25,7 @@ def main():
     identities = [inspect(name) for name in names]
     assert sum(i['HostConfig']['Memory'] for i in identities) <= 2887 * 1024 * 1024
     assert all(i['HostConfig']['MemorySwap'] == i['HostConfig']['Memory'] for i in identities)
-    client = Client('alice')
+    client = Client(os.environ.get('R13_ACCEPTANCE_USER', 'alice'))
     result = {'mode': mode, 'container_cap_bytes': sum(i['HostConfig']['Memory'] for i in identities),
               'host_target_mib': 3655, 'reserved_host_mib': 768,
               'note': 'Docker Desktop engine has more physical memory; this validates container caps, not cloud host capacity or absolute peaks.'}

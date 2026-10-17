@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "status": "FUNCTIONAL_ACCEPTANCE_PASS_PENDING_PROMOTION",
+  "runtimeSource": "78d861a7bcfba79b653f72b34b8e1a001e0da7c0",
+  "uiSource": "f9e697a8737ca4a2719de996ff7863e80ef550f8",
+  "runtimeJarSha256": "f21ac6244704e0d0aefb9318f3c6108a43db19acbc2e9e7b66273acc8c84e8e7",
+  "tests": {
+    "mavenFull": 113,
+    "affectedRerun": 48,
+    "linuxNonroot": 48,
+    "linuxPostgresState": 3,
+    "vueUnit": 20,
+    "browser": 13,
+    "realBrowser": 1,
+    "realMatrixTurns": 4,
+    "providerFailures": 7,
+    "continuousTasks": 24,
+    "actualCgroupOom": true
+  },
+  "realMeter": {
+    "id": 1,
+    "physical_calls": 13,
+    "reserved_micros": 49152,
+    "consumed_micros": 5474
+  },
+  "r13PhysicalCalls": 9,
+  "unknownHoldsPreserved": true,
+  "resource": {
+    "containerLimitMiB": 2016,
+    "rabbitmqLimitMiB": 512,
+    "maximumAllowedMiB": 2887,
+    "hostReserveMiB": 768,
+    "swapExtension": false,
+    "desktopHostIsLargerThanTarget": true
+  },
+  "cloudTouched": false,
+  "actionsEnabled": false,
+  "images": [
+    {
+      "service": "api",
+      "configId": "sha256:baaf455a16fc70075f4586fb9d87355c4cf798f4f98d39dec5cc07070f801d4b",
+      "sourceRevision": "78d861a7bcfba79b653f72b34b8e1a001e0da7c0",
+      "platform": "linux/amd64",
+      "memoryBytes": 536870912,
+      "memorySwapBytes": 536870912
+    },
+    {
+      "service": "worker",
+      "configId": "sha256:baaf455a16fc70075f4586fb9d87355c4cf798f4f98d39dec5cc07070f801d4b",
+      "sourceRevision": "78d861a7bcfba79b653f72b34b8e1a001e0da7c0",
+      "platform": "linux/amd64",
+      "memoryBytes": 536870912,
+      "memorySwapBytes": 536870912
+    },
+    {
+      "service": "postgres",
+      "configId": "sha256:137f044b0efe3d57f39b972b9b53641b1f2045b99d879e298bbf514a25787dcf",
+      "sourceRevision": null,
+      "platform": "linux/amd64",
+      "memoryBytes": 335544320,
+      "memorySwapBytes": 335544320
+    },
+    {
+      "service": "rabbitmq",
+      "configId": "sha256:8dd6e3570ddaa2ef82a6c3a8950e79c1f73893adfbdddbc374fc1f1ac8a0f5dd",
+      "sourceRevision": null,
+      "platform": "linux/amd64",
+      "memoryBytes": 536870912,
+      "memorySwapBytes": 536870912
+    },
+    {
+      "service": "redis",
+      "configId": "sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499",
+      "sourceRevision": null,
+      "platform": "linux/amd64",
+      "memoryBytes": 67108864,
+      "memorySwapBytes": 67108864
+    },
+    {
+      "service": "gateway",
+      "configId": "sha256:e95c314a04a1bc91b7d0ca1464a5915bec4b45cdbc9fed6f31f3a0ab2452178b",
+      "sourceRevision": "f9e697a8737ca4a2719de996ff7863e80ef550f8",
+      "platform": "linux/amd64",
+      "memoryBytes": 33554432,
+      "memorySwapBytes": 33554432
+    },
+    {
+      "service": "fixture",
+      "configId": "sha256:7bd682b0c16b7b00c00ef54ce0514628e984e3d7c5606abbe5adb32d015dab53",
+      "sourceRevision": "78d861a7bcfba79b653f72b34b8e1a001e0da7c0",
+      "platform": "linux/amd64",
+      "memoryBytes": 67108864,
+      "memorySwapBytes": 67108864
+    }
+  ],
+  "supersededCandidate": {
+    "name": "r1.3-local-acceptance-20261017.zip",
+    "sha256": "d8becff64d1fc9214151d53d2f1f80343f1bf042c1f2b17b2fa6cab1a2f03e4a",
+    "reason": "Later MQ OOM at256MiB; retain history, not accepted resource config"
+  },
+  "observation": {
+    "durationSeconds": 603.86,
+    "noUnplannedOom": true
+  },
+  "finalMaven": {
+    "tests": 113,
+    "sourceHead": "4e51c760bca39795d85d48c2e6b5092a54c6272f",
+    "backendTree": "167a37cc56eec2e10edc6843fbe726124cb45ef1",
+    "name": "r1.3-final-maven-20261017.zip",
+    "sha256": "d2410ca1def6bba3b6ee34592dd59d587e2db7644882086731fe580cef269f8d",
+    "deploymentSource": "81820c356607b16d92082b53936f7f75f30d9150"
+  },
+  "protectedPackage": {
+    "name": "r1.3-local-acceptance-20261017-resource-adjusted.zip",
+    "sha256": "cc67215f1e2f4033a0b348ffaf3ed8991dfe899f40c570d4ab65941efd6f964a",
+    "retentionUntil": "2026-11-17"
+  },
+  "notes": [
+    "R1.2 UNKNOWN charges retained; estimates are not invoices.",
+    "Docker Desktop results are not cloud capacity or an absolute memory peak.",
+    "R1.4 production/business budget separation remains a release planning gate.",
+    "Body delivery is local and separate from Git."
+  ],
+  "verifiedSourceHead": "81820c356607b16d92082b53936f7f75f30d9150"
+}

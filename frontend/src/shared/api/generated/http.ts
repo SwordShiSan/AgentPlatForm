@@ -243,6 +243,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["chatPreferences"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateChatPreferences"];
+        trace?: never;
+    };
+    "/api/v1/effective-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["effectiveChatConfig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/model-credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["modelCredentials"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/model-credentials/deepseek": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["putUserModelCredential"];
+        post?: never;
+        delete: operations["revokeUserModelCredential"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{id}/configuration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["taskConfiguration"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -306,6 +386,7 @@ export interface components {
             version: number;
             /** Format: date-time */
             updatedAt: string;
+            initialTask?: components["schemas"]["ChatAccepted"] | null;
         };
         ChatConversations: {
             items: components["schemas"]["ChatConversation"][];
@@ -314,6 +395,7 @@ export interface components {
         CreateConversation: {
             title?: string;
             workspaceId?: null;
+            initialTask?: components["schemas"]["SubmitChatTask"];
         };
         ChatTask: {
             /** Format: uuid */
@@ -342,11 +424,13 @@ export interface components {
             };
             options: {
                 /** Format: uuid */
-                modelId: string;
+                modelId?: string;
                 /** @constant */
                 planMode?: false;
                 /** @constant */
                 permissionMode?: "RISK_BASED";
+                /** @enum {string} */
+                credentialSource?: "PLATFORM" | "USER";
             };
         };
         ChatTextBlock: {
@@ -389,6 +473,55 @@ export interface components {
         };
         ChatUsages: {
             items: components["schemas"]["ChatUsage"][];
+        };
+        ChatPreferences: {
+            version: number;
+            /** Format: uuid */
+            defaultModelId: string | null;
+            /** @enum {string} */
+            defaultCredentialSource: "PLATFORM" | "USER";
+        };
+        UpdateChatPreferences: {
+            /** Format: uuid */
+            defaultModelId?: string | null;
+            /** @enum {string} */
+            defaultCredentialSource?: "PLATFORM" | "USER";
+        };
+        ModelCredentials: {
+            version: number;
+            userConfigured: boolean;
+            platformAvailable: boolean;
+        };
+        PutModelCredential: {
+            apiKey: string;
+        };
+        EffectiveChatConfig: {
+            values: {
+                /** Format: uuid */
+                modelId: string;
+                /** @enum {string} */
+                credentialSource: "PLATFORM" | "USER";
+            };
+            sources: {
+                modelId: string;
+                credentialSource: string;
+            };
+            lockedFields: string[];
+            configHash: string;
+        };
+        TaskConfiguration: {
+            /** Format: uuid */
+            configSnapshotId: string;
+            configHash: string;
+            /** Format: uuid */
+            bundleId: string;
+            values: {
+                [key: string]: unknown;
+            };
+            restrictions: {
+                credentialActive: boolean;
+                modelActive: boolean;
+            };
         };
     };
     responses: {
@@ -852,6 +985,239 @@ export interface operations {
                 };
             };
             default: components["responses"]["IdentityProblem"];
+        };
+    };
+    chatPreferences: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatPreferences"];
+                };
+            };
+            /** @description Problem */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    updateChatPreferences: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateChatPreferences"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatPreferences"];
+                };
+            };
+            /** @description Problem */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    effectiveChatConfig: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EffectiveChatConfig"];
+                };
+            };
+            /** @description Problem */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    modelCredentials: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelCredentials"];
+                };
+            };
+            /** @description Problem */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    putUserModelCredential: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutModelCredential"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelCredentials"];
+                };
+            };
+            /** @description Problem */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    revokeUserModelCredential: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelCredentials"];
+                };
+            };
+            /** @description Problem */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    taskConfiguration: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskConfiguration"];
+                };
+            };
+            /** @description Problem */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
 }
