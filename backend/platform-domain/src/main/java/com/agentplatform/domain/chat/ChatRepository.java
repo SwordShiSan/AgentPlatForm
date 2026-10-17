@@ -37,6 +37,7 @@ public interface ChatRepository {
     record First(Conversation conversation, Task task) {}
     First first(Actor actor, UUID key, String title, UUID model, String source, String text);
     Task submitConfigured(Actor actor, UUID conversation, UUID key, UUID model, String source, String text);
+    java.util.Map<String,Object> diagnostics(Actor actor, UUID task);
     java.util.Map<String,Object> preferences(Actor actor);
     java.util.Map<String,Object> preferences(Actor actor, long expected, java.util.Map<String,Object> patch);
     java.util.Map<String,Object> effective(Actor actor);

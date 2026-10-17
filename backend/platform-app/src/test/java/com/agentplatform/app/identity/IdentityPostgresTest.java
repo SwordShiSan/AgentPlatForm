@@ -179,8 +179,8 @@ class IdentityPostgresTest {
         assertTrue(secrets.matches(PASSWORD,encoded));
     }
     @Test void publicNonSecureOriginCannotStart() {
-        assertThrows(IllegalArgumentException.class,()->new IdentityConfiguration().identityApi(store,secrets,"http://public.example",false));
-        assertThrows(IllegalArgumentException.class,()->new IdentityConfiguration().identityApi(store,secrets,"http://localhost.evil.example",false));
+        assertThrows(IllegalArgumentException.class,()->new IdentityConfiguration().identityApi(store,secrets,"http://public.example",false,false));
+        assertThrows(IllegalArgumentException.class,()->new IdentityConfiguration().identityApi(store,secrets,"http://localhost.evil.example",false,false));
     }
     @Test void actualLoginFailuresLockAndRecover() {
         provision("alice",false);var pre=service.csrf(null);
@@ -188,4 +188,11 @@ class IdentityPostgresTest {
         failure(401,()->service.login(pre.cookieToken(),pre.csrfToken(),ORIGIN,"ip",new IdentityApi.LoginRequest("alice",PASSWORD)));
         clock.now=clock.now.plusSeconds(900);assertEquals("alice",service.me(login("alice").cookieToken(),null).username());
     }
+    @Test void approvedHttpDeploymentIsExplicitAndOriginBound() {
+        var configuration=new IdentityConfiguration();
+        assertDoesNotThrow(()->configuration.identityApi(store,secrets,"http://agentplatform.lailihao.cloud,http://124.222.55.140",false,true));
+        assertThrows(IllegalArgumentException.class,()->configuration.identityApi(store,secrets,"http://public.example",false,true));
+        assertThrows(IllegalArgumentException.class,()->configuration.identityApi(store,secrets,"http://124.222.55.140",true,true));
+    }
+
 }

@@ -7,16 +7,27 @@ unset PLATFORM_API_IMAGE PLATFORM_GATEWAY_IMAGE POSTGRES_IMAGE REDIS_IMAGE RABBI
 unset PLATFORM_BACKPLANE PLATFORM_INGRESS PLATFORM_EGRESS_CONTROL HTTP_BIND HTTP_PORT PRODUCTION_NGINX_CONFIG
 env_compose=(docker compose --env-file "$root/deploy/images.env" -p agentplatform-env -f "$root/deploy/compose.env.yaml" -f "$root/deploy/compose.production.env.yaml")
 app_compose=(docker compose --env-file "$root/deploy/images.env" -p agentplatform-app -f "$root/deploy/compose.app.yaml" -f "$root/deploy/compose.production.app.yaml")
+r1=false
+if [[ -f "$root/deploy/r1-enabled" ]]; then
+ r1=true
+ env_compose+=(-f "$root/deploy/compose.r1-http.env.yaml")
+ app_compose+=(-f "$root/deploy/compose.r1-http.app.yaml")
+fi
 case "${1:-check}" in
  check)
   python3 "$root/deploy/scripts/production-preflight.py"
   "${env_compose[@]}" config --quiet
   "${app_compose[@]}" --profile worker --profile runner --profile egress config --quiet
+  if [[ "$r1" == true ]]; then python3 "$root/deploy/scripts/r1-preflight.py"; fi
   ;;
  start)
   bash "$root/deploy/scripts/production-stack.sh" check
   "${env_compose[@]}" up -d --wait --wait-timeout 240
-  "${app_compose[@]}" --profile worker --profile runner --profile egress up -d --wait --wait-timeout 240
+  if [[ "$r1" == true ]]; then
+   "${app_compose[@]}" --profile worker up -d --wait --wait-timeout 240 api worker gateway
+  else
+   "${app_compose[@]}" --profile worker --profile runner --profile egress up -d --wait --wait-timeout 240
+  fi
   curl --noproxy '*' -fsS -H 'Host: agentplatform.lailihao.cloud' http://127.0.0.1/api/v1/readiness
   ;;
  stop)

@@ -53,6 +53,7 @@ public final class ChatController {
     @GetMapping("/conversations/{id}/snapshot") Object snapshot(HttpServletRequest request,@PathVariable("id")String id){return chat.snapshot(caller(request,false),id);}
     @PostMapping("/conversations/{id}/tasks") ResponseEntity<ChatApi.Accepted> submit(HttpServletRequest request,@PathVariable("id")String id,@RequestBody Map<String,Object> body){var who=caller(request,true);var input=parseTask(body);return ResponseEntity.accepted().body(chat.submitConfigured(who,id,key(request),input.model(),input.source(),input.text()));}
     @GetMapping("/tasks/{id}") Object task(HttpServletRequest request,@PathVariable("id")String id){return chat.task(caller(request,false),id);}
+    @GetMapping("/tasks/{id}/diagnostics") Object diagnostics(HttpServletRequest request,@PathVariable("id")String id){return chat.diagnostics(caller(request,false),id);}
     @GetMapping("/tasks/{id}/usage") Object usage(HttpServletRequest request,@PathVariable("id")String id){return Map.of("items",chat.usage(caller(request,false),id));}
     @PostMapping("/tasks/{id}/cancel") ResponseEntity<ChatApi.TaskView> cancel(HttpServletRequest request,@PathVariable("id")String id,@RequestBody(required=false)Map<String,Object> body){var who=caller(request,true);if(body!=null)fields(body);return ResponseEntity.accepted().body(chat.cancel(who,id,key(request)));}
     @GetMapping(value="/conversations/{id}/events",produces="text/event-stream")

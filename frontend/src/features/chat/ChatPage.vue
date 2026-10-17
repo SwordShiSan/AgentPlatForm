@@ -30,6 +30,23 @@ const snapshot = useQuery({ queryKey: snapshotKey, enabled: computed(() => !!act
 const lastTask = computed(() => snapshot.data.value?.tasks.at(-1));
 const config = useQuery({ queryKey: computed(() => ['chat', actor.value, 'configuration', lastTask.value?.taskId]), enabled: computed(() => !!lastTask.value), queryFn: async () => (await api.GET('/api/v1/tasks/{id}/configuration', { params: { path: { id: lastTask.value!.taskId } } })).data! });
 const running = computed(() => snapshot.data.value?.tasks.some(item => ['QUEUED', 'RUNNING'].includes(item.status)) ?? false);
+const diagnostics = useQuery({ queryKey: computed(() => ['chat', actor.value, space.value, 'diagnostics', lastTask.value?.taskId, lastTask.value?.version]), enabled: computed(() => !!lastTask.value && !running.value), queryFn: async () => (await api.GET('/api/v1/tasks/{id}/diagnostics', { params: { path: { id: lastTask.value!.taskId } } })).data! });
+const diagnosticCopy = ref('');
+const diagnosticAction = computed(() => {
+  switch (diagnostics.data.value?.suggestedAction) {
+    case 'CONTACT_OPERATOR_FOR_RECONCILIATION': return '调用结果待对账，请联系运维核对。此任务不会自动重放。';
+    case 'CHECK_ACCESS_AND_CREDENTIAL': return '请检查当前账号权限和任务所用凭据。';
+    case 'CHECK_CONFIGURATION_AND_BUDGET': return '请检查模型配置、可用余额和聊天额度。';
+    case 'CHECK_SERVICE_STATUS': return '服务暂时不可用，请稍后核对状态。';
+    case 'CONTACT_OPERATOR': return '请提供诊断编号联系运维核对。';
+    default: return '';
+  }
+});
+async function copyDiagnostic() {
+  const id = diagnostics.data.value?.traceId; if (!id) return;
+  try { await navigator.clipboard.writeText(id); diagnosticCopy.value = '诊断编号已复制'; }
+  catch { diagnosticCopy.value = '请选中诊断编号手动复制'; }
+}
 const usage = useQuery({ queryKey: computed(() => ['chat', actor.value, 'usage', lastTask.value?.taskId]), enabled: computed(() => !!lastTask.value && !running.value), queryFn: async () => (await api.GET('/api/v1/tasks/{id}/usage', { params: { path: { id: lastTask.value!.taskId } } })).data! });
 const usedTokens = computed(() => {
   const values = usage.data.value?.items;
@@ -41,6 +58,7 @@ const reason = computed(() => {
   switch (lastTask.value?.reasonCode) {
     case 'CONTEXT_REQUIRED_TOO_LARGE': return '历史内容超出上下文额度，请新建对话。';
     case 'CREDENTIAL_REVOKED': return '本次任务的凭据已撤销，请检查模型密钥。旧任务不会自动切换密钥。';
+    case 'PROVIDER_BALANCE_EXHAUSTED': return '供应商余额或额度不足，请检查远程账户。本次调用不会自动重试。';
     case 'PROVIDER_TRUNCATED': return '模型回复未完整结束，已保留收到的内容。';
     case 'TASK_CANCEL_REQUESTED': return '回复已取消。';
     case null: case undefined: return '';
@@ -176,6 +194,12 @@ async function cancel() {
         </article>
       </div>
       <p v-if="lastTask" role="status">{{ labels[lastTask.status] }}{{ lastTask.cancelRequested && running ? ' · 正在取消' : '' }}<span v-if="reason"> · {{ reason }}</span></p>
+      <section v-if="lastTask?.reasonCode && diagnostics.data.value" aria-label="任务诊断" class="task-diagnostics">
+        <p>{{ diagnosticAction }}</p><p v-if="diagnostics.data.value.hasPartialOutput">已保留部分回复。</p>
+        <p class="chat-text">诊断编号：{{ diagnostics.data.value.traceId }}</p>
+        <button type="button" @click="copyDiagnostic">复制诊断编号</button><span role="status">{{ diagnosticCopy }}</span>
+      </section>
+      <p v-if="lastTask?.reasonCode && diagnostics.isError.value" role="alert">暂时无法读取诊断记录，已有消息已保留。</p>
       <p v-if="usedTokens !== undefined" class="intro">{{ usedTokens === null ? '用量待对账，未将未知用量记为零。' : `本次使用 ${usedTokens} tokens` }}</p>
       <p v-if="error" role="alert" class="identity-error">{{ error }}</p>
       <form class="chat-composer" @submit.prevent="submit">

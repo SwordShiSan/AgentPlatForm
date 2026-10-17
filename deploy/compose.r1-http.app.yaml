@@ -1,0 +1,62 @@
+# User-approved HTTP identity/chat deployment. No tool/runner/sandbox is started.
+services:
+  api:
+    mem_limit: 512m
+    memswap_limit: 512m
+    entrypoint: [java, -Xms32m, -Xmx224m, -jar, /app/platform.jar]
+    environment:
+      SPRING_PROFILES_ACTIVE: identity-local,chat-local,r1-http
+      PLATFORM_CHAT_MQ_HOST: rabbitmq
+      PLATFORM_CHAT_MQ_USER: mq_publisher
+      PLATFORM_CHAT_MQ_PASSWORD_FILE: /run/secrets/mq_publisher
+      PLATFORM_CHAT_CURSOR_KEY_FILE: /run/secrets/chat_cursor
+      PLATFORM_CHAT_MASTER_KEY_FILE: /run/secrets/chat_master
+      SERVER_TOMCAT_THREADS_MAX: "16"
+    secrets: [pg_api, mq_publisher, chat_cursor, chat_master]
+  worker:
+    mem_limit: 512m
+    memswap_limit: 512m
+    entrypoint: [java, -Xms32m, -Xmx256m, -jar, /app/platform.jar]
+    environment:
+      SPRING_PROFILES_ACTIVE: chat-worker
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      PLATFORM_CHAT_MQ_HOST: rabbitmq
+      PLATFORM_CHAT_MQ_USER: mq_execution
+      PLATFORM_CHAT_MQ_PASSWORD_FILE: /run/secrets/mq_execution
+      PLATFORM_CHAT_MASTER_KEY_FILE: /run/secrets/chat_master
+      PLATFORM_CHAT_PROVIDER_BASE: https://api.deepseek.com
+      PLATFORM_CHAT_FIXTURE_PROVIDER: "false"
+    secrets: [pg_worker, mq_execution, chat_master]
+    networks: [backplane, model-egress]
+    healthcheck: {test: [CMD-SHELL, "test -s /tmp/chat-worker-ready"], interval: 5s, timeout: 2s, retries: 24}
+  gateway:
+    memswap_limit: 32m
+  operator:
+    image: ${PLATFORM_API_IMAGE:?Use accepted immutable candidate}
+    profiles: [r1-ops]
+    user: "10001:10001"
+    read_only: true
+    restart: "no"
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 320m
+    memswap_limit: 320m
+    pids_limit: 128
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001,mode=700"]
+    networks: [backplane]
+    entrypoint: [java, -Xms16m, -Xmx160m, -jar, /app/platform.jar]
+    environment:
+      SPRING_PROFILES_ACTIVE: chat-ops
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/agentplatform?connectTimeout=2&socketTimeout=5
+      PLATFORM_STORAGE_USER: ap_migration
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/pg_migration
+      PLATFORM_CHAT_MASTER_KEY_FILE: /run/secrets/chat_master
+    secrets: [pg_migration, chat_master]
+networks:
+  model-egress: {name: "${PLATFORM_MODEL_EGRESS:-agentplatform-model-egress}"}
+secrets:
+  chat_master: {file: "${PLATFORM_ROOT:-/srv/agentplatform}/secrets/chat_master"}
+  chat_cursor: {file: "${PLATFORM_ROOT:-/srv/agentplatform}/secrets/chat_cursor"}
+  mq_publisher: {file: "${PLATFORM_ROOT:-/srv/agentplatform}/secrets/mq_publisher"}
+  mq_execution: {file: "${PLATFORM_ROOT:-/srv/agentplatform}/secrets/mq_execution"}

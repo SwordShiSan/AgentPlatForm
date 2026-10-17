@@ -1,4 +1,4 @@
-"""Explicit budget-capped real-provider window. Never prints or persists plaintext keys."""
+"""Explicit metered real-provider window. Never prints or persists plaintext keys."""
 import argparse
 import importlib.util
 import re
@@ -45,7 +45,7 @@ def main():
         local.operator(['--chat-action=bind-model', '--source-policy=PLATFORM', '--credential-id=' + credential,
                         '--model-id=' + model, '--user-id=' + user, '--space-id=' + space])
     local.run(local.COMPOSE + ['up', '-d', '--wait', '--wait-timeout', '120', 'worker'], capture_output=True)
-    print('Real provider prepared with durable20-call/1CNY cap; no calls made by this command.' if args.mode == 'prepare'
+    print('Real provider prepared; historical meter retained, provider quota and business budget apply; no calls made by this command.' if args.mode == 'prepare'
           else 'Deterministic provider and fixture binding restored; encrypted real credential remains protected in database.')
 
 

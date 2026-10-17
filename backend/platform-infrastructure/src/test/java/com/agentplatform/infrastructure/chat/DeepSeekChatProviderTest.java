@@ -88,4 +88,21 @@ class DeepSeekChatProviderTest {
             } finally { server.stop(0); }
         }
     }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"402,PROVIDER_BALANCE_EXHAUSTED","429,PROVIDER_RATE_LIMITED","401,PROVIDER_AUTH_REJECTED","503,PROVIDER_SERVER_REJECTED"})
+    void classifiesTypedProviderFailureWithoutLeakingBody(int status,String expected) throws Exception {
+        var server=com.sun.net.httpserver.HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
+        server.createContext("/chat/completions",exchange->{
+            exchange.getRequestBody().readAllBytes();byte[] data="{\"error\":{\"message\":\"secret-sentinel\",\"type\":\"error\"}}".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type","application/json");exchange.sendResponseHeaders(status,data.length);exchange.getResponseBody().write(data);exchange.close();
+        });server.start();
+        try {
+            var future=new DeepSeekChatProvider("http://127.0.0.1:"+server.getAddress().getPort(),true)
+                .stream("sentinel",List.of(Message.text(Role.USER,"hello")),text->{}).toCompletableFuture();
+            var thrown=assertThrows(ExecutionException.class,()->future.get(10,TimeUnit.SECONDS));
+            var failure=assertInstanceOf(com.agentplatform.domain.chat.ChatFailure.class,thrown.getCause());
+            assertEquals(expected,failure.code());assertFalse(failure.getMessage().contains("secret-sentinel"));
+        } finally {server.stop(0);}
+    }
+
 }

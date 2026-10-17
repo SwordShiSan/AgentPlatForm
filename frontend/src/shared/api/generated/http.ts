@@ -323,6 +323,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tasks/{id}/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTaskDiagnostics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -522,6 +538,20 @@ export interface components {
                 credentialActive: boolean;
                 modelActive: boolean;
             };
+        };
+        TaskDiagnostics: {
+            /** Format: uuid */
+            taskId: string;
+            /** Format: uuid */
+            traceId: string;
+            code: string | null;
+            /** @enum {string} */
+            classification: "NONE" | "CANCELLED" | "USER_ACTION" | "POLICY_DENIED" | "TRANSIENT_SAFE_RETRY" | "UNKNOWN_SIDE_EFFECT" | "BUG";
+            hasPartialOutput: boolean;
+            /** @enum {string} */
+            suggestedAction: "NONE" | "CHECK_ACCESS_AND_CREDENTIAL" | "CHECK_CONFIGURATION_AND_BUDGET" | "CHECK_SERVICE_STATUS" | "CONTACT_OPERATOR" | "CONTACT_OPERATOR_FOR_RECONCILIATION";
+            /** @constant */
+            automaticReplayAllowed: false;
         };
     };
     responses: {
@@ -1218,6 +1248,32 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+        };
+    };
+    getTaskDiagnostics: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized committed platform state; no provider secrets or internal reasoning */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDiagnostics"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
         };
     };
 }
