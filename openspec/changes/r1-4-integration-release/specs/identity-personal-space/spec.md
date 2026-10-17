@@ -13,4 +13,3 @@ The system SHALL provide generated contracts for CSRF, login, current user and l
 #### Scenario: Logout or expired session
 - **WHEN** a user logs out or receives an unauthorized response
 - **THEN** the UI clears user-scoped state and returns to login without displaying unimplemented business controls
-

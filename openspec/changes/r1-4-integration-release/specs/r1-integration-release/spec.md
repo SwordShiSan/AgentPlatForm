@@ -49,3 +49,12 @@ The chat UI SHALL generate UUIDv4 idempotency identities from crypto.getRandomVa
 #### Scenario: No cryptographic source
 - **WHEN** no getRandomValues source exists
 - **THEN** request identity generation fails explicitly without silently using a weak random source
+
+### Requirement: Cold-start resource evidence
+R1 SHALL fit all enabled container ceilings within2887MiB and preserve768MiB host reserve without swap extension. Dynamic per-module changes SHALL retain failed evidence and require exact configuration promotion and fresh constrained observation before release.
+#### Scenario: Historical OOM hidden by a restart
+- **WHEN** current OOMKilled is false but restart or kernel evidence shows an unplanned prior OOM
+- **THEN** release is blocked and the failure is retained until a corrected candidate passes cold starts, observation and recovery
+#### Scenario: Resource-only repetition
+- **WHEN** unchanged application/provider artifacts already have successful persisted real-model evidence
+- **THEN** the repeated observation may reuse exactly verified task/call/usage facts without additional provider calls and clearly distinguishes reused model evidence from the fresh resource window

@@ -8,4 +8,3 @@ The platform SHALL expose only public message blocks and sanitized audit correla
 #### Scenario: Browser lifecycle
 - **WHEN** a user refreshes a draft, reconnects a stream or changes accounts
 - **THEN** drafts and persisted events remain isolated, accepted work is not duplicated, and logout or identity expiry clears local private state
-
