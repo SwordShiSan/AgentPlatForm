@@ -94,6 +94,15 @@ class IdentityPostgresTest {
         failure(409,()->store.provision(request,"different","alice",encoded,false));
         assertEquals(1,store.spaces(a).size());
     }
+    @Test void stablePersonalSpaceAndSessionSurviveStoredDisplayIdentityChange() throws Exception {
+        UUID user=provision("alice",false);var before=store.spaces(user);var auth=login("alice");
+        // Storage invariant only: R1 does not expose a username-change endpoint or file API.
+        sql("UPDATE pf.app_user SET username_norm='renamed_alice' WHERE id='"+user+"'");
+        assertEquals(user,store.findUser("renamed_alice").id());assertNull(store.findUser("alice"));
+        assertEquals(before,store.spaces(user));
+        assertEquals(user.toString(),service.me(auth.cookieToken(),null).id());
+        assertEquals("renamed_alice",service.me(auth.cookieToken(),null).username());
+    }
     @ParameterizedTest @ValueSource(strings={"space","membership","space_storage","identity_operation"})
     void databaseFailureRollsBackEveryInsertedRow(String table) throws Exception {
         sql("CREATE FUNCTION pf.reject_storage() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture'; END $$");

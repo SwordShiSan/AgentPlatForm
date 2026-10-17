@@ -1,13 +1,13 @@
 ## 1. Governance
-- [ ] 1.1 Verify refs, R1.3 evidence, R0 identity and strict spec before implementation.
-- [ ] 1.2 Synchronize current HTTP/HTTPS-deferred decisions in canonical contracts/ADRs/stage gates.
+- [x] 1.1 Verify refs, R1.3 evidence, R0 identity and strict spec before implementation.
+- [x] 1.2 Synchronize current HTTP/HTTPS-deferred decisions in canonical contracts/ADRs/stage gates.
 ## 2. Implementation
-- [ ] 2.1 Add persisted trace/failure diagnostics and owner-only API/client/UI with tests.
-- [ ] 2.2 Remove fixed acceptance predicates, retain meter/budgets; test provider quota classification.
-- [ ] 2.3 Explicit HTTP production identity configuration and SSE proxy; authorization/revocation review.
+- [x] 2.1 Add persisted trace/failure diagnostics and owner-only API/client/UI with tests.
+- [x] 2.2 Remove fixed acceptance predicates, retain meter/budgets; test provider quota classification.
+- [x] 2.3 Explicit HTTP production identity configuration and SSE proxy; authorization/revocation review.
 ## 3. Local verification
-- [ ] 3.1 Engineering, migration, real PG/MQ, SDK/Jackson, provider, browser and resource gates.
-- [ ] 3.2 Minimal real-model matrix, no secret leakage; freeze source/images/evidence.
+- [x] 3.1 Engineering, migration, real PG/MQ, SDK/Jackson, provider, browser and resource gates.
+- [x] 3.2 Minimal real-model matrix, no secret leakage; freeze source/images/evidence.
 - [ ] 3.3 Review step→phase→main exact-SHA promotion and R1.4 VERIFIED.
 ## 4. Release
 - [ ] 4.1 Cloud preflight, immutable transfer, consistent R0 backup and migration; fresh accounts/key import.

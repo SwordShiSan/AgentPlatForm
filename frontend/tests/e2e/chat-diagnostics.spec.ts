@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 test.skip(process.env.R14_BROWSER_ACCEPTANCE !== '1', 'R1.4 isolated real API/fixture required');
@@ -42,4 +42,9 @@ test('partial unknown result has owner-only diagnostic and no automatic retry', 
     expect(await rejected.text()).not.toContain(diagnostic.traceId);
   } finally { await other.close(); }
   await page.reload(); await expect(panel).toContainText(diagnostic.traceId);
+  const screenshots = resolve(import.meta.dirname, '../ui-evidence'); mkdirSync(screenshots, { recursive: true });
+  for (const theme of ['light', 'dark']) {
+    await page.getByLabel('主题', { exact: true }).selectOption(theme);
+    await page.screenshot({ path: resolve(screenshots, `r1.4-diagnostics-${theme}.png`), fullPage: true });
+  }
 });

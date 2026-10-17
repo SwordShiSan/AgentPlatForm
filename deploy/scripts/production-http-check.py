@@ -14,7 +14,8 @@ assert get('/','unexpected.example')[0]==404
 ids=[]
 for project in ['agentplatform-app','agentplatform-env']:
     ids.extend(subprocess.check_output(['docker','ps','-q','--filter','label=com.docker.compose.project='+project],text=True).split())
-rows=json.loads(subprocess.check_output(['docker','inspect',*ids]));assert len(rows)==12
+expected=10 if (root/'deploy/r1-enabled').is_file() else 12
+rows=json.loads(subprocess.check_output(['docker','inspect',*ids]));assert len(rows)==expected
 for item in rows:
     assert item['State']['Running'] and not item['State']['OOMKilled']
     assert item['HostConfig']['RestartPolicy']=={'Name':'on-failure','MaximumRetryCount':3}
@@ -26,6 +27,6 @@ for item in rows:
 for name in ['nginx','ai-agent-app','big-market-app','mysql','redis','rabbitmq','zookeeper','ai-agent-pgvector','ai-agent_big-market-front-app','ai-agent-xxl-job-admin']:
     item=json.loads(subprocess.check_output(['docker','inspect',name]))[0]
     assert not item['State']['Running'] and item['HostConfig']['RestartPolicy']['Name']=='no'
-result={'status':'PASS','profiles':12,'httpPort':80,'domainAndIpHostRouting':True,'unknownHost':404,
+result={'status':'PASS','profiles':expected,'httpPort':80,'domainAndIpHostRouting':True,'unknownHost':404,
         'legacyRetainedStopped':True,'allInternalPortsUnpublished':True,'boundedRetries':3,'dnsTls':'OUT_OF_SCOPE'}
 (root/'reports/production-http.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result))

@@ -30,5 +30,5 @@ test('real Flash/Pro and platform/user credentials preserve one multi-turn conve
     results.push({ model, source, taskId: task.taskId, configHash: config.configHash, usage: usage.items });
   }
   await page.reload(); await expect(page.locator('.chat-message.assistant')).toHaveCount(4); await expect(page.locator('.chat-message.assistant .chat-text').last()).toContainText('青竹');
-  writeFileSync(resolve(root, 'r13-real-browser.json'), JSON.stringify({ status: 'PASS', physicalCalls: results.length, results, estimateNotInvoice: true }, null, 2));
+  writeFileSync(resolve(root, process.env.R14_REAL_MODEL_ACCEPTANCE === '1' ? 'r14-real-browser.json' : 'r13-real-browser.json'), JSON.stringify({ status: 'PASS', physicalCalls: results.length, results, estimateNotInvoice: true }, null, 2));
 });
