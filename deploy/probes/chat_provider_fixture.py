@@ -44,7 +44,7 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, UnicodeError):
             self.send_error(422)
             return
-        if body.get('model') != 'deepseek-flash' or body.get('thinking') != {'type': 'disabled'} or not body.get('stream'):
+        if body.get('model') not in ['deepseek-flash', 'deepseek-v4-pro'] or body.get('thinking') != {'type': 'disabled'} or not body.get('stream'):
             self.send_error(422)
             return
         if body.get('max_tokens') != 1024 or not body.get('stream_options', {}).get('include_usage'):

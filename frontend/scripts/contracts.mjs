@@ -85,3 +85,14 @@ if (process.env.API_BASE_URL) {
   assert(problem(await failure.json()), 'Real Problem response differs from OpenAPI');
 }
 console.log('Contracts valid; generation and normal/invalid fixtures passed.');
+
+// R1.3 preference/metadata bodies reject privilege and secret-bearing response fields.
+const preferencePatch = ajv.compile(api.components.schemas.UpdateChatPreferences);
+assert(preferencePatch({defaultCredentialSource:'USER'}));
+assert(!preferencePatch({defaultCredentialSource:'AUTO'}));
+assert(!preferencePatch({scope:'PLATFORM'}));
+assert(!preferencePatch({defaultModelId:'invalid'}));
+const metadata = ajv.compile(api.components.schemas.ModelCredentials);
+assert(metadata({version:0,userConfigured:false,platformAvailable:true}));
+assert(!metadata({version:0,userConfigured:true,platformAvailable:true,apiKey:'forbidden'}));
+assert(!metadata({version:-1,userConfigured:false,platformAvailable:false}));

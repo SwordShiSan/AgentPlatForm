@@ -71,7 +71,12 @@ def grant():
         'GRANT SELECT ON pf.model_call TO ap_chat_api;\n'
         'GRANT SELECT,INSERT,UPDATE ON pf.attempt,pf.consumer_inbox,pf.model_call,pf.budget_reservation,pf.credential_access_audit,pf.acceptance_model_meter,pf.dispatch_quarantine TO ap_chat_worker;\n'
         'GRANT USAGE ON SCHEMA pf_runtime TO ap_chat_worker; GRANT SELECT,INSERT,UPDATE,DELETE ON pf_runtime.state_slot TO ap_chat_worker;')
-    print('Runtime role grants applied; API has no credential ciphertext/master-key access.')
+    sql('GRANT SELECT,INSERT,UPDATE ON pf.user_preference,pf.user_preference_revision,pf.user_model_credential TO ap_chat_api; '
+        'GRANT SELECT ON pf.user_model_credential TO ap_chat_worker; '
+        'GRANT INSERT ON pf.chat_audit TO ap_chat_api; '
+        'GRANT INSERT(id,scope_type,space_id,owner_user_id,ciphertext,nonce,key_version,revision) ON pf.credential TO ap_chat_api; '
+        'GRANT UPDATE(status,revision) ON pf.credential TO ap_chat_api;')
+    print('Runtime grants applied; API encrypted-write service enabled, ciphertext SELECT remains denied.')
 
 
 def main():
@@ -106,7 +111,7 @@ def main():
         wrapper = ROOT / 'backend' / ('mvnw.cmd' if os.name == 'nt' else 'mvnw')
         run([str(wrapper), '-f', str(ROOT / 'backend/pom.xml'), '-DskipTests', 'package', '-q'])
         revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
-        for component, image in [('api', 'agentplatform-api:r1.2-local'), ('gateway', 'agentplatform-gateway:r1.2-local'), ('provider-fixture', 'agentplatform-provider-fixture:r1.2-local')]:
+        for component, image in [('api', 'agentplatform-api:r1.3-local'), ('gateway', 'agentplatform-gateway:r1.3-local'), ('provider-fixture', 'agentplatform-provider-fixture:r1.3-local')]:
             run(['docker', 'build', '--platform', 'linux/amd64', '--build-arg', 'SOURCE_REVISION=' + revision, '-f', f'deploy/{component}.Dockerfile', '-t', image, '.'])
         print('Development images built; dirty-source candidate is not final acceptance evidence.')
     elif mode == 'migrate':
@@ -135,10 +140,12 @@ def main():
             output = operator(['--chat-action=import-credential', '--scope=PLATFORM', '--key-file=/tmp/operator-input'], 'R12_FIXTURE_CREDENTIAL_SENTINEL')
             credential = re.search(r'Credential imported: ([0-9a-f-]{36})', output).group(1)
             secret_record.write_text(credential, encoding='utf-8')
+        sql("INSERT INTO pf.model_definition(id,model_name,endpoint_alias,input_micros_per_million,output_micros_per_million,pricing_version) VALUES('0199e000-0000-7000-8000-000000000003','deepseek-v4-pro','DEEPSEEK',9000000,27000000,'deepseek-v4-pro-2026-10-17-peak-bound') ON CONFLICT(id) DO NOTHING;")
         for name in ['alice', 'bob']:
             output = sql(f"SELECT u.id::text||','||s.id::text FROM pf.app_user u JOIN pf.space s ON s.owner_user_id=u.id WHERE u.username_norm='{name}' AND s.type='PERSONAL';")
             user, space = re.search(r'([0-9a-f-]{36}),([0-9a-f-]{36})', output).groups()
-            operator(['--chat-action=bind-model', '--source-policy=PLATFORM', '--credential-id=' + secret_record.read_text().strip(), '--model-id=0199e000-0000-7000-8000-000000000002', '--user-id=' + user, '--space-id=' + space])
+            for model in ['0199e000-0000-7000-8000-000000000002', '0199e000-0000-7000-8000-000000000003']:
+                operator(['--chat-action=bind-model', '--source-policy=PLATFORM', '--credential-id=' + secret_record.read_text().strip(), '--model-id=' + model, '--user-id=' + user, '--space-id=' + space])
         print('Two isolated accounts and encrypted fixture credential bound; no real provider key used.')
     elif mode == 'start':
         config = json.loads(subprocess.check_output(COMPOSE + ['--profile', 'fixture', 'config', '--format', 'json'], cwd=ROOT, env=ENV))

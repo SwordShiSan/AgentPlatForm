@@ -35,9 +35,9 @@ public class ChatConfiguration {
         var factory=new ConnectionFactory();factory.setHost(host);factory.setVirtualHost("/agentplatform");factory.setUsername(user);factory.setPassword(Files.readString(Path.of(file)).strip());factory.setConnectionTimeout(3000);factory.setRequestedHeartbeat(15);factory.setAutomaticRecoveryEnabled(false);
         return new RabbitDispatchTransport(factory,repository);
     }
-    @Bean @Profile("chat-local") ChatApi chatApi(ChatRepository repository,@Value("${platform.chat.cursor-key-file}")String file)throws Exception{return new ChatService(repository,new ChatCursor(Files.readAllBytes(Path.of(file))));}
+    @Bean @Profile("chat-local") ChatApi chatApi(ChatRepository repository,@Value("${platform.chat.cursor-key-file}")String file,CredentialCipher cipher)throws Exception{return new ChatService(repository,new ChatCursor(Files.readAllBytes(Path.of(file))),cipher);}
     @Bean @Profile("chat-local") ReadinessProbe chatReadiness(ChatRepository repository,IdentityStore identity,DispatchTransport transport){return ()->identity.ready()&&repository.ready()&&transport.connected();}
-    @Bean @Profile({"chat-worker","chat-ops"}) CredentialCipher credentialCipher(@Value("${platform.chat.master-key-file}")String file)throws Exception{return new CredentialCipher(Files.readAllBytes(Path.of(file)));}
+    @Bean @Profile({"chat-local","chat-worker","chat-ops"}) CredentialCipher credentialCipher(@Value("${platform.chat.master-key-file}")String file)throws Exception{return new CredentialCipher(Files.readAllBytes(Path.of(file)));}
     @Bean @Profile("chat-worker") ChatProvider chatProvider(@Value("${platform.chat.provider-base:https://api.deepseek.com}")String base,@Value("${platform.chat.fixture-provider:false}")boolean fixture){return new DeepSeekChatProvider(base,fixture);}
     @Bean @Profile("chat-worker") StateStorage chatState(DataSource pool){return new PostgresStateStorage(pool);}
     @Bean @Profile("chat-worker") ChatExecution chatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,StateStorage storage,@Value("${platform.chat.workspace-root:/tmp/chat-runtime}")String root){return new ChatExecution(repository,provider,cipher,storage,Path.of(root));}

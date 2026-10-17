@@ -1,6 +1,6 @@
 name: agentplatform-r12-local
 x-app: &app
-  image: ${R12_API_IMAGE:-agentplatform-api:r1.2-local}
+  image: ${R12_API_IMAGE:-agentplatform-api:r1.3-local}
   user: "10001:10001"
   read_only: true
   restart: "no"
@@ -66,8 +66,9 @@ services:
       PLATFORM_CHAT_MQ_USER: ap_api
       PLATFORM_CHAT_MQ_PASSWORD_FILE: /run/secrets/mq_api_password
       PLATFORM_CHAT_CURSOR_KEY_FILE: /run/secrets/cursor_key
+      PLATFORM_CHAT_MASTER_KEY_FILE: /run/secrets/master_key
       SERVER_TOMCAT_THREADS_MAX: "16"
-    secrets: [api_password, mq_api_password, cursor_key]
+    secrets: [api_password, mq_api_password, cursor_key, master_key]
     healthcheck: {test: [CMD, java, -Xms8m, -Xmx16m, -cp, /app/health, HttpHealthcheck, "http://127.0.0.1:8080/api/v1/readiness"], interval: 5s, timeout: 4s, retries: 30, start_period: 15s}
   worker:
     <<: *app
@@ -104,7 +105,7 @@ services:
       PLATFORM_CHAT_MASTER_KEY_FILE: /run/secrets/master_key
     secrets: [postgres_password, master_key]
   gateway:
-    image: ${R12_GATEWAY_IMAGE:-agentplatform-gateway:r1.2-local}
+    image: ${R12_GATEWAY_IMAGE:-agentplatform-gateway:r1.3-local}
     user: "101:101"
     read_only: true
     restart: "no"
@@ -118,7 +119,7 @@ services:
     networks: [chat]
     logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
   fixture:
-    image: ${R12_FIXTURE_IMAGE:-agentplatform-provider-fixture:r1.2-local}
+    image: ${R12_FIXTURE_IMAGE:-agentplatform-provider-fixture:r1.3-local}
     profiles: [fixture]
     user: "10001:10001"
     read_only: true

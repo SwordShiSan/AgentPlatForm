@@ -38,8 +38,9 @@ def main():
     else:
         credential = (local.DATA / 'fixture-credential-id').read_text().strip()
         local.ENV.update(R12_PROVIDER_BASE='http://fixture:8080', R12_FIXTURE_PROVIDER='true')
-    local.operator(['--chat-action=bind-model', '--source-policy=PLATFORM', '--credential-id=' + credential,
-                    '--model-id=0199e000-0000-7000-8000-000000000002', '--user-id=' + user, '--space-id=' + space])
+    for model in ['0199e000-0000-7000-8000-000000000002', '0199e000-0000-7000-8000-000000000003']:
+        local.operator(['--chat-action=bind-model', '--source-policy=PLATFORM', '--credential-id=' + credential,
+                        '--model-id=' + model, '--user-id=' + user, '--space-id=' + space])
     local.run(local.COMPOSE + ['up', '-d', '--wait', '--wait-timeout', '120', 'worker'], capture_output=True)
     print('Real provider prepared with durable20-call/1CNY cap; no calls made by this command.' if args.mode == 'prepare'
           else 'Deterministic provider and fixture binding restored; encrypted real credential remains protected in database.')

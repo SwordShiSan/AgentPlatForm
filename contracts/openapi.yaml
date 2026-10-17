@@ -2,8 +2,7 @@ openapi: 3.1.0
 info:
   title: Agent PlatForm API
   version: 0.1.0
-  description: R0 health/readiness, local opt-in identity and R1.2 ordinary queued text chat. Cloud R0 does not enable
-    identity/chat.
+  description: R0 health/readiness, local opt-in identity and R1.2 ordinary queued text chat. Cloud R0 does not enable identity/chat.
 servers:
   - url: /
 paths:
@@ -132,7 +131,7 @@ paths:
         - $ref: "#/components/parameters/SpaceSelector"
         - name: cursor
           in: query
-          schema: &a4
+          schema: &a5
             type: string
         - name: limit
           in: query
@@ -182,7 +181,7 @@ paths:
           name: id
           in: path
           required: true
-          schema: &a3
+          schema: &a4
             type: string
             format: uuid
       responses:
@@ -302,7 +301,7 @@ paths:
         - *a2
         - name: after
           in: query
-          schema: &a9
+          schema: &a10
             type: integer
             minimum: 0
             maximum: 9007199254740991
@@ -314,13 +313,242 @@ paths:
             pattern: ^[0-9]+$
       responses:
         "200":
-          description: SSE event platform_event; id is seq. Only committed events, Unicode codepoint offsets. Disconnect does not
-            cancel. Bounded connections reconnect from cursor.
+          description: SSE event platform_event; id is seq. Only committed events, Unicode codepoint offsets. Disconnect does not cancel. Bounded connections reconnect from cursor.
           content:
             text/event-stream:
               schema:
                 type: string
         default: *a1
+  /api/v1/me/preferences:
+    get:
+      operationId: chatPreferences
+      tags:
+        - chat
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatPreferences"
+        default:
+          description: Problem
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+      parameters:
+        - name: X-Space-Id
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+    patch:
+      operationId: updateChatPreferences
+      tags:
+        - chat
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatPreferences"
+        default:
+          description: Problem
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema: &a3
+            type: string
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: *a3
+        - name: X-Space-Id
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateChatPreferences"
+  /api/v1/effective-config:
+    get:
+      operationId: effectiveChatConfig
+      tags:
+        - chat
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EffectiveChatConfig"
+        default:
+          description: Problem
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+      parameters:
+        - name: X-Space-Id
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+  /api/v1/me/model-credentials:
+    get:
+      operationId: modelCredentials
+      tags:
+        - chat
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelCredentials"
+        default:
+          description: Problem
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+      parameters:
+        - name: X-Space-Id
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+  /api/v1/me/model-credentials/deepseek:
+    put:
+      operationId: putUserModelCredential
+      tags:
+        - chat
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelCredentials"
+        default:
+          description: Problem
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema: *a3
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: *a3
+        - name: X-Space-Id
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutModelCredential"
+    delete:
+      operationId: revokeUserModelCredential
+      tags:
+        - chat
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelCredentials"
+        default:
+          description: Problem
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema: *a3
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: *a3
+        - name: X-Space-Id
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+  /api/v1/tasks/{id}/configuration:
+    get:
+      operationId: taskConfiguration
+      tags:
+        - chat
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskConfiguration"
+        default:
+          description: Problem
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: &a12
+            type: string
+            format: uuid
+        - name: X-Space-Id
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
 components:
   securitySchemes:
     session:
@@ -341,13 +569,13 @@ components:
       name: X-Space-Id
       in: header
       required: false
-      schema: *a3
+      schema: *a4
       description: Optional selector; current membership and credential policy are always checked.
     IdempotencyKey:
       name: Idempotency-Key
       in: header
       required: true
-      schema: *a3
+      schema: *a4
       description: Reuse for an uncertain response. Same actor/space/path/key with another body returns409.
   responses:
     IdentityProblem:
@@ -488,13 +716,13 @@ components:
         - capabilities
         - available
       properties:
-        id: *a3
-        name: *a4
+        id: *a4
+        name: *a5
         capabilities:
           type: array
           items:
             const: TEXT
-        available: &a5
+        available: &a6
           type: boolean
     ChatModels:
       type: object
@@ -515,15 +743,19 @@ components:
         - version
         - updatedAt
       properties:
-        id: *a3
-        title: *a4
-        version: &a7
+        id: *a4
+        title: *a5
+        version: &a8
           type: integer
           minimum: 1
           maximum: 9007199254740991
         updatedAt:
           type: string
           format: date-time
+        initialTask:
+          oneOf:
+            - $ref: "#/components/schemas/ChatAccepted"
+            - type: "null"
     ChatConversations:
       type: object
       additionalProperties: false
@@ -535,7 +767,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ChatConversation"
-        nextCursor: &a6
+        nextCursor: &a7
           type:
             - string
             - "null"
@@ -550,6 +782,8 @@ components:
           maxLength: 120
         workspaceId:
           type: "null"
+        initialTask:
+          $ref: "#/components/schemas/SubmitChatTask"
     ChatTask:
       type: object
       additionalProperties: false
@@ -561,9 +795,9 @@ components:
         - reasonCode
         - version
       properties:
-        taskId: *a3
-        conversationId: *a3
-        status: &a8
+        taskId: *a4
+        conversationId: *a4
+        status: &a9
           type: string
           enum:
             - QUEUED
@@ -572,9 +806,9 @@ components:
             - SUCCEEDED
             - FAILED
             - CANCELLED
-        cancelRequested: *a5
-        reasonCode: *a6
-        version: *a7
+        cancelRequested: *a6
+        reasonCode: *a7
+        version: *a8
     ChatAccepted:
       type: object
       additionalProperties: false
@@ -584,10 +818,10 @@ components:
         - status
         - cursor
       properties:
-        taskId: *a3
-        conversationId: *a3
-        status: *a8
-        cursor: *a9
+        taskId: *a4
+        conversationId: *a4
+        status: *a9
+        cursor: *a10
     SubmitChatTask:
       type: object
       additionalProperties: false
@@ -612,14 +846,18 @@ components:
         options:
           type: object
           additionalProperties: false
-          required:
-            - modelId
+          required: []
           properties:
-            modelId: *a3
+            modelId: *a4
             planMode:
               const: false
             permissionMode:
               const: RISK_BASED
+            credentialSource: &a11
+              type: string
+              enum:
+                - PLATFORM
+                - USER
     ChatTextBlock:
       type: object
       additionalProperties: false
@@ -630,8 +868,8 @@ components:
       properties:
         type:
           const: TEXT
-        blockId: *a3
-        text: *a4
+        blockId: *a4
+        text: *a5
     ChatMessage:
       type: object
       additionalProperties: false
@@ -643,8 +881,8 @@ components:
         - status
         - version
       properties:
-        id: *a3
-        taskId: *a3
+        id: *a4
+        taskId: *a4
         role:
           type: string
           enum:
@@ -661,7 +899,7 @@ components:
             - STREAMING
             - PARTIAL
             - FAILED
-        version: *a7
+        version: *a8
     ChatSnapshot:
       type: object
       additionalProperties: false
@@ -675,7 +913,7 @@ components:
       properties:
         schemaVersion:
           const: 1
-        cursor: *a9
+        cursor: *a10
         messages:
           type: array
           items:
@@ -703,7 +941,7 @@ components:
         - costMicros
         - estimated
       properties:
-        callId: *a3
+        callId: *a4
         status:
           type: string
           enum:
@@ -730,7 +968,7 @@ components:
             - "null"
           minimum: 0
           maximum: 9007199254740991
-        estimated: *a5
+        estimated: *a6
     ChatUsages:
       type: object
       additionalProperties: false
@@ -741,3 +979,115 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ChatUsage"
+    ChatPreferences:
+      type: object
+      additionalProperties: false
+      properties:
+        version:
+          type: integer
+          minimum: 0
+        defaultModelId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        defaultCredentialSource: *a11
+      required:
+        - version
+        - defaultModelId
+        - defaultCredentialSource
+    UpdateChatPreferences:
+      type: object
+      additionalProperties: false
+      properties:
+        defaultModelId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        defaultCredentialSource: *a11
+      required: []
+    ModelCredentials:
+      type: object
+      additionalProperties: false
+      properties:
+        version:
+          type: integer
+          minimum: 0
+        userConfigured:
+          type: boolean
+        platformAvailable:
+          type: boolean
+      required:
+        - version
+        - userConfigured
+        - platformAvailable
+    PutModelCredential:
+      type: object
+      additionalProperties: false
+      properties:
+        apiKey:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          writeOnly: true
+      required:
+        - apiKey
+    EffectiveChatConfig:
+      type: object
+      additionalProperties: false
+      properties:
+        values:
+          type: object
+          additionalProperties: false
+          properties:
+            modelId: *a12
+            credentialSource: *a11
+          required:
+            - modelId
+            - credentialSource
+        sources:
+          type: object
+          additionalProperties: false
+          properties:
+            modelId: *a3
+            credentialSource: *a3
+          required:
+            - modelId
+            - credentialSource
+        lockedFields:
+          type: array
+          items: *a3
+        configHash: *a3
+      required:
+        - values
+        - sources
+        - lockedFields
+        - configHash
+    TaskConfiguration:
+      type: object
+      additionalProperties: false
+      properties:
+        configSnapshotId: *a12
+        configHash: *a3
+        bundleId: *a12
+        values:
+          type: object
+          additionalProperties: true
+        restrictions:
+          type: object
+          additionalProperties: false
+          properties:
+            credentialActive:
+              type: boolean
+            modelActive:
+              type: boolean
+          required:
+            - credentialActive
+            - modelActive
+      required:
+        - configSnapshotId
+        - configHash
+        - bundleId
+        - values
+        - restrictions
