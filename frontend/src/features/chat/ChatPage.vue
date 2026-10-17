@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { ApiError } from '../../shared/api/request';
 import { api } from '../../shared/api/client';
+import { newRequestId } from '../../shared/api/request-id';
 import { setCsrf } from '../../shared/api/session';
 import { applyChatEvent, type ChatSnapshot } from './stream-state';
 import type { PlatformEvent } from '../../shared/api/generated/events';
@@ -135,7 +136,7 @@ async function moreConversations() {
 async function submit() {
   if (busy.value || (!pending.value && (!draft.value.trim() || running.value))) return;
   const model = models.data.value?.items.find(item => item.id === selectedModel.value); if (!model) { error.value = '所选模型或凭据不可用，请检查配置。'; return; }
-  pending.value ??= { key: crypto.randomUUID(), text: draft.value, model: model.id, source: source.value, conversation: selected.value };
+  pending.value ??= { key: newRequestId(), text: draft.value, model: model.id, source: source.value, conversation: selected.value };
   const value = pending.value; busy.value = true; error.value = '';
   try {
     const token = await csrf();
@@ -166,7 +167,7 @@ async function cancel() {
   const task = lastTask.value; if (!task || busy.value) return; busy.value = true;
   try {
     const token = await csrf();
-    await api.POST('/api/v1/tasks/{id}/cancel', { params: { path: { id: task.taskId }, header: { 'Idempotency-Key': crypto.randomUUID(), 'X-CSRF-Token': token } }, body: {} });
+    await api.POST('/api/v1/tasks/{id}/cancel', { params: { path: { id: task.taskId }, header: { 'Idempotency-Key': newRequestId(), 'X-CSRF-Token': token } }, body: {} });
     await snapshot.refetch();
   } catch { error.value = '取消暂未确认，请稍后重试。'; }
   finally { busy.value = false; }
