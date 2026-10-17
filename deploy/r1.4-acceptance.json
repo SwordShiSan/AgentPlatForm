@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "LOCAL_GATES_PASS_PENDING_PROMOTION",
+  "status": "VERIFIED",
   "runtimeSource": "c37bec9fdb34bced93b460918d80752107e2b3cc",
   "runtimeJarSha256": "32477070f1897c5248edcc06c050bdf98be47e2900cf8883ba55c1bddc11cbf7",
   "tests": {
@@ -12,7 +12,8 @@
     "vueUnit": 22,
     "browser": 15,
     "realModelTurns": 4,
-    "dockerPreflight": 5
+    "dockerPreflight": 5,
+    "deploymentUnit": 11
   },
   "providerFailureCases": 8,
   "continuousTasks": 24,
@@ -139,7 +140,7 @@
     "sha256": "9927da2adbd575ccbe3d087a4947a1ea44698c1eb7d130ac1abe303edf336cad",
     "retainUntil": "2026-11-17"
   },
-  "cloudStatus": "MASTER64_COLD_START_FAIL_R0_RESTORED; RESOURCE128_NOT_RUN",
+  "cloudStatus": "RELEASED",
   "actionsEnabled": false,
   "notes": [
     "Earlier constraint/checksum/MQ-recreation/locator failures retained as history, superseded by the documented passing reruns.",
@@ -155,7 +156,7 @@
   },
   "uiSource": "6a4014b4adfff4c32db70387be14666fa93de581",
   "httpCompatibilityRepair": {
-    "status": "PASS_LOCAL_PENDING_REPROMOTION",
+    "status": "PASS_LOCAL_AND_CLOUD",
     "source": "6a4014b4adfff4c32db70387be14666fa93de581",
     "randomUUIDRequired": false,
     "getRandomValuesRequired": true,
@@ -163,7 +164,7 @@
     "firstCloudPhysicalCalls": 0
   },
   "resourceCorrection": {
-    "status": "PASS_LOCAL_PENDING_PROMOTION",
+    "status": "PASS_LOCAL_AND_CLOUD",
     "masterLimitMiB": 128,
     "masterGoMemoryLimitMiB": 48,
     "previousMasterLimitMiB": 64,
@@ -187,6 +188,270 @@
       "cloudPhysicalCalls": 2,
       "cloudEstimatedMicros": 437,
       "productionTagCreated": false
+    },
+    "freshObservationSeconds": 1800.13,
+    "masterColdRecreations": 3,
+    "newProviderCalls": 0,
+    "priorModelFactsReused": {
+      "sha256": "0d92d0bac8c93a9085be0350a66fb7e9ea0e03cb7e51cf719a02a0c066be6343",
+      "taskId": "01a1486d-194e-7bdf-8480-c0398342f6f5",
+      "persistedUsageMatches": true,
+      "newProviderCalls": 0
     }
+  },
+  "productionTag": "production-r1-28da397d47ed",
+  "deploymentSource": "28da397d47ed90212362a22110160a234f70c5d3",
+  "cloudMeter": {
+    "migration": "5",
+    "baseline": 1,
+    "users": 2,
+    "admins": 1,
+    "openTasks": 0,
+    "physicalCalls": 2,
+    "reservedMicros": 0,
+    "consumedMicros": 437,
+    "apiCanReadCiphertext": false
+  },
+  "cloudImages": [
+    {
+      "name": "/agentplatform-app-api-1",
+      "containerId": "1ba42c24435eaa86a38ab0fbcb3bd073551c73349889d0d1aba3291f981ca8cb",
+      "configId": "sha256:6853788d51b309e45ff36200a533304431266fb3feaaf121209daa807fffe757",
+      "user": "10001:10001",
+      "memoryBytes": 536870912,
+      "memorySwapBytes": 536870912,
+      "swapCurrentBytes": 0,
+      "readOnlyRoot": true,
+      "restartPolicy": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      },
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "name": "/agentplatform-app-worker-1",
+      "containerId": "dcbb29f06e63e71a33476083341537d32ebb9637eb5ae6dab94cd9b81d16d432",
+      "configId": "sha256:6853788d51b309e45ff36200a533304431266fb3feaaf121209daa807fffe757",
+      "user": "10001:10001",
+      "memoryBytes": 536870912,
+      "memorySwapBytes": 536870912,
+      "swapCurrentBytes": 0,
+      "readOnlyRoot": true,
+      "restartPolicy": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      },
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "name": "/agentplatform-app-gateway-1",
+      "containerId": "f890b4cf47c53c88d25a9574db888f89e2c9b4b84d274bee29f0e0f222406f2f",
+      "configId": "sha256:34421f12ee1ee938bbf5ce8e2b5320a1bbc7c5bf6632471ddcc1fd9ef6270e72",
+      "user": "101:101",
+      "memoryBytes": 33554432,
+      "memorySwapBytes": 33554432,
+      "swapCurrentBytes": 0,
+      "readOnlyRoot": true,
+      "restartPolicy": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      },
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "name": "/agentplatform-env-postgres-1",
+      "containerId": "4561fc2dadd1d5a545ca2c15f184d57866dbd2d29acd004838e2bd43c6fa8551",
+      "configId": "sha256:514d02824b061f651960912cf3f7a58b3dbebda9755fe5b70579fda90c0ad566",
+      "user": "999:999",
+      "memoryBytes": 335544320,
+      "memorySwapBytes": 335544320,
+      "swapCurrentBytes": 0,
+      "readOnlyRoot": false,
+      "restartPolicy": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      },
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "name": "/agentplatform-env-rabbitmq-1",
+      "containerId": "f4cfa5ff492330a7c0c50a24a5ac3f943607b810b8b2c1eb792b2a14becf8fd8",
+      "configId": "sha256:30fb3e92f938ed166ba72c2bb9fe5b71c80a3b2d75e0f335f81c113eb8cee90e",
+      "user": "999:999",
+      "memoryBytes": 536870912,
+      "memorySwapBytes": 536870912,
+      "swapCurrentBytes": 0,
+      "readOnlyRoot": false,
+      "restartPolicy": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      },
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "name": "/agentplatform-env-redis-1",
+      "containerId": "8cf6666ef1b89ead296eac2e818a5fd5814754713d816447ed2ff56707d5eba2",
+      "configId": "sha256:f84b0c4678011602b9b98c227a4dcd5468bf8b088b02fdd4165cb7758bad8058",
+      "user": "999:999",
+      "memoryBytes": 67108864,
+      "memorySwapBytes": 67108864,
+      "swapCurrentBytes": 0,
+      "readOnlyRoot": true,
+      "restartPolicy": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      },
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "name": "/agentplatform-env-master-1",
+      "containerId": "5e0b11055a3b214e2b949e314941ea113171cc847e827e86f07f9770edd3975a",
+      "configId": "sha256:7b5ca1f11aa4c91593612d2d4a9e253ec9152a4bd13a19e551290a042a4c52f5",
+      "user": "10001:10001",
+      "memoryBytes": 134217728,
+      "memorySwapBytes": 134217728,
+      "swapCurrentBytes": 0,
+      "readOnlyRoot": false,
+      "restartPolicy": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      },
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "name": "/agentplatform-env-volume-1",
+      "containerId": "90b4aaba1150e9a357fa75206966d2ea1eccf755516f241f03da6b2f96c8c97e",
+      "configId": "sha256:7b5ca1f11aa4c91593612d2d4a9e253ec9152a4bd13a19e551290a042a4c52f5",
+      "user": "10001:10001",
+      "memoryBytes": 100663296,
+      "memorySwapBytes": 100663296,
+      "swapCurrentBytes": 0,
+      "readOnlyRoot": false,
+      "restartPolicy": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      },
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "name": "/agentplatform-env-filer-1",
+      "containerId": "7407f880d25f40b5e80c9064ba6d85e3df13266f0340d7bb6cdeaea827bb4ff7",
+      "configId": "sha256:7b5ca1f11aa4c91593612d2d4a9e253ec9152a4bd13a19e551290a042a4c52f5",
+      "user": "10001:10001",
+      "memoryBytes": 100663296,
+      "memorySwapBytes": 100663296,
+      "swapCurrentBytes": 0,
+      "readOnlyRoot": false,
+      "restartPolicy": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      },
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "name": "/agentplatform-env-s3-1",
+      "containerId": "ad06dc9c5ad043ad70dda1446379efa24e08f745da79ee2e0f75b08bc8aa3d45",
+      "configId": "sha256:7b5ca1f11aa4c91593612d2d4a9e253ec9152a4bd13a19e551290a042a4c52f5",
+      "user": "10001:10001",
+      "memoryBytes": 67108864,
+      "memorySwapBytes": 67108864,
+      "swapCurrentBytes": 0,
+      "readOnlyRoot": false,
+      "restartPolicy": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      },
+      "running": true,
+      "oomKilled": false
+    }
+  ],
+  "exportIdentityChain": [
+    {
+      "service": "api",
+      "variable": "PLATFORM_API_IMAGE",
+      "localImageId": "sha256:44f450590e178bf7f0e10fb94b675c57af32bc495e2a0055dcf9852de2372dc3",
+      "ociIndexDigest": "sha256:44f450590e178bf7f0e10fb94b675c57af32bc495e2a0055dcf9852de2372dc3",
+      "sourceRevision": "c37bec9fdb34bced93b460918d80752107e2b3cc",
+      "platformManifestDigest": "sha256:925e13865312fac5964d8d5a57a44a2bbc4de16bd4d696daf60542acd9082d6a",
+      "configId": "sha256:6853788d51b309e45ff36200a533304431266fb3feaaf121209daa807fffe757",
+      "rootfsDiffIds": [
+        "sha256:d81fb2a7c6ee3be05fdefaa7fd223be219c1ab172083ec1b994c3ecda33ac0a8",
+        "sha256:085e15efe013d39b097dc302f957be20dc69bc81212d06bfc835d0c07675a02f",
+        "sha256:04a097194e6c3cfe44e2607dd528a3b6f3d5aba0c2c3e5813a14bde87b36e48b",
+        "sha256:926f1e29b141668d794dba08ad3661eaec5046d06ed38da5f093d555a30de00c",
+        "sha256:3b84ab99a73e5ea3c508e329cfdafd2a93e24de9336b49ee427a5d8605d9472f",
+        "sha256:aa1e0568d196b22bf9837f4636f03d72c60d00c692ec77c316a12678e496e523",
+        "sha256:eb745d83a691d1d2a3f12bd8a8cc972d6bceea9417424462ec2f6a0c28081f81",
+        "sha256:2656b5ac4489943e26ce332c8dc293eb4adeb5110f18da65249095d5a038fb30"
+      ]
+    },
+    {
+      "service": "gateway",
+      "variable": "PLATFORM_GATEWAY_IMAGE",
+      "localImageId": "sha256:1f792f1b109d32e6751dda0085646672f148bd4648e9cdd1bba8501acf923958",
+      "ociIndexDigest": "sha256:1f792f1b109d32e6751dda0085646672f148bd4648e9cdd1bba8501acf923958",
+      "sourceRevision": "6a4014b4adfff4c32db70387be14666fa93de581",
+      "platformManifestDigest": "sha256:41b970ec382b78c092a3e854817a61805256cccaf25de8156962b1949b1f6f73",
+      "configId": "sha256:34421f12ee1ee938bbf5ce8e2b5320a1bbc7c5bf6632471ddcc1fd9ef6270e72",
+      "rootfsDiffIds": [
+        "sha256:74d97c428c51a828f9051a7a40a53ff1fc99e54fc30323ce36760701b0b7f711",
+        "sha256:2e8009e0b40fc6bc2dff04d44e534021d9b690e6591023c8188fc820357714f0",
+        "sha256:d95f58cfc01b377b7cf5580c9e767f0eb3302a65c4ef6cd3621c7944eb516912",
+        "sha256:f4bb89e377873a6f70b6fb7aa24a96ca61fee04e5eeedf215d2677246fa8ef6a",
+        "sha256:ef2d57c4733bdd5229e18d9edf3d3e70d37a57cd1d18ee52b98bdf7fe4c1c058",
+        "sha256:8632be6b207bad2f10ac78d6f23ad8d63f037fb7ae151d70dc15f470d1c13556",
+        "sha256:b53268e3e841339287c798851fc368386e448b3446b5ce9597571a14e8910be4",
+        "sha256:0d53eba7f7b1b764fe51784327c812c799dff8b4ebed56de28c21bf8fc3fb5ab",
+        "sha256:049faeb62ee00bd8433f1f1a58b51cce3bf7b5b2cb48baba3b2c7c2b919c3092",
+        "sha256:3fddd97ec3ea7701d292bd4c3180fa7503f45181bfdc4a9660bd247052d392d6",
+        "sha256:e1267cfa94a68ab9e35f25851b4a98d3de63b312ca1c7f7870697f1c14434230"
+      ]
+    }
+  ],
+  "cloudObservation": {
+    "status": "PASS",
+    "durationSeconds": 1800.13,
+    "samples": 171,
+    "sampledMinimumAvailableMiB": 1982.6,
+    "swapStartKiB": 161432,
+    "swapEndKiB": 161400,
+    "sampledRootGrowthBytes": 11005952,
+    "scope": "Sampled values and live-state checks, not absolute peaks, exhaustive event delivery or higher concurrency capacity."
+  },
+  "recovery": {
+    "status": "PASS",
+    "independentSerialRestore": true,
+    "authenticatedCredentialDecryption": true,
+    "actualQuotaRefusal": true,
+    "r0RollbackThenSameR1": true,
+    "realProviderCallsDuringRestore": 0
+  },
+  "lifecycle": {
+    "r14": "VERIFIED",
+    "r1": "RELEASED",
+    "r1VerifiedSubphases": 4,
+    "r2": "NOT_STARTED"
+  },
+  "imageIdentityNote": "Historical local images.configId fields are Desktop OCI index identifiers. cloudImages.configId are actual config IDs; exportIdentityChain binds local index, amd64 manifest, config and rootfs. No registry publication claimed.",
+  "cloudProtectedPackage": {
+    "name": "r1.4-cloud-release-20261017.zip",
+    "sha256": "c532380d314323033f965afa1e2da6ad838f87551365be598b27dd7991574d14",
+    "retainUntil": "2026-11-17"
+  },
+  "closeoutChecks": {
+    "strictMainSpecs": 10,
+    "activeChanges": 0,
+    "contractGenerationDiff": false,
+    "invalidFixtures": "PASS",
+    "links": 22
   }
 }

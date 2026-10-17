@@ -9,14 +9,14 @@
 ## 3. Local verification
 - [x] 3.1 Engineering, migration, real PG/MQ, SDK/Jackson, provider, browser and resource gates.
 - [x] 3.2 Minimal real-model matrix, no secret leakage; freeze source/images/evidence.
-- [ ] 3.3 Review step→phase→main exact-SHA promotion and R1.4 VERIFIED.
+- [x] 3.3 Review step→phase→main exact-SHA promotion and R1.4 VERIFIED.
 ## 4. Release
-- [ ] 4.1 Cloud preflight, immutable transfer, consistent R0 backup and migration; fresh accounts/key import.
-- [ ] 4.2 HTTP browser and real smoke; >=30min observation with dependency failures.
-- [ ] 4.3 Serial independent restore, actual R0 rollback, same R1 final startup and health.
-- [ ] 4.4 Production tag only after PASS; archive, phase sync, ledgers and protected local/cloud/body handoff.
+- [x] 4.1 Cloud preflight, immutable transfer, consistent R0 backup and migration; fresh accounts/key import.
+- [x] 4.2 HTTP browser and real smoke; >=30min observation with dependency failures.
+- [x] 4.3 Serial independent restore, actual R0 rollback, same R1 final startup and health.
+- [x] 4.4 Production tag only after PASS; archive, phase sync, ledgers and protected local/cloud/body handoff.
 
 ## 5. Cold-start memory correction
 - [x] 5.1 Record master64MiB kernel OOM, R0 recovery and scoped historical evidence.
 - [x] 5.2 Raise R1 master to128MiB/2336MiB total; validate render/boundaries, promote exact config.
-- [ ] 5.3 Reuse bound real-model facts without calls; fresh30min/MQ/PG/three master cold recreations, serial backup/restore/R0 rollback/final startup.
+- [x] 5.3 Reuse bound real-model facts without calls; fresh30min/MQ/PG/three master cold recreations, serial backup/restore/R0 rollback/final startup.
