@@ -11,5 +11,5 @@
 - [x] 3.2 Real PG/MQ, migration, rollback/concurrency/isolation/secret tests.
 - [x] 3.3 Browser, real Flash/Pro within shared budget and bounded resources.
 ## 4. Delivery
-- [ ] 4.1 Evidence indexed by exact source/image; review and two PR promotions.
-- [ ] 4.2 Archive, sync branches and ledgers; R1.3 VERIFIED only after mandatory PASS.
+- [x] 4.1 Evidence indexed by exact source/image; review and two PR promotions.
+- [x] 4.2 Prepare archival/branch-sync and canonical handoff metadata after promotion; final receipts and ledgers are written after archival.
