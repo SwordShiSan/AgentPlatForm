@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "FUNCTIONAL_ACCEPTANCE_PASS_PENDING_PROMOTION",
+  "status": "VERIFIED",
   "runtimeSource": "78d861a7bcfba79b653f72b34b8e1a001e0da7c0",
   "uiSource": "f9e697a8737ca4a2719de996ff7863e80ef550f8",
   "runtimeJarSha256": "f21ac6244704e0d0aefb9318f3c6108a43db19acbc2e9e7b66273acc8c84e8e7",
@@ -121,5 +121,19 @@
     "R1.4 production/business budget separation remains a release planning gate.",
     "Body delivery is local and separate from Git."
   ],
-  "verifiedSourceHead": "81820c356607b16d92082b53936f7f75f30d9150"
+  "verifiedSourceHead": "81820c356607b16d92082b53936f7f75f30d9150",
+  "promotionPRs": [
+    {
+      "number": 30,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/30",
+      "mergeSha": "db49453a955f7d39b85a40688f05488457f782cf"
+    },
+    {
+      "number": 31,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/31",
+      "mergeSha": "27bbfe1b1af4eb9edb56cd9d33ff912fd0de23fe"
+    }
+  ],
+  "implementationMain": "27bbfe1b1af4eb9edb56cd9d33ff912fd0de23fe",
+  "stage": "R1.3 VERIFIED; R1 3/4; R1 not RELEASED"
 }
