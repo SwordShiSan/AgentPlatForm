@@ -1,0 +1,6 @@
+# Explicit user-approved cloud HTTP profile. HTTPS is reserved, not implemented.
+platform:
+  identity:
+    http-deployment: true
+    secure-cookie: false
+    origins: http://agentplatform.lailihao.cloud,http://124.222.55.140

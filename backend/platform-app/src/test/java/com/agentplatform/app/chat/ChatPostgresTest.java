@@ -41,7 +41,7 @@ class ChatPostgresTest {
         // Destructive reset is restricted above to this explicitly named, isolated test database.
         Flyway.configure().dataSource(url, "postgres", password).defaultSchema("pf").schemas("pf", "pf_runtime")
                 .cleanDisabled(false).load().clean();
-        for (String target : List.of("1", "2", "3", "4")) {
+        for (String target : List.of("1", "2", "3", "4", "5")) {
             Flyway.configure().dataSource(url, "postgres", password).defaultSchema("pf")
                     .schemas("pf", "pf_runtime").target(target).load().migrate();
         }
@@ -417,13 +417,14 @@ class ChatPostgresTest {
         denied("MODEL_CALL_LIMIT", () -> repository.beginCall(lease, false));
         repository.finish(lease, "FAILED", "FIXTURE_FINISHED");
         var next = claim(submit(alice)); var call = repository.beginCall(next, true);
-        sql("UPDATE pf.acceptance_model_meter SET physical_calls=20");
+        sql("UPDATE pf.acceptance_model_meter SET physical_calls=20,reserved_micros=990000,consumed_micros=100000");
         var recreated = new JdbcChatRepository(pool);
-        denied("ACCEPTANCE_MODEL_LIMIT", () -> recreated.startCall(next, call, true));
-        sql("UPDATE pf.acceptance_model_meter SET physical_calls=0,reserved_micros=990000");
-        denied("ACCEPTANCE_MODEL_LIMIT", () -> recreated.startCall(next, call, true));
-        assertEquals(0, count("SELECT physical_calls FROM pf.acceptance_model_meter"));
-        assertEquals(1, count("SELECT count(*) FROM pf.model_call WHERE status='PREPARED'"));
+        recreated.startCall(next, call, true);
+        assertEquals(21,count("SELECT physical_calls FROM pf.acceptance_model_meter"));
+        assertTrue(count("SELECT reserved_micros FROM pf.acceptance_model_meter")>990000);
+        assertEquals(100000,count("SELECT consumed_micros FROM pf.acceptance_model_meter"));
+        denied("CALL_ALREADY_STARTED",()->recreated.startCall(next,call,true));
+        assertEquals(21,count("SELECT physical_calls FROM pf.acceptance_model_meter"));
         // This is a test-only ledger boundary test; no network/provider calls occur.
     }
 
@@ -532,4 +533,29 @@ class ChatPostgresTest {
         assertEquals(1170,count("SELECT cost_micros FROM pf.model_call WHERE id='"+call.id()+"'"));assertEquals(1170,count("SELECT consumed_micros FROM pf.acceptance_model_meter"));
         repository.finish(lease,"SUCCEEDED",null);
     }
+    @Test void requestTraceReachesOutboxAttemptCallAndPrivateFailureDiagnostics() throws Exception {
+        repository.bind(MODEL,alice,key("PLATFORM",null),"PLATFORM");
+        UUID trace=UUID.randomUUID();com.agentplatform.types.RequestTrace.enter(trace);
+        com.agentplatform.domain.chat.ChatData.Task task;
+        try { task=submit(alice); } finally {com.agentplatform.types.RequestTrace.clear();}
+        var lease=claim(task);var call=repository.beginCall(lease,false);repository.startCall(lease,call,false);
+        repository.delta(lease,"部分回复😀");
+        repository.settle(lease,call,null,null,"PROVIDER_REQUEST_FAILED",false);
+        repository.finish(lease,"FAILED","PROVIDER_REQUEST_FAILED");
+        for(String table:List.of("task","event_outbox","attempt","model_call","failure_record"))
+            assertEquals(1,count("SELECT count(*) FROM pf."+table+" WHERE trace_id='"+trace+"'"),table);
+        var value=repository.diagnostics(alice,task.id());assertEquals(trace.toString(),value.get("traceId"));
+        assertEquals("UNKNOWN_SIDE_EFFECT",value.get("classification"));assertEquals(true,value.get("hasPartialOutput"));
+        assertEquals(false,value.get("automaticReplayAllowed"));assertFalse(value.toString().contains(SENTINEL));
+        denied("RESOURCE_NOT_FOUND",()->repository.diagnostics(bob,task.id()));
+    }
+    @Test void successfulFinalCommitCannotBypassRevokedIdentity() throws Exception {
+        repository.bind(MODEL,alice,key("PLATFORM",null),"PLATFORM");
+        var lease=claim(submit(alice));repository.delta(lease,"partial");
+        sql("UPDATE pf.membership SET status='REVOKED' WHERE user_id='"+alice.userId()+"'");
+        denied("RESOURCE_NOT_FOUND",()->repository.finish(lease,"SUCCEEDED",null));
+        repository.finish(lease,"FAILED","RESOURCE_NOT_FOUND");
+        assertEquals(0,count("SELECT count(*) FROM pf.task WHERE status='SUCCEEDED'"));
+    }
+
 }

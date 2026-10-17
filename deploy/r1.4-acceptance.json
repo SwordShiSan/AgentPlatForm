@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "status": "LOCAL_GATES_PASS_PENDING_PROMOTION",
+  "runtimeSource": "c37bec9fdb34bced93b460918d80752107e2b3cc",
+  "runtimeJarSha256": "32477070f1897c5248edcc06c050bdf98be47e2900cf8883ba55c1bddc11cbf7",
+  "tests": {
+    "fullMaven": 121,
+    "affectedIdentity": 26,
+    "distinctLatest": 122,
+    "linuxNonroot": 52,
+    "linuxPgState": 3,
+    "vueUnit": 20,
+    "browser": 14,
+    "realModelTurns": 4,
+    "dockerPreflight": 5
+  },
+  "providerFailureCases": 8,
+  "continuousTasks": 24,
+  "actualWorkerOom": true,
+  "images": [
+    {
+      "service": "api",
+      "configId": "sha256:44f450590e178bf7f0e10fb94b675c57af32bc495e2a0055dcf9852de2372dc3",
+      "sourceRevision": "c37bec9fdb34bced93b460918d80752107e2b3cc",
+      "repoDigests": [
+        "agentplatform-api@sha256:44f450590e178bf7f0e10fb94b675c57af32bc495e2a0055dcf9852de2372dc3"
+      ],
+      "platform": "linux/amd64",
+      "memoryBytes": 536870912,
+      "memorySwapBytes": 536870912,
+      "swapCurrentBytes": 0,
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "service": "worker",
+      "configId": "sha256:44f450590e178bf7f0e10fb94b675c57af32bc495e2a0055dcf9852de2372dc3",
+      "sourceRevision": "c37bec9fdb34bced93b460918d80752107e2b3cc",
+      "repoDigests": [
+        "agentplatform-api@sha256:44f450590e178bf7f0e10fb94b675c57af32bc495e2a0055dcf9852de2372dc3"
+      ],
+      "platform": "linux/amd64",
+      "memoryBytes": 536870912,
+      "memorySwapBytes": 536870912,
+      "swapCurrentBytes": 0,
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "service": "postgres",
+      "configId": "sha256:137f044b0efe3d57f39b972b9b53641b1f2045b99d879e298bbf514a25787dcf",
+      "sourceRevision": null,
+      "repoDigests": [
+        "pgvector/pgvector@sha256:137f044b0efe3d57f39b972b9b53641b1f2045b99d879e298bbf514a25787dcf"
+      ],
+      "platform": "linux/amd64",
+      "memoryBytes": 335544320,
+      "memorySwapBytes": 335544320,
+      "swapCurrentBytes": 0,
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "service": "rabbitmq",
+      "configId": "sha256:8dd6e3570ddaa2ef82a6c3a8950e79c1f73893adfbdddbc374fc1f1ac8a0f5dd",
+      "sourceRevision": null,
+      "repoDigests": [
+        "rabbitmq@sha256:8dd6e3570ddaa2ef82a6c3a8950e79c1f73893adfbdddbc374fc1f1ac8a0f5dd"
+      ],
+      "platform": "linux/amd64",
+      "memoryBytes": 536870912,
+      "memorySwapBytes": 536870912,
+      "swapCurrentBytes": 0,
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "service": "redis",
+      "configId": "sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499",
+      "sourceRevision": null,
+      "repoDigests": [
+        "redis@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499"
+      ],
+      "platform": "linux/amd64",
+      "memoryBytes": 67108864,
+      "memorySwapBytes": 67108864,
+      "swapCurrentBytes": 0,
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "service": "gateway",
+      "configId": "sha256:06f5a1b77aceb33f5a05eee43f6241bf238ac3c33a502e007b4a3d79a38a458d",
+      "sourceRevision": "c37bec9fdb34bced93b460918d80752107e2b3cc",
+      "repoDigests": [
+        "agentplatform-gateway@sha256:06f5a1b77aceb33f5a05eee43f6241bf238ac3c33a502e007b4a3d79a38a458d"
+      ],
+      "platform": "linux/amd64",
+      "memoryBytes": 33554432,
+      "memorySwapBytes": 33554432,
+      "swapCurrentBytes": 0,
+      "running": true,
+      "oomKilled": false
+    },
+    {
+      "service": "fixture",
+      "configId": "sha256:fae132e75914ff6e27999642814b1d8c3a418291187fe7af1c2c212b3c9110c6",
+      "sourceRevision": "c37bec9fdb34bced93b460918d80752107e2b3cc",
+      "repoDigests": [
+        "agentplatform-provider-fixture@sha256:fae132e75914ff6e27999642814b1d8c3a418291187fe7af1c2c212b3c9110c6"
+      ],
+      "platform": "linux/amd64",
+      "memoryBytes": 67108864,
+      "memorySwapBytes": 67108864,
+      "swapCurrentBytes": 0,
+      "running": true,
+      "oomKilled": false
+    }
+  ],
+  "realMeter": {
+    "id": 1,
+    "physical_calls": 17,
+    "reserved_micros": 49152,
+    "consumed_micros": 7434
+  },
+  "r14PhysicalCalls": 4,
+  "unknownHoldsPreserved": true,
+  "fixedAcceptanceCap": false,
+  "businessBudgetEnforced": true,
+  "resources": {
+    "localCapMiB": 2016,
+    "renderedCloudCapMiB": 2272,
+    "maximumCapMiB": 2887,
+    "hostReserveMiB": 768,
+    "swapExtension": false
+  },
+  "protectedPackage": {
+    "name": "r1.4-local-acceptance-20261017.zip",
+    "sha256": "896ece2c4a569ee5b2a292c3e865235fe9c4bd006f97b309731f3af98ccdeb44",
+    "retainUntil": "2026-11-17"
+  },
+  "cloudStatus": "NOT_RUN",
+  "actionsEnabled": false,
+  "notes": [
+    "Earlier constraint/checksum/MQ-recreation/locator failures retained as history, superseded by the documented passing reruns.",
+    "Latest122 distinct tests combine full121 and affected identity26; no claim that a full122-test command ran.",
+    "Estimates are not invoices; local Desktop caps are not cloud-capacity evidence.",
+    "Full checkpoint recovery remains R2; body delivery is separate from Git."
+  ]
+}

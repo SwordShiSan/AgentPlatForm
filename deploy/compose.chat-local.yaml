@@ -1,6 +1,6 @@
 name: agentplatform-r12-local
 x-app: &app
-  image: ${R12_API_IMAGE:-agentplatform-api:r1.3-local}
+  image: ${R12_API_IMAGE:-agentplatform-api:r1.4-local}
   user: "10001:10001"
   read_only: true
   restart: "no"
@@ -106,7 +106,7 @@ services:
       PLATFORM_CHAT_MASTER_KEY_FILE: /run/secrets/master_key
     secrets: [postgres_password, master_key]
   gateway:
-    image: ${R12_GATEWAY_IMAGE:-agentplatform-gateway:r1.3-local}
+    image: ${R12_GATEWAY_IMAGE:-agentplatform-gateway:r1.4-local}
     user: "101:101"
     read_only: true
     restart: "no"
@@ -120,7 +120,7 @@ services:
     networks: [chat]
     logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
   fixture:
-    image: ${R12_FIXTURE_IMAGE:-agentplatform-provider-fixture:r1.3-local}
+    image: ${R12_FIXTURE_IMAGE:-agentplatform-provider-fixture:r1.4-local}
     profiles: [fixture]
     user: "10001:10001"
     read_only: true

@@ -119,10 +119,10 @@ public final class JdbcChatRepository implements ChatRepository {
         var values=new TreeMap<String,Object>();values.putAll(resolved);values.put("modelId",model.toString());values.put("modelName",name);values.put("modelVersion",modelVersion);values.put("credentialId",credential.toString());values.put("credentialRevision",revision);values.put("window",8192);values.put("maxOutput",1024);values.put("thinking",false);values.put("pricingVersion",pricing);values.put("inputPrice",inputPrice);values.put("outputPrice",outputPrice);values.put("perCallMicros",perCall);values.put("bundleHash",bundle.hash());String config=json(values);
 
         exec(c,"INSERT INTO pf.chat_config_snapshot(id,space_id,model_id,credential_id,credential_revision,config_json,config_hash) VALUES(?,?,?,?,?,?::jsonb,?)",snapshot,a.spaceId(),model,credential,revision,config,hash(config));
-        exec(c,"INSERT INTO pf.task(id,space_id,conversation_id,creator_id,config_snapshot_id,bundle_id,remaining_micros) VALUES(?,?,?,?,?,?,?)",id,a.spaceId(),convo,a.userId(),snapshot,BUNDLE,totalCost);
+        exec(c,"INSERT INTO pf.task(id,space_id,conversation_id,creator_id,config_snapshot_id,bundle_id,remaining_micros,trace_id) VALUES(?,?,?,?,?,?,?,?)",id,a.spaceId(),convo,a.userId(),snapshot,BUNDLE,totalCost,com.agentplatform.types.RequestTrace.current());
         exec(c,"INSERT INTO pf.message(id,space_id,conversation_id,task_id,role,blocks_json,status) VALUES(?,?,?,?,'USER',?::jsonb,'COMPLETED'),(?,?,?,?,'ASSISTANT',?::jsonb,'STREAMING')",userMessage,a.spaceId(),convo,id,json(textBlocks(userMessage,text)),assistant,a.spaceId(),convo,id,json(textBlocks(assistant,"")));
         exec(c,"INSERT INTO pf.execution_dispatch(task_id) VALUES(?)",id);outbox(c,a,id,1);
-        event(c,a,convo,id,"task.accepted",1,Map.of("taskId",id.toString(),"status","QUEUED"));remember(c,a,key,path,fingerprint,id);audit(c,a,"TASK_SUBMITTED",id,key);return task(c,a,id,false);
+        event(c,a,convo,id,"task.accepted",1,Map.of("taskId",id.toString(),"status","QUEUED"));remember(c,a,key,path,fingerprint,id);audit(c,a,"TASK_SUBMITTED",id,com.agentplatform.types.RequestTrace.current());return task(c,a,id,false);
     }
     @Override public Task task(Actor a,UUID id){return tx(c->{auth(c,a);return task(c,a,id,false);});}
     @Override public Task cancel(Actor a,UUID id,UUID key){return tx(c->{
@@ -229,7 +229,7 @@ public final class JdbcChatRepository implements ChatRepository {
     @Override public void startCall(Lease l,Call call,boolean real){tx(c->{owned(c,l,false);
         authorizeCredential(c,l);activeModel(c,l);
         long allowance=callAllowance(c,l);
-        if(real&&exec(c,"UPDATE pf.acceptance_model_meter SET physical_calls=physical_calls+1,reserved_micros=reserved_micros+? WHERE id=1 AND physical_calls<20 AND reserved_micros+consumed_micros+?<=1000000",allowance,allowance)!=1)throw new ChatFailure(429,"ACCEPTANCE_MODEL_LIMIT");
+        if(real&&exec(c,"UPDATE pf.acceptance_model_meter SET physical_calls=physical_calls+1,reserved_micros=reserved_micros+? WHERE id=1",allowance)!=1)throw new ChatFailure(503,"ACCEPTANCE_METER_UNAVAILABLE");
         if(exec(c,"UPDATE pf.model_call SET status='STARTED' WHERE id=? AND task_id=? AND status='PREPARED'",call.id(),l.taskId())!=1)throw new ChatFailure(409,"CALL_ALREADY_STARTED");return null;
     });}
     @Override public void settle(Lease l,Call call,HarnessData.Round round,String requestId,String error,boolean real){tx(c->{
@@ -237,7 +237,7 @@ public final class JdbcChatRepository implements ChatRepository {
         try(var s=q(c,"SELECT r.state FROM pf.budget_reservation r JOIN pf.model_call m ON m.id=r.call_id WHERE r.call_id=? AND m.task_id=? AND m.attempt_id=? AND m.space_id=? FOR UPDATE OF r",call.id(),l.taskId(),l.attemptId(),l.spaceId());var r=s.executeQuery()){if(!r.next())throw new ChatFailure(409,"CALL_NOT_FOUND");state=r.getString(1);}
         if(!"RESERVED".equals(state))return null;
         if(round==null){
-            boolean unbilled=Set.of("PROVIDER_RATE_LIMITED","PROVIDER_AUTH_REJECTED","CALL_NOT_SENT").contains(error==null?"":error);
+            boolean unbilled=Set.of("PROVIDER_RATE_LIMITED","PROVIDER_AUTH_REJECTED","PROVIDER_BALANCE_EXHAUSTED","CALL_NOT_SENT").contains(error==null?"":error);
             String outcome=unbilled||"PROVIDER_SERVER_REJECTED".equals(error)?"FAILED":"PROVIDER_USAGE_MISSING".equals(error)?"COMPLETED":"UNKNOWN";
             exec(c,"UPDATE pf.model_call SET status=?,error_code=?,ended_at=now() WHERE id=?",outcome,error,call.id());
             exec(c,"UPDATE pf.budget_reservation SET state=? WHERE call_id=?",unbilled?"RELEASED":"RECONCILING",call.id());
@@ -282,7 +282,7 @@ public final class JdbcChatRepository implements ChatRepository {
         exec(c,"UPDATE pf.model_call SET status='FAILED',error_code='CALL_NOT_SENT',ended_at=now() WHERE task_id=? AND status='PREPARED'",task);
     }
     @Override public void finish(Lease l,String status,String reason){tx(c->{
-        owned(c,l,true);if(!Set.of("SUCCEEDED","FAILED","CANCELLED","BLOCKED").contains(status))throw new IllegalArgumentException("Invalid terminal outcome");
+        owned(c,l,true);if("SUCCEEDED".equals(status)){owned(c,l,false);authorizeCredential(c,l);activeModel(c,l);}if(!Set.of("SUCCEEDED","FAILED","CANCELLED","BLOCKED").contains(status))throw new IllegalArgumentException("Invalid terminal outcome");
         releasePrepared(c,new Actor(l.userId(),l.spaceId()),l.taskId());
         // An open call cannot disappear when cancellation/provider failure interrupts its result.
         exec(c,"UPDATE pf.budget_reservation r SET state='RECONCILING' FROM pf.model_call m WHERE r.call_id=m.id AND m.task_id=? AND r.state='RESERVED'",l.taskId());
@@ -314,6 +314,12 @@ public final class JdbcChatRepository implements ChatRepository {
         exec(c,"UPDATE pf.message SET status=CASE WHEN blocks_json->0->>'text'='' THEN 'FAILED' ELSE 'PARTIAL' END,version=version+1 WHERE id=?",assistant);exec(c,"UPDATE pf.execution_dispatch SET status='IDLE',lease_until=NULL WHERE task_id=?",task);exec(c,"UPDATE pf.execution_slot SET task_id=NULL,owner_id=NULL,lease_until=NULL,fencing_token=fencing_token+1 WHERE id=1");
         assistantTerminalEvent(c,new Actor(user,space),convo,task);
         event(c,new Actor(user,space),convo,task,"task.state_changed",task(c,new Actor(user,space),task,false).version(),Map.of("taskId",task.toString(),"status","FAILED","reasonCode","WORKER_INTERRUPTED"));return null;
+    });}
+    @Override public List<Credential> recoveryCredentials(){return tx(c->{
+        List<Credential> values=new ArrayList<>();
+        try(var st=q(c,"SELECT * FROM pf.credential ORDER BY id");var row=st.executeQuery()){
+            while(row.next())values.add(new Credential(row.getObject("id",UUID.class),row.getString("scope_type"),row.getObject("space_id",UUID.class),row.getObject("owner_user_id",UUID.class),row.getBytes("ciphertext"),row.getBytes("nonce"),row.getInt("key_version"),row.getLong("revision")));
+        }return List.copyOf(values);
     });}
     @Override public UUID importCredential(Credential k){return tx(c->{exec(c,"INSERT INTO pf.credential(id,scope_type,space_id,owner_user_id,ciphertext,nonce,key_version,revision) VALUES(?,?,?,?,?,?,?,?)",k.id(),k.scope(),k.spaceId(),k.ownerId(),k.ciphertext(),k.nonce(),k.keyVersion(),k.revision());return k.id();});}
     @Override public void revokeCredential(UUID id){tx(c->{
@@ -402,5 +408,17 @@ public final class JdbcChatRepository implements ChatRepository {
     private static void activeModel(Connection c,Lease l)throws SQLException{validateModel(c,l.modelId());}
     @Override public String modelName(Lease l){return tx(c->{owned(c,l,false);activeModel(c,l);return (String)frozen(c,l).get("modelName");});}
 
-    @Override public boolean ready(){try{return tx(c->{try(var s=q(c,"SELECT to_regclass('pf.user_model_credential') IS NOT NULL AND to_regclass('pf.user_preference_revision') IS NOT NULL AND to_regclass('pf.task') IS NOT NULL AND to_regclass('pf.event_outbox') IS NOT NULL AND to_regclass('pf.acceptance_model_meter') IS NOT NULL AND (SELECT schema_version=1 FROM pf.baseline_version WHERE id=1)");var r=s.executeQuery()){return r.next()&&r.getBoolean(1);}});}catch(ChatFailure e){return false;}}
+    @Override public Map<String,Object> diagnostics(Actor a,UUID id){return tx(c->{
+        auth(c,a);Task task=task(c,a,id,false);Map<String,Object> result=new LinkedHashMap<>();
+        boolean unknown;try(var st=q(c,"SELECT EXISTS(SELECT 1 FROM pf.model_call WHERE task_id=? AND status='UNKNOWN') OR EXISTS(SELECT 1 FROM pf.budget_reservation WHERE task_id=? AND state='RECONCILING')",id,id);var row=st.executeQuery()){row.next();unknown=row.getBoolean(1);}
+        String code=task.reasonCode();
+        if(code==null&&"QUEUED".equals(task.status()))try(var st=q(c,"SELECT last_error FROM pf.event_outbox WHERE aggregate_id=? AND last_error IS NOT NULL ORDER BY created_at DESC LIMIT 1",id);var row=st.executeQuery()){if(row.next())code=row.getString(1);}
+        String category=com.agentplatform.types.FailureRecorder.classification(code,unknown);
+        try(var st=q(c,"SELECT trace_id FROM pf.task WHERE id=?",id);var row=st.executeQuery()){row.next();result.put("traceId",row.getObject(1).toString());}
+        result.put("taskId",id.toString());result.put("code",code);result.put("classification",category);
+        result.put("suggestedAction",com.agentplatform.types.FailureRecorder.action(category));result.put("automaticReplayAllowed",false);
+        try(var st=q(c,"SELECT EXISTS(SELECT 1 FROM pf.message WHERE task_id=? AND role='ASSISTANT' AND status='PARTIAL' AND length(blocks_json->0->>'text')>0)",id);var row=st.executeQuery()){row.next();result.put("hasPartialOutput",row.getBoolean(1));}
+        return result;
+    });}
+    @Override public boolean ready(){try{return tx(c->{try(var s=q(c,"SELECT to_regclass('pf.failure_record') IS NOT NULL AND to_regclass('pf.user_model_credential') IS NOT NULL AND to_regclass('pf.user_preference_revision') IS NOT NULL AND to_regclass('pf.task') IS NOT NULL AND to_regclass('pf.event_outbox') IS NOT NULL AND to_regclass('pf.acceptance_model_meter') IS NOT NULL AND (SELECT schema_version=1 FROM pf.baseline_version WHERE id=1)");var r=s.executeQuery()){return r.next()&&r.getBoolean(1);}});}catch(ChatFailure e){return false;}}
 }

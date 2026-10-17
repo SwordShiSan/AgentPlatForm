@@ -65,6 +65,7 @@ public final class DeepSeekChatProvider implements ChatProvider {
         }
         System.getLogger(DeepSeekChatProvider.class.getName()).log(System.Logger.Level.WARNING,
                 "Provider failure type="+error.getClass().getName()+", cause="+lastType+", httpStatus="+status);
+        if(status!=null&&status==402)return new ChatFailure(503,"PROVIDER_BALANCE_EXHAUSTED");
         if(status!=null&&status==429)return new ChatFailure(503,"PROVIDER_RATE_LIMITED");
         if(status!=null&&(status==401||status==403))return new ChatFailure(503,"PROVIDER_AUTH_REJECTED");
         if(status!=null&&status>=500&&status<=599)return new ChatFailure(503,"PROVIDER_SERVER_REJECTED");

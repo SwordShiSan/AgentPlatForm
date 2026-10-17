@@ -15,7 +15,8 @@ import json,pathlib,subprocess,sys
 ids=[]
 for project in ['agentplatform-app','agentplatform-env']:
     ids.extend(subprocess.check_output(['docker','ps','-q','--filter','label=com.docker.compose.project='+project],text=True).split())
-assert len(ids)==12,'Expected all12 baseline services before backup'
+expected=10 if pathlib.Path('/srv/agentplatform/deploy/r1-enabled').is_file() else 12
+assert len(ids)==expected,'Expected exact active release services before backup'
 rows=[]
 for item in json.loads(subprocess.check_output(['docker','inspect',*ids])):
     state=item['State'];host=item['HostConfig'];config=item['Config']

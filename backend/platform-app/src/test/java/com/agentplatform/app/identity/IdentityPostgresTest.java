@@ -46,6 +46,9 @@ class IdentityPostgresTest {
         Assumptions.assumeTrue(url != null, "Real PostgreSQL fixture not configured; not acceptance evidence");
         assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15441/identity_test?"), "Refusing a database outside the isolated identity test fixture");
         password = Files.readString(Path.of(System.getenv("R11_TEST_PASSWORD_FILE"))).strip();
+        // Only this named isolated test DB is reset; prove a fresh V1 installation every run.
+        Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime")
+                .cleanDisabled(false).load().clean();
         Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").target("1").load().migrate();
         assertTrue(new DependencyReadinessProbe(new PostgresStateStorage(url,"postgres",password), List.of()).ready());
         Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").load().migrate();
@@ -90,6 +93,15 @@ class IdentityPostgresTest {
         assertEquals(a,store.provision(request,"same","alice",encoded,false));
         failure(409,()->store.provision(request,"different","alice",encoded,false));
         assertEquals(1,store.spaces(a).size());
+    }
+    @Test void stablePersonalSpaceAndSessionSurviveStoredDisplayIdentityChange() throws Exception {
+        UUID user=provision("alice",false);var before=store.spaces(user);var auth=login("alice");
+        // Storage invariant only: R1 does not expose a username-change endpoint or file API.
+        sql("UPDATE pf.app_user SET username_norm='renamed_alice' WHERE id='"+user+"'");
+        assertEquals(user,store.findUser("renamed_alice").id());assertNull(store.findUser("alice"));
+        assertEquals(before,store.spaces(user));
+        assertEquals(user.toString(),service.me(auth.cookieToken(),null).id());
+        assertEquals("renamed_alice",service.me(auth.cookieToken(),null).username());
     }
     @ParameterizedTest @ValueSource(strings={"space","membership","space_storage","identity_operation"})
     void databaseFailureRollsBackEveryInsertedRow(String table) throws Exception {
@@ -179,8 +191,8 @@ class IdentityPostgresTest {
         assertTrue(secrets.matches(PASSWORD,encoded));
     }
     @Test void publicNonSecureOriginCannotStart() {
-        assertThrows(IllegalArgumentException.class,()->new IdentityConfiguration().identityApi(store,secrets,"http://public.example",false));
-        assertThrows(IllegalArgumentException.class,()->new IdentityConfiguration().identityApi(store,secrets,"http://localhost.evil.example",false));
+        assertThrows(IllegalArgumentException.class,()->new IdentityConfiguration().identityApi(store,secrets,"http://public.example",false,false));
+        assertThrows(IllegalArgumentException.class,()->new IdentityConfiguration().identityApi(store,secrets,"http://localhost.evil.example",false,false));
     }
     @Test void actualLoginFailuresLockAndRecover() {
         provision("alice",false);var pre=service.csrf(null);
@@ -188,4 +200,11 @@ class IdentityPostgresTest {
         failure(401,()->service.login(pre.cookieToken(),pre.csrfToken(),ORIGIN,"ip",new IdentityApi.LoginRequest("alice",PASSWORD)));
         clock.now=clock.now.plusSeconds(900);assertEquals("alice",service.me(login("alice").cookieToken(),null).username());
     }
+    @Test void approvedHttpDeploymentIsExplicitAndOriginBound() {
+        var configuration=new IdentityConfiguration();
+        assertDoesNotThrow(()->configuration.identityApi(store,secrets,"http://agentplatform.lailihao.cloud,http://124.222.55.140",false,true));
+        assertThrows(IllegalArgumentException.class,()->configuration.identityApi(store,secrets,"http://public.example",false,true));
+        assertThrows(IllegalArgumentException.class,()->configuration.identityApi(store,secrets,"http://124.222.55.140",true,true));
+    }
+
 }

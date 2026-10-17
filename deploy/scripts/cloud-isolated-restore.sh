@@ -61,9 +61,15 @@ mount -o loop,prjquota "$restore/quota/workspaces.xfs" "$restore/workspaces"
 mounted=true
 findmnt -n -t xfs -o OPTIONS --target "$restore/workspaces" | grep -q prjquota
 export PLATFORM_ROOT="$restore" PLATFORM_BACKPLANE=agentplatform-r04-restore-backplane
+export PLATFORM_MODEL_EGRESS=agentplatform-r04-restore-model-egress
 export PLATFORM_INGRESS=agentplatform-r04-restore-ingress PLATFORM_EGRESS_CONTROL=agentplatform-r04-restore-egress GATEWAY_PORT=18082
 env_compose=(docker compose --env-file "$restore/deploy/images.env" -p agentplatform-r04-restore-env -f "$restore/deploy/compose.env.yaml")
 app_compose=(docker compose --env-file "$restore/deploy/images.env" -p agentplatform-r04-restore-app -f "$restore/deploy/compose.app.yaml")
+if [[ -f "$restore/deploy/r1-enabled" ]]; then
+ env_compose+=(-f "$restore/deploy/compose.r1-http.env.yaml")
+ app_compose+=(-f "$restore/deploy/compose.r1-http.app.yaml")
+ # Recovery never starts a worker or contacts a real provider.
+fi
 python3 "$root/deploy/scripts/workspace-manifest.py" verify "$restore/workspaces" "$backup/workspace-files.json"
 xfs_quota -x -c 'report -p -b -i' "$restore/workspaces" > "$restore/reports/quota-report.txt"
 diff -u <(tail -n +2 "$backup/quota-report.txt") <(tail -n +2 "$restore/reports/quota-report.txt")
@@ -104,6 +110,9 @@ curl -fsS http://127.0.0.1:18082/api/v1/readiness > "$restore/reports/readiness.
 pg=$("${env_compose[@]}" ps -q postgres)
 bash "$root/deploy/scripts/recovery-database-evidence.sh" capture "$pg" > "$restore/reports/recovery-database.txt"
 diff -u "$backup/recovery-database.txt" "$restore/reports/recovery-database.txt"
+if [[ -f "$restore/deploy/r1-enabled" ]]; then
+ python3 "$root/deploy/scripts/r1-recovery-evidence.py" "$pg" "$restore" > "$restore/reports/r1-recovery.json"
+fi
 mq=$("${env_compose[@]}" ps -q rabbitmq)
 docker exec "$mq" rabbitmqctl export_definitions /tmp/r04-restored-definitions.json >/dev/null
 docker cp "$mq:/tmp/r04-restored-definitions.json" "$restore/rabbitmq-restored-private.json" >/dev/null

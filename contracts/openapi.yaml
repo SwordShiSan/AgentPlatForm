@@ -549,6 +549,28 @@ paths:
           schema:
             type: string
             format: uuid
+  /api/v1/tasks/{id}/diagnostics:
+    get:
+      operationId: getTaskDiagnostics
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Authorized committed platform state; no provider secrets or internal reasoning
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskDiagnostics"
+        default:
+          $ref: "#/components/responses/IdentityProblem"
 components:
   securitySchemes:
     session:
@@ -1091,3 +1113,49 @@ components:
         - bundleId
         - values
         - restrictions
+    TaskDiagnostics:
+      type: object
+      additionalProperties: false
+      required:
+        - taskId
+        - traceId
+        - code
+        - classification
+        - hasPartialOutput
+        - suggestedAction
+        - automaticReplayAllowed
+      properties:
+        taskId:
+          type: string
+          format: uuid
+        traceId:
+          type: string
+          format: uuid
+        code:
+          type:
+            - string
+            - "null"
+        classification:
+          type: string
+          enum:
+            - NONE
+            - CANCELLED
+            - USER_ACTION
+            - POLICY_DENIED
+            - TRANSIENT_SAFE_RETRY
+            - UNKNOWN_SIDE_EFFECT
+            - BUG
+        hasPartialOutput:
+          type: boolean
+        suggestedAction:
+          type: string
+          enum:
+            - NONE
+            - CHECK_ACCESS_AND_CREDENTIAL
+            - CHECK_CONFIGURATION_AND_BUDGET
+            - CHECK_SERVICE_STATUS
+            - CONTACT_OPERATOR
+            - CONTACT_OPERATOR_FOR_RECONCILIATION
+        automaticReplayAllowed:
+          type: boolean
+          const: false

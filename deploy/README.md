@@ -1,6 +1,6 @@
 # Current R0 HTTP production release (2026-10-15)
 
-R0 RELEASED at `production-r0-c46a73ae4d00`;new stack online,legacy retained stopped. HTTP80 only at124.222.55.140 and the configured Host agentplatform.lailihao.cloud. User explicitly excludes DNS/TLS checks/configuration from this release;no443/certificate/redirect requirement. Guarded systemd lifecycle and bounded retries are active. See [release evidence](R0-RELEASE.md). R1 remains NOT_STARTED.
+R0 RELEASED at `production-r0-c46a73ae4d00`; cloud unchanged. R1.1–R1.3 VERIFIED; R1.4 integration/release IMPLEMENTING. Current and subsequent stages use approved HTTP only; HTTPS is reserved and unimplemented, DNS untouched. See [R1 release gates](R1-RELEASE.md) and historical [R0 evidence](R0-RELEASE.md). No R1 production tag before all cloud gates pass.
 
 # R0.4 acceptance policy retained as preparation history
 

@@ -16,15 +16,16 @@ public final class ProblemHandler extends ResponseEntityExceptionHandler {
     org.springframework.http.ResponseEntity<ProblemDetail> chatFailure(com.agentplatform.domain.chat.ChatFailure failure) {
         var problem=ProblemDetail.forStatusAndDetail(org.springframework.http.HttpStatusCode.valueOf(failure.status()),"The chat request could not be completed.");
         problem.setType(URI.create("urn:agentplatform:error:"+failure.code().toLowerCase(java.util.Locale.ROOT).replace('_','-')));
-        problem.setProperty("code",failure.code());problem.setProperty("traceId",UUID.randomUUID().toString());problem.setProperty("retryable",failure.status()==503||failure.status()==429);
+        com.agentplatform.types.FailureRecorder.request(failure.code(),com.agentplatform.types.RequestTrace.current());problem.setProperty("code",failure.code());problem.setProperty("traceId",com.agentplatform.types.RequestTrace.current().toString());problem.setProperty("retryable",failure.status()==503||failure.status()==429);
         return org.springframework.http.ResponseEntity.status(failure.status()).header("Cache-Control","no-store").body(problem);
     }
     @org.springframework.web.bind.annotation.ExceptionHandler(com.agentplatform.domain.identity.IdentityFailure.class)
     org.springframework.http.ResponseEntity<ProblemDetail> identityFailure(com.agentplatform.domain.identity.IdentityFailure failure) {
         var problem = ProblemDetail.forStatusAndDetail(org.springframework.http.HttpStatusCode.valueOf(failure.status()), "The identity request could not be completed.");
         problem.setType(URI.create("urn:agentplatform:error:" + failure.code().toLowerCase(java.util.Locale.ROOT).replace('_', '-')));
+        com.agentplatform.types.FailureRecorder.request(failure.code(),com.agentplatform.types.RequestTrace.current());
         problem.setProperty("code", failure.code());
-        problem.setProperty("traceId", UUID.randomUUID().toString());
+        problem.setProperty("traceId", com.agentplatform.types.RequestTrace.current().toString());
         problem.setProperty("retryable", failure.status() == 503 || failure.status() == 429);
         return org.springframework.http.ResponseEntity.status(failure.status()).header("Cache-Control", "no-store").body(problem);
     }
@@ -40,8 +41,9 @@ public final class ProblemHandler extends ResponseEntityExceptionHandler {
         };
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, "The request could not be completed.");
         problem.setType(URI.create("urn:agentplatform:error:" + code.toLowerCase(java.util.Locale.ROOT).replace('_', '-')));
+        com.agentplatform.types.FailureRecorder.request(code,com.agentplatform.types.RequestTrace.current());
         problem.setProperty("code", code);
-        problem.setProperty("traceId", UUID.randomUUID().toString());
+        problem.setProperty("traceId", com.agentplatform.types.RequestTrace.current().toString());
         problem.setProperty("retryable", false);
         return super.handleExceptionInternal(exception, problem, headers, status, request);
     }
