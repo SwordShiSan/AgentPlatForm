@@ -24,6 +24,7 @@ const preferences = useQuery({ queryKey: computed(() => ['chat', actor.value, 'p
 const listKey = computed(() => ['chat', actor.value, 'conversations']);
 const snapshotKey = computed(() => ['chat', actor.value, 'snapshot', selected.value]);
 const models = useQuery({ queryKey: computed(() => ['chat', actor.value, 'models']), enabled: computed(() => !!actor.value), queryFn: async () => (await api.GET('/api/v1/models')).data! });
+const modelAvailable = computed(() => models.data.value?.items.some(item => item.id === selectedModel.value) ?? false);
 const conversations = useQuery({ queryKey: listKey, enabled: computed(() => !!actor.value), queryFn: async () => (await api.GET('/api/v1/conversations', { params: { query: { limit: 100 } } })).data! });
 const snapshot = useQuery({ queryKey: snapshotKey, enabled: computed(() => !!actor.value && !!selected.value), queryFn: async () => (await api.GET('/api/v1/conversations/{id}/snapshot', { params: { path: { id: selected.value } } })).data! });
 const lastTask = computed(() => snapshot.data.value?.tasks.at(-1));
@@ -125,7 +126,11 @@ async function submit() {
     if (conversation) await api.POST('/api/v1/conversations/{id}/tasks', { params: { path: { id: conversation }, header: { 'Idempotency-Key': value.key, 'X-CSRF-Token': token } }, body });
     else { const accepted = (await api.POST('/api/v1/conversations', { params: { header: { 'Idempotency-Key': value.key, 'X-CSRF-Token': token } }, body: { title: '新对话', initialTask: body } })).data!; conversation = accepted.id; }
     pending.value = undefined; draft.value = ''; stopStream(); await cache.invalidateQueries({ queryKey: listKey.value });
-    if (!value.conversation) await router.push(`/app/chat/${conversation}`);
+    if (!value.conversation) {
+      drafts.save(actor.value, space.value, '', { text: '', model: '', source: 'PLATFORM' });
+      drafts.save(actor.value, space.value, conversation, { text: '', model: value.model, source: value.source });
+      await router.push(`/app/chat/${conversation}`);
+    }
     await snapshot.refetch(); await config.refetch(); connect();
   } catch (failure) {
     if (failure instanceof ApiError && [400, 403, 404, 422, 429].includes(failure.problem.status)) { pending.value = undefined; error.value = `提交被拒绝（${failure.problem.code}），输入已保留，请调整配置或额度。`; }
@@ -176,7 +181,7 @@ async function cancel() {
         <p class="intro">选择仅影响下次发送。{{ effective.data.value?.sources.modelId === 'USER' ? '默认模型来自个人偏好。' : '默认模型来自平台。' }}</p>
         <label for="chat-input">消息</label>
         <textarea id="chat-input" v-model="draft" rows="3" :disabled="busy || !!pending" placeholder="输入文字，按 Ctrl + Enter 发送" @keydown.ctrl.enter.prevent="submit" @keydown.meta.enter.prevent="submit" />
-        <div class="chat-actions"><button type="submit" :disabled="busy || (!pending && (running || !draft.trim())) || !selectedModel">{{ pending ? '重试同一条消息' : '发送' }}</button><button v-if="running" type="button" :disabled="busy || lastTask?.cancelRequested" @click="cancel">取消回复</button></div>
+        <div class="chat-actions"><button type="submit" :disabled="busy || (!pending && (running || !draft.trim())) || !modelAvailable">{{ pending ? '重试同一条消息' : '发送' }}</button><button v-if="running" type="button" :disabled="busy || lastTask?.cancelRequested" @click="cancel">取消回复</button></div>
       </form>
       <details v-if="config.data.value"><summary>当前任务配置</summary><p>模型：{{ config.data.value.values.modelName }}；来源：{{ config.data.value.values.credentialSource }}</p><p class="chat-text">快照 {{ config.data.value.configSnapshotId }} · {{ config.data.value.configHash }}</p><p v-if="!config.data.value.restrictions.credentialActive">此任务凭据已撤销。</p></details>
       <ModelSettings v-if="actor" :actor="actor" />

@@ -479,6 +479,7 @@ class ChatPostgresTest {
         var again=repository.first(alice,request,"Draft",null,null,"First 🧪");
         assertEquals(first.task().id(),again.task().id());assertEquals(1,count("SELECT count(*) FROM pf.conversation"));
         assertEquals(1,count("SELECT count(*) FROM pf.task"));assertEquals(1,count("SELECT count(*) FROM pf.event_outbox"));
+        assertEquals(List.of("USER","ASSISTANT"),repository.snapshot(alice,first.conversation().id()).messages().stream().map(Message::role).toList());
         denied("IDEMPOTENCY_CONFLICT",()->repository.first(alice,request,"Draft",null,null,"changed"));
         assertEquals("PLATFORM",((java.util.Map<?,?>)repository.configuration(alice,first.task().id()).get("values")).get("credentialSource"));
     }

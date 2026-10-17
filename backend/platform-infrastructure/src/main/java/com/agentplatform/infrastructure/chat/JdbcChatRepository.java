@@ -85,7 +85,7 @@ public final class JdbcChatRepository implements ChatRepository {
         auth(c,a);conversation(c,a,id,false);long cursor;
         try(var s=q(c,"SELECT next_seq FROM pf.conversation WHERE space_id=? AND id=?",a.spaceId(),id);var r=s.executeQuery()){r.next();cursor=r.getLong(1);}
         List<Message> messages=new ArrayList<>();List<Task> tasks=new ArrayList<>();
-        try(var s=q(c,"SELECT * FROM pf.message WHERE space_id=? AND conversation_id=? ORDER BY created_at,id",a.spaceId(),id);var r=s.executeQuery()){while(r.next())messages.add(new Message(r.getObject("id",UUID.class),r.getObject("task_id",UUID.class),r.getString("role"),blocks(r.getString("blocks_json")),r.getString("status"),r.getLong("version")));}
+        try(var s=q(c,"SELECT * FROM pf.message WHERE space_id=? AND conversation_id=? ORDER BY created_at,task_id,CASE role WHEN 'USER' THEN 0 ELSE 1 END,id",a.spaceId(),id);var r=s.executeQuery()){while(r.next())messages.add(new Message(r.getObject("id",UUID.class),r.getObject("task_id",UUID.class),r.getString("role"),blocks(r.getString("blocks_json")),r.getString("status"),r.getLong("version")));}
         try(var s=q(c,"SELECT * FROM pf.task WHERE space_id=? AND conversation_id=? ORDER BY created_at,id",a.spaceId(),id);var r=s.executeQuery()){while(r.next())tasks.add(readTask(r));}
         return new Snapshot(id,cursor,List.copyOf(messages),List.copyOf(tasks));
     });}
@@ -206,7 +206,7 @@ public final class JdbcChatRepository implements ChatRepository {
     @Override public void heartbeat(Lease l){tx(c->{owned(c,l,false);authorizeCredential(c,l);activeModel(c,l);exec(c,"UPDATE pf.execution_slot SET lease_until=now()+interval '60 seconds' WHERE id=1");exec(c,"UPDATE pf.execution_dispatch SET lease_until=now()+interval '60 seconds' WHERE task_id=?",l.taskId());return null;});}
     @Override public List<HarnessData.Message> history(Lease l){return tx(c->{
         owned(c,l,false);List<HarnessData.Message> messages=new ArrayList<>();messages.add(HarnessData.Message.text(HarnessData.Role.SYSTEM,"You are a helpful assistant. Answer ordinary text questions. No tools or filesystem access are available."));
-        try(var s=q(c,"SELECT m.role,m.blocks_json FROM pf.message m JOIN pf.task t ON t.id=m.task_id WHERE m.space_id=? AND m.conversation_id=? AND ((t.status='SUCCEEDED' AND m.status='COMPLETED') OR (t.id=? AND m.role='USER')) ORDER BY m.created_at,m.id",l.spaceId(),l.conversationId(),l.taskId());var r=s.executeQuery()){
+        try(var s=q(c,"SELECT m.role,m.blocks_json FROM pf.message m JOIN pf.task t ON t.id=m.task_id WHERE m.space_id=? AND m.conversation_id=? AND ((t.status='SUCCEEDED' AND m.status='COMPLETED') OR (t.id=? AND m.role='USER')) ORDER BY t.created_at,t.id,CASE m.role WHEN 'USER' THEN 0 ELSE 1 END,m.id",l.spaceId(),l.conversationId(),l.taskId());var r=s.executeQuery()){
             long estimate=512;while(r.next()){String text=String.valueOf(blocks(r.getString(2)).getFirst().get("text"));estimate+=text.getBytes(StandardCharsets.UTF_8).length+32;if(estimate>6144)throw new ChatFailure(422,"CONTEXT_REQUIRED_TOO_LARGE");messages.add(HarnessData.Message.text(HarnessData.Role.valueOf(r.getString(1)),text));}
         }return List.copyOf(messages);
     });}
@@ -368,8 +368,9 @@ public final class JdbcChatRepository implements ChatRepository {
         if(!Set.of("PLATFORM","USER").contains(policy))throw new ChatFailure(422,"INVALID_CREDENTIAL_SOURCE");
         return Map.of("modelId",model,"credentialSource",policy);
     }
+    private static boolean preferenceDefined(Connection c,Actor a,String key)throws SQLException{try(var st=q(c,"SELECT 1 FROM pf.user_preference WHERE user_id=? AND key=?",a.userId(),key);var r=st.executeQuery()){return r.next();}}
     @Override public Map<String,Object> effective(Actor a){return tx(true,c->{auth(c,a);var p=preferences(c,a);var resolved=resolve(c,a,null,null);var values=Map.of("modelId",resolved.get("modelId").toString(),"credentialSource",resolved.get("credentialSource"));
-        return Map.of("values",values,"sources",Map.of("modelId",p.get("defaultModelId")==null?"PLATFORM":"USER","credentialSource",((Number)p.get("version")).longValue()==0?"PLATFORM":"USER"),"lockedFields",List.of(),"configHash",hash(json(new TreeMap<>(values))));
+        return Map.of("values",values,"sources",Map.of("modelId",p.get("defaultModelId")==null?"PLATFORM":"USER","credentialSource",preferenceDefined(c,a,"defaultCredentialSource")?"USER":"PLATFORM"),"lockedFields",List.of(),"configHash",hash(json(new TreeMap<>(values))));
     });}
     @Override public Map<String,Object> configuration(Actor a,UUID id){return tx(true,c->{auth(c,a);task(c,a,id,false);
         try(var st=q(c,"SELECT s.*,t.bundle_id,k.status='ACTIVE' AND k.revision=s.credential_revision AS credential_active,m.status='ACTIVE' AS model_active FROM pf.task t JOIN pf.chat_config_snapshot s ON s.id=t.config_snapshot_id JOIN pf.credential k ON k.id=s.credential_id JOIN pf.model_definition m ON m.id=s.model_id WHERE t.id=? AND t.space_id=?",id,a.spaceId());var r=st.executeQuery()){
