@@ -51,3 +51,22 @@ test('owner credential lifecycle never echoes secret or stores it in browser sta
   await page.getByLabel('消息', { exact: true }).fill('fixture:normal'); await page.getByRole('button', { name: '发送', exact: true }).click(); await expect(page.getByRole('alert')).toContainText('CREDENTIAL_SOURCE_UNAVAILABLE');
   await page.getByLabel('凭据来源', { exact: true }).selectOption('PLATFORM');
 });
+
+test('preference preconditions, CSRF and cross-space credential access are enforced by real API', async ({ browser, baseURL }) => {
+  const a = await browser.newContext({ baseURL }); const b = await browser.newContext({ baseURL });
+  try {
+    await login(await a.newPage(), 'alice'); await login(await b.newPage(), 'bob');
+    const original = await (await a.request.get('/api/v1/me/preferences')).json(); const csrf = await (await a.request.get('/api/v1/auth/csrf')).json();
+    const models = await (await a.request.get('/api/v1/models')).json(); const flash = models.items.find((item: { name: string }) => item.name === 'deepseek-flash');
+    const headers = { Origin: baseURL!, 'X-CSRF-Token': csrf.csrfToken, 'If-Match': `"${original.version}"` };
+    const saved = await a.request.patch('/api/v1/me/preferences', { headers, data: { defaultModelId: flash.id } }); expect(saved.status()).toBe(200);
+    expect((await a.request.patch('/api/v1/me/preferences', { headers, data: { defaultCredentialSource: 'USER' } })).status()).toBe(412);
+    expect((await a.request.patch('/api/v1/me/preferences', { headers: { Origin: baseURL! }, data: { defaultModelId: flash.id } })).status()).toBe(403);
+    const next = await saved.json(); expect((await a.request.patch('/api/v1/me/preferences', { headers: { ...headers, 'If-Match': `"${next.version}"`, Origin: 'https://untrusted.example' }, data: {} })).status()).toBe(403);
+    const bob = await (await b.request.get('/api/v1/me')).json(); const foreign = { 'X-Space-Id': bob.spaces[0].id };
+    expect((await a.request.get('/api/v1/me/model-credentials', { headers: foreign })).status()).toBe(404);
+    expect((await a.request.get('/api/v1/effective-config', { headers: foreign })).status()).toBe(404);
+    expect((await a.request.put('/api/v1/me/model-credentials/deepseek', { headers: { ...headers, 'If-Match': '"0"' }, data: { apiKey: 'fixture-only', scope: 'PLATFORM' } })).status()).toBe(400);
+    expect((await a.request.patch('/api/v1/me/preferences', { headers: { ...headers, 'If-Match': `"${next.version}"` }, data: { defaultModelId: original.defaultModelId, defaultCredentialSource: original.defaultCredentialSource } })).status()).toBe(200);
+  } finally { await a.close(); await b.close(); }
+});

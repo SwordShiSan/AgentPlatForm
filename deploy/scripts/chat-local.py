@@ -43,8 +43,8 @@ def definitions():
         digest = base64.b64encode(salt + hashlib.sha256(salt + secret.encode()).digest()).decode()
         users.append({'name': 'ap_' + name, 'password_hash': digest, 'hashing_algorithm': 'rabbit_password_hashing_sha256', 'tags': ['administrator'] if name == 'operator' else []})
     permission = lambda name, configure, write, read: {'user': 'ap_' + name, 'vhost': '/agentplatform', 'configure': configure, 'write': write, 'read': read}
-    value = {'users': users, 'vhosts': [{'name': '/agentplatform'}],
-             'permissions': [permission('api', '^$', '^ap.commands.v1$', '^$'), permission('worker', '^$', '^$', '^ap.execution.v1$'), permission('operator', '.*', '.*', '.*')],
+    value = {'users': users, 'vhosts': [{'name': '/agentplatform'}, {'name': '/agentplatform-r12-test'}],
+             'permissions': [permission('api', '^$', '^ap.commands.v1$', '^$'), permission('worker', '^$', '^$', '^ap.execution.v1$'), permission('operator', '.*', '.*', '.*'), {'user': 'ap_operator', 'vhost': '/agentplatform-r12-test', 'configure': '.*', 'write': '.*', 'read': '.*'}],
              'exchanges': [{'name': name, 'vhost': '/agentplatform', 'type': 'direct', 'durable': True, 'auto_delete': False, 'internal': False, 'arguments': {}} for name in ['ap.commands.v1', 'ap.dead.v1']],
              'queues': [{'name': name, 'vhost': '/agentplatform', 'durable': True, 'auto_delete': False, 'arguments': arguments} for name, arguments in [('ap.execution.v1', {'x-queue-type': 'quorum', 'x-dead-letter-exchange': 'ap.dead.v1', 'x-dead-letter-routing-key': 'execution.dead'}), ('ap.execution.dead.v1', {'x-queue-type': 'quorum'})]],
              'bindings': [{'source': source, 'vhost': '/agentplatform', 'destination': destination, 'destination_type': 'queue', 'routing_key': key, 'arguments': {}} for source, destination, key in [('ap.commands.v1', 'ap.execution.v1', 'execution.ready'), ('ap.dead.v1', 'ap.execution.dead.v1', 'execution.dead')]]}
