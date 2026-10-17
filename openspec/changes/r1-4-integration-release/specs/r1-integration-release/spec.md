@@ -40,3 +40,12 @@ The release SHALL use the approved HTTP entry, HttpOnly SameSite=Lax non-Secure 
 #### Scenario: Resource or release failure
 - **WHEN** disk/memory admission or a mandatory cloud gate fails
 - **THEN** deployment stops or restores R0 without starting legacy business services or creating an R1 production tag
+
+### Requirement: Public HTTP browser capability compatibility
+The chat UI SHALL generate UUIDv4 idempotency identities from crypto.getRandomValues on public HTTP, without depending on secure-context-only randomUUID or Math.random. Missing clipboard support SHALL retain manual diagnostic copying.
+#### Scenario: Insecure-context browser
+- **WHEN** randomUUID and clipboard are unavailable while getRandomValues exists
+- **THEN** first-message submission, idempotent replay and cancellation still function with correctly formed fresh UUIDs
+#### Scenario: No cryptographic source
+- **WHEN** no getRandomValues source exists
+- **THEN** request identity generation fails explicitly without silently using a weak random source
