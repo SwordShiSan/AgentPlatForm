@@ -5,6 +5,7 @@
 - [x] 2.1 Add persisted trace/failure diagnostics and owner-only API/client/UI with tests.
 - [x] 2.2 Remove fixed acceptance predicates, retain meter/budgets; test provider quota classification.
 - [x] 2.3 Explicit HTTP production identity configuration and SSE proxy; authorization/revocation review.
+- [x] 2.4 Repair public-HTTP UUID compatibility after real cloud failure, preserve failed evidence and re-promote fixed gateway.
 ## 3. Local verification
 - [x] 3.1 Engineering, migration, real PG/MQ, SDK/Jackson, provider, browser and resource gates.
 - [x] 3.2 Minimal real-model matrix, no secret leakage; freeze source/images/evidence.

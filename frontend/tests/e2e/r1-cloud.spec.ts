@@ -23,6 +23,7 @@ test('HTTP cloud identity, one real stream, refresh, admin isolation and public 
       expect(cookie.httpOnly).toBe(true); expect(cookie.sameSite).toBe('Lax'); expect(cookie.secure).toBe(false);
     }
     const page = user.pages()[0]; await page.getByRole('link', { name: '普通聊天', exact: true }).click();
+    expect(await page.evaluate(() => globalThis.isSecureContext)).toBe(false);
     await expect(page.getByLabel('模型', { exact: true })).toHaveValue(/.+/);
     await page.getByLabel('模型', { exact: true }).selectOption({ label: 'deepseek-flash' });
     await page.getByLabel('凭据来源', { exact: true }).selectOption('PLATFORM');
@@ -32,6 +33,17 @@ test('HTTP cloud identity, one real stream, refresh, admin isolation and public 
     await expect(page.getByRole('status').first()).toContainText(/已完成|失败|需要处理/, { timeout: 125_000 });
     await expect(page.getByRole('status').first()).toContainText('已完成');
     const conversation = page.url().split('/').at(-1)!;
+    const stream = await page.evaluate(async id => {
+      const start = performance.now(); const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000);
+      try {
+        const response = await fetch(`/api/v1/conversations/${id}/events?after=0`, { signal: controller.signal });
+        const first = await response.body!.getReader().read();
+        return { status: response.status, contentType: response.headers.get('Content-Type'), first: new TextDecoder().decode(first.value), elapsed: performance.now() - start };
+      } finally { clearTimeout(timer); controller.abort(); }
+    }, conversation);
+    expect(stream.status).toBe(200); expect(stream.contentType).toContain('text/event-stream');
+    expect(stream.first).toContain(': connected'); expect(stream.elapsed).toBeLessThan(8000);
     const snapshot = await (await user.request.get(`/api/v1/conversations/${conversation}/snapshot`)).json();
     const task = snapshot.tasks.at(-1).taskId;
     const diagnostic = await (await user.request.get(`/api/v1/tasks/${task}/diagnostics`)).json();

@@ -9,8 +9,8 @@
     "distinctLatest": 122,
     "linuxNonroot": 52,
     "linuxPgState": 3,
-    "vueUnit": 20,
-    "browser": 14,
+    "vueUnit": 22,
+    "browser": 15,
     "realModelTurns": 4,
     "dockerPreflight": 5
   },
@@ -90,10 +90,10 @@
     },
     {
       "service": "gateway",
-      "configId": "sha256:06f5a1b77aceb33f5a05eee43f6241bf238ac3c33a502e007b4a3d79a38a458d",
-      "sourceRevision": "c37bec9fdb34bced93b460918d80752107e2b3cc",
+      "configId": "sha256:1f792f1b109d32e6751dda0085646672f148bd4648e9cdd1bba8501acf923958",
+      "sourceRevision": "6a4014b4adfff4c32db70387be14666fa93de581",
       "repoDigests": [
-        "agentplatform-gateway@sha256:06f5a1b77aceb33f5a05eee43f6241bf238ac3c33a502e007b4a3d79a38a458d"
+        "agentplatform-gateway@sha256:1f792f1b109d32e6751dda0085646672f148bd4648e9cdd1bba8501acf923958"
       ],
       "platform": "linux/amd64",
       "memoryBytes": 33554432,
@@ -135,16 +135,31 @@
     "swapExtension": false
   },
   "protectedPackage": {
-    "name": "r1.4-local-acceptance-20261017.zip",
-    "sha256": "896ece2c4a569ee5b2a292c3e865235fe9c4bd006f97b309731f3af98ccdeb44",
+    "name": "r1.4-http-compat-acceptance-20261017.zip",
+    "sha256": "9927da2adbd575ccbe3d087a4947a1ea44698c1eb7d130ac1abe303edf336cad",
     "retainUntil": "2026-11-17"
   },
-  "cloudStatus": "NOT_RUN",
+  "cloudStatus": "FIRST_CANDIDATE_FAIL_R0_RESTORED; FIXED_CANDIDATE_NOT_RUN",
   "actionsEnabled": false,
   "notes": [
     "Earlier constraint/checksum/MQ-recreation/locator failures retained as history, superseded by the documented passing reruns.",
     "Latest122 distinct tests combine full121 and affected identity26; no claim that a full122-test command ran.",
     "Estimates are not invoices; local Desktop caps are not cloud-capacity evidence.",
-    "Full checkpoint recovery remains R2; body delivery is separate from Git."
-  ]
+    "Full checkpoint recovery remains R2; body delivery is separate from Git.",
+    "Local Docker image identifiers can be OCI indexes; release export binds index/manifest/config/rootfs instead of equating them."
+  ],
+  "previousProtectedPackage": {
+    "name": "r1.4-local-acceptance-20261017.zip",
+    "sha256": "896ece2c4a569ee5b2a292c3e865235fe9c4bd006f97b309731f3af98ccdeb44",
+    "retainUntil": "2026-11-17"
+  },
+  "uiSource": "6a4014b4adfff4c32db70387be14666fa93de581",
+  "httpCompatibilityRepair": {
+    "status": "PASS_LOCAL_PENDING_REPROMOTION",
+    "source": "6a4014b4adfff4c32db70387be14666fa93de581",
+    "randomUUIDRequired": false,
+    "getRandomValuesRequired": true,
+    "additionalRealCalls": 0,
+    "firstCloudPhysicalCalls": 0
+  }
 }
