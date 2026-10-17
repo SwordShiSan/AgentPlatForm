@@ -19,7 +19,7 @@ test('real queued reply, keyboard submission, persisted refresh and responsive t
   expect(baseURL).toBe('http://127.0.0.1:18087');
   await login(page);
   await page.getByRole('button', { name: '新建对话' }).click();
-  await expect(page).toHaveURL(/\/app\/chat\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/app\/chat$/);
   await page.getByLabel('消息', { exact: true }).fill('fixture:normal');
   await page.getByLabel('消息', { exact: true }).press('Control+Enter');
   await expect(page.locator('.chat-message.assistant .chat-text').last()).toHaveText('你好😀，这是流式回复。');
@@ -54,19 +54,23 @@ test('two browser sessions cannot read or cancel each other\'s conversation', as
     const alice = await first.newPage(); const bob = await second.newPage();
     await login(alice, 'alice'); await login(bob, 'bob');
     await alice.getByRole('button', { name: '新建对话' }).click();
+    await alice.getByLabel('消息', { exact: true }).fill('fixture:normal');
+    await alice.getByRole('button', { name: '发送', exact: true }).click();
     await expect(alice).toHaveURL(/\/app\/chat\/[0-9a-f-]+$/);
     const conversation = new URL(alice.url()).pathname.split('/').at(-1)!;
     expect((await second.request.get(`/api/v1/conversations/${conversation}/snapshot`)).status()).toBe(404);
     expect((await second.request.get(`/api/v1/conversations/${conversation}/events?after=0`)).status()).toBe(404);
     await alice.getByLabel('消息', { exact: true }).fill('fixture:normal');
     await alice.getByRole('button', { name: '发送', exact: true }).click();
-    await expect(alice.getByRole('status')).toContainText('已完成');
+    await expect(alice.getByRole('status').first()).toContainText('已完成');
     const snapshot = await (await first.request.get(`/api/v1/conversations/${conversation}/snapshot`)).json();
     const task = snapshot.tasks.at(-1).taskId;
     expect((await second.request.get(`/api/v1/tasks/${task}/usage`)).status()).toBe(404);
     const csrf = await (await second.request.get('/api/v1/auth/csrf')).json();
     expect((await second.request.post(`/api/v1/tasks/${task}/cancel`, { data: {}, headers: { Origin: baseURL!, 'X-CSRF-Token': csrf.csrfToken, 'Idempotency-Key': crypto.randomUUID() } })).status()).toBe(404);
     await bob.getByRole('button', { name: '新建对话' }).click();
+    await bob.getByLabel('消息', { exact: true }).fill('fixture:normal');
+    await bob.getByRole('button', { name: '发送', exact: true }).click();
     await expect(bob).toHaveURL(/\/app\/chat\/[0-9a-f-]+$/);
     const privateConversation = new URL(bob.url()).pathname.split('/').at(-1)!;
     // Alice is a governance administrator; that status never grants Bob's content.

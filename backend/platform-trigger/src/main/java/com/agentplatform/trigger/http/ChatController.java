@@ -26,18 +26,32 @@ public final class ChatController {
     private static void fields(Map<String,?> body,String...allowed){if(!Set.of(allowed).containsAll(body.keySet()))throw new ChatFailure(400,"UNKNOWN_REQUEST_FIELD");}
     @GetMapping("/models") Object models(HttpServletRequest request){return chat.models(caller(request,false));}
     @GetMapping("/conversations") Object conversations(HttpServletRequest request,@RequestParam(name="cursor",required=false)String cursor,@RequestParam(name="limit",defaultValue="20")int limit){return chat.conversations(caller(request,false),cursor,limit);}
-    @PostMapping("/conversations") ResponseEntity<ChatApi.ConversationView> create(HttpServletRequest request,@RequestBody Map<String,Object> body){var who=caller(request,true);fields(body,"title","workspaceId");if(body.get("workspaceId")!=null)throw new ChatFailure(422,"WORKSPACE_NOT_AVAILABLE");Object title=body.get("title");if(title!=null&&!(title instanceof String))throw new ChatFailure(400,"INVALID_TITLE");return ResponseEntity.status(201).body(chat.create(who,key(request),(String)title));}
+    @PostMapping("/conversations") ResponseEntity<ChatApi.ConversationView> create(HttpServletRequest request,@RequestBody Map<String,Object> body){
+        var who=caller(request,true);fields(body,"title","workspaceId","initialTask");if(body.get("workspaceId")!=null)throw new ChatFailure(422,"WORKSPACE_NOT_AVAILABLE");Object title=body.get("title");if(title!=null&&!(title instanceof String))throw new ChatFailure(400,"INVALID_TITLE");
+        if(body.containsKey("initialTask")){if(!(body.get("initialTask") instanceof Map<?,?> initial))throw new ChatFailure(400,"INVALID_TASK_REQUEST");var input=parseTask(initial);return ResponseEntity.status(201).body(chat.first(who,key(request),(String)title,input.model(),input.source(),input.text()));}
+        return ResponseEntity.status(201).body(chat.create(who,key(request),(String)title));
+    }
+    private record Input(String model,String source,String text) {}
+    @SuppressWarnings("unchecked") private static Input parseTask(Map<?,?> raw){
+        Map<String,Object> body=(Map<String,Object>)raw;fields(body,"input","options");if(!(body.get("input") instanceof Map<?,?> i)||!(body.get("options") instanceof Map<?,?> o))throw new ChatFailure(400,"INVALID_TASK_REQUEST");
+        var input=(Map<String,Object>)i;var options=(Map<String,Object>)o;fields(input,"text","attachments");fields(options,"modelId","credentialSource","planMode","permissionMode");
+        if(!(input.get("text") instanceof String text)|| (options.get("modelId")!=null&&!(options.get("modelId") instanceof String))||(options.get("credentialSource")!=null&&!(options.get("credentialSource") instanceof String)))throw new ChatFailure(400,"INVALID_TASK_REQUEST");
+        if((input.get("attachments")!=null&&(!(input.get("attachments") instanceof List<?> attachments)||!attachments.isEmpty()))||Boolean.TRUE.equals(options.get("planMode"))||(options.get("permissionMode")!=null&&!"RISK_BASED".equals(options.get("permissionMode"))))throw new ChatFailure(422,"CAPABILITY_NOT_AVAILABLE");
+        if(options.get("planMode")!=null&&!(options.get("planMode") instanceof Boolean))throw new ChatFailure(400,"INVALID_TASK_REQUEST");
+        return new Input((String)options.get("modelId"),(String)options.get("credentialSource"),text);
+    }
+    private static long version(HttpServletRequest request){String value=request.getHeader("If-Match");if(value==null)throw new ChatFailure(428,"VERSION_REQUIRED");try{if(value.length()<3||value.charAt(0)!=34||value.charAt(value.length()-1)!=34)throw new NumberFormatException();String number=value.substring(1,value.length()-1);if(!number.chars().allMatch(Character::isDigit))throw new NumberFormatException();return Long.parseLong(number);}catch(Exception invalid){throw new ChatFailure(400,"INVALID_VERSION");}}
+    private static ResponseEntity<Map<String,Object>> versioned(Map<String,Object> body){return ResponseEntity.ok().eTag("\""+body.get("version")+"\"").header("Cache-Control","no-store").body(body);}
+    @GetMapping("/me/preferences") Object preferences(HttpServletRequest request){return versioned(chat.preferences(caller(request,false)));}
+    @PatchMapping("/me/preferences") Object preferences(HttpServletRequest request,@RequestBody Map<String,Object> body){return versioned(chat.preferences(caller(request,true),version(request),body));}
+    @GetMapping("/effective-config") Object effective(HttpServletRequest request){return chat.effective(caller(request,false));}
+    @GetMapping("/tasks/{id}/configuration") Object configuration(HttpServletRequest request,@PathVariable("id")String id){return chat.configuration(caller(request,false),id);}
+    @GetMapping("/me/model-credentials") Object credentials(HttpServletRequest request){return versioned(chat.credentialMetadata(caller(request,false)));}
+    @PutMapping("/me/model-credentials/deepseek") Object credentials(HttpServletRequest request,@RequestBody Map<String,Object> body){var who=caller(request,true);fields(body,"apiKey");if(!(body.get("apiKey") instanceof String secret))throw new ChatFailure(400,"INVALID_CREDENTIAL");return versioned(chat.replaceCredential(who,version(request),secret));}
+    @DeleteMapping("/me/model-credentials/deepseek") Object revokeCredential(HttpServletRequest request){return versioned(chat.replaceCredential(caller(request,true),version(request),null));}
     @GetMapping("/conversations/{id}") Object conversation(HttpServletRequest request,@PathVariable("id")String id){return chat.conversation(caller(request,false),id);}
     @GetMapping("/conversations/{id}/snapshot") Object snapshot(HttpServletRequest request,@PathVariable("id")String id){return chat.snapshot(caller(request,false),id);}
-    @SuppressWarnings("unchecked")
-    @PostMapping("/conversations/{id}/tasks") ResponseEntity<ChatApi.Accepted> submit(HttpServletRequest request,@PathVariable("id")String id,@RequestBody Map<String,Object> body){
-        var who=caller(request,true);fields(body,"input","options");if(!(body.get("input") instanceof Map<?,?>)||!(body.get("options") instanceof Map<?,?>))throw new ChatFailure(400,"INVALID_TASK_REQUEST");
-        var input=(Map<String,Object>)body.get("input");var options=(Map<String,Object>)body.get("options");fields(input,"text","attachments");fields(options,"modelId","planMode","permissionMode");
-        if(!(input.get("text") instanceof String text)||!(options.get("modelId") instanceof String model))throw new ChatFailure(400,"INVALID_TASK_REQUEST");
-        if((input.get("attachments")!=null&&(!(input.get("attachments") instanceof List<?> a)||!a.isEmpty()))||Boolean.TRUE.equals(options.get("planMode"))||(options.get("permissionMode")!=null&&!"RISK_BASED".equals(options.get("permissionMode"))))throw new ChatFailure(422,"CAPABILITY_NOT_AVAILABLE");
-        if(options.get("planMode")!=null&&!(options.get("planMode") instanceof Boolean))throw new ChatFailure(400,"INVALID_TASK_REQUEST");
-        return ResponseEntity.accepted().body(chat.submit(who,id,key(request),model,text));
-    }
+    @PostMapping("/conversations/{id}/tasks") ResponseEntity<ChatApi.Accepted> submit(HttpServletRequest request,@PathVariable("id")String id,@RequestBody Map<String,Object> body){var who=caller(request,true);var input=parseTask(body);return ResponseEntity.accepted().body(chat.submitConfigured(who,id,key(request),input.model(),input.source(),input.text()));}
     @GetMapping("/tasks/{id}") Object task(HttpServletRequest request,@PathVariable("id")String id){return chat.task(caller(request,false),id);}
     @GetMapping("/tasks/{id}/usage") Object usage(HttpServletRequest request,@PathVariable("id")String id){return Map.of("items",chat.usage(caller(request,false),id));}
     @PostMapping("/tasks/{id}/cancel") ResponseEntity<ChatApi.TaskView> cancel(HttpServletRequest request,@PathVariable("id")String id,@RequestBody(required=false)Map<String,Object> body){var who=caller(request,true);if(body!=null)fields(body);return ResponseEntity.accepted().body(chat.cancel(who,id,key(request)));}

@@ -72,7 +72,7 @@ public final class JdbcChatRepository implements ChatRepository {
     private static void outbox(Connection c,Actor a,UUID task,long generation)throws SQLException{
         exec(c,"INSERT INTO pf.event_outbox(id,space_id,event_id,aggregate_id,generation) VALUES(?,?,?,?,?)",Uuid7.next(),a.spaceId(),Uuid7.next(),task,generation);
     }
-    @Override public List<Model> models(Actor a){return tx(c->{auth(c,a);List<Model> result=new ArrayList<>();try(var s=q(c,"SELECT m.id,m.model_name,m.version FROM pf.model_definition m JOIN pf.model_binding b ON b.model_id=m.id JOIN pf.credential k ON k.id=b.credential_id WHERE b.space_id=? AND b.user_id=? AND m.status='ACTIVE' AND k.status='ACTIVE' AND ((b.source_policy='PLATFORM' AND k.scope_type='PLATFORM') OR (b.source_policy='USER' AND k.scope_type='USER' AND k.owner_user_id=b.user_id AND k.space_id=b.space_id)) ORDER BY m.id",a.spaceId(),a.userId());var r=s.executeQuery()){while(r.next())result.add(new Model(r.getObject(1,UUID.class),r.getString(2),r.getLong(3)));}return List.copyOf(result);});}
+    @Override public List<Model> models(Actor a){return tx(c->{auth(c,a);List<Model> result=new ArrayList<>();try(var st=q(c,"SELECT id,model_name,version FROM pf.model_definition WHERE status='ACTIVE' AND model_name IN ('deepseek-flash','deepseek-v4-pro') AND (EXISTS(SELECT 1 FROM pf.model_binding b JOIN pf.credential k ON k.id=b.credential_id WHERE b.model_id=pf.model_definition.id AND b.space_id=? AND b.user_id=? AND b.source_policy=k.scope_type AND k.status='ACTIVE' AND (k.scope_type='PLATFORM' OR (k.space_id=b.space_id AND k.owner_user_id=b.user_id))) OR EXISTS(SELECT 1 FROM pf.user_model_credential u JOIN pf.credential k ON k.id=u.credential_id WHERE u.space_id=? AND u.user_id=? AND k.scope_type='USER' AND k.space_id=u.space_id AND k.owner_user_id=u.user_id AND k.status='ACTIVE')) ORDER BY model_name,id",a.spaceId(),a.userId(),a.spaceId(),a.userId());var r=st.executeQuery()){while(r.next())result.add(new Model(r.getObject(1,UUID.class),r.getString(2),r.getLong(3)));}return List.copyOf(result);});}
     @Override public Conversation create(Actor a,UUID key,String title){return tx(c->{
         auth(c,a);String name=title==null?"普通对话":title;if(name.isBlank()||name.codePointCount(0,name.length())>120)throw new ChatFailure(400,"INVALID_TITLE");
         String fingerprint=hash(name);UUID id=idempotency(c,a,key,"/conversations",fingerprint);
@@ -85,36 +85,45 @@ public final class JdbcChatRepository implements ChatRepository {
         auth(c,a);conversation(c,a,id,false);long cursor;
         try(var s=q(c,"SELECT next_seq FROM pf.conversation WHERE space_id=? AND id=?",a.spaceId(),id);var r=s.executeQuery()){r.next();cursor=r.getLong(1);}
         List<Message> messages=new ArrayList<>();List<Task> tasks=new ArrayList<>();
-        try(var s=q(c,"SELECT * FROM pf.message WHERE space_id=? AND conversation_id=? ORDER BY created_at,id",a.spaceId(),id);var r=s.executeQuery()){while(r.next())messages.add(new Message(r.getObject("id",UUID.class),r.getObject("task_id",UUID.class),r.getString("role"),blocks(r.getString("blocks_json")),r.getString("status"),r.getLong("version")));}
+        try(var s=q(c,"SELECT * FROM pf.message WHERE space_id=? AND conversation_id=? ORDER BY created_at,task_id,CASE role WHEN 'USER' THEN 0 ELSE 1 END,id",a.spaceId(),id);var r=s.executeQuery()){while(r.next())messages.add(new Message(r.getObject("id",UUID.class),r.getObject("task_id",UUID.class),r.getString("role"),blocks(r.getString("blocks_json")),r.getString("status"),r.getLong("version")));}
         try(var s=q(c,"SELECT * FROM pf.task WHERE space_id=? AND conversation_id=? ORDER BY created_at,id",a.spaceId(),id);var r=s.executeQuery()){while(r.next())tasks.add(readTask(r));}
         return new Snapshot(id,cursor,List.copyOf(messages),List.copyOf(tasks));
     });}
-    @Override public Task submit(Actor a,UUID convo,UUID key,UUID model,String text){return tx(c->{
+    @Override public Task submit(Actor a,UUID convo,UUID key,UUID model,String text){return tx(c->{String source=null;try(var st=q(c,"SELECT source_policy FROM pf.model_binding WHERE space_id=? AND user_id=? AND model_id=?",a.spaceId(),a.userId(),model);var r=st.executeQuery()){if(r.next())source=r.getString(1);}return submit(c,a,convo,key,model,source,text);});}
+    @Override public Task submitConfigured(Actor a,UUID convo,UUID key,UUID model,String source,String text){return tx(c->submit(c,a,convo,key,model,source,text));}
+    private Task submit(Connection c,Actor a,UUID convo,UUID key,UUID selectedModel,String selectedSource,String text)throws SQLException{
         auth(c,a);if(text==null||text.isBlank()||text.codePointCount(0,text.length())>8192)throw new ChatFailure(400,"INVALID_CHAT_TEXT");
-        String path="/conversations/"+convo+"/tasks",fingerprint=hash(model+"\n"+text);UUID existing=idempotency(c,a,key,path,fingerprint);
+        String path="/conversations/"+convo+"/tasks",fingerprint=hash(selectedSource==null?selectedModel+"\n"+text:selectedModel+"\n"+selectedSource+"\n"+text);UUID existing=idempotency(c,a,key,path,fingerprint);
         if(existing!=null)return task(c,a,existing,false);
         try(var s=q(c,"SELECT pg_advisory_xact_lock(1200201)")){s.execute();}
         conversation(c,a,convo,true);
         try(var s=q(c,"SELECT count(*) FROM pf.task WHERE conversation_id=?",convo);var r=s.executeQuery()){r.next();if(r.getLong(1)>=100)throw new ChatFailure(409,"CONVERSATION_TASK_LIMIT");}
         try(var s=q(c,"SELECT count(*) FROM pf.task WHERE creator_id=? AND status='QUEUED'",a.userId());var r=s.executeQuery()){r.next();if(r.getLong(1)>=20)throw new ChatFailure(429,"QUEUE_LIMIT_EXCEEDED");}
         try(var s=q(c,"SELECT count(*),min(created_at) FROM pf.event_outbox WHERE status IN ('PENDING','PUBLISHING','REVIEW')");var r=s.executeQuery()){r.next();if(r.getLong(1)>=10000||(r.getTimestamp(2)!=null&&r.getTimestamp(2).toInstant().isBefore(Instant.now().minusSeconds(900))))throw new ChatFailure(503,"DISPATCH_UNAVAILABLE");}
-        UUID credential;long revision;String policy,name,pricing;
-        try(var s=q(c,"SELECT b.credential_id,k.revision,b.source_policy,k.scope_type,k.space_id,k.owner_user_id,m.model_name,m.pricing_version FROM pf.model_binding b JOIN pf.credential k ON k.id=b.credential_id JOIN pf.model_definition m ON m.id=b.model_id WHERE b.space_id=? AND b.user_id=? AND b.model_id=? AND k.status='ACTIVE' AND m.status='ACTIVE'",a.spaceId(),a.userId(),model);var r=s.executeQuery()){
-            if(!r.next())throw new ChatFailure(503,"MODEL_UNAVAILABLE");credential=r.getObject(1,UUID.class);revision=r.getLong(2);policy=r.getString(3);
-            if(!policy.equals(r.getString(4))||("USER".equals(policy)&&(!a.spaceId().equals(r.getObject(5,UUID.class))||!a.userId().equals(r.getObject(6,UUID.class)))))throw new ChatFailure(403,"CREDENTIAL_SCOPE_REJECTED");name=r.getString(7);pricing=r.getString(8);
+        var resolved=resolve(c,a,selectedModel,selectedSource);
+        UUID model=(UUID)resolved.get("modelId");String policy=(String)resolved.get("credentialSource");
+        UUID credential;long revision,modelVersion,inputPrice,outputPrice;String name,pricing;
+        String sql="USER".equals(policy)?
+            "SELECT k.id,k.revision,m.model_name,m.version AS model_version,m.pricing_version,m.input_micros_per_million,m.output_micros_per_million FROM pf.user_model_credential u JOIN pf.credential k ON k.id=u.credential_id CROSS JOIN pf.model_definition m WHERE u.space_id=? AND u.user_id=? AND m.id=? AND k.status='ACTIVE' AND k.scope_type='USER' AND k.space_id=u.space_id AND k.owner_user_id=u.user_id AND m.status='ACTIVE' FOR SHARE OF k,u":
+            "SELECT k.id,k.revision,m.model_name,m.version AS model_version,m.pricing_version,m.input_micros_per_million,m.output_micros_per_million FROM pf.model_binding b JOIN pf.credential k ON k.id=b.credential_id JOIN pf.model_definition m ON m.id=b.model_id WHERE b.space_id=? AND b.user_id=? AND b.model_id=? AND b.source_policy='PLATFORM' AND k.scope_type='PLATFORM' AND k.status='ACTIVE' AND m.status='ACTIVE' FOR SHARE OF k";
+        try(var st=q(c,sql,a.spaceId(),a.userId(),model);var r=st.executeQuery()){
+            if(!r.next())throw new ChatFailure(422,"CREDENTIAL_SOURCE_UNAVAILABLE");credential=r.getObject("id",UUID.class);revision=r.getLong("revision");name=r.getString("model_name");pricing=r.getString("pricing_version");modelVersion=r.getLong("model_version");inputPrice=r.getLong("input_micros_per_million");outputPrice=r.getLong("output_micros_per_million");
         }
-        if(exec(c,"UPDATE pf.budget_account SET reserved_tokens=reserved_tokens+36864,reserved_micros=reserved_micros+98304,version=version+1 WHERE space_id=? AND user_id=? AND reserved_tokens+consumed_tokens+36864<=token_limit AND reserved_micros+consumed_micros+98304<=cost_limit_micros",a.spaceId(),a.userId())!=1)throw new ChatFailure(429,"QUOTA_EXCEEDED");
+        exec(c,"INSERT INTO pf.budget_account(space_id,user_id) VALUES(?,?) ON CONFLICT DO NOTHING",a.spaceId(),a.userId());
+        long perCall=(8192L*inputPrice+1024L*outputPrice+999999)/1000000,totalCost=perCall*4;
+        if(exec(c,"UPDATE pf.budget_account SET reserved_tokens=reserved_tokens+36864,reserved_micros=reserved_micros+?,version=version+1 WHERE space_id=? AND user_id=? AND reserved_tokens+consumed_tokens+36864<=token_limit AND reserved_micros+consumed_micros+?<=cost_limit_micros",totalCost,a.spaceId(),a.userId(),totalCost)!=1)throw new ChatFailure(429,"QUOTA_EXCEEDED");
         var bundle=ChatRuntime.bundle();
         exec(c,"INSERT INTO pf.runtime_bundle(id,contract_version,manifest_hash,manifest_json) VALUES(?,'HC-1.1',?,?::jsonb) ON CONFLICT DO NOTHING",BUNDLE,bundle.hash(),json(bundle));
         try(var s=q(c,"SELECT manifest_hash FROM pf.runtime_bundle WHERE id=?",BUNDLE);var r=s.executeQuery()){if(!r.next()||!bundle.hash().equals(r.getString(1)))throw new ChatFailure(409,"BUNDLE_INCOMPATIBLE");}
         UUID snapshot=Uuid7.next(),id=Uuid7.next(),userMessage=Uuid7.next(),assistant=Uuid7.next();
-        String config=json(Map.of("modelName",name,"modelId",model.toString(),"credentialId",credential.toString(),"credentialRevision",revision,"credentialSource",policy,"window",8192,"maxOutput",1024,"thinking",false,"pricingVersion",pricing));
+        var values=new TreeMap<String,Object>();values.putAll(resolved);values.put("modelId",model.toString());values.put("modelName",name);values.put("modelVersion",modelVersion);values.put("credentialId",credential.toString());values.put("credentialRevision",revision);values.put("window",8192);values.put("maxOutput",1024);values.put("thinking",false);values.put("pricingVersion",pricing);values.put("inputPrice",inputPrice);values.put("outputPrice",outputPrice);values.put("perCallMicros",perCall);values.put("bundleHash",bundle.hash());String config=json(values);
+
         exec(c,"INSERT INTO pf.chat_config_snapshot(id,space_id,model_id,credential_id,credential_revision,config_json,config_hash) VALUES(?,?,?,?,?,?::jsonb,?)",snapshot,a.spaceId(),model,credential,revision,config,hash(config));
-        exec(c,"INSERT INTO pf.task(id,space_id,conversation_id,creator_id,config_snapshot_id,bundle_id) VALUES(?,?,?,?,?,?)",id,a.spaceId(),convo,a.userId(),snapshot,BUNDLE);
+        exec(c,"INSERT INTO pf.task(id,space_id,conversation_id,creator_id,config_snapshot_id,bundle_id,remaining_micros) VALUES(?,?,?,?,?,?,?)",id,a.spaceId(),convo,a.userId(),snapshot,BUNDLE,totalCost);
         exec(c,"INSERT INTO pf.message(id,space_id,conversation_id,task_id,role,blocks_json,status) VALUES(?,?,?,?,'USER',?::jsonb,'COMPLETED'),(?,?,?,?,'ASSISTANT',?::jsonb,'STREAMING')",userMessage,a.spaceId(),convo,id,json(textBlocks(userMessage,text)),assistant,a.spaceId(),convo,id,json(textBlocks(assistant,"")));
         exec(c,"INSERT INTO pf.execution_dispatch(task_id) VALUES(?)",id);outbox(c,a,id,1);
-        event(c,a,convo,id,"task.accepted",1,Map.of("taskId",id.toString(),"status","QUEUED"));remember(c,a,key,path,fingerprint,id);return task(c,a,id,false);
-    });}
+        event(c,a,convo,id,"task.accepted",1,Map.of("taskId",id.toString(),"status","QUEUED"));remember(c,a,key,path,fingerprint,id);audit(c,a,"TASK_SUBMITTED",id,key);return task(c,a,id,false);
+    }
     @Override public Task task(Actor a,UUID id){return tx(c->{auth(c,a);return task(c,a,id,false);});}
     @Override public Task cancel(Actor a,UUID id,UUID key){return tx(c->{
         auth(c,a);Task t=task(c,a,id,true);conversation(c,a,t.conversationId(),true);
@@ -193,16 +202,16 @@ public final class JdbcChatRepository implements ChatRepository {
         if(!"RUNNING".equals(t.status()))throw new ChatFailure(409,"EXECUTION_FENCE_LOST");
         if(!cancellationAllowed){auth(c,a);if(t.cancelRequested())throw new ChatFailure(409,"TASK_CANCEL_REQUESTED");}
     }
-    @Override public void check(Lease l){tx(c->{owned(c,l,false);return null;});}
-    @Override public void heartbeat(Lease l){tx(c->{owned(c,l,false);exec(c,"UPDATE pf.execution_slot SET lease_until=now()+interval '60 seconds' WHERE id=1");exec(c,"UPDATE pf.execution_dispatch SET lease_until=now()+interval '60 seconds' WHERE task_id=?",l.taskId());return null;});}
+    @Override public void check(Lease l){tx(c->{owned(c,l,false);authorizeCredential(c,l);activeModel(c,l);return null;});}
+    @Override public void heartbeat(Lease l){tx(c->{owned(c,l,false);authorizeCredential(c,l);activeModel(c,l);exec(c,"UPDATE pf.execution_slot SET lease_until=now()+interval '60 seconds' WHERE id=1");exec(c,"UPDATE pf.execution_dispatch SET lease_until=now()+interval '60 seconds' WHERE task_id=?",l.taskId());return null;});}
     @Override public List<HarnessData.Message> history(Lease l){return tx(c->{
         owned(c,l,false);List<HarnessData.Message> messages=new ArrayList<>();messages.add(HarnessData.Message.text(HarnessData.Role.SYSTEM,"You are a helpful assistant. Answer ordinary text questions. No tools or filesystem access are available."));
-        try(var s=q(c,"SELECT m.role,m.blocks_json FROM pf.message m JOIN pf.task t ON t.id=m.task_id WHERE m.space_id=? AND m.conversation_id=? AND ((t.status='SUCCEEDED' AND m.status='COMPLETED') OR (t.id=? AND m.role='USER')) ORDER BY m.created_at,m.id",l.spaceId(),l.conversationId(),l.taskId());var r=s.executeQuery()){
+        try(var s=q(c,"SELECT m.role,m.blocks_json FROM pf.message m JOIN pf.task t ON t.id=m.task_id WHERE m.space_id=? AND m.conversation_id=? AND ((t.status='SUCCEEDED' AND m.status='COMPLETED') OR (t.id=? AND m.role='USER')) ORDER BY t.created_at,t.id,CASE m.role WHEN 'USER' THEN 0 ELSE 1 END,m.id",l.spaceId(),l.conversationId(),l.taskId());var r=s.executeQuery()){
             long estimate=512;while(r.next()){String text=String.valueOf(blocks(r.getString(2)).getFirst().get("text"));estimate+=text.getBytes(StandardCharsets.UTF_8).length+32;if(estimate>6144)throw new ChatFailure(422,"CONTEXT_REQUIRED_TOO_LARGE");messages.add(HarnessData.Message.text(HarnessData.Role.valueOf(r.getString(1)),text));}
         }return List.copyOf(messages);
     });}
     @Override public void delta(Lease l,String text){if(text.isEmpty())return;tx(c->{
-        owned(c,l,false);String prior;long version;
+        owned(c,l,false);authorizeCredential(c,l);activeModel(c,l);String prior;long version;
         try(var s=q(c,"SELECT blocks_json,version FROM pf.message WHERE id=?",l.assistantId());var r=s.executeQuery()){r.next();prior=String.valueOf(blocks(r.getString(1)).getFirst().get("text"));version=r.getLong(2)+1;}
         if(prior.getBytes(StandardCharsets.UTF_8).length+text.getBytes(StandardCharsets.UTF_8).length>65536)throw new ChatFailure(422,"MODEL_OUTPUT_LIMIT");
         exec(c,"UPDATE pf.message SET blocks_json=?::jsonb,version=?,updated_at=now() WHERE id=?",json(textBlocks(l.assistantId(),prior+text)),version,l.assistantId());
@@ -211,18 +220,20 @@ public final class JdbcChatRepository implements ChatRepository {
     @Override public Call beginCall(Lease l,boolean real){return tx(c->{
         owned(c,l,false);int ordinal;
         try(var s=q(c,"SELECT count(*),min(created_at) FROM pf.model_call WHERE task_id=?",l.taskId());var r=s.executeQuery()){r.next();ordinal=r.getInt(1)+1;if(ordinal>4||(r.getTimestamp(2)!=null&&r.getTimestamp(2).toInstant().isBefore(Instant.now().minusSeconds(120))))throw new ChatFailure(429,"MODEL_CALL_LIMIT");}
-        if(exec(c,"UPDATE pf.task SET remaining_tokens=remaining_tokens-9216,remaining_micros=remaining_micros-24576 WHERE id=? AND remaining_tokens>=9216 AND remaining_micros>=24576",l.taskId())!=1)throw new ChatFailure(429,"QUOTA_EXCEEDED");
-        UUID id=Uuid7.next();String price="deepseek-flash-2026-10-16-peak-bound";
+        long allowance=callAllowance(c,l);
+        if(exec(c,"UPDATE pf.task SET remaining_tokens=remaining_tokens-9216,remaining_micros=remaining_micros-? WHERE id=? AND remaining_tokens>=9216 AND remaining_micros>=?",allowance,l.taskId(),allowance)!=1)throw new ChatFailure(429,"QUOTA_EXCEEDED");
+        UUID id=Uuid7.next();String price=(String)frozen(c,l).get("pricingVersion");
         exec(c,"INSERT INTO pf.model_call(id,space_id,task_id,attempt_id,ordinal,price_version,status) VALUES(?,?,?,?,?,?,'PREPARED')",id,l.spaceId(),l.taskId(),l.attemptId(),ordinal,price);
-        exec(c,"INSERT INTO pf.budget_reservation(call_id,task_id) VALUES(?,?)",id,l.taskId());return new Call(id,ordinal,price);
+        exec(c,"INSERT INTO pf.budget_reservation(call_id,task_id,amount_micros) VALUES(?,?,?)",id,l.taskId(),allowance);return new Call(id,ordinal,price);
     });}
     @Override public void startCall(Lease l,Call call,boolean real){tx(c->{owned(c,l,false);
-        authorizeCredential(c,l);
-        if(real&&exec(c,"UPDATE pf.acceptance_model_meter SET physical_calls=physical_calls+1,reserved_micros=reserved_micros+24576 WHERE id=1 AND physical_calls<20 AND reserved_micros+consumed_micros+24576<=1000000")!=1)throw new ChatFailure(429,"ACCEPTANCE_MODEL_LIMIT");
+        authorizeCredential(c,l);activeModel(c,l);
+        long allowance=callAllowance(c,l);
+        if(real&&exec(c,"UPDATE pf.acceptance_model_meter SET physical_calls=physical_calls+1,reserved_micros=reserved_micros+? WHERE id=1 AND physical_calls<20 AND reserved_micros+consumed_micros+?<=1000000",allowance,allowance)!=1)throw new ChatFailure(429,"ACCEPTANCE_MODEL_LIMIT");
         if(exec(c,"UPDATE pf.model_call SET status='STARTED' WHERE id=? AND task_id=? AND status='PREPARED'",call.id(),l.taskId())!=1)throw new ChatFailure(409,"CALL_ALREADY_STARTED");return null;
     });}
     @Override public void settle(Lease l,Call call,HarnessData.Round round,String requestId,String error,boolean real){tx(c->{
-        owned(c,l,true);String state;
+        owned(c,l,true);long allowance=callAllowance(c,l);var prices=frozen(c,l);String state;
         try(var s=q(c,"SELECT r.state FROM pf.budget_reservation r JOIN pf.model_call m ON m.id=r.call_id WHERE r.call_id=? AND m.task_id=? AND m.attempt_id=? AND m.space_id=? FOR UPDATE OF r",call.id(),l.taskId(),l.attemptId(),l.spaceId());var r=s.executeQuery()){if(!r.next())throw new ChatFailure(409,"CALL_NOT_FOUND");state=r.getString(1);}
         if(!"RESERVED".equals(state))return null;
         if(round==null){
@@ -230,15 +241,15 @@ public final class JdbcChatRepository implements ChatRepository {
             String outcome=unbilled||"PROVIDER_SERVER_REJECTED".equals(error)?"FAILED":"PROVIDER_USAGE_MISSING".equals(error)?"COMPLETED":"UNKNOWN";
             exec(c,"UPDATE pf.model_call SET status=?,error_code=?,ended_at=now() WHERE id=?",outcome,error,call.id());
             exec(c,"UPDATE pf.budget_reservation SET state=? WHERE call_id=?",unbilled?"RELEASED":"RECONCILING",call.id());
-            if(unbilled){exec(c,"UPDATE pf.budget_account SET reserved_tokens=reserved_tokens-9216,reserved_micros=reserved_micros-24576,version=version+1 WHERE space_id=? AND user_id=?",l.spaceId(),l.userId());if(real)exec(c,"UPDATE pf.acceptance_model_meter SET reserved_micros=reserved_micros-24576 WHERE id=1");}return null;
+            if(unbilled){exec(c,"UPDATE pf.budget_account SET reserved_tokens=reserved_tokens-9216,reserved_micros=reserved_micros-?,version=version+1 WHERE space_id=? AND user_id=?",allowance,l.spaceId(),l.userId());if(real)exec(c,"UPDATE pf.acceptance_model_meter SET reserved_micros=reserved_micros-? WHERE id=1",allowance);}return null;
         }
         if(round.inputTokens()<0||round.inputTokens()>8192||round.outputTokens()<0||round.outputTokens()>1024)throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION");
-        long tokens=round.inputTokens()+round.outputTokens(),cost=(round.inputTokens()*2000000L+round.outputTokens()*8000000L+999999)/1000000;
-        if(tokens>9216||cost>24576)throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION");
+        long tokens=round.inputTokens()+round.outputTokens(),cost=(round.inputTokens()*((Number)prices.getOrDefault("inputPrice",2000000L)).longValue()+round.outputTokens()*((Number)prices.getOrDefault("outputPrice",8000000L)).longValue()+999999)/1000000;
+        if(tokens>9216||cost>allowance)throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION");
         exec(c,"UPDATE pf.model_call SET status='COMPLETED',input_tokens=?,output_tokens=?,cost_micros=?,estimated=true,provider_request_id=?,ended_at=now() WHERE id=?",round.inputTokens(),round.outputTokens(),cost,requestId,call.id());
         exec(c,"UPDATE pf.budget_reservation SET state='SETTLED' WHERE call_id=?",call.id());
-        exec(c,"UPDATE pf.budget_account SET reserved_tokens=reserved_tokens-9216,reserved_micros=reserved_micros-24576,consumed_tokens=consumed_tokens+?,consumed_micros=consumed_micros+?,version=version+1 WHERE space_id=? AND user_id=?",tokens,cost,l.spaceId(),l.userId());
-        if(real)exec(c,"UPDATE pf.acceptance_model_meter SET reserved_micros=reserved_micros-24576,consumed_micros=consumed_micros+? WHERE id=1",cost);
+        exec(c,"UPDATE pf.budget_account SET reserved_tokens=reserved_tokens-9216,reserved_micros=reserved_micros-?,consumed_tokens=consumed_tokens+?,consumed_micros=consumed_micros+?,version=version+1 WHERE space_id=? AND user_id=?",allowance,tokens,cost,l.spaceId(),l.userId());
+        if(real)exec(c,"UPDATE pf.acceptance_model_meter SET reserved_micros=reserved_micros-?,consumed_micros=consumed_micros+? WHERE id=1",allowance,cost);
         event(c,new Actor(l.userId(),l.spaceId()),l.conversationId(),l.taskId(),"usage.updated",call.ordinal(),Map.of("callId",call.id().toString(),"inputTokens",round.inputTokens(),"outputTokens",round.outputTokens(),"costMicros",cost,"estimated",true));return null;
     });}
     @Override public Credential credential(Lease l,UUID call){return tx(c->{
@@ -315,7 +326,81 @@ public final class JdbcChatRepository implements ChatRepository {
         try(var s=q(c,"SELECT scope_type,space_id,owner_user_id FROM pf.credential WHERE id=? AND status='ACTIVE'",credential);var r=s.executeQuery()){if(!r.next()||!source.equals(r.getString(1))||("USER".equals(source)&&(!a.spaceId().equals(r.getObject(2,UUID.class))||!a.userId().equals(r.getObject(3,UUID.class)))))throw new ChatFailure(403,"CREDENTIAL_SCOPE_REJECTED");}
         exec(c,"INSERT INTO pf.model_definition(id,model_name,endpoint_alias) VALUES(?,'deepseek-flash','DEEPSEEK') ON CONFLICT DO NOTHING",model);
         exec(c,"INSERT INTO pf.model_binding(space_id,user_id,model_id,credential_id,source_policy) VALUES(?,?,?,?,?) ON CONFLICT(space_id,user_id,model_id) DO UPDATE SET credential_id=EXCLUDED.credential_id,source_policy=EXCLUDED.source_policy,version=pf.model_binding.version+1",a.spaceId(),a.userId(),model,credential,source);
-        exec(c,"INSERT INTO pf.budget_account(space_id,user_id) VALUES(?,?) ON CONFLICT DO NOTHING",a.spaceId(),a.userId());return null;
+        exec(c,"INSERT INTO pf.budget_account(space_id,user_id) VALUES(?,?) ON CONFLICT DO NOTHING",a.spaceId(),a.userId());
+        if("USER".equals(source))exec(c,"INSERT INTO pf.user_model_credential(space_id,user_id,provider,credential_id,version) VALUES(?,?,'DEEPSEEK',?,1) ON CONFLICT(space_id,user_id,provider) DO UPDATE SET credential_id=excluded.credential_id,version=pf.user_model_credential.version+1",a.spaceId(),a.userId(),credential);
+        return null;
     });}
-    @Override public boolean ready(){try{return tx(c->{try(var s=q(c,"SELECT to_regclass('pf.task') IS NOT NULL AND to_regclass('pf.event_outbox') IS NOT NULL AND to_regclass('pf.acceptance_model_meter') IS NOT NULL AND (SELECT schema_version=1 FROM pf.baseline_version WHERE id=1)");var r=s.executeQuery()){return r.next()&&r.getBoolean(1);}});}catch(ChatFailure e){return false;}}
+    private static void audit(Connection c,Actor a,String kind,UUID resource,UUID trace)throws SQLException{
+        exec(c,"INSERT INTO pf.chat_audit(id,space_id,user_id,kind,resource_id,trace_id) VALUES(?,?,?,?,?,?)",Uuid7.next(),a.spaceId(),a.userId(),kind,resource,trace);
+    }
+    @Override public First first(Actor a,UUID key,String title,UUID model,String source,String text){return tx(c->{
+        auth(c,a);String name=title==null?"新对话":title;if(name.isBlank()||name.codePointCount(0,name.length())>120)throw new ChatFailure(400,"INVALID_TITLE");
+        String fingerprint=hash(json(Arrays.asList(name,model,source,text)));UUID existing=idempotency(c,a,key,"/conversations",fingerprint);
+        if(existing!=null){Conversation convo;try(var st=q(c,"SELECT * FROM pf.conversation WHERE space_id=? AND id=?",a.spaceId(),existing);var r=st.executeQuery()){if(!r.next())throw new ChatFailure(404,"RESOURCE_NOT_FOUND");convo=readConversation(r);}try(var st=q(c,"SELECT * FROM pf.task WHERE conversation_id=? ORDER BY created_at,id LIMIT 1",existing);var r=st.executeQuery()){if(!r.next())throw new ChatFailure(409,"IDEMPOTENCY_CONFLICT");return new First(convo,readTask(r));}}
+        UUID id=Uuid7.next();exec(c,"INSERT INTO pf.conversation(id,space_id,creator_id,title) VALUES(?,?,?,?)",id,a.spaceId(),a.userId(),name);
+        Task task=submit(c,a,id,key,model,source,text);remember(c,a,key,"/conversations",fingerprint,id);
+        try(var st=q(c,"SELECT * FROM pf.conversation WHERE id=?",id);var r=st.executeQuery()){r.next();return new First(readConversation(r),task);}
+    });}
+    private static Map<String,Object> preferences(Connection c,Actor a)throws SQLException{
+        long version=0;try(var st=q(c,"SELECT version FROM pf.user_preference_revision WHERE user_id=?",a.userId());var r=st.executeQuery()){if(r.next())version=r.getLong(1);}
+        Map<String,Object> result=new LinkedHashMap<>();result.put("version",version);result.put("defaultModelId",null);result.put("defaultCredentialSource","PLATFORM");
+        try(var st=q(c,"SELECT key,value_json FROM pf.user_preference WHERE user_id=?",a.userId());var r=st.executeQuery()){while(r.next())result.put(r.getString(1),JSON.readValue(r.getString(2),Object.class));}return result;
+    }
+    @Override public Map<String,Object> preferences(Actor a){return tx(c->{auth(c,a);return preferences(c,a);});}
+    @Override public Map<String,Object> preferences(Actor a,long expected,Map<String,Object> patch){return tx(c->{
+        auth(c,a);if(!Set.of("defaultModelId","defaultCredentialSource").containsAll(patch.keySet()))throw new ChatFailure(422,"UNSUPPORTED_PREFERENCE");
+        exec(c,"INSERT INTO pf.user_preference_revision(user_id) VALUES(?) ON CONFLICT DO NOTHING",a.userId());
+        if(exec(c,"UPDATE pf.user_preference_revision SET version=version+1 WHERE user_id=? AND version=?",a.userId(),expected)!=1)throw new ChatFailure(412,"PREFERENCE_VERSION_CONFLICT");
+        for(var entry:patch.entrySet()){
+            Object value=entry.getValue();if("defaultModelId".equals(entry.getKey())){if(value!=null){UUID model;try{model=UUID.fromString((String)value);}catch(Exception invalid){throw new ChatFailure(422,"INVALID_MODEL");}validateModel(c,model);}}
+            else if(!Set.of("PLATFORM","USER").contains(value==null?"":value))throw new ChatFailure(422,"INVALID_CREDENTIAL_SOURCE");
+            exec(c,"INSERT INTO pf.user_preference(user_id,key,value_json,version) VALUES(?,?,?::jsonb,?) ON CONFLICT(user_id,key) DO UPDATE SET value_json=excluded.value_json,version=excluded.version",a.userId(),entry.getKey(),json(value),expected+1);
+        }audit(c,a,"PREFERENCES_UPDATED",a.userId(),Uuid7.next());return preferences(c,a);
+    });}
+    private static void validateModel(Connection c,UUID model)throws SQLException{
+        try(var st=q(c,"SELECT 1 FROM pf.model_definition WHERE id=? AND status='ACTIVE' AND model_name IN ('deepseek-flash','deepseek-v4-pro')",model);var r=st.executeQuery()){if(!r.next())throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");}
+    }
+    private static Map<String,Object> resolve(Connection c,Actor a,UUID selected,String source)throws SQLException{
+        var prefs=preferences(c,a);UUID model=selected;
+        if(model==null&&prefs.get("defaultModelId")!=null)model=UUID.fromString((String)prefs.get("defaultModelId"));
+        if(model==null)try(var st=q(c,"SELECT id FROM pf.model_definition WHERE model_name='deepseek-flash' AND status='ACTIVE' ORDER BY id LIMIT 1");var r=st.executeQuery()){if(!r.next())throw new ChatFailure(503,"MODEL_UNAVAILABLE");model=r.getObject(1,UUID.class);}
+        validateModel(c,model);String policy=source==null?(String)prefs.get("defaultCredentialSource"):source;
+        if(!Set.of("PLATFORM","USER").contains(policy))throw new ChatFailure(422,"INVALID_CREDENTIAL_SOURCE");
+        return Map.of("modelId",model,"credentialSource",policy);
+    }
+    private static boolean preferenceDefined(Connection c,Actor a,String key)throws SQLException{try(var st=q(c,"SELECT 1 FROM pf.user_preference WHERE user_id=? AND key=?",a.userId(),key);var r=st.executeQuery()){return r.next();}}
+    @Override public Map<String,Object> effective(Actor a){return tx(true,c->{auth(c,a);var p=preferences(c,a);var resolved=resolve(c,a,null,null);var values=Map.of("modelId",resolved.get("modelId").toString(),"credentialSource",resolved.get("credentialSource"));
+        return Map.of("values",values,"sources",Map.of("modelId",p.get("defaultModelId")==null?"PLATFORM":"USER","credentialSource",preferenceDefined(c,a,"defaultCredentialSource")?"USER":"PLATFORM"),"lockedFields",List.of(),"configHash",hash(json(new TreeMap<>(values))));
+    });}
+    @Override public Map<String,Object> configuration(Actor a,UUID id){return tx(true,c->{auth(c,a);task(c,a,id,false);
+        try(var st=q(c,"SELECT s.*,t.bundle_id,k.status='ACTIVE' AND k.revision=s.credential_revision AS credential_active,m.status='ACTIVE' AS model_active FROM pf.task t JOIN pf.chat_config_snapshot s ON s.id=t.config_snapshot_id JOIN pf.credential k ON k.id=s.credential_id JOIN pf.model_definition m ON m.id=s.model_id WHERE t.id=? AND t.space_id=?",id,a.spaceId());var r=st.executeQuery()){
+            if(!r.next())throw new ChatFailure(404,"RESOURCE_NOT_FOUND");var values=new TreeMap<>(object(r.getString("config_json")));
+            values.keySet().retainAll(Set.of("modelId","modelName","modelVersion","credentialId","credentialRevision","credentialSource","window","maxOutput","thinking","pricingVersion","inputPrice","outputPrice","perCallMicros","bundleHash"));
+            return Map.of("configSnapshotId",r.getObject("id").toString(),"configHash",r.getString("config_hash"),"bundleId",r.getObject("bundle_id").toString(),"values",values,"restrictions",Map.of("credentialActive",r.getBoolean("credential_active"),"modelActive",r.getBoolean("model_active")));
+        }
+    });}
+    private static Map<String,Object> credentialMetadata(Connection c,Actor a)throws SQLException{
+        long version=0;boolean active=false;
+        try(var st=q(c,"SELECT u.version,k.status FROM pf.user_model_credential u LEFT JOIN pf.credential k ON k.id=u.credential_id WHERE u.space_id=? AND u.user_id=? AND u.provider='DEEPSEEK'",a.spaceId(),a.userId());var r=st.executeQuery()){if(r.next()){version=r.getLong(1);active="ACTIVE".equals(r.getString(2));}}
+        boolean platform;try(var st=q(c,"SELECT 1 FROM pf.model_binding b JOIN pf.credential k ON k.id=b.credential_id WHERE b.space_id=? AND b.user_id=? AND b.source_policy='PLATFORM' AND k.scope_type='PLATFORM' AND k.status='ACTIVE' LIMIT 1",a.spaceId(),a.userId());var r=st.executeQuery()){platform=r.next();}
+        return Map.of("version",version,"userConfigured",active,"platformAvailable",platform);
+    }
+    @Override public Map<String,Object> credentialMetadata(Actor a){return tx(c->{auth(c,a);return credentialMetadata(c,a);});}
+    @Override public Map<String,Object> replaceUserCredential(Actor a,long expected,Credential encrypted){return tx(c->{
+        auth(c,a);if(encrypted!=null&&(!"USER".equals(encrypted.scope())||!a.spaceId().equals(encrypted.spaceId())||!a.userId().equals(encrypted.ownerId())))throw new ChatFailure(403,"CREDENTIAL_SCOPE_REJECTED");
+        exec(c,"INSERT INTO pf.user_model_credential(space_id,user_id,provider) VALUES(?,?,'DEEPSEEK') ON CONFLICT DO NOTHING",a.spaceId(),a.userId());UUID prior;
+        try(var st=q(c,"SELECT credential_id,version FROM pf.user_model_credential WHERE space_id=? AND user_id=? AND provider='DEEPSEEK' FOR UPDATE",a.spaceId(),a.userId());var r=st.executeQuery()){r.next();if(r.getLong(2)!=expected)throw new ChatFailure(412,"CREDENTIAL_VERSION_CONFLICT");prior=r.getObject(1,UUID.class);}
+        if(prior!=null)exec(c,"UPDATE pf.credential SET status='REVOKED',revision=revision+1 WHERE id=? AND scope_type='USER' AND space_id=? AND owner_user_id=?",prior,a.spaceId(),a.userId());
+        if(encrypted!=null)exec(c,"INSERT INTO pf.credential(id,scope_type,space_id,owner_user_id,ciphertext,nonce,key_version,revision) VALUES(?,'USER',?,?,?,?,?,?)",encrypted.id(),a.spaceId(),a.userId(),encrypted.ciphertext(),encrypted.nonce(),encrypted.keyVersion(),encrypted.revision());
+        exec(c,"UPDATE pf.user_model_credential SET credential_id=?,version=version+1 WHERE space_id=? AND user_id=? AND provider='DEEPSEEK'",encrypted==null?null:encrypted.id(),a.spaceId(),a.userId());
+        audit(c,a,encrypted==null?"USER_CREDENTIAL_REVOKED":"USER_CREDENTIAL_REPLACED",encrypted==null?a.userId():encrypted.id(),Uuid7.next());return credentialMetadata(c,a);
+    });}
+    private static Map<String,Object> frozen(Connection c,Lease l)throws SQLException{
+        try(var st=q(c,"SELECT s.config_json FROM pf.task t JOIN pf.chat_config_snapshot s ON s.id=t.config_snapshot_id WHERE t.id=? AND t.space_id=?",l.taskId(),l.spaceId());var r=st.executeQuery()){if(!r.next())throw new ChatFailure(404,"RESOURCE_NOT_FOUND");return object(r.getString(1));}
+    }
+    private static long callAllowance(Connection c,Lease l)throws SQLException{return ((Number)frozen(c,l).getOrDefault("perCallMicros",24576L)).longValue();}
+    private static void activeModel(Connection c,Lease l)throws SQLException{validateModel(c,l.modelId());}
+    @Override public String modelName(Lease l){return tx(c->{owned(c,l,false);activeModel(c,l);return (String)frozen(c,l).get("modelName");});}
+
+    @Override public boolean ready(){try{return tx(c->{try(var s=q(c,"SELECT to_regclass('pf.user_model_credential') IS NOT NULL AND to_regclass('pf.user_preference_revision') IS NOT NULL AND to_regclass('pf.task') IS NOT NULL AND to_regclass('pf.event_outbox') IS NOT NULL AND to_regclass('pf.acceptance_model_meter') IS NOT NULL AND (SELECT schema_version=1 FROM pf.baseline_version WHERE id=1)");var r=s.executeQuery()){return r.next()&&r.getBoolean(1);}});}catch(ChatFailure e){return false;}}
 }

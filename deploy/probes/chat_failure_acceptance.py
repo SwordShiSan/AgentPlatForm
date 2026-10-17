@@ -4,6 +4,7 @@ Never run this while the worker is configured for a real provider. No real keys 
 """
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import time
@@ -27,6 +28,13 @@ def fixture_counts():
     return json.loads(result.stdout)['scenarios']
 
 
+def require_fixture_runtime():
+    image = json.loads(subprocess.check_output(['docker', 'inspect', 'agentplatform-r12-local-worker-1'], cwd=ROOT))[0]
+    actual = dict(item.split('=', 1) for item in image['Config']['Env'] if '=' in item)
+    assert actual.get('PLATFORM_CHAT_FIXTURE_PROVIDER', '').lower() == 'true'
+    assert actual.get('PLATFORM_CHAT_PROVIDER_BASE') == 'http://fixture:8080'
+
+
 def wait_ready(client, timeout=100):
     until = time.monotonic() + timeout
     while time.monotonic() < until:
@@ -40,6 +48,7 @@ def wait_ready(client, timeout=100):
 
 
 def main():
+    require_fixture_runtime()
     mode = sys.argv[1] if len(sys.argv) > 1 else 'provider'
     config = json.loads(subprocess.check_output(admin.COMPOSE + ['--profile', 'fixture', 'config', '--format', 'json'], cwd=ROOT, env=admin.ENV))
     env = config['services']['worker']['environment']
@@ -47,7 +56,7 @@ def main():
     assert env['PLATFORM_CHAT_PROVIDER_BASE'] == 'http://fixture:8080'
     # Keep repeated deterministic UNKNOWN reservations in Bob's fixture budget;
     # Alice owns the separately capped real-provider acceptance evidence.
-    client = Client('bob' if mode == 'provider' else 'alice')
+    client = Client(os.environ.get('R13_ACCEPTANCE_USER', 'bob' if mode == 'provider' else 'alice'))
     results = []
     if mode == 'provider':
         cases = [('429', 'SUCCEEDED', 3), ('5xx', 'SUCCEEDED', 3), ('empty', 'FAILED', 2),

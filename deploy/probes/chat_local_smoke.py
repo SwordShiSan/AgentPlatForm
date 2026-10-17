@@ -40,7 +40,7 @@ class Client:
 
     def submit(self, conversation, text, key=None):
         code, models = self.request('GET', '/models')
-        assert code == 200 and len(models['items']) == 1, 'Catalog missing bound model'
+        assert code == 200 and any(m['name'] == 'deepseek-flash' for m in models['items']), 'Catalog missing bound model'
         value = {'input': {'text': text, 'attachments': []}, 'options': {'modelId': models['items'][0]['id'], 'planMode': False, 'permissionMode': 'RISK_BASED'}}
         code, result = self.request('POST', '/conversations/' + conversation + '/tasks', value, key or str(uuid.uuid4()))
         assert code == 202, 'Task submission failed: ' + result.get('code', 'unknown')

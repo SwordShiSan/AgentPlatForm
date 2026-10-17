@@ -11,7 +11,7 @@ FILES = ['contracts/openapi.yaml', 'contracts/events/platform-event.schema.json'
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--write', action='store_true')
-    parser.add_argument('--baseline', choices=['r0', 'r1.1', 'r1.2'], default='r1.2')
+    parser.add_argument('--baseline', choices=['r0', 'r1.1', 'r1.2', 'r1.3'], default='r1.3')
     args = parser.parse_args()
     # Discover generated contracts and HC-1 ports from the actual source layout.
     files = list(FILES)
