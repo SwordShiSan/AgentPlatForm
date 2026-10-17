@@ -4,6 +4,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import secrets
 import subprocess
@@ -13,11 +14,30 @@ from docker_preflight import require_linux
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / '.cache/r12-local'
 ENV = dict(os.environ, R12_ROOT=DATA.as_posix())
+MQ_IDENTITY = DATA / 'mq-hostname'
+ENV['R12_MQ_HOSTNAME'] = MQ_IDENTITY.read_text().strip() if MQ_IDENTITY.exists() else 'agentplatform-local-mq'
 COMPOSE = ['docker', 'compose', '-p', 'agentplatform-r12-local', '-f', 'deploy/compose.chat-local.yaml']
 
 
 def run(command, **kwargs):
     return subprocess.run(command, cwd=ROOT, env=ENV, check=True, **kwargs)
+
+
+def freeze_mq_identity():
+    if not MQ_IDENTITY.exists():
+        result = subprocess.run(['docker', 'inspect', 'agentplatform-r12-local-rabbitmq-1'], capture_output=True, text=True)
+        hostname = 'agentplatform-local-mq'
+        if result.returncode == 0:
+            existing = json.loads(result.stdout)[0]
+            assert existing['Config']['Labels']['com.docker.compose.project'] == 'agentplatform-r12-local'
+            hostname = existing['Config']['Hostname']
+        elif 'No such' not in result.stderr:
+            raise RuntimeError('Cannot verify existing broker identity')
+        DATA.mkdir(parents=True, exist_ok=True)
+        MQ_IDENTITY.write_text(hostname, encoding='utf-8')
+    hostname = MQ_IDENTITY.read_text().strip()
+    assert re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,62}', hostname), 'Invalid broker identity'
+    ENV['R12_MQ_HOSTNAME'] = hostname
 
 
 def sql(text):
@@ -56,7 +76,7 @@ def definitions():
              'queues': [{'name': name, 'vhost': '/agentplatform', 'durable': True, 'auto_delete': False, 'arguments': arguments} for name, arguments in [('ap.execution.v1', {'x-queue-type': 'quorum', 'x-dead-letter-exchange': 'ap.dead.v1', 'x-dead-letter-routing-key': 'execution.dead'}), ('ap.execution.dead.v1', {'x-queue-type': 'quorum'})]],
              'bindings': [{'source': source, 'vhost': '/agentplatform', 'destination': destination, 'destination_type': 'queue', 'routing_key': key, 'arguments': {}} for source, destination, key in [('ap.commands.v1', 'ap.execution.v1', 'execution.ready'), ('ap.dead.v1', 'ap.execution.dead.v1', 'execution.dead')]]}
     (DATA / 'rabbitmq-definitions.json').write_text(json.dumps(value), encoding='utf-8')
-    (DATA / 'rabbitmq.conf').write_text('definitions.import_backend = local_filesystem\ndefinitions.local.path = /etc/rabbitmq/definitions.json\nvm_memory_high_watermark.absolute = 128MiB\ndisk_free_limit.absolute = 256MiB\nlog.console.level = warning\nconsumer_timeout = 180000\n', encoding='utf-8')
+    (DATA / 'rabbitmq.conf').write_text('definitions.import_backend = local_filesystem\ndefinitions.local.path = /etc/rabbitmq/definitions.json\nvm_memory_high_watermark.absolute = 256MiB\ndisk_free_limit.absolute = 256MiB\nlog.console.level = warning\nconsumer_timeout = 180000\n', encoding='utf-8')
 
 
 def grant():
@@ -91,6 +111,8 @@ def main():
     parser.add_argument('mode', choices=['prepare', 'build', 'migrate', 'grant', 'seed', 'start', 'reconcile-stopped', 'stop', 'status'])
     mode = parser.parse_args().mode
     require_linux()
+    if mode in ['prepare', 'start', 'migrate', 'grant', 'seed']:
+        freeze_mq_identity()
     if mode == 'prepare':
         DATA.mkdir(parents=True, exist_ok=True)
         if os.name == 'nt':

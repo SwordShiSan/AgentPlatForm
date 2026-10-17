@@ -28,9 +28,10 @@ services:
     logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
   rabbitmq:
     image: rabbitmq:4.3.6-management@sha256:8dd6e3570ddaa2ef82a6c3a8950e79c1f73893adfbdddbc374fc1f1ac8a0f5dd
+    hostname: ${R12_MQ_HOSTNAME:-agentplatform-local-mq}
     restart: "no"
-    mem_limit: 256m
-    memswap_limit: 256m
+    mem_limit: 512m
+    memswap_limit: 512m
     cpus: 0.5
     environment: {RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 1:1 +A 4"}
     volumes:
