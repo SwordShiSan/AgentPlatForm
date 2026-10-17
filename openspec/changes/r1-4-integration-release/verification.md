@@ -38,3 +38,14 @@ Repair is a project-owned UUIDv4 helper using HTTP-compatible crypto.getRandomVa
 References: https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues and https://developer.mozilla.org/en-US/docs/Web/API/Crypto/randomUUID . Export identity correction: Docker Desktop local image IDs are OCI index digests; cloud uses config IDs. Preserve index→amd64 manifest→config→rootfs proof instead of equating them.
 
 HTTP repair local PASS: Vue22/types/build, browser15 (randomUUID/clipboard absent), secrets/identities, unchanged backend evidence reused; no additional real calls. UI source 6a4014b4adfff4c32db70387be14666fa93de581, API source c37bec9fdb34bced93b460918d80752107e2b3cc. Supplement SHA256 9927da2adbd575ccbe3d087a4947a1ea44698c1eb7d130ac1abe303edf336cad; original896ece package retained as initial candidate. New two-level promotion pending; cloud fixed candidate NOT_RUN.
+
+## 2026-10-17 Cold-start resource correction (approved dynamic-budget scope)
+
+Candidate a9d7f81 passed1800.14s observation, real Flash/Pro, consistent backup and independent restore, but final R1 cold-start capture FAIL: SeaweedFS master64MiB was OOM-killed twice (kernel container identity evidence); current State.OOMKilled=false alone hid prior kills, RestartCount=2 correctly blocked. No R1 tag. Restore R0 before repair; retain failed logs/old passing scoped evidence.
+
+Increase only R1 master container and swap ceiling from64 to128MiB; keep GOMEMLIMIT48MiB, official image/source, schemas and app/UI artifacts unchanged. Resident total2336MiB<=2887MiB, hostreserve>=768MiB. This is within user-approved dynamic module allocation, not a third-party source change. R0 configuration stays preserved.
+
+Re-promote config through step→phase→main before deployment. Reuse actual successful model results and cumulative meter (cloud2, estimated437micros; local17/UNKNOWN49152/estimate7434 unchanged); no extra model calls for the resource-only repeat. Observer may accept a protected prior result only after validating its completed persisted task/calls/usage and identity, report reused evidence explicitly, and exercise authenticated stored task/snapshot reads. Run fresh>=1800s observation plus MQ/PG faults and three forced master cold recreations, requiring no automatic restart or OOM. Repeat consistent backup, serial independent restore, R0 rollback and final same R1 startup. Kernel OOM evidence and monotonic restart counts remain blocking; do not reset a failing counter to claim success. Final proof must pass before tag.
+
+
+Resource-only local verification PASS:11 deployment Python tests (6 new reuse boundary cases), Compose10services/2336MiB and equal swap limits, unchanged contracts/invalid fixtures and21links. Master kernel OOM and R0 recovery retained. No backend/frontend source, SDK, schema, images or real usage changed; their existing full functional evidence remains valid. New exact-config promotion and fresh cloud gates pending.

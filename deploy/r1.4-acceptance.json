@@ -129,7 +129,7 @@
   "businessBudgetEnforced": true,
   "resources": {
     "localCapMiB": 2016,
-    "renderedCloudCapMiB": 2272,
+    "renderedCloudCapMiB": 2336,
     "maximumCapMiB": 2887,
     "hostReserveMiB": 768,
     "swapExtension": false
@@ -139,7 +139,7 @@
     "sha256": "9927da2adbd575ccbe3d087a4947a1ea44698c1eb7d130ac1abe303edf336cad",
     "retainUntil": "2026-11-17"
   },
-  "cloudStatus": "FIRST_CANDIDATE_FAIL_R0_RESTORED; FIXED_CANDIDATE_NOT_RUN",
+  "cloudStatus": "MASTER64_COLD_START_FAIL_R0_RESTORED; RESOURCE128_NOT_RUN",
   "actionsEnabled": false,
   "notes": [
     "Earlier constraint/checksum/MQ-recreation/locator failures retained as history, superseded by the documented passing reruns.",
@@ -161,5 +161,32 @@
     "getRandomValuesRequired": true,
     "additionalRealCalls": 0,
     "firstCloudPhysicalCalls": 0
+  },
+  "resourceCorrection": {
+    "status": "PASS_LOCAL_PENDING_PROMOTION",
+    "masterLimitMiB": 128,
+    "masterGoMemoryLimitMiB": 48,
+    "previousMasterLimitMiB": 64,
+    "totalCloudLimitMiB": 2336,
+    "unitTests": 11,
+    "newReuseBoundaryTests": 6,
+    "thirdPartySourcesChanged": false,
+    "applicationAndUiImagesUnchanged": true,
+    "cloudModelEvidenceReusedWithoutCalls": true,
+    "failureEvidence": {
+      "status": "FAIL_RETAINED_R0_RESTORED",
+      "deploymentSource": "a9d7f81fa1654d9ee8b217cb592dd70df939efcf",
+      "case": "SeaweedFS master cold-start OOM",
+      "masterLimitMiB": 64,
+      "observedRestartCount": 2,
+      "kernelConfirmedKilledContainer": "cd5be2f88604e1708e749b58e97fd9f90a74b184f3ae99d227041744c07366e0",
+      "kernelEvidenceSha256": "1c6ccd5655993396ed9bbb21c49f17896d58c1248e3c98a3da8f638ef81a8999",
+      "priorObservationSeconds": 1800.14,
+      "independentRestore": "PASS",
+      "r0RestoredProfiles": 12,
+      "cloudPhysicalCalls": 2,
+      "cloudEstimatedMicros": 437,
+      "productionTagCreated": false
+    }
   }
 }
