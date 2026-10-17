@@ -1,3 +1,7 @@
+# Current conclusion: FUNCTIONAL_ACCEPTANCE_PASS_PENDING_PROMOTION (2026-10-17)
+Final MQ512MiB/total2016MiB candidate passed full Maven113 (0 failures/errors/skips), Linux48+state3, Vue20/type/build, final browser13, four real matrix turns repeated under the final configuration, provider7/dependency/resource/OOM reruns and603.86s capped observation. Shared meter13 calls/49152 held/5474 estimated micros, old holds unchanged. Positive OOM proof is direct container state; event delivery is not claimed exhaustive. Secrets/JAR/zero-swap/freeze/links/strict PASS. Runtime backend tree167a37cc56eec2e10edc6843fbe726124cb45ef1 unchanged; API/worker78d861a, UI f9e697a, deployment/scripts81820c3.
+Final protected package cc67215f1e2f4033a0b348ffaf3ed8991dfe899f40c570d4ab65941efd6f964a; final Maven supplement d2410ca1def6bba3b6ee34592dd59d587e2db7644882086731fe580cef269f8d. Old d8becff package is historical and its256MiB resource candidate was invalidated by the later MQ OOM. No cloud changes/production tag; PR promotion/archive pending. Earlier dated process records follow.
+
 # Verification
 Initial state NOT_RUN; no historical R1.2 PASS substitutes for new verification.
 - ENG: Maven verify/DDD/Enforcer, Vue types/unit/build, contract regeneration/invalid fixtures, links, OpenSpec strict.

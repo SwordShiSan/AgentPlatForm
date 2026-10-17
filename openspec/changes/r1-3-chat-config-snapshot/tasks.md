@@ -7,9 +7,9 @@
 - [x] 2.3 Flash/Pro provider snapshots, live revocation and sanitized audit.
 - [x] 2.4 Vue drafts, model/source controls, key management and configuration display.
 ## 3. Verification
-- [ ] 3.1 Engineering, contracts, strict and R1.2 regressions.
-- [ ] 3.2 Real PG/MQ, migration, rollback/concurrency/isolation/secret tests.
-- [ ] 3.3 Browser, real Flash/Pro within shared budget and bounded resources.
+- [x] 3.1 Engineering, contracts, strict and R1.2 regressions.
+- [x] 3.2 Real PG/MQ, migration, rollback/concurrency/isolation/secret tests.
+- [x] 3.3 Browser, real Flash/Pro within shared budget and bounded resources.
 ## 4. Delivery
 - [ ] 4.1 Evidence indexed by exact source/image; review and two PR promotions.
 - [ ] 4.2 Archive, sync branches and ledgers; R1.3 VERIFIED only after mandatory PASS.

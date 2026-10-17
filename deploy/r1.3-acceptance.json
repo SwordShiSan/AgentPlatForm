@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "RESOURCE_REVALIDATING",
+  "status": "FUNCTIONAL_ACCEPTANCE_PASS_PENDING_PROMOTION",
   "runtimeSource": "78d861a7bcfba79b653f72b34b8e1a001e0da7c0",
   "uiSource": "f9e697a8737ca4a2719de996ff7863e80ef550f8",
   "runtimeJarSha256": "f21ac6244704e0d0aefb9318f3c6108a43db19acbc2e9e7b66273acc8c84e8e7",
@@ -19,19 +19,19 @@
   },
   "realMeter": {
     "id": 1,
-    "physical_calls": 9,
+    "physical_calls": 13,
     "reserved_micros": 49152,
-    "consumed_micros": 3514
+    "consumed_micros": 5474
   },
-  "r13PhysicalCalls": 5,
+  "r13PhysicalCalls": 9,
   "unknownHoldsPreserved": true,
   "resource": {
     "containerLimitMiB": 2016,
+    "rabbitmqLimitMiB": 512,
     "maximumAllowedMiB": 2887,
     "hostReserveMiB": 768,
     "swapExtension": false,
-    "desktopHostIsLargerThanTarget": true,
-    "rabbitmqLimitMiB": 512
+    "desktopHostIsLargerThanTarget": true
   },
   "cloudTouched": false,
   "actionsEnabled": false,
@@ -65,8 +65,8 @@
       "configId": "sha256:8dd6e3570ddaa2ef82a6c3a8950e79c1f73893adfbdddbc374fc1f1ac8a0f5dd",
       "sourceRevision": null,
       "platform": "linux/amd64",
-      "memoryBytes": 268435456,
-      "memorySwapBytes": 268435456
+      "memoryBytes": 536870912,
+      "memorySwapBytes": 536870912
     },
     {
       "service": "redis",
@@ -93,9 +93,26 @@
       "memorySwapBytes": 67108864
     }
   ],
-  "protectedPackage": {
+  "supersededCandidate": {
     "name": "r1.3-local-acceptance-20261017.zip",
     "sha256": "d8becff64d1fc9214151d53d2f1f80343f1bf042c1f2b17b2fa6cab1a2f03e4a",
+    "reason": "Later MQ OOM at256MiB; retain history, not accepted resource config"
+  },
+  "observation": {
+    "durationSeconds": 603.86,
+    "noUnplannedOom": true
+  },
+  "finalMaven": {
+    "tests": 113,
+    "sourceHead": "4e51c760bca39795d85d48c2e6b5092a54c6272f",
+    "backendTree": "167a37cc56eec2e10edc6843fbe726124cb45ef1",
+    "name": "r1.3-final-maven-20261017.zip",
+    "sha256": "d2410ca1def6bba3b6ee34592dd59d587e2db7644882086731fe580cef269f8d",
+    "deploymentSource": "81820c356607b16d92082b53936f7f75f30d9150"
+  },
+  "protectedPackage": {
+    "name": "r1.3-local-acceptance-20261017-resource-adjusted.zip",
+    "sha256": "cc67215f1e2f4033a0b348ffaf3ed8991dfe899f40c570d4ab65941efd6f964a",
     "retentionUntil": "2026-11-17"
   },
   "notes": [
@@ -104,17 +121,5 @@
     "R1.4 production/business budget separation remains a release planning gate.",
     "Body delivery is local and separate from Git."
   ],
-  "supersededCandidate": {
-    "name": "r1.3-local-acceptance-20261017.zip",
-    "sha256": "d8becff64d1fc9214151d53d2f1f80343f1bf042c1f2b17b2fa6cab1a2f03e4a",
-    "retentionUntil": "2026-11-17",
-    "reason": "RabbitMQ actual OOM at256MiB after capture; not final resource PASS"
-  },
-  "finalMaven": {
-    "tests": 113,
-    "sourceHead": "4e51c760bca39795d85d48c2e6b5092a54c6272f",
-    "backendTree": "167a37cc56eec2e10edc6843fbe726124cb45ef1",
-    "name": "r1.3-final-maven-20261017.zip",
-    "sha256": "d2410ca1def6bba3b6ee34592dd59d587e2db7644882086731fe580cef269f8d"
-  }
+  "verifiedSourceHead": "81820c356607b16d92082b53936f7f75f30d9150"
 }
