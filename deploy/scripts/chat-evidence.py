@@ -30,11 +30,13 @@ def main():
     key = args.private_key_file.read_text(encoding='utf-8-sig').strip().encode()
     assert len(key) >= 16
     needles = [key, base64.b64encode(key)]
-    secret_files = ['credential-master-key', 'api-password', 'worker-password', 'postgres-password', 'alice-password', 'bob-password']
+    secret_files = ['credential-master-key', 'cursor-key', 'api-password', 'worker-password', 'postgres-password', 'alice-password', 'bob-password', 'mq-api-password', 'mq-worker-password', 'mq-operator-password']
     if args.stage == 'r1.3':
         secret_files.append('r13acceptance-password')
+        if (local.DATA / 'state-probe-password').exists():
+            secret_files.append('state-probe-password')
     for name in secret_files:
-        value = (local.DATA / name).read_bytes().strip() if name != 'credential-master-key' else (local.DATA / name).read_bytes()
+        value = (local.DATA / name).read_bytes() if name in ['credential-master-key', 'cursor-key'] else (local.DATA / name).read_bytes().strip()
         needles.extend([value, value.hex().encode(), base64.b64encode(value)])
     paths = subprocess.check_output(['git', 'ls-files', '-co', '--exclude-standard', '-z'], cwd=ROOT).decode().split('\0')
     checked = []
