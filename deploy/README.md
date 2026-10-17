@@ -1,6 +1,7 @@
-# Current R0 HTTP production release (2026-10-15)
+# Current R1 HTTP production release (2026-10-17)
 
-R0 RELEASED at `production-r0-c46a73ae4d00`; cloud unchanged. R1.1–R1.3 VERIFIED; R1.4 integration/release IMPLEMENTING. Current and subsequent stages use approved HTTP only; HTTPS is reserved and unimplemented, DNS untouched. See [R1 release gates](R1-RELEASE.md) and historical [R0 evidence](R0-RELEASE.md). No R1 production tag before all cloud gates pass.
+R1.4 VERIFIED; R1 4/4 VERIFIED; R1 RELEASED at `production-r1-28da397d47ed`. HTTP identity/chat is online at http://124.222.55.140 and the configured existing domain Host. HTTPS remains reserved/unimplemented; DNS untouched. All cloud observation/serial restore/R0 rollback/final R1 gates passed. Resident caps2336MiB, one execution/hash slot, no swap extension. R2 NOT_STARTED. GitHub Actions stay disabled. See [R1 release evidence](R1-RELEASE.md) and [sanitized acceptance](r1.4-acceptance.json). R0 artifacts remain rollback material. The following sections retain preparation history.
+
 
 # R0.4 acceptance policy retained as preparation history
 

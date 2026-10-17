@@ -46,7 +46,7 @@ Model credentials SHALL be AES256GCM encrypted with PLATFORM or USER scope, auth
 - **THEN** it accepts only a private input file, encrypts before database insertion, keeps the master key outside the database and refuses secrets in process arguments
 
 ### Requirement: Local constrained acceptance
-The platform SHALL use the approved DeepSeek model and real RabbitMQ/PostgreSQL acceptance under one execution slot. Per-service memory MAY be redistributed within2887MiB enabled-container limit and3655MiB host budget. Real model acceptance SHALL stop at20 calls or1 CNY. Cloud production SHALL remain R0.
-#### Scenario: Model test cap reached
-- **WHEN** real acceptance consumes its request or cost cap
-- **THEN** further physical calls are denied and incomplete cases remain NOT_RUN
+The platform SHALL use the approved DeepSeek model and real RabbitMQ/PostgreSQL acceptance under one execution slot. Per-service memory MAY be redistributed within2887MiB enabled-container limit and3655MiB host budget. Real acceptance SHALL minimize physical calls, preserve cumulative metering/UNKNOWN holds and stop at provider remote quota or balance exhaustion without a fixed20-call/1-CNY ceiling. Business budgets remain enforced. Cloud production SHALL remain R0 until the separate R1.4 release gates pass.
+#### Scenario: Remote provider quota exhausted
+- **WHEN** the provider reports exhausted remote balance or quota
+- **THEN** acceptance stops without retries or credential rotation to evade the limit; incomplete cases remain NOT_RUN
