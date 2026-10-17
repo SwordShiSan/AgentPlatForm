@@ -27,8 +27,15 @@ def sql(text):
 
 def operator(arguments, private_input=''):
     shell = 'umask 077; cat > /tmp/operator-input; java -Xms16m -Xmx160m -jar /app/platform.jar "$@"; result=$?; rm -f /tmp/operator-input; exit "$result"'
-    result = subprocess.run(COMPOSE + ['--profile', 'operator', 'run', '--rm', '-T', '--entrypoint', 'sh', 'operator', '-c', shell, 'operator'] + arguments,
-                            cwd=ROOT, env=ENV, input=private_input, text=True, capture_output=True)
+    # Docker Desktop/Compose may retain an empty interactive stdin pipe. Commands
+    # without secret input must not wait on `cat` or require stdin EOF forwarding.
+    if private_input:
+        command = COMPOSE + ['--profile', 'operator', 'run', '--rm', '-T', '--entrypoint', 'sh', 'operator', '-c', shell, 'operator'] + arguments
+        streams = {'input': private_input}
+    else:
+        command = COMPOSE + ['--profile', 'operator', 'run', '--rm', '-T', '--interactive=false', '--entrypoint', 'java', 'operator', '-Xms16m', '-Xmx160m', '-jar', '/app/platform.jar'] + arguments
+        streams = {'stdin': subprocess.DEVNULL}
+    result = subprocess.run(command, cwd=ROOT, env=ENV, text=True, capture_output=True, timeout=120, **streams)
     if result.returncode:
         (DATA / 'operator-failure.log').write_text(result.stdout + result.stderr, encoding='utf-8')
         raise RuntimeError('Operator failed; inspect protected local log')

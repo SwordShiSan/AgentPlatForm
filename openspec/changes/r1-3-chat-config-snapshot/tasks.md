@@ -2,10 +2,10 @@
 - [x] 1.1 Approved Plan and baseline inspection; create one change and canonical plan/ADR updates.
 - [x] 1.2 Strict validation before implementation.
 ## 2. Implementation
-- [ ] 2.1 OpenAPI first, additive V4 and generated client.
-- [ ] 2.2 Atomic initial task, preference CAS, immutable config and scoped credential lifecycle.
-- [ ] 2.3 Flash/Pro provider snapshots, live revocation and sanitized audit.
-- [ ] 2.4 Vue drafts, model/source controls, key management and configuration display.
+- [x] 2.1 OpenAPI first, additive V4 and generated client.
+- [x] 2.2 Atomic initial task, preference CAS, immutable config and scoped credential lifecycle.
+- [x] 2.3 Flash/Pro provider snapshots, live revocation and sanitized audit.
+- [x] 2.4 Vue drafts, model/source controls, key management and configuration display.
 ## 3. Verification
 - [ ] 3.1 Engineering, contracts, strict and R1.2 regressions.
 - [ ] 3.2 Real PG/MQ, migration, rollback/concurrency/isolation/secret tests.

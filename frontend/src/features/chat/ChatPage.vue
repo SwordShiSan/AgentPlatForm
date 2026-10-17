@@ -40,7 +40,7 @@ const usedTokens = computed(() => {
 const reason = computed(() => {
   switch (lastTask.value?.reasonCode) {
     case 'CONTEXT_REQUIRED_TOO_LARGE': return '历史内容超出上下文额度，请新建对话。';
-    case 'CREDENTIAL_REVOKED': return '模型凭据已撤销，请联系运维。';
+    case 'CREDENTIAL_REVOKED': return '本次任务的凭据已撤销，请检查模型密钥。旧任务不会自动切换密钥。';
     case 'PROVIDER_TRUNCATED': return '模型回复未完整结束，已保留收到的内容。';
     case 'TASK_CANCEL_REQUESTED': return '回复已取消。';
     case null: case undefined: return '';
@@ -133,7 +133,13 @@ async function submit() {
     }
     await snapshot.refetch(); await config.refetch(); connect();
   } catch (failure) {
-    if (failure instanceof ApiError && [400, 403, 404, 422, 429].includes(failure.problem.status)) { pending.value = undefined; error.value = `提交被拒绝（${failure.problem.code}），输入已保留，请调整配置或额度。`; }
+    if (failure instanceof ApiError && [400, 403, 404, 422, 429].includes(failure.problem.status)) {
+      pending.value = undefined;
+      error.value = failure.problem.code === 'CREDENTIAL_SOURCE_UNAVAILABLE'
+        ? '所选凭据未配置或已撤销，请检查模型密钥与来源。输入已保留。'
+        : failure.problem.code === 'QUOTA_EXCEEDED' ? '聊天额度不足，输入已保留，请联系运维核对额度。'
+        : '提交被拒绝，输入已保留，请核对输入和配置。';
+    }
     else error.value = '提交暂未确认。重试会复用原消息和请求标识，不重复创建任务。';
   }
   finally { busy.value = false; }

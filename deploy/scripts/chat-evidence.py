@@ -22,14 +22,18 @@ def digest(path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--private-key-file', type=Path, required=True)
+    parser.add_argument('--stage', choices=['r1.2', 'r1.3'], default='r1.2')
     args = parser.parse_args()
-    output = local.DATA / 'sanitized-evidence'
+    output = local.DATA / ('sanitized-evidence' if args.stage == 'r1.2' else 'r13-sanitized-evidence')
     output.mkdir(exist_ok=True)
     # Values stay in memory; output contains channel names and booleans only.
     key = args.private_key_file.read_text(encoding='utf-8-sig').strip().encode()
     assert len(key) >= 16
     needles = [key, base64.b64encode(key)]
-    for name in ['credential-master-key', 'api-password', 'worker-password', 'postgres-password', 'alice-password', 'bob-password']:
+    secret_files = ['credential-master-key', 'api-password', 'worker-password', 'postgres-password', 'alice-password', 'bob-password']
+    if args.stage == 'r1.3':
+        secret_files.append('r13acceptance-password')
+    for name in secret_files:
         value = (local.DATA / name).read_bytes().strip() if name != 'credential-master-key' else (local.DATA / name).read_bytes()
         needles.extend([value, value.hex().encode(), base64.b64encode(value)])
     paths = subprocess.check_output(['git', 'ls-files', '-co', '--exclude-standard', '-z'], cwd=ROOT).decode().split('\0')
@@ -39,7 +43,7 @@ def main():
         if path.is_file():
             assert not any(value in path.read_bytes() for value in needles), 'Secret detected in source path: ' + name
             checked.append(name)
-    runtime_needles = needles + [b'R12_FIXTURE_CREDENTIAL_SENTINEL', b'FIXTURE_HIDDEN_REASONING']
+    runtime_needles = needles + [b'R12_FIXTURE_CREDENTIAL_SENTINEL', b'FIXTURE_HIDDEN_REASONING', b'R13_USER_KEY_SENTINEL_NOT_A_REAL_KEY']
     identities = []
     for service in ['api', 'worker', 'postgres', 'rabbitmq', 'redis', 'gateway', 'fixture']:
         name = 'agentplatform-r12-local-' + service + '-1'
@@ -59,23 +63,25 @@ def main():
     jar = ROOT / 'backend/platform-app/target/platform-app-0.1.0-SNAPSHOT.jar'
     actual = subprocess.check_output(['docker', 'exec', 'agentplatform-r12-local-api-1', 'sha256sum', '/app/platform.jar'], cwd=ROOT).decode().split()[0]
     assert digest(jar) == actual
-    real = json.loads((local.DATA / 'real-model-browser.json').read_text())
+    real = json.loads((local.DATA / ('real-model-browser.json' if args.stage == 'r1.2' else 'r13-real-browser.json')).read_text())
     assert real['status'] == 'PASS'
     streams = []
-    for call in real['usage']:
+    calls = real['usage'] if args.stage == 'r1.2' else [call for result in real['results'] for call in result['usage']]
+    for call in calls:
         call_id = str(uuid.UUID(call['callId']))
         value = local.sql("SELECT json_build_object('deltas',count(*) FILTER(WHERE e.type='message.delta'),'incremental',min(e.created_at) FILTER(WHERE e.type='message.delta') < max(e.created_at) FILTER(WHERE e.type='message.completed')) FROM pf.platform_event e JOIN pf.model_call c ON c.task_id=e.task_id WHERE c.id='" + call_id + "';")
         item = json.loads(re.search(r'\{.*\}', value).group(0))
         assert item['deltas'] > 0 and item['incremental'] is True
         streams.append(item)
-    assert streams[0]['deltas'] > 1, 'Real first response must persist multiple live batches'
+    if args.stage == 'r1.2':
+        assert streams[0]['deltas'] > 1, 'Real first response must persist multiple live batches'
     meter = json.loads(re.search(r'\{.*\}', local.sql('SELECT row_to_json(m) FROM pf.acceptance_model_meter m;')).group(0))
     assert meter['physical_calls'] <= 20 and meter['reserved_micros'] + meter['consumed_micros'] <= 1000000
     result = {'schemaVersion': 1, 'status': 'PASS', 'sourceHead': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT).decode().strip(),
               'images': identities, 'jarSha256': actual, 'sourceFilesChecked': len(checked),
               'secretChannels': ['source', 'runtime logs', 'database including private state/events'],
-              'rawSqlOrLogsSaved': False, 'realStreams': streams, 'acceptanceMeter': meter,
-              'contractSha256': digest(ROOT / 'contracts/r1.2-baseline.lock.json'),
+              'rawSqlOrLogsSaved': False, 'realStreams': streams, 'multiBatchObserved': any(item['deltas'] > 1 for item in streams), 'acceptanceMeter': meter,
+              'contractSha256': digest(ROOT / 'contracts' / (args.stage + '-baseline.lock.json')),
               'artifactLockSha256': digest(ROOT / 'deploy/maven-artifacts.lock.json'),
               'deploymentConfigSha256': digest(ROOT / 'deploy/compose.chat-local.yaml'),
               'nginxConfigSha256': digest(ROOT / 'deploy/nginx.chat-local.conf')}

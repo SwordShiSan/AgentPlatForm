@@ -6,8 +6,9 @@ test.use({ trace: 'off', screenshot: 'off' });
 test('real Flash/Pro and platform/user credentials preserve one multi-turn conversation', async ({ page, baseURL }) => {
   test.setTimeout(480_000); expect(baseURL).toBe('http://127.0.0.1:18087');
   const root = resolve(import.meta.dirname, '../../../.cache/r12-local');
-  await page.goto('/login'); await page.getByLabel('账号', { exact: true }).fill('alice');
-  await page.getByLabel('密码', { exact: true }).fill(readFileSync(resolve(root, 'alice-password'), 'utf8').trim()); await page.getByRole('button', { name: '登录', exact: true }).click();
+  const username = process.env.R13_ACCEPTANCE_USER ?? 'r13acceptance';
+  await page.goto('/login'); await page.getByLabel('账号', { exact: true }).fill(username);
+  await page.getByLabel('密码', { exact: true }).fill(readFileSync(resolve(root, `${username}-password`), 'utf8').trim()); await page.getByRole('button', { name: '登录', exact: true }).click();
   await page.getByRole('link', { name: '普通聊天', exact: true }).click(); await page.getByRole('button', { name: '新建对话' }).click();
   const results = [];
   for (const [index, [model, source]] of [['deepseek-flash', 'PLATFORM'], ['deepseek-v4-pro', 'PLATFORM'], ['deepseek-v4-pro', 'USER'], ['deepseek-flash', 'USER']].entries()) {
