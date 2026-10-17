@@ -315,6 +315,12 @@ public final class JdbcChatRepository implements ChatRepository {
         assistantTerminalEvent(c,new Actor(user,space),convo,task);
         event(c,new Actor(user,space),convo,task,"task.state_changed",task(c,new Actor(user,space),task,false).version(),Map.of("taskId",task.toString(),"status","FAILED","reasonCode","WORKER_INTERRUPTED"));return null;
     });}
+    @Override public List<Credential> recoveryCredentials(){return tx(c->{
+        List<Credential> values=new ArrayList<>();
+        try(var st=q(c,"SELECT * FROM pf.credential ORDER BY id");var row=st.executeQuery()){
+            while(row.next())values.add(new Credential(row.getObject("id",UUID.class),row.getString("scope_type"),row.getObject("space_id",UUID.class),row.getObject("owner_user_id",UUID.class),row.getBytes("ciphertext"),row.getBytes("nonce"),row.getInt("key_version"),row.getLong("revision")));
+        }return List.copyOf(values);
+    });}
     @Override public UUID importCredential(Credential k){return tx(c->{exec(c,"INSERT INTO pf.credential(id,scope_type,space_id,owner_user_id,ciphertext,nonce,key_version,revision) VALUES(?,?,?,?,?,?,?,?)",k.id(),k.scope(),k.spaceId(),k.ownerId(),k.ciphertext(),k.nonce(),k.keyVersion(),k.revision());return k.id();});}
     @Override public void revokeCredential(UUID id){tx(c->{
         if(exec(c,"UPDATE pf.credential SET status='REVOKED',revision=revision+1 WHERE id=? AND status='ACTIVE'",id)==0){

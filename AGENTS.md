@@ -1,6 +1,8 @@
 # Current user-approved R0.4 workflow exception (2026-10-15)
 GitHub is version management only: Actions disabled, required CI retired, local/cloud exact-source acceptance evidence supports step→phase→main PRs. Preserve PR/non-force protection. No blanket third-party vulnerability remediation or source rebuild requirement; functionality/isolation/quota/resource/recovery gates remain. Same accepted Plan/OpenSpec applies; previous CI instructions below are historical where conflicting.
 
+R1.4 approved decision (2026-10-17): current and subsequent deployments use HTTP; HTTPS is reserved/unimplemented, no DNS changes/checks. Explicit cloud HTTP identity profile uses non-Secure HttpOnly SameSite=Lax cookies, exact Origins and CSRF. Preserve functional authorization, credential encryption and redaction. Real acceptance is metered without fixed20call/1CNY ceilings; minimize calls and stop at provider quota/balance errors. Do not reset old UNKNOWN holds or disable business budgets.
+
 # AgentPlatForm implementation rules
 
 ## Scope

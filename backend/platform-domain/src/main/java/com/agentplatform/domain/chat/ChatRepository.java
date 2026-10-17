@@ -31,6 +31,7 @@ public interface ChatRepository {
     Credential credential(Lease lease, UUID callId);
     void finish(Lease lease, String status, String reason);
     void recoverStopped(UUID owner);
+    List<Credential> recoveryCredentials();
     UUID importCredential(Credential credential);
     void revokeCredential(UUID credential);
     void bind(UUID model, Actor actor, UUID credential, String sourcePolicy);

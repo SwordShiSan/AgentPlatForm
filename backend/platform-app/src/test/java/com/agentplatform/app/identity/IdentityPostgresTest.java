@@ -46,6 +46,9 @@ class IdentityPostgresTest {
         Assumptions.assumeTrue(url != null, "Real PostgreSQL fixture not configured; not acceptance evidence");
         assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15441/identity_test?"), "Refusing a database outside the isolated identity test fixture");
         password = Files.readString(Path.of(System.getenv("R11_TEST_PASSWORD_FILE"))).strip();
+        // Only this named isolated test DB is reset; prove a fresh V1 installation every run.
+        Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime")
+                .cleanDisabled(false).load().clean();
         Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").target("1").load().migrate();
         assertTrue(new DependencyReadinessProbe(new PostgresStateStorage(url,"postgres",password), List.of()).ready());
         Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").load().migrate();
