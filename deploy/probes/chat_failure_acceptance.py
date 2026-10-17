@@ -59,7 +59,7 @@ def main():
     client = Client(os.environ.get('R13_ACCEPTANCE_USER', 'bob' if mode == 'provider' else 'alice'))
     results = []
     if mode == 'provider':
-        cases = [('429', 'SUCCEEDED', 3), ('5xx', 'SUCCEEDED', 3), ('empty', 'FAILED', 2),
+        cases = [('balance', 'FAILED', 1), ('429', 'SUCCEEDED', 3), ('5xx', 'SUCCEEDED', 3), ('empty', 'FAILED', 2),
                  ('truncated', 'FAILED', 1), ('partial', 'FAILED', 1), ('missing-usage', 'SUCCEEDED', 1),
                  ('timeout', 'FAILED', 1)]
         for name, expected, count in cases:
@@ -82,6 +82,15 @@ def main():
             if name == 'missing-usage':
                 assert usage['items'][0]['inputTokens'] is None and usage['items'][0]['outputTokens'] is None
                 assert usage['items'][0]['costMicros'] is None
+            if name == 'balance':
+                assert terminal['reasonCode'] == 'PROVIDER_BALANCE_EXHAUSTED'
+                assert usage['items'][0]['status'] == 'FAILED'
+            status, diagnostic = client.request('GET', '/tasks/' + task + '/diagnostics')
+            assert status == 200 and diagnostic['taskId'] == task
+            assert diagnostic['automaticReplayAllowed'] is False
+            assert diagnostic['hasPartialOutput'] == (message['status'] == 'PARTIAL' and bool(text))
+            if name in ['partial', 'timeout', 'missing-usage']:
+                assert diagnostic['classification'] == 'UNKNOWN_SIDE_EFFECT'
             results.append({'case': name, 'status': terminal['status'], 'reason': terminal.get('reasonCode'),
                             'ledger_calls': len(usage['items']), 'physical_calls': count, 'message': message['status']})
             print('PASS', name, 'physical_calls=' + str(count), flush=True)

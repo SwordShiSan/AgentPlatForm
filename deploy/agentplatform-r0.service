@@ -1,5 +1,5 @@
 [Unit]
-Description=AgentPlatForm R0 HTTP baseline
+Description=AgentPlatForm HTTP production (manifest-gated R0/R1)
 Requires=docker.service srv-agentplatform-workspaces.mount
 After=docker.service srv-agentplatform-workspaces.mount
 PartOf=docker.service

@@ -41,9 +41,9 @@ test('first committed text is visible while running and explicit cancel keeps pa
   await page.getByLabel('消息', { exact: true }).fill('fixture:slow');
   await page.getByRole('button', { name: '发送', exact: true }).click();
   await expect(page.locator('.chat-message.assistant .chat-text').last()).toContainText('慢速');
-  await expect(page.getByRole('status')).toContainText('正在回复');
+  await expect(page.getByRole('status').first()).toContainText('正在回复');
   await page.getByRole('button', { name: '取消回复', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('已取消');
+  await expect(page.getByRole('status').first()).toContainText('已取消');
   await expect(page.locator('.chat-message.assistant .eyebrow').last()).toContainText('回复未完成');
 });
 

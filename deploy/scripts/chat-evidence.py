@@ -22,16 +22,16 @@ def digest(path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--private-key-file', type=Path, required=True)
-    parser.add_argument('--stage', choices=['r1.2', 'r1.3'], default='r1.2')
+    parser.add_argument('--stage', choices=['r1.2', 'r1.3', 'r1.4'], default='r1.2')
     args = parser.parse_args()
-    output = local.DATA / ('sanitized-evidence' if args.stage == 'r1.2' else 'r13-sanitized-evidence')
+    output = local.DATA / {'r1.2':'sanitized-evidence','r1.3':'r13-sanitized-evidence','r1.4':'r14-sanitized-evidence'}[args.stage]
     output.mkdir(exist_ok=True)
     # Values stay in memory; output contains channel names and booleans only.
     key = args.private_key_file.read_text(encoding='utf-8-sig').strip().encode()
     assert len(key) >= 16
     needles = [key, base64.b64encode(key)]
     secret_files = ['credential-master-key', 'cursor-key', 'api-password', 'worker-password', 'postgres-password', 'alice-password', 'bob-password', 'mq-api-password', 'mq-worker-password', 'mq-operator-password']
-    if args.stage == 'r1.3':
+    if args.stage in ['r1.3', 'r1.4']:
         secret_files.append('r13acceptance-password')
         if (local.DATA / 'state-probe-password').exists():
             secret_files.append('state-probe-password')
@@ -65,7 +65,7 @@ def main():
     jar = ROOT / 'backend/platform-app/target/platform-app-0.1.0-SNAPSHOT.jar'
     actual = subprocess.check_output(['docker', 'exec', 'agentplatform-r12-local-api-1', 'sha256sum', '/app/platform.jar'], cwd=ROOT).decode().split()[0]
     assert digest(jar) == actual
-    real = json.loads((local.DATA / ('real-model-browser.json' if args.stage == 'r1.2' else 'r13-real-browser.json')).read_text())
+    real = json.loads((local.DATA / {'r1.2':'real-model-browser.json','r1.3':'r13-real-browser.json','r1.4':'r14-real-browser.json'}[args.stage]).read_text())
     assert real['status'] == 'PASS'
     streams = []
     calls = real['usage'] if args.stage == 'r1.2' else [call for result in real['results'] for call in result['usage']]
@@ -78,7 +78,10 @@ def main():
     if args.stage == 'r1.2':
         assert streams[0]['deltas'] > 1, 'Real first response must persist multiple live batches'
     meter = json.loads(re.search(r'\{.*\}', local.sql('SELECT row_to_json(m) FROM pf.acceptance_model_meter m;')).group(0))
-    assert meter['physical_calls'] <= 20 and meter['reserved_micros'] + meter['consumed_micros'] <= 1000000
+    if args.stage == 'r1.4':
+        assert meter['physical_calls'] >= 13 and meter['reserved_micros'] >= 49152 and meter['consumed_micros'] >= 5474
+    else:
+        assert meter['physical_calls'] <= 20 and meter['reserved_micros'] + meter['consumed_micros'] <= 1000000
     result = {'schemaVersion': 1, 'status': 'PASS', 'sourceHead': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT).decode().strip(),
               'images': identities, 'jarSha256': actual, 'sourceFilesChecked': len(checked),
               'secretChannels': ['source', 'runtime logs', 'database including private state/events'],

@@ -57,6 +57,11 @@ class Handler(BaseHTTPRequestHandler):
         with LOCK:
             COUNTS[prompt] += 1
             ordinal = COUNTS[prompt]
+        if prompt.startswith('fixture:balance'):
+            self.send_response(402)
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+            return
         if prompt.startswith(('fixture:429', 'fixture:5xx')) and ordinal <= 2:
             self.send_response(429 if prompt.startswith('fixture:429') else 503)
             self.send_header('Content-Length', '0')

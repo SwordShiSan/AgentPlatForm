@@ -1,0 +1,23 @@
+-- Run by ap_admin after additive migration; API never SELECTs credential ciphertext.
+REVOKE ALL ON pf.credential FROM ap_api;
+GRANT USAGE ON SCHEMA pf,pf_runtime TO ap_api,ap_worker;
+GRANT SELECT ON pf.app_user,pf.space,pf.membership,pf.space_storage,pf.baseline_version,pf.identity_operation,pf.model_definition TO ap_api,ap_worker;
+GRANT EXECUTE ON FUNCTION pf.authorize_chat_actor(uuid,uuid) TO ap_api,ap_worker;
+GRANT EXECUTE ON FUNCTION pf.authorize_chat_credential(uuid,bigint,uuid,uuid) TO ap_worker;
+GRANT SELECT,INSERT,UPDATE,DELETE ON pf.auth_session,pf.auth_rate TO ap_api;
+GRANT SELECT(id,scope_type,space_id,owner_user_id,status,revision) ON pf.credential TO ap_api;
+GRANT INSERT(id,scope_type,space_id,owner_user_id,ciphertext,nonce,key_version,revision) ON pf.credential TO ap_api;
+GRANT UPDATE(status,revision) ON pf.credential TO ap_api;
+GRANT SELECT ON pf.credential,pf.model_binding TO ap_worker;
+GRANT SELECT ON pf.model_binding TO ap_api;
+GRANT SELECT,INSERT,UPDATE ON pf.runtime_bundle,pf.chat_config_snapshot TO ap_api;
+GRANT SELECT ON pf.runtime_bundle,pf.chat_config_snapshot TO ap_worker;
+GRANT SELECT,INSERT,UPDATE ON pf.conversation,pf.task,pf.message,pf.platform_event,pf.execution_dispatch,pf.execution_slot,pf.budget_account TO ap_api,ap_worker;
+GRANT SELECT,INSERT,UPDATE ON pf.event_outbox,pf.idempotency_record TO ap_api;
+GRANT SELECT ON pf.model_call,pf.attempt,pf.budget_reservation TO ap_api;
+GRANT SELECT,INSERT,UPDATE ON pf.attempt,pf.consumer_inbox,pf.model_call,pf.budget_reservation,pf.credential_access_audit,pf.acceptance_model_meter,pf.dispatch_quarantine TO ap_worker;
+GRANT SELECT,INSERT,UPDATE,DELETE ON pf_runtime.state_slot TO ap_worker;
+GRANT SELECT,INSERT,UPDATE ON pf.user_preference,pf.user_preference_revision,pf.user_model_credential TO ap_api;
+GRANT SELECT ON pf.user_model_credential TO ap_worker;
+GRANT INSERT ON pf.chat_audit TO ap_api;
+GRANT SELECT,INSERT ON pf.failure_record TO ap_api,ap_worker;

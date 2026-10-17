@@ -1,5 +1,7 @@
 # AgentPlatForm
 
+当前：R1.1–R1.3 VERIFIED，R1完成3/4；R1.4整合与HTTP发行正在实施，尚未VERIFIED/RELEASED。云端仍运行R0。当前及后续仅实施HTTP，HTTPS保留暂不实现，不检查/修改DNS。验收按供应商远程额度、尽量少调用，保留历史计量与业务预算。见[R1发行与恢复门禁](deploy/R1-RELEASE.md)。以下为历史阶段记录。
+
 **R0 已正式 RELEASED，R1.1 已本地 VERIFIED，R1.2 已本地 VERIFIED，R1 完成2/4、未 RELEASED**。HTTP入口：[公网IP](http://124.222.55.140)，域名Host `agentplatform.lailihao.cloud` 已配置；按用户决定不配置HTTPS、不检查或修改DNS。云端仍运行R0，生产tag `production-r0-c46a73ae4d00`，旧栈保留停机；本次不部署身份或聊天。R1.1通过本地Docker/真实PG/浏览器及PR22/23；R1.2已通过PR26/27晋级，默认关闭；云端不部署本阶段功能。详见[R1.2独立本地环境](deploy/R1.2-LOCAL.md)、[R1.1本地验收](deploy/R1.1-IDENTITY.md)及[R0发行记录](deploy/R0-RELEASE.md)。以下阶段记录保留历史。
 
 新一代云端 Agent 平台独立 Git 单仓。R0.1工程、契约生成与健康壳层已通过本地Docker/CI并经PR晋级main；**尚无业务智能体功能、未部署生产**。实时阶段状态以外部局部台账为准。

@@ -44,6 +44,15 @@ public final class ChatOperator implements ApplicationRunner {
         }
         String action = option(args, "chat-action");
         switch (action) {
+            case "verify-restored-credentials" -> {
+                int count=0;
+                for(var credential:repository.recoveryCredentials()){
+                    if(cipher.decrypt(credential).isBlank())throw new ChatFailure(409,"EMPTY_RESTORED_CREDENTIAL");
+                    count++;
+                }
+                if(count==0)throw new ChatFailure(409,"RESTORED_CREDENTIAL_MISSING");
+                System.out.println("Restored credential authentication/decryption PASS; count="+count+"; no provider request made.");
+            }
             case "import-credential" -> {
                 String scope = option(args, "scope");
                 if (!Set.of("PLATFORM", "USER").contains(scope)) throw new ChatFailure(400, "INVALID_CREDENTIAL_SCOPE");

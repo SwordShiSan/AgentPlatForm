@@ -103,6 +103,7 @@ def grant():
         'GRANT INSERT ON pf.chat_audit TO ap_chat_api; '
         'GRANT INSERT(id,scope_type,space_id,owner_user_id,ciphertext,nonce,key_version,revision) ON pf.credential TO ap_chat_api; '
         'GRANT UPDATE(status,revision) ON pf.credential TO ap_chat_api;')
+    sql('GRANT SELECT,INSERT ON pf.failure_record TO ap_chat_api,ap_chat_worker; GRANT SELECT ON pf.attempt,pf.budget_reservation TO ap_chat_api;')
     print('Runtime grants applied; API encrypted-write service enabled, ciphertext SELECT remains denied.')
 
 
@@ -140,7 +141,7 @@ def main():
         wrapper = ROOT / 'backend' / ('mvnw.cmd' if os.name == 'nt' else 'mvnw')
         run([str(wrapper), '-f', str(ROOT / 'backend/pom.xml'), '-DskipTests', 'package', '-q'])
         revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
-        for component, image in [('api', 'agentplatform-api:r1.3-local'), ('gateway', 'agentplatform-gateway:r1.3-local'), ('provider-fixture', 'agentplatform-provider-fixture:r1.3-local')]:
+        for component, image in [('api', 'agentplatform-api:r1.4-local'), ('gateway', 'agentplatform-gateway:r1.4-local'), ('provider-fixture', 'agentplatform-provider-fixture:r1.4-local')]:
             run(['docker', 'build', '--platform', 'linux/amd64', '--build-arg', 'SOURCE_REVISION=' + revision, '-f', f'deploy/{component}.Dockerfile', '-t', image, '.'])
         print('Development images built; dirty-source candidate is not final acceptance evidence.')
     elif mode == 'migrate':

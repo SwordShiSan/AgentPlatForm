@@ -19,6 +19,7 @@ public interface ChatApi {
     record UsageView(String callId,String status,Long inputTokens,Long outputTokens,Long costMicros,boolean estimated) {}
     ConversationView first(Caller caller,String key,String title,String model,String source,String text);
     Accepted submitConfigured(Caller caller,String conversation,String key,String model,String source,String text);
+    Map<String,Object> diagnostics(Caller caller,String task);
     Map<String,Object> preferences(Caller caller);
     Map<String,Object> preferences(Caller caller,long expected,Map<String,Object> patch);
     Map<String,Object> effective(Caller caller);
