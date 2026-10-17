@@ -15,3 +15,8 @@
 - [ ] 4.2 HTTP browser and real smoke; >=30min observation with dependency failures.
 - [ ] 4.3 Serial independent restore, actual R0 rollback, same R1 final startup and health.
 - [ ] 4.4 Production tag only after PASS; archive, phase sync, ledgers and protected local/cloud/body handoff.
+
+## 5. Cold-start memory correction
+- [x] 5.1 Record master64MiB kernel OOM, R0 recovery and scoped historical evidence.
+- [x] 5.2 Raise R1 master to128MiB/2336MiB total; validate render/boundaries, promote exact config.
+- [ ] 5.3 Reuse bound real-model facts without calls; fresh30min/MQ/PG/three master cold recreations, serial backup/restore/R0 rollback/final startup.

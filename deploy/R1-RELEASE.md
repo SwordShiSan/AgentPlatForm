@@ -17,3 +17,7 @@ Cloud gates include HTTP browser/auth/SSE/permissions, minimal real calls, >=30m
 Diagnostics: `GET /api/v1/tasks/{id}/diagnostics` returns owner-scoped code/classification/trace/action/partial-output facts; UNKNOWN never allows automatic replay. Request trace is server-generated and persisted through task/outbox/attempt/call; HTTP failures are correlated without logging bodies/secrets.
 
 Final evidence and canonical-body delivery hashes are recorded separately at closeout. Local/cloud evidence retention >=30days. Historical failed candidates are retained, not rewritten as PASS.
+
+## Master cold-start correction (release still pending)
+
+The2272MiB candidate passed1800.14s and independent restore, but master64MiB was OOM-killed twice at final cold startup. R0 was restored12services; no R1 tag. R1 master is now128MiB with unchanged GOMEMLIMIT48MiB and official image; total2336MiB<=2887MiB. Existing real Flash/Pro results are reused exactly without new calls; a fresh30min window adds three master cold recreations, then repeats serial backup/restore/R0 rollback/final startup. Earlier passing scopes and failed candidate remain historical.
