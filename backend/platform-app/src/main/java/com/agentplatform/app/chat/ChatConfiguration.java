@@ -48,11 +48,16 @@ public class ChatConfiguration {
         var timer=Executors.newSingleThreadScheduledExecutor();UUID owner=UUID.randomUUID();
         timer.scheduleWithFixedDelay(()->{try{
             if(!repository.ready())throw new ChatFailure(503,"CHAT_STORAGE_UNAVAILABLE");
-            transport.consume(delivery->{
-                try{var lease=repository.claim(delivery.envelope(),owner);if(lease!=null)FixtureFaults.pause("claim-before-ack");delivery.ack();if(lease!=null){FixtureFaults.pause("ack-before-model");execution.run(lease);}}
-                catch(ChatFailure error){if(error.status()==400){repository.quarantine(error.code());delivery.ack();}else {delivery.retryAfterDisconnect();System.getLogger(getClass().getName()).log(System.Logger.Level.WARNING,"Claim not acknowledged: "+error.code());}}
-            });
+            transport.consume(delivery->handoff(repository,execution,owner,delivery));
             Files.writeString(Path.of("/tmp/chat-worker-ready"),owner.toString());
         }catch(Exception error){try{Files.deleteIfExists(Path.of("/tmp/chat-worker-ready"));}catch(Exception ignored){}}},0,2,TimeUnit.SECONDS);return timer;
+    }
+    static void handoff(ChatRepository repository,ChatExecution execution,UUID owner,DispatchTransport.Delivery delivery){
+        // Different AMQP channels can dispatch concurrently during reconnect. Keep
+        // claim/ACK/run cleanup serial inside one worker, in addition to the DB fence.
+        synchronized(execution){
+            try{var lease=repository.claim(delivery.envelope(),owner);if(lease!=null)FixtureFaults.pause("claim-before-ack");delivery.ack();if(lease!=null){FixtureFaults.pause("ack-before-model");execution.run(lease);}}
+            catch(ChatFailure error){if(error.status()==400){repository.quarantine(error.code());delivery.ack();}else {delivery.retryAfterDisconnect();System.getLogger(ChatConfiguration.class.getName()).log(System.Logger.Level.WARNING,"Claim not acknowledged: "+error.code());}}
+        }
     }
 }

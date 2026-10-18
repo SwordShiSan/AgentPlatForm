@@ -26,6 +26,10 @@ The system SHALL persist inbox, attempt, dispatch, conversation ownership and th
 - **WHEN** a safely requeued task is claimed under a new generation
 - **THEN** RUNNING and message-start events use their actual persisted entity versions instead of the first claim's constants
 
+#### Scenario: Reconnected consumer callbacks
+- **WHEN** a new AMQP channel delivers while the previous callback is still cleaning up
+- **THEN** that worker serializes claim, ACK and execution cleanup before admitting the next callback, while retaining the distributed database fence
+
 ### Requirement: Canonical model and operation facts
 The system SHALL establish a logical round before physical requests and link each call separately. A successful complete round, full tool call list, known usage settlement and associated events SHALL commit atomically at the Harness round boundary. Unknown usage SHALL retain reconciliation holds.
 
