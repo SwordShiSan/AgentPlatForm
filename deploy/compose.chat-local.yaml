@@ -104,7 +104,7 @@ services:
       PLATFORM_STORAGE_USER: postgres
       PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/postgres_password
       PLATFORM_CHAT_MASTER_KEY_FILE: /run/secrets/master_key
-    secrets: [postgres_password, master_key]
+    secrets: [postgres_password, master_key, stop_proof_key]
   gateway:
     image: ${R12_GATEWAY_IMAGE:-agentplatform-gateway:r1.4-local}
     user: "101:101"
@@ -132,6 +132,7 @@ services:
     networks: [chat]
     logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
 secrets:
+  stop_proof_key: {file: "${R12_ROOT}/stop-proof-key"}
   postgres_password: {file: "${R12_ROOT:?Set isolated local R1.2 fixture directory}/postgres-password"}
   api_password: {file: "${R12_ROOT}/api-password"}
   worker_password: {file: "${R12_ROOT}/worker-password"}

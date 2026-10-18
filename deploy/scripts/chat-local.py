@@ -129,6 +129,9 @@ def main():
             if not path.exists():
                 path.write_bytes(secrets.token_bytes(32))
                 path.chmod(0o600)
+        proof_key = DATA / 'stop-proof-key'
+        if not proof_key.exists():
+            proof_key.write_bytes(secrets.token_bytes(32))
         definitions()
         run(COMPOSE + ['--profile', 'fixture', 'config', '--quiet'])
         run(COMPOSE + ['up', '-d', '--wait', '--wait-timeout', '90', 'postgres'])
@@ -183,25 +186,8 @@ def main():
         assert sum(int(config['services'][name]['mem_limit']) for name in services) <= 2887 * 1024 * 1024
         run(COMPOSE + ['--profile', 'fixture', 'up', '-d', '--wait', '--wait-timeout', '180', *services])
     elif mode == 'reconcile-stopped':
-        import uuid
-        container = subprocess.check_output(COMPOSE + ['ps', '-a', '-q', 'worker'], cwd=ROOT, env=ENV, text=True).strip()
-        if not container or '\n' in container:
-            raise RuntimeError('Expected exactly one R1.2 worker container')
-        owner = subprocess.check_output(COMPOSE + ['exec', '-T', 'worker', 'cat', '/tmp/chat-worker-ready'], cwd=ROOT, env=ENV, text=True).strip()
-        owner = str(uuid.UUID(owner))
-        before = json.loads(subprocess.check_output(['docker', 'inspect', container], cwd=ROOT))[0]
-        assert before['Config']['Labels']['com.docker.compose.project'] == 'agentplatform-r12-local'
-        run(COMPOSE + ['stop', '-t', '15', 'worker'])
-        after = json.loads(subprocess.check_output(['docker', 'inspect', container], cwd=ROOT))[0]
-        assert after['State']['Running'] is False and after['Image'] == before['Image']
-        (DATA / 'stopped-owner.json').write_text(json.dumps({'owner': owner, 'container': container, 'image': after['Image'], 'running': False}), encoding='utf-8')
-        deadline = time.monotonic() + 65
-        while '(1 row)' in sql(f"SELECT 1 FROM pf.execution_slot WHERE owner_id='{owner}' AND lease_until>now();"):
-            if time.monotonic() >= deadline:
-                raise RuntimeError('Owner lease has not expired; worker remains stopped, no slot released')
-            time.sleep(2)
-        operator(['--chat-action=reconcile-stopped-owner', '--owner-id=' + owner, '--stopped-owner-confirmed'])
-        print('Exact R1.2 worker stopped and expired owner reconciled; no automatic restart or call replay.')
+        from stopped_owner import reconcile
+        print(json.dumps(reconcile(ROOT, DATA, ENV, COMPOSE)))
     elif mode == 'stop':
         run(COMPOSE + ['--profile', 'fixture', 'stop'])
     elif mode == 'status':

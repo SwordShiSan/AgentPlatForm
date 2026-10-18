@@ -1,6 +1,6 @@
 # AgentPlatForm
 
-当前：**R1.4 VERIFIED，R1 4/4 VERIFIED，R1 RELEASED**。云端HTTP已开放身份、个人空间、普通聊天、配置及密钥管理；[访问平台](http://124.222.55.140)。生产tag `production-r1-24b3c6558d17`。当前及后续HTTP、HTTPS保留暂不实现，不检查/修改DNS。R2未启动；详见[R1发行与恢复记录](deploy/R1-RELEASE.md)及[脱敏验收摘要](deploy/r1.4-acceptance.json)。以下为历史阶段记录。
+当前：**R1.4 VERIFIED，R1 4/4 VERIFIED，R1 RELEASED**。云端HTTP已开放身份、个人空间、普通聊天、配置及密钥管理；[访问平台](http://124.222.55.140)。生产tag `production-r1-24b3c6558d17`。当前及后续HTTP、HTTPS保留暂不实现，不检查/修改DNS。R2.1 IMPLEMENTING（本地执行所有权与账本，尚未晋级）；详见[R1发行与恢复记录](deploy/R1-RELEASE.md)及[脱敏验收摘要](deploy/r1.4-acceptance.json)。以下为历史阶段记录。
 
 **R0 已正式 RELEASED，R1.1 已本地 VERIFIED，R1.2 已本地 VERIFIED，R1 完成2/4、未 RELEASED**。HTTP入口：[公网IP](http://124.222.55.140)，域名Host `agentplatform.lailihao.cloud` 已配置；按用户决定不配置HTTPS、不检查或修改DNS。云端仍运行R0，生产tag `production-r0-c46a73ae4d00`，旧栈保留停机；本次不部署身份或聊天。R1.1通过本地Docker/真实PG/浏览器及PR22/23；R1.2已通过PR26/27晋级，默认关闭；云端不部署本阶段功能。详见[R1.2独立本地环境](deploy/R1.2-LOCAL.md)、[R1.1本地验收](deploy/R1.1-IDENTITY.md)及[R0发行记录](deploy/R0-RELEASE.md)。以下阶段记录保留历史。
 
@@ -9,6 +9,8 @@
 R0.2默认关闭的SDK适配及离线框架探针已通过本地/CI并经PR晋级，公开页面仍为健康壳层。脚本模型/loopback协议不等于真实供应商。R0.3真实存储、云端最低资源与gVisor/XFS基线已通过全部云端门禁和PR10/11晋级，状态以局部台账和[归档验收记录](openspec/changes/archive/2026-10-13-r0-3-storage-deploy-baseline/verification.md)为准；生产发布仍待R0.4。
 
 ## 方案入口
+
+- [R2.1 独立本地环境与账本说明](deploy/R2.1-LOCAL.md)
 
 - 首页入口修复已上线：`/` 登录后直接进入聊天，`/status` 保留连接检查。[脱敏验收摘要](deploy/r1-home-entry-acceptance.json)。
 - [R1 首页聊天入口修复计划](../项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R1-首页聊天入口修复实施计划.md)

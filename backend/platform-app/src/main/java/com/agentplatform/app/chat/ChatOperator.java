@@ -82,8 +82,10 @@ public final class ChatOperator implements ApplicationRunner {
                 System.out.println("Credential revoked; no fallback credential selected.");
             }
             case "reconcile-stopped-owner" -> {
-                if (!args.containsOption("stopped-owner-confirmed")) throw new ChatFailure(409, "STOPPED_OWNER_CONFIRMATION_REQUIRED");
-                repository.recoverStopped(UUID.fromString(option(args, "owner-id")));
+                if (!args.containsOption("proof-file") || args.containsOption("stopped-owner-confirmed")) throw new ChatFailure(409, "STOPPED_OWNER_PROOF_REQUIRED");
+                byte[] key=privateFile(Path.of(option(args,"proof-key-file")));
+                try{repository.recoverStopped(com.agentplatform.infrastructure.chat.StoppedOwnerProof.verify(privateFile(Path.of(option(args,"proof-file"))),key));}
+                finally{Arrays.fill(key,(byte)0);}
                 System.out.println("Stopped owner reconciled; unknown calls remain reserved and are not replayed.");
             }
             default -> throw new ChatFailure(400, "INVALID_OPERATOR_ACTION");

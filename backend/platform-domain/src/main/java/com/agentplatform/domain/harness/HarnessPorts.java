@@ -48,6 +48,8 @@ public final class HarnessPorts {
     public interface RuntimeStatePort {
         void verifyRestore(Scope scope, Bundle bundle);
         void seal(Scope scope, Bundle bundle);
+        /** Canonical history for immutable safe-point snapshots; empty preserves legacy adapters. */
+        default List<Message> checkpointHistory(Scope scope) { return List.of(); }
         default List<Message> recoveryHistory(Scope scope) { throw new IllegalStateException("CHECKPOINT_NOT_COMMITTED"); }
     }
     /** Opaque, atomically versioned private state; never a public message or domain fact. */

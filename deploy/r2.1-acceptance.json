@@ -1,0 +1,73 @@
+{
+  "status": "FUNCTIONAL_GATES_PASS_PROMOTION_PENDING",
+  "baseline": "9f780fa05556183c9697195f7cff533b069e20b7",
+  "backendSource": "2e5307b2f4a99e32790787bf824c9758c34282a5",
+  "backendTree": "24e08b05d301d9b4095057dff0d7e7b4673d3c9e",
+  "engineeringTests": 137,
+  "linuxSdkTests": 53,
+  "linuxEvidence": "53 prior Linux tests plus 11 unchanged SDK class byte hashes against final API; final actual Linux workers rerun six windows",
+  "frontendTests": 22,
+  "browserTests": 3,
+  "actualWorkerCrashWindows": 6,
+  "serialResourceTasks": 12,
+  "realProviderCalls": 0,
+  "migration": "V6; V1-V5 unchanged; runtime schema1",
+  "sampledMinHostAvailableMiB": 5894.0,
+  "maxContainerLimitsMiB": 2528.0,
+  "databaseGrowthBytes": 491520,
+  "hostNote": "Docker Desktop local VM; sampled extrema, not minimum-cloud capacity or higher-concurrency claim; no container swap expansion",
+  "cloud": "R1 unchanged production-r1-24b3c6558d17",
+  "images": [
+    {
+      "component": "gateway",
+      "source": "8c51e1a19c16e163b4c20b03e48ceed1990d0245",
+      "localId": "sha256:22b837434807b8d3cbf46f090660f2cfaf0979c995d97a146045a2d06fe09317",
+      "manifestDigest": "sha256:545c6b072d11c9e533e2c51715802f2aacbc7e925cf4f2d3ace17d514cdf3921",
+      "configId": "sha256:89be2f38447abe256863fbd2803f4f9eba095f10a799fa9f6ffaaafae1066250",
+      "platform": "linux/amd64",
+      "archiveSha256": "46475a7f0f2d9c230fc9f80c5e4e23e29cecc970041e7591037a30f236537207",
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    },
+    {
+      "component": "provider-fixture",
+      "source": "8c51e1a19c16e163b4c20b03e48ceed1990d0245",
+      "localId": "sha256:d07376bfd007761467e275561c3623ddcf48fae9b75511cb8bc3fbfc0dee1c3f",
+      "manifestDigest": "sha256:1c2a95efcdfac8ebef02efd47df8e50c8a3c4a55ec9a3d747b897f705edc890c",
+      "configId": "sha256:c1cc62ef280af48eb09a0d1673e1bba3858207865c18d6b822b2aa9a827dc507",
+      "platform": "linux/amd64",
+      "archiveSha256": "b1d0440653c22aa7ebfaa471c858a3e5badc0eb7c188aa98fa4fc67269840023",
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    },
+    {
+      "component": "framework-probe",
+      "source": "0e755f57ec8d2bd6b3cedc1a2840d2bae7ed7c42",
+      "localId": "sha256:9277cc28147e5af5887e8a03b4ec71444ddfeead1b7d36ee7fc3f30ac967a954",
+      "manifestDigest": "sha256:545082ad1c58d3df3d8935af21e296a16e1e003f6babf4e77b0025b639b429cb",
+      "configId": "sha256:e2aee307e77657b470873eda41c6cc33b29060da2980a9956101cf01cd37504c",
+      "platform": "linux/amd64",
+      "archiveSha256": "256678e9f9d55f015c2e150293275821ee95a1805069d0f817d3ded11d3ac9d3",
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    },
+    {
+      "component": "api",
+      "source": "2e5307b2f4a99e32790787bf824c9758c34282a5",
+      "localId": "sha256:5619e5801be9025404ca9b6fd19bcbf75c69aede30f27f6cfe96f13c989fe395",
+      "manifestDigest": "sha256:2090e07761136039c12170d88b24bce3b79d66e902ed295be7cc4f6cf4f76af5",
+      "configId": "sha256:a79fa144751049e61be5eee062c219776752fbfbe2245ba7e29daa2e6b8d1cc2",
+      "platform": "linux/amd64",
+      "archiveSha256": "391a0c2855a159e9ed14fe760d7a7f33cbfa61ba069103bde8a3deac69134e22",
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    }
+  ],
+  "retainedFailures": [
+    "private SDK CAS conflict fixed by snapshot clone",
+    "MQ health timeout fixed by local CPU/health tuning",
+    "DB outage marker race fixed by waiting for actual live marker"
+  ],
+  "deferred": [
+    "R2.2 snapshots/events",
+    "R2.3 interactive reconciliation",
+    "R2.4 checkpoint continuation and real model demo",
+    "R3 business tools"
+  ]
+}

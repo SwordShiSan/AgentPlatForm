@@ -36,12 +36,12 @@ class ChatPostgresTest {
     @BeforeAll static void migrate() throws Exception {
         url = System.getenv("R12_TEST_JDBC_URL");
         Assumptions.assumeTrue(url != null, "Real R1.2 PostgreSQL not configured; not acceptance evidence");
-        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15442/chat_test?"), "Refusing another project's database");
+        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15442/chat_test?") || ("1".equals(System.getenv("R21_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15443/chat_test?")), "Refusing another project's database");
         password = Files.readString(Path.of(System.getenv("R12_TEST_PASSWORD_FILE"))).strip();
         // Destructive reset is restricted above to this explicitly named, isolated test database.
         Flyway.configure().dataSource(url, "postgres", password).defaultSchema("pf").schemas("pf", "pf_runtime")
                 .cleanDisabled(false).load().clean();
-        for (String target : List.of("1", "2", "3", "4", "5")) {
+        for (String target : List.of("1", "2", "3", "4", "5", "6")) {
             Flyway.configure().dataSource(url, "postgres", password).defaultSchema("pf")
                     .schemas("pf", "pf_runtime").target(target).load().migrate();
         }
@@ -285,9 +285,10 @@ class ChatPostgresTest {
         repository.bind(MODEL, alice, key("PLATFORM", null), "PLATFORM");
         var lease = claim(submit(alice)); var call = repository.beginCall(lease, false);
         repository.startCall(lease, call, false); repository.delta(lease, "partial😀");
-        denied("OWNER_LEASE_NOT_EXPIRED", () -> repository.recoverStopped(lease.ownerId()));
+        denied("STOPPED_OWNER_PROOF_REQUIRED", () -> repository.recoverStopped(lease.ownerId()));
         sql("UPDATE pf.execution_slot SET lease_until=now()-interval '1 second'");
-        repository.recoverStopped(lease.ownerId()); repository.recoverStopped(lease.ownerId());
+        var proof = new com.agentplatform.domain.chat.ExecutionLedger.StoppedOwner(lease.ownerId(),lease.taskId(),lease.attemptId(),lease.fence(),"a".repeat(64),"sha256:"+"b".repeat(64),java.time.Instant.now().minusSeconds(60),java.time.Instant.now(),java.time.Instant.now().plusMillis(1),"c".repeat(64));
+        repository.recoverStopped(proof); repository.recoverStopped(proof);
         assertEquals(1, count("SELECT count(*) FROM pf.model_call WHERE status='UNKNOWN'"));
         assertEquals(1, count("SELECT count(*) FROM pf.budget_reservation WHERE state='RECONCILING'"));
         assertEquals(1, count("SELECT count(*) FROM pf.message WHERE role='ASSISTANT' AND status='PARTIAL'"));
@@ -300,7 +301,7 @@ class ChatPostgresTest {
         String file = System.getenv("R12_TEST_MQ_PASSWORD_FILE");
         Assumptions.assumeTrue(file != null, "Real isolated RabbitMQ fixture not configured");
         var factory = new com.rabbitmq.client.ConnectionFactory();
-        factory.setHost("127.0.0.1"); factory.setPort(15692);
+        factory.setHost("127.0.0.1"); factory.setPort("1".equals(System.getenv("R21_ACCEPTANCE")) ? 15693 : 15692);
         factory.setVirtualHost("/agentplatform-r12-test"); factory.setUsername("ap_operator");
         factory.setPassword(Files.readString(Path.of(file)).strip());
         factory.setAutomaticRecoveryEnabled(false); factory.setConnectionTimeout(2000);
