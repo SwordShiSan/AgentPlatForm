@@ -19,40 +19,43 @@ public final class ChatExecution implements AutoCloseable {
     private final ChatRepository repository;
     private final ChatProvider provider;
     private final CredentialCipher cipher;
-    private final StateStorage state;
     private final Path work;
     private final ScheduledExecutorService timers=Executors.newScheduledThreadPool(2);
     private volatile PreparedRun active;
     private volatile Lease current;
-    public ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,StateStorage state,Path work){this.repository=repository;this.provider=provider;this.cipher=cipher;this.state=state;this.work=work;}
+    public ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,Path work){this.repository=repository;this.provider=provider;this.cipher=cipher;this.work=work;}
+    /** Compatibility for existing probes; private state always uses the fenced repository. */
+    public ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,StateStorage ignored,Path work){this(repository,provider,cipher,work);}
     public void run(Lease lease){
         current=lease;Instant deadline=Instant.now().plusSeconds(120);AtomicReference<Throwable> asynchronousFailure=new AtomicReference<>();
         var batch=new Batch(lease);ScheduledFuture<?> flushing=null,heartbeat=null;
         try{
             List<Message> history=repository.history(lease);
             Scope scope=new Scope(lease.spaceId().toString(),lease.userId().toString(),lease.conversationId().toString(),lease.taskId().toString(),lease.attemptId().toString(),lease.fence(),false);
+            AtomicReference<UUID> turnId=new AtomicReference<>();
+            AtomicReference<ExecutionLedger.CallResult> accepted=new AtomicReference<>();
             ModelGateway metered=new ModelGateway(){
                 public CompletionStage<Round> complete(Scope s,List<Message> messages,List<com.agentplatform.types.harness.HarnessData.Call> tools){return stream(s,messages,tools,text->{});}
                 public CompletionStage<Round> stream(Scope s,List<Message> messages,List<com.agentplatform.types.harness.HarnessData.Call> tools,Consumer<String> onText){
                     if(!tools.isEmpty())return CompletableFuture.failedFuture(new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH"));
                     var result=new CompletableFuture<Round>();AtomicReference<CompletableFuture<?>> pending=new AtomicReference<>();
                     result.whenComplete((v,e)->{if(result.isCancelled()&&pending.get()!=null)pending.get().cancel(true);});
-                    physical(lease,messages,text->{batch.append(text);onText.accept(text);},result,pending,deadline,0,false);
+                    physical(lease,messages,text->{batch.append(text);onText.accept(text);},result,pending,deadline,0,false,accepted);
                     return result;
                 }
             };
-            RuntimeStatePort manifests=new RuntimeStatePort(){public void verifyRestore(Scope s,Bundle b){throw new ChatFailure(409,"CHECKPOINT_RECOVERY_NOT_AVAILABLE");}public void seal(Scope s,Bundle b){repository.check(lease);}};
-            String prefix="attempt/"+lease.attemptId()+"/";
+            RuntimeStatePort manifests=new RuntimeStatePort(){public void verifyRestore(Scope s,Bundle b){throw new ChatFailure(409,"CHECKPOINT_RECOVERY_NOT_AVAILABLE");}public void seal(Scope s,Bundle b){FixtureFaults.pause("checkpoint-before-seal");repository.sealCheckpoint(lease,b);FixtureFaults.pause("checkpoint-after-seal");}public List<Message> checkpointHistory(Scope s){return repository.checkpointHistory(lease);}};
             StateStorage attemptState=new StateStorage(){
-                public StateSlot load(Scope s,String key){return state.load(s,prefix+key);}
-                public long compareAndSwap(Scope s,String key,long version,byte[] body){return state.compareAndSwap(s,prefix+key,version,body);}
-                public Set<String> keys(Scope s){return state.keys(s).stream().filter(k->k.startsWith(prefix)).map(k->k.substring(prefix.length())).collect(java.util.stream.Collectors.toUnmodifiableSet());}
-                public void delete(Scope s,String key){state.delete(s,prefix+key);}
+                private void scope(Scope s){if(!scope.equals(s))throw new ChatFailure(403,"STATE_SCOPE_MISMATCH");}
+                public StateSlot load(Scope s,String key){scope(s);return repository.state(lease,key);}
+                public long compareAndSwap(Scope s,String key,long version,byte[] body){scope(s);return repository.stateCas(lease,key,version,body);}
+                public Set<String> keys(Scope s){scope(s);return repository.stateKeys(lease);}
+                public void delete(Scope s,String key){scope(s);repository.stateDelete(lease,key);}
             };
             var factory=new AgentScopeRuntimeFactory(metered,(s,c)->Decision.DENY,(s,c)->CompletableFuture.failedFuture(new ChatFailure(422,"TOOLS_NOT_AVAILABLE")),attemptState,manifests,List.of(),work);
             LoopBoundary boundary=new LoopBoundary(){
-                public CompletionStage<List<Message>> beforeModel(Scope s,List<Message> ignored){repository.check(lease);return CompletableFuture.completedFuture(history);}
-                public CompletionStage<Void> afterModelCommitted(Scope s,Turn t){repository.check(lease);return CompletableFuture.completedFuture(null);}
+                public CompletionStage<List<Message>> beforeModel(Scope s,List<Message> ignored){turnId.set(repository.beginTurn(lease));return CompletableFuture.completedFuture(history);}
+                public CompletionStage<Void> afterModelCommitted(Scope s,Turn t){var call=accepted.get();if(call==null)throw new ChatFailure(409,"ACCEPTED_CALL_MISSING");repository.commitRound(lease,turnId.get(),t,call);FixtureFaults.pause("round-before-checkpoint");return CompletableFuture.completedFuture(null);}
                 public CompletionStage<Void> beforeTool(Scope s,com.agentplatform.types.harness.HarnessData.Call c){return CompletableFuture.failedFuture(new ChatFailure(422,"TOOLS_NOT_AVAILABLE"));}
                 public CompletionStage<Void> afterToolCommitted(Scope s,com.agentplatform.types.harness.HarnessData.Call c,Observation o){return CompletableFuture.failedFuture(new ChatFailure(422,"TOOLS_NOT_AVAILABLE"));}
                 public CompletionStage<Completion> beforeStop(Scope s,Message message){return CompletableFuture.completedFuture(message.text().isBlank()?Completion.INCOMPLETE:Completion.PASS);}
@@ -82,7 +85,7 @@ public final class ChatExecution implements AutoCloseable {
             try{repository.finish(lease,"TASK_CANCEL_REQUESTED".equals(code)?"CANCELLED":"CONTEXT_REQUIRED_TOO_LARGE".equals(code)?"BLOCKED":"FAILED",code);}catch(ChatFailure lost){System.getLogger(getClass().getName()).log(System.Logger.Level.WARNING,"Attempt requires stopped-owner reconciliation: "+lost.code());}
         }finally{if(flushing!=null)flushing.cancel(false);if(heartbeat!=null)heartbeat.cancel(false);if(active!=null)active.close();active=null;current=null;}
     }
-    private void physical(Lease l,List<Message> messages,Consumer<String> text,CompletableFuture<Round> result,AtomicReference<CompletableFuture<?>> pending,Instant deadline,int retries,boolean repaired){
+    private void physical(Lease l,List<Message> messages,Consumer<String> text,CompletableFuture<Round> result,AtomicReference<CompletableFuture<?>> pending,Instant deadline,int retries,boolean repaired,AtomicReference<ExecutionLedger.CallResult> accepted){
         if(result.isDone())return;if(Instant.now().isAfter(deadline)){result.completeExceptionally(new ChatFailure(504,"PROVIDER_TIMEOUT"));return;}
         ChatData.Call call;String key;
         try{call=repository.beginCall(l,provider.real());}catch(Throwable error){result.completeExceptionally(error);return;}
@@ -100,14 +103,19 @@ public final class ChatExecution implements AutoCloseable {
                     String code=cause instanceof ChatFailure f?f.code():"PROVIDER_REQUEST_FAILED";
                     repository.settle(l,call,null,null,code,provider.real());
                     if(!emitted.get()&&retries<2&&Set.of("PROVIDER_RATE_LIMITED","PROVIDER_SERVER_REJECTED").contains(code)&&!result.isDone()){
-                        timers.schedule(()->physical(l,messages,text,result,pending,deadline,retries+1,repaired),retries==0?1:3,TimeUnit.SECONDS);return;
+                        timers.schedule(()->physical(l,messages,text,result,pending,deadline,retries+1,repaired,accepted),retries==0?1:3,TimeUnit.SECONDS);return;
                     }result.completeExceptionally(cause);return;
                 }
                 boolean incompleteTransport="unknown".equals(value.round().finishReason());
-                repository.settle(l,call,value.usageKnown()?value.round():null,value.requestId(),value.usageKnown()?null:incompleteTransport?"PROVIDER_REQUEST_FAILED":"PROVIDER_USAGE_MISSING",provider.real());
-                if(!"stop".equals(value.round().finishReason())){result.completeExceptionally(new ChatFailure(503,"PROVIDER_TRUNCATED"));return;}
-                if(value.round().text().isBlank()&&value.round().calls().isEmpty()&&!emitted.get()&&!repaired){physical(l,messages,text,result,pending,deadline,retries,true);return;}
-                if(value.round().text().isBlank()&&!emitted.get()){result.completeExceptionally(new ChatFailure(503,"PROVIDER_EMPTY_RESPONSE"));return;}
+                boolean empty=value.round().text().isBlank()&&value.round().calls().isEmpty()&&!emitted.get();
+                if(!"stop".equals(value.round().finishReason())||empty){
+                    repository.settle(l,call,value.usageKnown()?value.round():null,value.requestId(),value.usageKnown()?null:incompleteTransport?"PROVIDER_REQUEST_FAILED":"PROVIDER_USAGE_MISSING",provider.real());
+                    if(!"stop".equals(value.round().finishReason())){result.completeExceptionally(new ChatFailure(503,"PROVIDER_TRUNCATED"));return;}
+                    if(!repaired){physical(l,messages,text,result,pending,deadline,retries,true,accepted);return;}
+                    result.completeExceptionally(new ChatFailure(503,"PROVIDER_EMPTY_RESPONSE"));return;
+                }
+                accepted.set(new ExecutionLedger.CallResult(call,value.usageKnown(),value.requestId(),provider.real()));
+                FixtureFaults.pause("response-before-round");
                 result.complete(value.round());
             }catch(Throwable failure){result.completeExceptionally(failure);}
         });

@@ -1,0 +1,150 @@
+name: agentplatform-r21-local
+x-app: &app
+  image: ${R21_API_IMAGE:-agentplatform-api:r2.1-local}
+  user: "10001:10001"
+  read_only: true
+  restart: "no"
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  pids_limit: 128
+  tmpfs: ["/tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001,mode=700"]
+  networks: [chat]
+  logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.1-pg17-trixie@sha256:137f044b0efe3d57f39b972b9b53641b1f2045b99d879e298bbf514a25787dcf
+    restart: "no"
+    mem_limit: 320m
+    memswap_limit: 320m
+    cpus: 1
+    environment:
+      POSTGRES_DB: chat
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    ports: ["127.0.0.1:15443:5432"]
+    volumes: ["chat-data:/var/lib/postgresql/data"]
+    networks: [chat]
+    healthcheck: {test: [CMD-SHELL, pg_isready -U postgres -d chat], interval: 2s, timeout: 3s, retries: 30}
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+  rabbitmq:
+    image: rabbitmq:4.3.6-management@sha256:8dd6e3570ddaa2ef82a6c3a8950e79c1f73893adfbdddbc374fc1f1ac8a0f5dd
+    hostname: ${R21_MQ_HOSTNAME:-agentplatform-local-mq}
+    restart: "no"
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 0.5
+    environment: {RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 1:1 +A 4"}
+    volumes:
+      - "chat-mq:/var/lib/rabbitmq"
+      - "${R21_ROOT}/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro"
+      - "${R21_ROOT}/rabbitmq-definitions.json:/etc/rabbitmq/definitions.json:ro"
+    ports: ["127.0.0.1:15683:15672", "127.0.0.1:15693:5672"]
+    networks: [chat]
+    healthcheck: {test: [CMD, rabbitmq-diagnostics, -q, ping], interval: 5s, timeout: 5s, retries: 24}
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+  redis:
+    image: redis:7.4-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    restart: "no"
+    mem_limit: 64m
+    memswap_limit: 64m
+    command: [redis-server, --maxmemory, 24mb, --maxmemory-policy, noeviction, --save, "", --appendonly, "no"]
+    networks: [chat]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+  api:
+    <<: *app
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1
+    entrypoint: [java, -Xms32m, -Xmx224m, -jar, /app/platform.jar]
+    environment:
+      SPRING_PROFILES_ACTIVE: identity-local,chat-local
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/chat?connectTimeout=2&socketTimeout=5
+      PLATFORM_STORAGE_USER: ap_chat_api
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/api_password
+      PLATFORM_IDENTITY_ORIGINS: http://127.0.0.1:18088,http://localhost:18088
+      PLATFORM_IDENTITY_SECURE_COOKIE: "false"
+      PLATFORM_CHAT_MQ_HOST: rabbitmq
+      PLATFORM_CHAT_MQ_USER: ap_api
+      PLATFORM_CHAT_MQ_PASSWORD_FILE: /run/secrets/mq_api_password
+      PLATFORM_CHAT_CURSOR_KEY_FILE: /run/secrets/cursor_key
+      PLATFORM_CHAT_MASTER_KEY_FILE: /run/secrets/master_key
+      SERVER_TOMCAT_THREADS_MAX: "16"
+    secrets: [api_password, mq_api_password, cursor_key, master_key]
+    healthcheck: {test: [CMD, java, -Xms8m, -Xmx16m, -cp, /app/health, HttpHealthcheck, "http://127.0.0.1:8080/api/v1/readiness"], interval: 5s, timeout: 4s, retries: 30, start_period: 15s}
+  worker: &worker
+    <<: *app
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1
+    entrypoint: [java, -Xms32m, -Xmx256m, -jar, /app/platform.jar]
+    environment:
+      SPRING_PROFILES_ACTIVE: chat-worker
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/chat?connectTimeout=2&socketTimeout=5
+      PLATFORM_STORAGE_USER: ap_chat_worker
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/worker_password
+      PLATFORM_CHAT_MQ_HOST: rabbitmq
+      PLATFORM_CHAT_MQ_USER: ap_worker
+      PLATFORM_CHAT_MQ_PASSWORD_FILE: /run/secrets/mq_worker_password
+      PLATFORM_CHAT_MASTER_KEY_FILE: /run/secrets/master_key
+      PLATFORM_CHAT_PROVIDER_BASE: ${R21_PROVIDER_BASE:-http://fixture:8080}
+      PLATFORM_CHAT_FIXTURE_PROVIDER: ${R21_FIXTURE_PROVIDER:-true}
+    secrets: [worker_password, mq_worker_password, master_key]
+    healthcheck: {test: [CMD-SHELL, "test -s /tmp/chat-worker-ready"], interval: 5s, timeout: 2s, retries: 24}
+  worker-2:
+    <<: *worker
+  operator:
+    <<: *app
+    profiles: [operator]
+    mem_limit: 320m
+    memswap_limit: 320m
+    entrypoint: [java, -Xms16m, -Xmx160m, -jar, /app/platform.jar]
+    environment:
+      SPRING_PROFILES_ACTIVE: chat-ops
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/chat?connectTimeout=2&socketTimeout=5
+      PLATFORM_STORAGE_USER: postgres
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/postgres_password
+      PLATFORM_CHAT_MASTER_KEY_FILE: /run/secrets/master_key
+    secrets: [postgres_password, master_key, stop_proof_key]
+  gateway:
+    image: ${R21_GATEWAY_IMAGE:-agentplatform-gateway:r2.1-local}
+    user: "101:101"
+    read_only: true
+    restart: "no"
+    mem_limit: 32m
+    memswap_limit: 32m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=8m"]
+    ports: ["127.0.0.1:18088:8080"]
+    volumes: ["./nginx.chat-local.conf:/etc/nginx/nginx.conf:ro"]
+    networks: [chat]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+  fixture:
+    image: ${R21_FIXTURE_IMAGE:-agentplatform-provider-fixture:r2.1-local}
+    profiles: [fixture]
+    user: "10001:10001"
+    read_only: true
+    restart: "no"
+    mem_limit: 64m
+    memswap_limit: 64m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [chat]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+secrets:
+  stop_proof_key: {file: "${R21_ROOT}/stop-proof-key"}
+  postgres_password: {file: "${R21_ROOT:?Set isolated local R1.2 fixture directory}/postgres-password"}
+  api_password: {file: "${R21_ROOT}/api-password"}
+  worker_password: {file: "${R21_ROOT}/worker-password"}
+  mq_api_password: {file: "${R21_ROOT}/mq-api-password"}
+  mq_worker_password: {file: "${R21_ROOT}/mq-worker-password"}
+  master_key: {file: "${R21_ROOT}/credential-master-key"}
+  cursor_key: {file: "${R21_ROOT}/cursor-key"}
+volumes:
+  chat-data:
+  chat-mq:
+networks:
+  chat:
+    name: agentplatform-r21-local
