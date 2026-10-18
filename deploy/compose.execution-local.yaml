@@ -32,15 +32,17 @@ services:
     restart: "no"
     mem_limit: 512m
     memswap_limit: 512m
-    cpus: 0.5
-    environment: {RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 1:1 +A 4"}
+    cpus: 1
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 1:1 +A 4 +sbwt none +sbwtdcpu none +sbwtdio none"
+      RABBITMQ_CTL_ERL_ARGS: "+S 1:1 +A 1 +sbwt none +sbwtdcpu none +sbwtdio none"
     volumes:
       - "chat-mq:/var/lib/rabbitmq"
       - "${R21_ROOT}/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro"
       - "${R21_ROOT}/rabbitmq-definitions.json:/etc/rabbitmq/definitions.json:ro"
     ports: ["127.0.0.1:15683:15672", "127.0.0.1:15693:5672"]
     networks: [chat]
-    healthcheck: {test: [CMD, rabbitmq-diagnostics, -q, ping], interval: 5s, timeout: 5s, retries: 24}
+    healthcheck: {test: [CMD, rabbitmq-diagnostics, -q, ping], interval: 15s, timeout: 10s, retries: 12, start_period: 30s}
     logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
   redis:
     image: redis:7.4-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499

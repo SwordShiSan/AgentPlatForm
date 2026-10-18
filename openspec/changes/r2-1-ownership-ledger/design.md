@@ -29,3 +29,7 @@ Stop proofs are HMAC-SHA256 authenticated by an independent 32-byte protected ho
 Revocation cleanup may release unsent reservations and mark failure under the matching owner fence, but cannot publish accepted content, launch calls or modify private SDK state after authorization loss.
 
 New admissions pin bundle0199e000-0000-7000-8000-000000000004 with loop agentscope-stream-ledger-v1. Existing frozen bundles are never rewritten: unsupported queued bundles become BLOCKED/BUNDLE_INCOMPATIBLE before any call and release unspent admission holds. Historical conversations remain readable. No legacy bundle is mislabeled checkpoint-capable.
+
+## Local broker health tuning
+
+During local build/probe/export load, the initial RabbitMQ0.5CPU health CLI repeatedly exceeded5s. Cgroup evidence showed no OOM (memory about110MiB) and heavy CPU throttling; this is not a component/source defect. R2.1 uses1CPU, bounded CLI schedulers and disabled scheduler busy-wait, retains512MiB, and keeps the actual rabbitmq-diagnostics ping with10s timeout/15s interval. Validate AMQP confirm/consume and healthy recovery before runtime acceptance. No cloud or R1 deployment configuration changes.
