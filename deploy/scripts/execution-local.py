@@ -14,7 +14,8 @@ fixture = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fixture)
 fixture.DATA = DATA
 fixture.MQ_IDENTITY = DATA / 'mq-hostname'
-fixture.ENV = dict(os.environ, R21_ROOT=DATA.as_posix(), R12_ROOT=DATA.as_posix(), R21_MQ_HOSTNAME='agentplatform-r21-mq')
+fixture.ENV = dict(os.environ, R21_ROOT=DATA.as_posix(), R12_ROOT=DATA.as_posix(), R21_MQ_HOSTNAME='agentplatform-r21-mq',
+                   R21_PROVIDER_BASE='http://fixture:8080', R21_FIXTURE_PROVIDER='true')
 fixture.COMPOSE = ['docker', 'compose', '-p', 'agentplatform-r21-local', '-f', 'deploy/compose.execution-local.yaml']
 
 

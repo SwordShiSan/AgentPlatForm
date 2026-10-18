@@ -16,7 +16,8 @@ from stopped_owner import reconcile
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / '.cache/r21-local'
 OUT = DATA / 'acceptance'
-ENV = dict(os.environ, R21_ROOT=DATA.as_posix(), R21_MQ_HOSTNAME='agentplatform-r21-mq')
+ENV = dict(os.environ, R21_ROOT=DATA.as_posix(), R21_MQ_HOSTNAME='agentplatform-r21-mq',
+           R21_PROVIDER_BASE='http://fixture:8080', R21_FIXTURE_PROVIDER='true')
 COMPOSE = ['docker', 'compose', '-p', 'agentplatform-r21-local', '-f', 'deploy/compose.execution-local.yaml']
 BASE = 'http://127.0.0.1:18088'
 POINTS = ['claim-before-ack', 'ack-before-model', 'response-before-round', 'round-before-checkpoint', 'checkpoint-before-seal', 'checkpoint-after-seal']
@@ -68,6 +69,9 @@ def workers(point=None):
     args = COMPOSE + ['-f', override.as_posix()]
     command(args + ['up', '-d', '--no-deps', '--force-recreate', 'worker'])
     wait(lambda: command(['docker', 'inspect', 'agentplatform-r21-local-worker-1', '--format', '{{.State.Health.Status}}']) == 'healthy')
+    inspection=json.loads(command(['docker','inspect','agentplatform-r21-local-worker-1']))[0]
+    assert 'PLATFORM_CHAT_PROVIDER_BASE=http://fixture:8080' in inspection['Config']['Env']
+    assert 'PLATFORM_CHAT_FIXTURE_PROVIDER=true' in inspection['Config']['Env']
     return args
 
 
