@@ -62,10 +62,11 @@ public final class ChatExecution implements AutoCloseable {
             };
             Bundle bundle=ChatRuntime.bundle();
             // Context lives in the platform ledger; Request's current-user input remains the only input authority.
-            active=factory.prepare(new Request(scope,bundle,List.of(history.getLast()),false,List.of(),1),boundary);
-            flushing=timers.scheduleAtFixedRate(()->{try{batch.flush();repository.check(lease);}catch(Throwable error){asynchronousFailure.compareAndSet(null,error);var run=active;if(run!=null)run.cancel();}},100,100,TimeUnit.MILLISECONDS);
-            heartbeat=timers.scheduleAtFixedRate(()->{try{repository.heartbeat(lease);}catch(Throwable error){asynchronousFailure.compareAndSet(null,error);var run=active;if(run!=null)run.cancel();}},10,10,TimeUnit.SECONDS);
-            Outcome outcome=active.start().toCompletableFuture().get(
+            PreparedRun prepared=factory.prepare(new Request(scope,bundle,List.of(history.getLast()),false,List.of(),1),boundary);active=prepared;
+            // A delayed callback from a finished attempt must never cancel the next attempt.
+            flushing=timers.scheduleAtFixedRate(()->{try{batch.flush();repository.check(lease);}catch(Throwable error){asynchronousFailure.compareAndSet(null,error);prepared.cancel();}},100,100,TimeUnit.MILLISECONDS);
+            heartbeat=timers.scheduleAtFixedRate(()->{try{repository.heartbeat(lease);}catch(Throwable error){asynchronousFailure.compareAndSet(null,error);prepared.cancel();}},10,10,TimeUnit.SECONDS);
+            Outcome outcome=prepared.start().toCompletableFuture().get(
                     Math.max(1,java.time.Duration.between(Instant.now(),deadline).toMillis()),TimeUnit.MILLISECONDS);
             if(flushing!=null)flushing.cancel(false);batch.flush();
             Throwable failure=asynchronousFailure.get();if(failure!=null)throw new CompletionException(failure);
