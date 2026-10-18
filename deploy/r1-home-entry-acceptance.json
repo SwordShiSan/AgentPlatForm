@@ -1,5 +1,5 @@
 {
-  "status": "LOCAL_VERIFIED_PENDING_PROMOTION",
+  "status": "VERIFIED",
   "change": "r1-home-chat-entry",
   "baseline": "cd30c22ea301585c455cbbd4d5f83c0f5fbe277d",
   "frontendSource": "d7707acc045c1954a91f49f196ef8d145207cf8b",
@@ -79,8 +79,51 @@
     "browser-true.log": "b67172116c7ef91095df7162c4dc5e35cb5e1e31e6fd4b8a625cd1eebed46d68",
     "build-false.log": "269ad46fe0317bfe958b6a484ae717be00fb7e3d2b7f0b0d18f944d4961fce37",
     "build-true.log": "a3d6c823dae9d7a8d641289466dc36a62a2f80b27d71d2a269563757684c8cc7",
-    "test-sandbox-fail.log": "86d48991f95e65effdf95b19e9c91e5e49c014d27d5119d0a9a263b4328ab5b7"
+    "test-sandbox-fail.log": "86d48991f95e65effdf95b19e9c91e5e49c014d27d5119d0a9a263b4328ab5b7",
+    "cloud-stage.json": "b3015239eb696e6bca97fe4737dca7eef42cb650fc4a8e0e42110e80bc17c0d0",
+    "cloud-apply.json": "1215ba8d9a832703964d10004eb023ce02e5c02827b3e2313a3b789d85b87534",
+    "cloud-browser.json": "8cfc8ba99847b7fe0fb115f66c00175b0bc24e329c0acac779f3966b99890b0e",
+    "cloud-verify.json": "12f1c9bc4197e89c90ab3cb27416805567ada4709b9c3c025938ce80f2c09f97",
+    "final-strict.json": "ac6c3ab3a96c5f525110a159b5e1ee20b260b37c17b5ac3dc21fc71c5a7e5b12",
+    "final-links.log": "d650632b4942a7caa12f1e45266284a730d4116ee26b66d5f64284429ed6415d",
+    "cloud-visual.json": "b78e29a73ad5f432ac7e349baca0a23d925221442eb37430204b456d25e07a89",
+    "tag.json": "b0eb5967bcda78443c11735dcc62bca3439b49c556417d3ca0ac196fa7df4245"
   },
-  "cloudStatus": "NOT_RUN",
-  "productionTag": null
+  "cloudStatus": "PASS",
+  "productionTag": "production-r1-24b3c6558d17",
+  "release": "RELEASED",
+  "acceptedMain": "24b3c6558d17d9bd3d167a9c4c6270f8dda21ff4",
+  "previousProductionTag": "production-r1-28da397d47ed",
+  "prs": [
+    {
+      "number": 42,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/42",
+      "base": "phase/r1-identity-chat",
+      "head": "step/r1-home-chat-entry",
+      "headSha": "3469b261a5a3a7cdb46f919a2ea111d00145b091",
+      "merged": true,
+      "mergeSha": "531b520e174443de9bece5eb19a2af60fd78ccf4"
+    },
+    {
+      "number": 43,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/43",
+      "base": "main",
+      "head": "phase/r1-identity-chat",
+      "headSha": "531b520e174443de9bece5eb19a2af60fd78ccf4",
+      "merged": true,
+      "mergeSha": "24b3c6558d17d9bd3d167a9c4c6270f8dda21ff4"
+    }
+  ],
+  "cloudBrowserTests": 5,
+  "cloudGatewayOnly": true,
+  "otherContainersUnchanged": true,
+  "cloudGatewayLimitMiB": 32,
+  "archive": "openspec/changes/archive/2026-10-18-r1-home-chat-entry",
+  "protectedHandoff": "evidence/r1-home-entry/r1-home-entry-handoff.json",
+  "finalValidation": {
+    "strictSpecs": 11,
+    "links": 24,
+    "visualScreenshots": 3,
+    "activeChanges": 0
+  }
 }

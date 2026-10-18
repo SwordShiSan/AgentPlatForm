@@ -1,3 +1,7 @@
+## 2026-10-18 首页入口修复已上线
+
+当前生产tag `production-r1-24b3c6558d17`，接受main 24b3c6558d17d9bd3d167a9c4c6270f8dda21ff4；仅gateway更新，前端源码 d7707acc045c1954a91f49f196ef8d145207cf8b，config sha256:a926aced9585adfeef570e7da06a2f088cc0ba5c22a0574215835927e3de3468。后端沿用 c37bec9fdb34bced93b460918d80752107e2b3cc / sha256:6853788d51b309e45ff36200a533304431266fb3feaaf121209daa807fffe757，无迁移或账号变更。首页登录后直接聊天，/status公开连接检查。22单测、本地双构建10+5浏览器、公网5浏览器和历史SSE/权限/内部404通过；0新增模型请求，其他容器身份/运行状态不变。已有旧业务容器运行状态为本次前既有，保留且不作为本次已暂停声明。原gateway与部署清单留在云端保护操作目录，可单独回退。详见[脱敏摘要](r1-home-entry-acceptance.json)；最终保护交付收据另存，不把Git推送当正文同步。
+
 # R1 HTTP integration and release
 
 Status: R1.4 VERIFIED; R1 4/4 VERIFIED; R1 RELEASED. Production tag `production-r1-28da397d47ed`; deployment source `28da397d47ed90212362a22110160a234f70c5d3`. R2 NOT_STARTED.
