@@ -94,6 +94,15 @@ class OwnershipPostgresTest {
         var forged=new Lease(l.taskId(),l.spaceId(),UUID.randomUUID(),l.conversationId(),l.attemptId(),l.ownerId(),l.fence(),l.modelId(),l.credentialId(),l.credentialRevision(),l.assistantId());
         denied("EXECUTION_FENCE_LOST",()->repository.stateCas(forged,"x",0,"{}".getBytes(StandardCharsets.UTF_8)));
     }
+    @Test void leaseExpiringDuringSqlRollsBackPrivateStateAtCommitBoundary()throws Exception {
+        Lease l=lease();
+        sql("CREATE FUNCTION pf.slow_state_fixture() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$; CREATE TRIGGER slow_state_fixture BEFORE INSERT ON pf_runtime.state_slot FOR EACH ROW EXECUTE FUNCTION pf.slow_state_fixture()");
+        try{
+            sql("UPDATE pf.execution_slot SET lease_until=clock_timestamp()+interval '200 milliseconds'");
+            denied("EXECUTION_FENCE_LOST",()->repository.stateCas(l,"slow",0,"{}".getBytes(StandardCharsets.UTF_8)));
+            assertEquals(0,count("SELECT count(*) FROM pf_runtime.state_slot WHERE state_key LIKE '%/slow'"));
+        }finally{sql("DROP TRIGGER slow_state_fixture ON pf_runtime.state_slot; DROP FUNCTION pf.slow_state_fixture()");}
+    }
     @Test void completeRoundCallListAndAccountingRollbackTogether()throws Exception {
         Lease l=lease();UUID id=repository.beginTurn(l);var call=started(l);
         var tool=new HarnessData.Call("tool-1","fixture",Map.of("text","你好😀"),false);

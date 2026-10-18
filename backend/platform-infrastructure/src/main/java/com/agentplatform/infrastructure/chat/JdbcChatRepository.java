@@ -17,19 +17,33 @@ public final class JdbcChatRepository implements ChatRepository {
     static final JsonMapper JSON=JsonMapper.builder().build();
     private final String url,user,password;
     private final javax.sql.DataSource dataSource;
+    private record CommitOwner(Lease lease,Instant deadline) {}
+    private static final ThreadLocal<CommitOwner> COMMIT_OWNER=new ThreadLocal<>();
     public JdbcChatRepository(String url,String user,String password){this.url=url;this.user=user;this.password=password;this.dataSource=null;}
     public JdbcChatRepository(javax.sql.DataSource dataSource){this.url=null;this.user=null;this.password=null;this.dataSource=java.util.Objects.requireNonNull(dataSource);}
     @FunctionalInterface private interface Work<T>{T run(Connection c)throws SQLException;}
     private <T>T tx(Work<T> work){return tx(false,work);}
     private <T>T tx(boolean snapshot,Work<T> work){
+        COMMIT_OWNER.remove();
         try(var c=dataSource==null?DriverManager.getConnection(url,user,password):dataSource.getConnection()){
             c.setAutoCommit(false);if(snapshot)c.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
-            try{T v=work.run(c);c.commit();return v;}catch(SQLException|RuntimeException e){c.rollback();throw e;}
+            try{T v=work.run(c);verifyCommitLease(c);c.commit();return v;}catch(SQLException|RuntimeException e){c.rollback();throw e;}
         }catch(SQLException e){
             if("23505".equals(e.getSQLState()))throw new ChatFailure(409,"RESOURCE_CONFLICT");
             if("40001".equals(e.getSQLState())||"40P01".equals(e.getSQLState()))throw new ChatFailure(409,"CONCURRENT_CHANGE");
             System.getLogger(getClass().getName()).log(System.Logger.Level.WARNING,"Chat database failure SQLSTATE="+e.getSQLState());
             throw new ChatFailure(503,"CHAT_STORAGE_UNAVAILABLE");
+        }finally{COMMIT_OWNER.remove();}
+    }
+    private static void verifyCommitLease(Connection c)throws SQLException{
+        CommitOwner guard=COMMIT_OWNER.get();if(guard==null)return;Lease l=guard.lease();
+        // Row locks prevent takeovers during the transaction; DB time still advances.
+        // A slow SQL statement must not commit content after expiry. Terminal cleanup
+        // clears the slot, so it is checked against the deadline captured before clearing.
+        try(var s=q(c,"SELECT task_id,owner_id,fencing_token,lease_until,clock_timestamp() FROM pf.execution_slot WHERE id=1");var r=s.executeQuery()){
+            if(!r.next())throw new ChatFailure(409,"EXECUTION_FENCE_LOST");Instant now=r.getTimestamp(5).toInstant();
+            if(r.getObject(1)==null){if(!guard.deadline().isAfter(now))throw new ChatFailure(409,"EXECUTION_FENCE_LOST");}
+            else if(!l.taskId().equals(r.getObject(1,UUID.class))||!l.ownerId().equals(r.getObject(2,UUID.class))||l.fence()!=r.getLong(3)||r.getTimestamp(4)==null||!r.getTimestamp(4).toInstant().isAfter(now))throw new ChatFailure(409,"EXECUTION_FENCE_LOST");
         }
     }
     static PreparedStatement q(Connection c,String sql,Object...args)throws SQLException{
@@ -209,7 +223,7 @@ public final class JdbcChatRepository implements ChatRepository {
     private static void inbox(Connection c,Envelope e,String disposition)throws SQLException{exec(c,"INSERT INTO pf.consumer_inbox(consumer_name,event_id,space_id,aggregate_id,generation,disposition) VALUES('execution',?,?,?,?,?) ON CONFLICT DO NOTHING",e.eventId(),e.spaceId(),e.aggregateId(),e.generation(),disposition);}
     @Override public void quarantine(String reason){tx(c->{exec(c,"INSERT INTO pf.dispatch_quarantine(id,reason_code) VALUES(?,?)",Uuid7.next(),reason);return null;});}
     static void owned(Connection c,Lease l,boolean cancellationAllowed)throws SQLException{
-        try(var s=q(c,"SELECT 1 FROM pf.execution_slot WHERE id=1 AND task_id=? AND owner_id=? AND fencing_token=? AND lease_until>clock_timestamp() FOR UPDATE",l.taskId(),l.ownerId(),l.fence());var r=s.executeQuery()){if(!r.next())throw new ChatFailure(409,"EXECUTION_FENCE_LOST");}
+        try(var s=q(c,"SELECT lease_until FROM pf.execution_slot WHERE id=1 AND task_id=? AND owner_id=? AND fencing_token=? AND lease_until>clock_timestamp() FOR UPDATE",l.taskId(),l.ownerId(),l.fence());var r=s.executeQuery()){if(!r.next())throw new ChatFailure(409,"EXECUTION_FENCE_LOST");COMMIT_OWNER.set(new CommitOwner(l,r.getTimestamp(1).toInstant()));}
         Actor a=new Actor(l.userId(),l.spaceId());conversation(c,a,l.conversationId(),true);
         Task task=task(c,a,l.taskId(),true);
         try(var s=q(c,"SELECT 1 FROM pf.execution_dispatch d JOIN pf.attempt a ON a.task_id=d.task_id JOIN pf.conversation_lease v ON v.attempt_id=a.id WHERE d.task_id=? AND d.status='CLAIMED' AND d.lease_owner=? AND d.fencing_token=? AND d.lease_until>clock_timestamp() AND a.id=? AND a.space_id=? AND a.owner_id=? AND a.fencing_token=? AND a.status='RUNNING' AND a.dispatch_generation=d.generation AND v.space_id=? AND v.conversation_id=? AND v.owner_id=? AND v.fencing_token=? AND v.generation=d.generation AND v.lease_until>clock_timestamp() FOR UPDATE OF d,a,v",l.taskId(),l.ownerId(),l.fence(),l.attemptId(),l.spaceId(),l.ownerId(),l.fence(),l.spaceId(),l.conversationId(),l.ownerId(),l.fence());var r=s.executeQuery()){if(!r.next())throw new ChatFailure(409,"EXECUTION_FENCE_LOST");}
