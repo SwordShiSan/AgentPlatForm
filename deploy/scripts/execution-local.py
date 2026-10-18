@@ -38,7 +38,8 @@ def main():
         config = json.loads(subprocess.check_output(fixture.COMPOSE + ['--profile', 'fixture', 'config', '--format', 'json'], cwd=ROOT, env=fixture.ENV))
         services = ['postgres', 'rabbitmq', 'redis', 'api', 'worker', 'worker-2', 'gateway', 'fixture']
         total = sum(int(config['services'][s]['mem_limit']) for s in services)
-        assert total == 2528*1024*1024 and total <= 2887*1024*1024
+        assert all(int(config['services'][s]['mem_limit']) > 0 for s in services)
+        assert 0 < total <= 2887*1024*1024, 'Module limits may change; the combined maximum must remain bounded'
         fixture.run(fixture.COMPOSE + ['--profile', 'fixture', 'up', '-d', '--wait', '--wait-timeout', '180', *services])
     else:
         fixture.main()

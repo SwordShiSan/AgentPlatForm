@@ -86,7 +86,7 @@ def sample():
     inspections = json.loads(command(['docker', 'inspect', *ids]))
     assert all(row['Config']['Labels']['com.docker.compose.project'] == 'agentplatform-r21-local' for row in inspections)
     total = sum(row['HostConfig']['Memory'] for row in inspections)
-    assert total <= 2887*1024*1024
+    assert all(row['HostConfig']['Memory'] > 0 for row in inspections) and total <= 2887*1024*1024
     assert all(row['HostConfig']['MemorySwap'] == row['HostConfig']['Memory'] for row in inspections)
     for row in inspections:
         if row['Config']['Labels']['com.docker.compose.service'] in {'api', 'worker', 'worker-2'}:
