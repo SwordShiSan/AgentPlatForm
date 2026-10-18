@@ -12,6 +12,7 @@ import urllib.error
 import urllib.request
 import uuid
 from stopped_owner import reconcile
+from execution_images import pin_exported
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / '.cache/r21-local'
@@ -155,6 +156,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=POINTS + ['crashes', 'continuous'])
     args = parser.parse_args()
+    pin_exported(ENV, DATA, required=True)
     OUT.mkdir(parents=True, exist_ok=True)
     client = Client()
     if args.mode == 'continuous':

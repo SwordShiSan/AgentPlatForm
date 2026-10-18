@@ -6,6 +6,7 @@ from pathlib import Path
 import socket
 import subprocess
 import sys
+from execution_images import pin_exported
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / '.cache/r21-local'
@@ -22,6 +23,7 @@ fixture.COMPOSE = ['docker', 'compose', '-p', 'agentplatform-r21-local', '-f', '
 def main():
     mode = sys.argv[1] if len(sys.argv) == 2 else ''
     assert mode in {'prepare', 'migrate', 'grant', 'seed', 'start', 'stop', 'status', 'reconcile-stopped'}, 'Explicit local mode required'
+    pin_exported(fixture.ENV, DATA, required=mode == 'start')
     if mode == 'prepare':
         # No second project's ports/data are borrowed, even when that project is stopped.
         own = subprocess.check_output(fixture.COMPOSE + ['ps', '-a', '-q'], cwd=ROOT, env=fixture.ENV, text=True).strip()
