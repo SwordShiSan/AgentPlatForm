@@ -169,6 +169,9 @@ class OwnershipPostgresTest {
         assertEquals(reserve,count("SELECT reserved_tokens FROM pf.budget_account"));assertEquals(36864,count("SELECT remaining_tokens FROM pf.task"));
         var next=repository.publications(UUID.randomUUID()).stream().map(Publish::envelope).filter(e->e.generation()==2).findFirst().orElseThrow();
         Lease second=repository.claim(next,UUID.randomUUID());assertNotNull(second);assertEquals(l.taskId(),second.taskId());assertNotEquals(l.attemptId(),second.attemptId());
+        var latestState=repository.events(actor,l.conversationId(),0).stream().filter(e->e.type().equals("task.state_changed")).toList().getLast();
+        assertEquals(repository.task(actor,l.taskId()).version(),latestState.version(),"Reclaimed RUNNING events must not regress to the first claim's version2");
+        assertEquals("RUNNING",latestState.payload().get("status"));
         denied("EXECUTION_FENCE_LOST",()->repository.stateDelete(l,"sdk"));
     }
     @Test void responseBeforeRoundCommitRemainsUnknownAndNeverRequeues()throws Exception {

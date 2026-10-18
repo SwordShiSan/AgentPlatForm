@@ -62,6 +62,10 @@ test('explicit cancellation preserves partial output and releases the execution 
   await page.getByLabel('消息', { exact: true }).fill('fixture:slow');
   await page.getByRole('button', { name: '发送', exact: true }).click();
   await expect(page.locator('.chat-message.assistant .chat-text').last()).toContainText('慢速');
+  const route=page.url();
+  await page.reload(); await expect(page).toHaveURL(route);
+  await expect(page.getByRole('button', { name: '取消回复', exact: true })).toBeVisible();
+  await expect(page.locator('.chat-message.assistant')).toHaveCount(1);
   await page.getByRole('button', { name: '取消回复', exact: true }).click();
   await expect(page.getByRole('status').first()).toContainText('已取消');
   await page.reload(); await expect(page.locator('.chat-message.assistant .chat-text').last()).toContainText('慢速');

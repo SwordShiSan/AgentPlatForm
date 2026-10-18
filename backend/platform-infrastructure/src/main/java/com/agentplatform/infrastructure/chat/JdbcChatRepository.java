@@ -179,7 +179,7 @@ public final class JdbcChatRepository implements ChatRepository {
         try(var s=q(c,"SELECT 1 FROM pf.consumer_inbox WHERE consumer_name='execution' AND event_id=?",e.eventId());var r=s.executeQuery()){if(r.next())return null;}
         boolean busy;long fence;
         try(var s=q(c,"SELECT task_id,fencing_token FROM pf.execution_slot WHERE id=1 FOR UPDATE");var r=s.executeQuery()){r.next();busy=r.getObject(1)!=null;fence=r.getLong(2)+1;}
-        UUID actor,convo,model,credential,assistant;long revision;
+        UUID actor,convo,model,credential,assistant;long revision,messageVersion;
         try(var st=q(c,"SELECT conversation_id FROM pf.task WHERE id=? AND space_id=?",e.aggregateId(),e.spaceId());var row=st.executeQuery()){if(!row.next())throw new ChatFailure(400,"UNKNOWN_DISPATCH_TASK");convo=row.getObject(1,UUID.class);}
         conversation(c,new Actor(null,e.spaceId()),convo,true);
         try(var s=q(c,"SELECT t.*,d.generation,d.status AS dispatch_status,s.model_id,s.credential_id,s.credential_revision FROM pf.task t JOIN pf.execution_dispatch d ON d.task_id=t.id JOIN pf.chat_config_snapshot s ON s.id=t.config_snapshot_id WHERE t.space_id=? AND t.id=? FOR UPDATE OF t,d",e.spaceId(),e.aggregateId());var r=s.executeQuery()){
@@ -196,7 +196,7 @@ public final class JdbcChatRepository implements ChatRepository {
             exec(c,"UPDATE pf.execution_dispatch SET status='IDLE' WHERE task_id=?",e.aggregateId());
             releaseRemaining(c,a,e.aggregateId());inbox(c,e,"IGNORED");
             assistantTerminalEvent(c,a,convo,e.aggregateId());
-            event(c,a,convo,e.aggregateId(),"task.state_changed",2,Map.of("taskId",e.aggregateId().toString(),"status","FAILED","reasonCode","AUTHORIZATION_REVOKED"));return null;
+            event(c,a,convo,e.aggregateId(),"task.state_changed",task(c,a,e.aggregateId(),false).version(),Map.of("taskId",e.aggregateId().toString(),"status","FAILED","reasonCode","AUTHORIZATION_REVOKED"));return null;
         }
         conversation(c,a,convo,true);
         try(var st=q(c,"SELECT b.manifest_hash FROM pf.task t JOIN pf.runtime_bundle b ON b.id=t.bundle_id WHERE t.id=?",e.aggregateId());var row=st.executeQuery()){
@@ -204,7 +204,7 @@ public final class JdbcChatRepository implements ChatRepository {
                 exec(c,"UPDATE pf.task SET status='BLOCKED',reason_code='BUNDLE_INCOMPATIBLE',version=version+1 WHERE id=?",e.aggregateId());
                 exec(c,"UPDATE pf.message SET status='FAILED',version=version+1 WHERE task_id=? AND role='ASSISTANT'",e.aggregateId());
                 exec(c,"UPDATE pf.execution_dispatch SET status='IDLE' WHERE task_id=?",e.aggregateId());releaseRemaining(c,a,e.aggregateId());inbox(c,e,"IGNORED");
-                assistantTerminalEvent(c,a,convo,e.aggregateId());event(c,a,convo,e.aggregateId(),"task.state_changed",2,Map.of("taskId",e.aggregateId().toString(),"status","BLOCKED","reasonCode","BUNDLE_INCOMPATIBLE"));return null;
+                assistantTerminalEvent(c,a,convo,e.aggregateId());event(c,a,convo,e.aggregateId(),"task.state_changed",task(c,a,e.aggregateId(),false).version(),Map.of("taskId",e.aggregateId().toString(),"status","BLOCKED","reasonCode","BUNDLE_INCOMPATIBLE"));return null;
             }
         }
         try(var s=q(c,"SELECT 1 FROM pf.task t WHERE t.conversation_id=? AND t.id<>? AND t.status IN ('QUEUED','RUNNING') AND (t.created_at,t.id)<(SELECT created_at,id FROM pf.task WHERE id=?) LIMIT 1",convo,e.aggregateId(),e.aggregateId());var r=s.executeQuery()){busy|=r.next();}
@@ -215,9 +215,9 @@ public final class JdbcChatRepository implements ChatRepository {
         exec(c,"INSERT INTO pf.attempt(id,space_id,task_id,ordinal,owner_id,fencing_token,dispatch_generation) SELECT ?,space_id,id,(SELECT count(*)+1 FROM pf.attempt WHERE task_id=?),?,?,? FROM pf.task WHERE id=?",attempt,e.aggregateId(),owner,fence,e.generation(),e.aggregateId());
         exec(c,"INSERT INTO pf.conversation_lease(space_id,conversation_id,task_id,attempt_id,owner_id,generation,fencing_token,lease_until) VALUES(?,?,?,?,?,?,?,now()+interval '60 seconds') ON CONFLICT(space_id,conversation_id) DO UPDATE SET task_id=excluded.task_id,attempt_id=excluded.attempt_id,owner_id=excluded.owner_id,generation=excluded.generation,fencing_token=excluded.fencing_token,lease_until=excluded.lease_until",e.spaceId(),convo,e.aggregateId(),attempt,owner,e.generation(),fence);
         exec(c,"UPDATE pf.task SET status='RUNNING',version=version+1,updated_at=now() WHERE id=?",e.aggregateId());inbox(c,e,"CLAIMED");
-        try(var s=q(c,"SELECT id FROM pf.message WHERE task_id=? AND role='ASSISTANT'",e.aggregateId());var r=s.executeQuery()){r.next();assistant=r.getObject(1,UUID.class);}
-        event(c,a,convo,e.aggregateId(),"task.state_changed",2,Map.of("taskId",e.aggregateId().toString(),"status","RUNNING"));
-        event(c,a,convo,e.aggregateId(),"message.started",1,Map.of("messageId",assistant.toString(),"blockId",assistant.toString(),"role","ASSISTANT"));
+        try(var s=q(c,"SELECT id,version FROM pf.message WHERE task_id=? AND role='ASSISTANT'",e.aggregateId());var r=s.executeQuery()){r.next();assistant=r.getObject(1,UUID.class);messageVersion=r.getLong(2);}
+        event(c,a,convo,e.aggregateId(),"task.state_changed",task(c,a,e.aggregateId(),false).version(),Map.of("taskId",e.aggregateId().toString(),"status","RUNNING"));
+        event(c,a,convo,e.aggregateId(),"message.started",messageVersion,Map.of("messageId",assistant.toString(),"blockId",assistant.toString(),"role","ASSISTANT"));
         return new Lease(e.aggregateId(),e.spaceId(),actor,convo,attempt,owner,fence,model,credential,revision,assistant);
     });}
     private static void inbox(Connection c,Envelope e,String disposition)throws SQLException{exec(c,"INSERT INTO pf.consumer_inbox(consumer_name,event_id,space_id,aggregate_id,generation,disposition) VALUES('execution',?,?,?,?,?) ON CONFLICT DO NOTHING",e.eventId(),e.spaceId(),e.aggregateId(),e.generation(),disposition);}

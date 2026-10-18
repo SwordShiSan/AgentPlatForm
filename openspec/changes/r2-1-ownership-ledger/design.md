@@ -33,3 +33,7 @@ New admissions pin bundle0199e000-0000-7000-8000-000000000004 with loop agentsco
 ## Local broker health tuning
 
 During local build/probe/export load, the initial RabbitMQ0.5CPU health CLI repeatedly exceeded5s. Cgroup evidence showed no OOM (memory about110MiB) and heavy CPU throttling; this is not a component/source defect. R2.1 uses1CPU, bounded CLI schedulers and disabled scheduler busy-wait, retains512MiB, and keeps the actual rabbitmq-diagnostics ping with10s timeout/15s interval. Validate AMQP confirm/consume and healthy recovery before runtime acceptance. No cloud or R1 deployment configuration changes.
+
+## Reclaimed entity versions
+
+The first immutable candidate passed all six OS crash windows, but review found claim events still used the R1 first-claim constants. Reclaimed task versions are higher, so this could temporarily hide RUNNING in the existing browser reducer. Emit the actual task/message row versions, add a real-PG assertion and refresh-during-run browser coverage, then rebuild/retest the final API candidate. This preserves wire shapes and does not implement R2.2's new snapshot/event facilities. Prior candidate evidence is historical, never substituted for final-runtime gates.
