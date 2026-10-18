@@ -27,7 +27,20 @@ def reconcile(root, data, env, compose, service='worker', force=False):
     assert before['Config']['Labels']['com.docker.compose.project'] == project
     assert before['Config']['Labels']['com.docker.compose.service'] == service
     assert before['State']['Running'] and before['RestartCount'] == 0, 'Capture live original instance first'
-    owner = str(uuid.UUID(output(['docker', 'exec', before['Id'], 'cat', '/tmp/chat-worker-ready'])))
+    # Docker's last healthy result may precede a DB outage. The live marker is
+    # withdrawn while authorization storage is unavailable; wait for its actual
+    # return, never infer an owner from a stale health result or caller input.
+    deadline = time.monotonic() + 30
+    while True:
+        marker = subprocess.run(['docker', 'exec', before['Id'], 'cat', '/tmp/chat-worker-ready'],
+                                cwd=root, env=env, text=True, capture_output=True)
+        if marker.returncode == 0:
+            owner = str(uuid.UUID(marker.stdout.strip()))
+            break
+        current = inspect(before['Id'])
+        assert current['State']['Running'] and current['State']['StartedAt'] == before['State']['StartedAt']
+        assert time.monotonic() < deadline, 'Live owner marker unavailable; do not attest ownership'
+        time.sleep(1)
     row = sql("SELECT a.task_id::text||','||a.id::text||','||a.fencing_token::text FROM pf.execution_slot s JOIN pf.attempt a ON a.task_id=s.task_id AND a.owner_id=s.owner_id AND a.fencing_token=s.fencing_token WHERE s.id=1 AND s.owner_id='" + owner + "' AND a.status='RUNNING';")
     assert row and '\n' not in row, 'Worker has no active owned task; do not generate fictitious proof'
     task, attempt, fence = row.split(',')
