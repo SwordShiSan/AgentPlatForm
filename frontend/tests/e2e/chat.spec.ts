@@ -11,7 +11,7 @@ async function login(page: Page, name = 'alice') {
   await page.getByLabel('密码', { exact: true }).fill(readFileSync(resolve(secretRoot, `${name}-password`), 'utf8').trim());
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await expect(page).toHaveURL(/\/app\/settings\/account$/);
-  await page.getByRole('link', { name: '普通聊天', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '普通聊天', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: '普通聊天', exact: true })).toBeVisible();
 }
 

@@ -25,7 +25,7 @@ async function login() {
     setCsrf(result.data.csrfToken);
     useChatDrafts().clear(); queryClient.clear();
     password.value = '';
-    await router.replace('/app/settings/account');
+    await router.replace('/app');
   } catch (failure) {
     password.value = '';
     error.value = failure instanceof ApiError && failure.problem.status === 401 ? '账号或密码不正确，请重试。' : failure instanceof ApiError && failure.problem.status === 429 ? '请求较多，请稍后再试。' : '暂时无法登录，请稍后重试。';

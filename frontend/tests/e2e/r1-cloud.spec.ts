@@ -18,11 +18,11 @@ test('HTTP cloud identity, one real stream, refresh, admin isolation and public 
       await page.getByLabel('账号', { exact: true }).fill(account.username);
       await page.getByLabel('密码', { exact: true }).fill(account.password);
       await page.getByRole('button', { name: '登录', exact: true }).click();
-      await expect(page.getByRole('link', { name: '普通聊天', exact: true })).toBeVisible();
+      await expect(page.getByRole('heading', { name: '普通聊天', exact: true })).toBeVisible();
       const cookie = (await context.cookies()).find(c => c.name === 'ap_session')!;
       expect(cookie.httpOnly).toBe(true); expect(cookie.sameSite).toBe('Lax'); expect(cookie.secure).toBe(false);
     }
-    const page = user.pages()[0]; await page.getByRole('link', { name: '普通聊天', exact: true }).click();
+    const page = user.pages()[0]; await expect(page.getByRole('heading', { name: '普通聊天', exact: true })).toBeVisible();
     expect(await page.evaluate(() => globalThis.isSecureContext)).toBe(false);
     await expect(page.getByLabel('模型', { exact: true })).toHaveValue(/.+/);
     await page.getByLabel('模型', { exact: true }).selectOption({ label: 'deepseek-flash' });

@@ -2,6 +2,7 @@
 import { darkTheme, NConfigProvider } from 'naive-ui';
 import { useTheme } from './theme';
 const { preference, dark } = useTheme();
+const chatEnabled = import.meta.env.VITE_CHAT_ENABLED === 'true';
 </script>
 
 <template>
@@ -11,6 +12,11 @@ const { preference, dark } = useTheme();
       <RouterLink to="/" class="brand" aria-label="Agent PlatForm 首页">
         <span class="brand-mark" aria-hidden="true">A</span>Agent PlatForm
       </RouterLink>
+      <nav class="site-nav" aria-label="主要导航">
+        <RouterLink v-if="chatEnabled" to="/app/chat">聊天</RouterLink>
+        <RouterLink v-if="chatEnabled" to="/app/settings/account">账号</RouterLink>
+        <RouterLink to="/status">连接状态</RouterLink>
+      </nav>
       <label class="theme-control">主题
         <select v-model="preference" aria-label="主题"><option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select>
       </label>

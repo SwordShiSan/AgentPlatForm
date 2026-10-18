@@ -6,6 +6,7 @@ import { api } from '../../shared/api/client';
 import { useViewPreference } from '../../app/view-preference';
 
 const view = useViewPreference();
+const chatEnabled = import.meta.env.VITE_CHAT_ENABLED === 'true';
 const health = useQuery({
   queryKey: ['platform', 'shell-health'],
   queryFn: async () => {
@@ -22,8 +23,8 @@ const isHealthy = computed(() => !health.isError.value && health.data.value?.sta
 <template>
   <main id="main-content" class="page" tabindex="-1">
     <p class="eyebrow">AGENT PLATFORM</p>
-    <h1>从可靠的基础开始。</h1>
-    <p class="intro">连接应用，确认状态。智能体工作台将在后续阶段逐步开放。</p>
+    <h1>{{ chatEnabled ? '应用连接状态' : '从可靠的基础开始。' }}</h1>
+    <p class="intro">{{ chatEnabled ? '查看应用连接状态，使用页头导航进入聊天或查看账号。' : '连接应用，确认状态。智能体工作台将在后续阶段逐步开放。' }}</p>
 
     <section class="health-card" aria-labelledby="health-heading" :aria-busy="health.isFetching.value">
       <div class="card-heading">
@@ -43,7 +44,7 @@ const isHealthy = computed(() => !health.isError.value && health.data.value?.sta
       </div>
       <div v-else class="status-content">
         <h3>应用已就绪</h3>
-        <p>当前仅开放基础连接检查。</p>
+        <p>{{ chatEnabled ? '普通聊天和个人空间已开放，登录后即可使用。' : '当前仅开放基础连接检查。' }}</p>
       </div>
       <div class="card-actions">
         <NButton type="primary" :loading="health.isFetching.value" @click="health.refetch()">重新检查</NButton>
@@ -55,6 +56,6 @@ const isHealthy = computed(() => !health.isError.value && health.data.value?.sta
       </dl>
     </section>
 
-    <footer class="page-footer">工程基线已建立后，再逐步接入模型与工作区。</footer>
+    <footer class="page-footer">{{ chatEnabled ? '连接检查不展示内部依赖和运行指标。' : '工程基线已建立后，再逐步接入模型与工作区。' }}</footer>
   </main>
 </template>
