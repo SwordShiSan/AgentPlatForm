@@ -13,7 +13,7 @@ test('real DeepSeek text stream, persisted multi-turn history and token usage', 
   await page.getByLabel('账号', { exact: true }).fill('alice');
   await page.getByLabel('密码', { exact: true }).fill(readFileSync(resolve(root, 'alice-password'), 'utf8').trim());
   await page.getByRole('button', { name: '登录', exact: true }).click();
-  await page.getByRole('link', { name: '普通聊天', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '普通聊天', exact: true })).toBeVisible();
   await expect(page.getByText('deepseek-flash', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: '新建对话' }).click();
   await expect(page).toHaveURL(/\/app\/chat\/[0-9a-f-]+$/);

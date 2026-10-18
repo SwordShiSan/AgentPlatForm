@@ -7,7 +7,7 @@ async function login(page: Page, name = 'bob') {
   await page.goto('/login'); await page.getByLabel('账号', { exact: true }).fill(name);
   await page.getByLabel('密码', { exact: true }).fill(readFileSync(resolve(import.meta.dirname, '../../../.cache/r12-local', `${name}-password`), 'utf8').trim());
   await page.getByRole('button', { name: '登录', exact: true }).click();
-  await page.getByRole('link', { name: '普通聊天', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '普通聊天', exact: true })).toBeVisible();
   await expect(page.getByLabel('模型', { exact: true })).toHaveValue(/.+/);
 }
 test('draft refresh, first-message commit and Flash to Pro snapshots', async ({ page }) => {

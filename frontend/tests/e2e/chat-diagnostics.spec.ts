@@ -11,7 +11,7 @@ test('partial unknown result has owner-only diagnostic and no automatic retry', 
   await page.getByLabel('账号', { exact: true }).fill('bob');
   await page.getByLabel('密码', { exact: true }).fill(readFileSync(resolve(root, 'bob-password'), 'utf8').trim());
   await page.getByRole('button', { name: '登录', exact: true }).click();
-  await page.getByRole('link', { name: '普通聊天', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '普通聊天', exact: true })).toBeVisible();
   await expect(page.getByLabel('模型', { exact: true })).toHaveValue(/.+/);
   await page.getByLabel('模型', { exact: true }).selectOption({ label: 'deepseek-flash' });
   await page.getByLabel('凭据来源', { exact: true }).selectOption('PLATFORM');
@@ -36,7 +36,7 @@ test('partial unknown result has owner-only diagnostic and no automatic retry', 
     await second.getByLabel('账号', { exact: true }).fill('alice');
     await second.getByLabel('密码', { exact: true }).fill(readFileSync(resolve(root, 'alice-password'), 'utf8').trim());
     await second.getByRole('button', { name: '登录', exact: true }).click();
-    await expect(second.getByRole('link', { name: '普通聊天', exact: true })).toBeVisible();
+    await expect(second.getByRole('heading', { name: '普通聊天', exact: true })).toBeVisible();
     const rejected = await other.request.get(`/api/v1/tasks/${task}/diagnostics`);
     expect(rejected.status()).toBe(404);
     expect(await rejected.text()).not.toContain(diagnostic.traceId);

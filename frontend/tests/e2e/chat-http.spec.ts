@@ -12,7 +12,7 @@ test('submit and cancel work when public-HTTP-only browser capabilities are avai
   await page.goto('/login'); await page.getByLabel('账号', { exact: true }).fill('bob');
   await page.getByLabel('密码', { exact: true }).fill(readFileSync(resolve(import.meta.dirname, '../../../.cache/r12-local/bob-password'), 'utf8').trim());
   await page.getByRole('button', { name: '登录', exact: true }).click();
-  await page.getByRole('link', { name: '普通聊天', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '普通聊天', exact: true })).toBeVisible();
   await expect(page.getByLabel('模型', { exact: true })).toHaveValue(/.+/);
   await page.getByLabel('消息', { exact: true }).fill('fixture:slow');
   await page.getByRole('button', { name: '发送', exact: true }).click();

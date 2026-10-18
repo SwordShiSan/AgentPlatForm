@@ -48,7 +48,7 @@ async function logout() {
       <p v-else-if="me.isError.value" role="alert">账号暂时不可用，请刷新重试。</p>
       <div v-else-if="me.data.value" class="health-card">
         <dl class="account-details"><dt>账号</dt><dd>{{ me.data.value.username }}</dd><dt>空间</dt><dd>个人空间</dd></dl>
-        <p class="intro">你的个人空间已建立。后续功能将逐步开放。</p>
+        <p class="intro">{{ chatEnabled ? '你的个人空间用于保存对话和个人配置。' : '你的个人空间已建立。后续功能将逐步开放。' }}</p>
       </div>
       <p v-if="error" role="alert" class="identity-error">{{ error }}</p>
     </section>
