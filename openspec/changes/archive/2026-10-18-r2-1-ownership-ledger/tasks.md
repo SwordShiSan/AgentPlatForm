@@ -15,5 +15,5 @@
 - [x] 3.5 Existing-chat browser and bounded resource tests, zero real calls.
 ## 4. Promotion and handoff
 - [x] 4.1 Review exact candidate, bind source/images/commands and immutable evidence hashes.
-- [ ] 4.2 Complete step→phase→main PRs, synchronize phase and archive change.
-- [ ] 4.3 Update local ledger then rollup, package protected evidence/body and record delivery.
+- [x] 4.2 Complete step→phase→main PRs, synchronize phase and archive change.
+- [x] 4.3 Update local ledger then rollup, package protected evidence/body and record delivery.

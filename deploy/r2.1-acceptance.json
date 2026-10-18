@@ -1,5 +1,5 @@
 {
-  "status": "FUNCTIONAL_GATES_PASS_PROMOTION_PENDING",
+  "status": "VERIFIED",
   "baseline": "9f780fa05556183c9697195f7cff533b069e20b7",
   "backendSource": "2e5307b2f4a99e32790787bf824c9758c34282a5",
   "backendTree": "24e08b05d301d9b4095057dff0d7e7b4673d3c9e",
@@ -69,5 +69,11 @@
     "R2.3 interactive reconciliation",
     "R2.4 checkpoint continuation and real model demo",
     "R3 business tools"
-  ]
+  ],
+  "acceptedMain": "a9583324c9a505150718a734acdddb4fa9a95d1b",
+  "implementationPrs": [
+    46,
+    47
+  ],
+  "r2": "1/4 VERIFIED; NOT RELEASED"
 }
