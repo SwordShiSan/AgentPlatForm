@@ -64,6 +64,7 @@ class Client:
 
 
 def workers(point=None):
+    assert sql('SELECT count(*) FROM pf.execution_slot WHERE task_id IS NOT NULL') == '0', 'Reconcile the current owner before replacing workers'
     command(COMPOSE + ['stop', 'worker', 'worker-2'])
     override = DATA / 'fault.override.json'
     override.write_text(json.dumps({'services': {'worker': {'environment': {'PLATFORM_CHAT_FIXTURE_FAULT': point or ''}}}}))
@@ -95,7 +96,7 @@ def sample():
     memory = {line.split(':')[0]: int(line.split()[1])*1024 for line in host.splitlines() if line.startswith(('MemAvailable:', 'SwapTotal:', 'SwapFree:'))}
     assert memory['MemAvailable'] >= 768*1024*1024
     stats = command(['docker', 'stats', '--no-stream', '--format', '{{json .}}', *ids])
-    return {'time': time.time(), 'containerLimitBytes': total, 'host': memory, 'stats': [json.loads(line) for line in stats.splitlines()],
+    return {'time': time.time(), 'containerLimitBytes': total, 'host': memory, 'databaseBytes': int(sql("SELECT pg_database_size(current_database())")), 'stats': [json.loads(line) for line in stats.splitlines()],
             'containers': [{'id': row['Id'], 'image': row['Image'], 'running': row['State']['Running'], 'oom': row['State']['OOMKilled'], 'limit': row['HostConfig']['Memory']} for row in inspections]}
 
 
@@ -152,15 +153,74 @@ def continuous(client):
     print('Sequential single-slot tasks and bounded resource samples PASS', flush=True)
 
 
+def http_status(client, path):
+    try:
+        client.request('GET', path)
+        return 200
+    except urllib.error.HTTPError as error:
+        return error.code
+
+
+def healthy(service):
+    return command(['docker', 'inspect', 'agentplatform-r21-local-' + service + '-1', '--format', '{{.State.Health.Status}}']) == 'healthy'
+
+
+def outages(client):
+    print('Starting actual broker/DB interruption acceptance', flush=True)
+    workers()
+    command(COMPOSE + ['up', '-d', '--no-deps', 'worker-2'])
+    command(COMPOSE + ['stop', 'rabbitmq'])
+    wait(lambda: http_status(client, '/api/v1/readiness') == 503)
+    queued = client.submit('fixture:normal:broker-outage:' + str(uuid.uuid4()))
+    time.sleep(3)
+    assert status(queued) == 'QUEUED'
+    assert sql("SELECT count(*) FROM pf.model_call WHERE task_id='" + queued + "'") == '0'
+    command(COMPOSE + ['start', 'rabbitmq'])
+    wait(lambda: healthy('rabbitmq'), 120)
+    wait(lambda: status(queued) == 'SUCCEEDED', 90)
+    assert sql("SELECT count(*) FROM pf.model_call WHERE task_id='" + queued + "'") == '1'
+    print('Broker outage queued without PG-direct fallback, then completed once: PASS', flush=True)
+    task = client.submit('fixture:slow:active-db-outage:' + str(uuid.uuid4()))
+    wait(lambda: sql("SELECT count(*) FROM pf.message WHERE task_id='" + task + "' AND role='ASSISTANT' AND length(blocks_json->0->>'text')>0") == '1')
+    owner = sql("SELECT owner_id FROM pf.execution_slot WHERE task_id='" + task + "'")
+    owned_service = None
+    for service in ['worker', 'worker-2']:
+        marker = command(['docker', 'exec', 'agentplatform-r21-local-' + service + '-1', 'cat', '/tmp/chat-worker-ready'])
+        if marker == owner:
+            owned_service = service
+    assert owned_service is not None
+    command(COMPOSE + ['stop', 'postgres'])
+    wait(lambda: http_status(client, '/api/v1/me') == 503, 30)
+    wait(lambda: http_status(client, '/api/v1/readiness') == 503, 30)
+    time.sleep(8)  # Exceed connection/socket timeout, without extending the lease or replaying work.
+    command(COMPOSE + ['start', 'postgres'])
+    wait(lambda: healthy('postgres'), 60)
+    wait(lambda: http_status(client, '/api/v1/me') == 200, 60)
+    wait(lambda: command(['docker', 'inspect', 'agentplatform-r21-local-' + owned_service + '-1', '--format', '{{.State.Health.Status}}']) == 'healthy', 60)
+    assert status(task) == 'RUNNING', 'Expected durable owner awaiting stopped-process evidence'
+    proof = reconcile(ROOT, DATA, ENV, COMPOSE, service=owned_service, force=True)
+    assert status(task) == 'BLOCKED'
+    assert sql("SELECT count(*) FROM pf.model_call WHERE task_id='" + task + "' AND status='UNKNOWN'") == '1'
+    assert sql("SELECT count(*) FROM pf.budget_reservation WHERE task_id='" + task + "' AND state='RECONCILING'") == '1'
+    followup = client.submit('fixture:normal:db-restored:' + str(uuid.uuid4()))
+    wait(lambda: status(followup) == 'SUCCEEDED', 90)
+    assert sql('SELECT physical_calls FROM pf.acceptance_model_meter WHERE id=1') == '0'
+    result = {'status': 'PASS', 'brokerQueuedTask': queued, 'interruptedTask': task, 'restoredTask': followup, 'proof': proof, 'sample': sample(), 'realProviderCalls': 0}
+    (OUT / 'outages.json').write_text(json.dumps(result, indent=2))
+    print('Active DB outage failed closed, retained UNKNOWN, restored session and single-slot execution: PASS', flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=POINTS + ['crashes', 'continuous'])
+    parser.add_argument('mode', choices=POINTS + ['crashes', 'continuous', 'outages'])
     args = parser.parse_args()
     pin_exported(ENV, DATA, required=True)
     OUT.mkdir(parents=True, exist_ok=True)
     client = Client()
     if args.mode == 'continuous':
         continuous(client)
+    elif args.mode == 'outages':
+        outages(client)
     else:
         for point in POINTS if args.mode == 'crashes' else [args.mode]:
             crash(client, point)
