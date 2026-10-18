@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -137,7 +138,7 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
             AtomicBoolean asking = new AtomicBoolean();
             run.stream().doOnNext(event -> { if(event instanceof io.agentscope.core.event.RequireUserConfirmEvent) asking.set(true); }).then(Mono.defer(() -> {
                 active();
-                manifests.seal(request.scope(), request.bundle());
+                saveCheckpoint(true);
                 Turn turn = lastTurn.get();
                 if (asking.get()) {
                     List<Call> pending = turn == null ? restoredPending() : turn.round().calls();
@@ -159,6 +160,24 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
             return agent.getDelegate().getAgentState(RuntimeContext.builder().userId(request.scope().actorId()).sessionId(request.scope().conversationId()).build())
                     .getContext().stream().flatMap(msg -> msg.getContentBlocks(ToolUseBlock.class).stream())
                     .filter(tool -> tool.getState() == ToolCallState.ASKING).map(tool -> codec.decodeCall(tool, catalog)).toList();
+        }
+        private void saveCheckpoint(boolean terminal) {
+            active();
+            List<Message> canonical=manifests.checkpointHistory(request.scope());
+            if(canonical.isEmpty()) { if(terminal)manifests.seal(request.scope(),request.bundle());return; }
+            // Explicit public saveAgentState updates the SDK cache version, but an active
+            // CallExecution keeps another loadedVersion. Snapshot a private clone instead;
+            // never weaken CAS or mutate the running SDK context to force a save.
+            var context=RuntimeContext.builder().userId(request.scope().actorId()).sessionId(request.scope().conversationId()).build();
+            var privateCodec=new io.agentscope.core.util.JacksonJsonCodec();
+            var snapshot=privateCodec.fromJson(privateCodec.toJson(agent.getDelegate().getAgentState(context)),io.agentscope.core.state.AgentState.class);
+            Set<String> finished=canonical.stream().flatMap(message->message.observations().stream()).filter(o->o.status()==OperationStatus.SUCCEEDED).map(Observation::callId).collect(java.util.stream.Collectors.toSet());
+            snapshot.contextMutable().clear();
+            canonical.stream().map(codec::encode).map(message->message.withContent(message.getContent().stream().map(block->block instanceof ToolUseBlock tool&&finished.contains(tool.getId())?(ContentBlock)tool.withState(ToolCallState.FINISHED):block).toList())).forEach(snapshot.contextMutable()::add);
+            byte[] bytes=privateCodec.toJson(snapshot).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            long version=state.load(request.scope(),"checkpoint_agent_state").version();
+            if(state.compareAndSwap(request.scope(),"checkpoint_agent_state",version,bytes)<0)throw new IllegalStateException("STATE_CAS_CONFLICT");
+            manifests.seal(request.scope(), request.bundle());
         }
         @Override public boolean cancel() {
             closed.set(true); boundary.cancelPending(request.scope()); pendingFutures.forEach(future -> future.cancel(true)); return run.cancel();
@@ -203,7 +222,8 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
                         .concatWith(Mono.defer(() -> {
                             Turn turn = lastTurn.get();
                             if (turn == null) return Mono.error(new IllegalStateException("MODEL_EMPTY_RESPONSE"));
-                            return await(() -> boundary.afterModelCommitted(request.scope(), turn)).then(Mono.<AgentEvent>empty());
+                            return await(() -> boundary.afterModelCommitted(request.scope(), turn))
+                                    .then(Mono.fromRunnable(()->saveCheckpoint(false))).then(Mono.<AgentEvent>empty());
                         }));
             }
             @Override public Flux<AgentEvent> onActing(Agent agent, RuntimeContext context, ActingInput input,
@@ -215,7 +235,7 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
                     pendingCalls.set(pending);
                     if (turn != null && !turn.round().calls().equals(pending)) return Flux.error(new IllegalStateException("TOOL_BATCH_MISMATCH"));
                     // Restored pending calls are additionally checked against ledger in beforeTool.
-                    return next.apply(input);
+                    return next.apply(input).concatWith(Mono.fromRunnable(()->saveCheckpoint(false)).then(Mono.<AgentEvent>empty()));
                 });
             }
         }
