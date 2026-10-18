@@ -61,6 +61,10 @@ dd { margin: 0; overflow-wrap: anywhere; }
 }
 .site-header { background: var(--panel); border-color: var(--border); flex-wrap: wrap; gap: var(--space-4); }
 .brand { color: var(--text); min-height: 44px; }
+.brand { min-width: 0; max-width: 100%; }
+.site-nav { display: flex; flex-wrap: wrap; gap: 4px 16px; max-width: 100%; }
+.site-nav a { display: inline-flex; align-items: center; min-height: 44px; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.site-nav a[aria-current="page"] { font-weight: 650; }
 .brand-mark { background: var(--accent); color: var(--canvas); }
 a { color: var(--accent); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
@@ -71,7 +75,7 @@ a { color: var(--accent); }
 .status-pill.healthy { color: var(--success); background: var(--success-bg); }
 .status-pill.unavailable { color: var(--error); background: var(--error-bg); }
 .details { border-color: var(--border); }
-.theme-control { display: flex; align-items: center; gap: var(--space-2); color: var(--muted); font-size: 14px; }
+.theme-control { display: flex; align-items: center; gap: var(--space-2); color: var(--muted); font-size: 14px; max-width: 100%; }
 .theme-control select { min-height: 44px; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px; font: inherit; }
 .error-action { display: inline-flex; align-items: center; min-height: 44px; padding: var(--space-3); }
 @media (max-width: 767px) { .page { margin-top: 40px; } .card-heading { flex-wrap: wrap; } }

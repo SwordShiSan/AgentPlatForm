@@ -1,0 +1,86 @@
+{
+  "status": "LOCAL_VERIFIED_PENDING_PROMOTION",
+  "change": "r1-home-chat-entry",
+  "baseline": "cd30c22ea301585c455cbbd4d5f83c0f5fbe277d",
+  "frontendSource": "d7707acc045c1954a91f49f196ef8d145207cf8b",
+  "gatewayImage": {
+    "service": "gateway",
+    "variable": "PLATFORM_GATEWAY_IMAGE",
+    "sourceRevision": "d7707acc045c1954a91f49f196ef8d145207cf8b",
+    "localImageId": "sha256:258fef1d0cf5888e6f028ac543cea250744561eb39f26c40ac0db789d3847834",
+    "ociIndexDigest": "sha256:258fef1d0cf5888e6f028ac543cea250744561eb39f26c40ac0db789d3847834",
+    "platformManifestDigest": "sha256:c73105ccf793f2cdf06eea068ca09294400e1fc33f3a057c1ed9c9fba03d868b",
+    "configId": "sha256:a926aced9585adfeef570e7da06a2f088cc0ba5c22a0574215835927e3de3468",
+    "platform": "linux/amd64",
+    "rootfsDiffIds": [
+      "sha256:74d97c428c51a828f9051a7a40a53ff1fc99e54fc30323ce36760701b0b7f711",
+      "sha256:2e8009e0b40fc6bc2dff04d44e534021d9b690e6591023c8188fc820357714f0",
+      "sha256:d95f58cfc01b377b7cf5580c9e767f0eb3302a65c4ef6cd3621c7944eb516912",
+      "sha256:f4bb89e377873a6f70b6fb7aa24a96ca61fee04e5eeedf215d2677246fa8ef6a",
+      "sha256:ef2d57c4733bdd5229e18d9edf3d3e70d37a57cd1d18ee52b98bdf7fe4c1c058",
+      "sha256:8632be6b207bad2f10ac78d6f23ad8d63f037fb7ae151d70dc15f470d1c13556",
+      "sha256:b53268e3e841339287c798851fc368386e448b3446b5ce9597571a14e8910be4",
+      "sha256:0d53eba7f7b1b764fe51784327c812c799dff8b4ebed56de28c21bf8fc3fb5ab",
+      "sha256:049faeb62ee00bd8433f1f1a58b51cce3bf7b5b2cb48baba3b2c7c2b919c3092",
+      "sha256:37338c097c62d59ac1f303fad1f41a30d52af182b3dfb1d29cacdb9b644aa042",
+      "sha256:bb6ee05faae497a946afdb14f699fc2cd06e48b99927b45ef00149ef16f470f9"
+    ],
+    "origin": "accepted local export"
+  },
+  "archiveSha256": "14a6c1753646b6915b3a243e2da0803bb1a597b6d0195ae93475246dae7e7cc4",
+  "backendConfigId": "sha256:6853788d51b309e45ff36200a533304431266fb3feaaf121209daa807fffe757",
+  "backendSource": "c37bec9fdb34bced93b460918d80752107e2b3cc",
+  "engineering": [
+    {
+      "command": "typecheck",
+      "exitCode": 0
+    },
+    {
+      "command": "test",
+      "exitCode": 0
+    },
+    {
+      "command": "contracts:check",
+      "exitCode": 0
+    },
+    {
+      "command": "contracts:test",
+      "exitCode": 0
+    },
+    {
+      "command": "links:check",
+      "exitCode": 0
+    }
+  ],
+  "unitTests": 22,
+  "browserTests": {
+    "chatDisabled": 10,
+    "chatEnabled": 5
+  },
+  "localCountersUnchanged": true,
+  "newModelCalls": 0,
+  "schemaChanged": false,
+  "githubActionsEnabled": false,
+  "historicalFailures": [
+    "Windows sandbox temporary-file EPERM; same unit suite passes with normal host permissions",
+    "Existing MQ cold startup exceeded initial wait; later healthy without restart/OOM"
+  ],
+  "evidenceSha256": {
+    "engineering.json": "ea49a21b53d04bcd8367b42a3c4d93e9d7558a21950d210562edacce1e046b1e",
+    "browser-false.json": "16ad53ac14b3dc4cf5ae7841d3e7cd836389254c78e9dd5d3bd15134c82e1686",
+    "browser-true.json": "1439b29d25a10f0f27bc49173308fbfce21c723021875e457bbae18f7ddad7e8",
+    "artifact.json": "f5fd09efe4bd51a8f71e8bee56252ba68a1c1c9effcde457f0e068ab47f70c88",
+    "typecheck.log": "f469480c31b9ec48d911d955cb800bebfad0e06b902ca290885fea81e5cca65b",
+    "test.log": "23c5e78917e871dcec7815b9b01c282f84ef742b3cc04e3b0a685c5536bc7b90",
+    "contracts-check.log": "f524a132c4e1f151f300f6986b133354c18bae2bba3598b351463e43fff50822",
+    "contracts-test.log": "db8ca5606e83007104901b8f26ea72cc9f5777853ecdbc1782a699aa624ba0f4",
+    "links-check.log": "6a99b5e5bb1d0faa4a8a16ffa30a9628fda0d6f60f4fed78b784b7436635f2f0",
+    "browser-false.log": "d24c9d71c026569ac5ebeec3a6186eca19509464b4be98e1448294621431ed53",
+    "browser-true.log": "b67172116c7ef91095df7162c4dc5e35cb5e1e31e6fd4b8a625cd1eebed46d68",
+    "build-false.log": "269ad46fe0317bfe958b6a484ae717be00fb7e3d2b7f0b0d18f944d4961fce37",
+    "build-true.log": "a3d6c823dae9d7a8d641289466dc36a62a2f80b27d71d2a269563757684c8cc7",
+    "test-sandbox-fail.log": "86d48991f95e65effdf95b19e9c91e5e49c014d27d5119d0a9a263b4328ab5b7"
+  },
+  "cloudStatus": "NOT_RUN",
+  "productionTag": null
+}
