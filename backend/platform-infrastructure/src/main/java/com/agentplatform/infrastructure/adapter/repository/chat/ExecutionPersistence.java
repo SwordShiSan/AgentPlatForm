@@ -20,7 +20,7 @@ final class ExecutionPersistence extends ChatPersistenceSupport {
     public void heartbeat(Lease l){tx(c->{owned(c,l,false);authorizeCredential(c,l);activeModel(c,l);c.dispatch().updateExecutionSlot111();c.dispatch().updateExecutionDispatch112(l.taskId());c.dispatch().updateConversationLease113(l.attemptId());return null;});}
     public List<HarnessData.Message> history(Lease l){return tx(c->{
         owned(c,l,false);List<HarnessData.Message> messages=new ArrayList<>();messages.add(HarnessData.Message.text(HarnessData.Role.SYSTEM,"You are a helpful assistant. Answer ordinary text questions. No tools or filesystem access are available."));
-        { var rows37 = c.conversation().selectMessage37(l.spaceId(), l.conversationId(), l.taskId()); 
+        { var rows37 = c.conversation().selectMessage37(l.spaceId(), l.conversationId(), l.taskId());
             long estimate=512;for (var row37 : rows37){String text=String.valueOf(blocks(row37.value2()).getFirst().get("text"));estimate+=text.getBytes(StandardCharsets.UTF_8).length+32;if(estimate>6144)throw new ChatFailure(422,"CONTEXT_REQUIRED_TOO_LARGE");messages.add(HarnessData.Message.text(HarnessData.Role.valueOf(row37.value1()),text));}
          }return List.copyOf(messages);
     });}
@@ -51,7 +51,7 @@ final class ExecutionPersistence extends ChatPersistenceSupport {
         owned(c,l,false);
         authorizeCredential(c,l);
         { var rows33 = c.accounting().selectModelCall33(call, l.taskId(), l.attemptId(), l.spaceId()); if(rows33.isEmpty())throw new ChatFailure(409,"CALL_NOT_FOUND"); }
-        { var rows32 = c.configuration().selectCredential32(l.credentialId(), l.credentialRevision()); var row32 = rows32.isEmpty() ? null : rows32.getFirst(); 
+        { var rows32 = c.configuration().selectCredential32(l.credentialId(), l.credentialRevision()); var row32 = rows32.isEmpty() ? null : rows32.getFirst();
             if(row32 == null)throw new ChatFailure(403,"CREDENTIAL_REVOKED");String scope=row32.scopeType();UUID space=row32.spaceId(),owner=row32.ownerUserId();
             if("USER".equals(scope)&&(!l.spaceId().equals(space)||!l.userId().equals(owner)))throw new ChatFailure(403,"CREDENTIAL_SCOPE_REJECTED");
             c.accounting().insertCredentialAccessAudit128(Uuid7.next(), l.credentialId(), call);

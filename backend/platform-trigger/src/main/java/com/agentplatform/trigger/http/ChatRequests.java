@@ -24,9 +24,9 @@ public final class ChatRequests {
         private String title;
         private String workspaceId;
         @Valid private Task initialTask;
-        @JsonSetter("title") 
+        @JsonSetter("title")
         public void setTitle(String value) { title = value; }
-        @JsonSetter("workspaceId") 
+        @JsonSetter("workspaceId")
         public void setWorkspaceId(String value) { workspaceId = value; }
         @JsonSetter("initialTask")
         public void setInitialTask(Task value) {
@@ -46,9 +46,9 @@ public final class ChatRequests {
         private String source;
         private boolean modelPresent;
         private boolean sourcePresent;
-        @JsonSetter("defaultModelId") 
+        @JsonSetter("defaultModelId")
         public void setDefaultModelId(String value) { modelId = value; modelPresent = true; }
-        @JsonSetter("defaultCredentialSource") 
+        @JsonSetter("defaultCredentialSource")
         public void setDefaultCredentialSource(String value) { source = value; sourcePresent = true; }
         public Map<String, Object> values() {
             var result = new LinkedHashMap<String, Object>();

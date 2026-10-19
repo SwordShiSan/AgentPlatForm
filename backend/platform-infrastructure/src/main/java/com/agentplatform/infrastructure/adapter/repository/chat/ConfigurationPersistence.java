@@ -18,7 +18,7 @@ final class ConfigurationPersistence extends ChatPersistenceSupport {
 
     public List<Credential> recoveryCredentials(){return tx(c->{
         List<Credential> values=new ArrayList<>();
-        { var rows21 = c.configuration().selectCredential21(); 
+        { var rows21 = c.configuration().selectCredential21();
             for (var row21 : rows21)values.add(new Credential(row21.id(),row21.scopeType(),row21.spaceId(),row21.ownerUserId(),row21.ciphertext(),row21.nonce(),row21.keyVersion(),row21.revision()));
          }return List.copyOf(values);
     });}
@@ -52,7 +52,7 @@ final class ConfigurationPersistence extends ChatPersistenceSupport {
         return Map.of("values",values,"sources",Map.of("modelId",p.get("defaultModelId")==null?"PLATFORM":"USER","credentialSource",preferenceDefined(c,a,"defaultCredentialSource")?"USER":"PLATFORM"),"lockedFields",List.of(),"configHash",hash(json(new TreeMap<>(values))));
     });}
     public Map<String,Object> configuration(Actor a,UUID id){return tx(true,c->{auth(c,a);task(c,a,id,false);
-        { var rows10 = c.conversation().selectTask10(id, a.spaceId()); var row10 = rows10.isEmpty() ? null : rows10.getFirst(); 
+        { var rows10 = c.conversation().selectTask10(id, a.spaceId()); var row10 = rows10.isEmpty() ? null : rows10.getFirst();
             if(row10 == null)throw new ChatFailure(404,"RESOURCE_NOT_FOUND");var values=new TreeMap<>(object(row10.configJson()));
             values.keySet().retainAll(Set.of("modelId","modelName","modelVersion","credentialId","credentialRevision","credentialSource","window","maxOutput","thinking","pricingVersion","inputPrice","outputPrice","perCallMicros","bundleHash"));
             return Map.of("configSnapshotId",row10.id().toString(),"configHash",row10.configHash(),"bundleId",row10.bundleId().toString(),"values",values,"restrictions",Map.of("credentialActive",row10.credentialActive(),"modelActive",row10.modelActive()));
