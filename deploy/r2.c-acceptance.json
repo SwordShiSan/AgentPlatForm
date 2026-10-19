@@ -1,5 +1,5 @@
 {
-  "status": "ACCEPTANCE_PASS_PROMOTION_PENDING",
+  "status": "VERIFIED",
   "date": "2026-10-19",
   "baseline": "802f46a",
   "source": "cd879ff273846c47a4da483a17b4a3b50462eb93",
@@ -135,5 +135,27 @@
     "files": 97,
     "protectedCopy": ".cache/r2c-local/delivery",
     "remoteSync": false
-  }
+  },
+  "promotion": [
+    {
+      "number": 50,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/50",
+      "base": "phase/r2-task-recovery",
+      "head": "step/r2-framework-alignment",
+      "headSha": "c62618df1534ab019f14f4cab94b5cdf9805f024",
+      "merged": true,
+      "mergeSha": "3176897a5f8ac74840da42b7f5315d6703f3e8bd"
+    },
+    {
+      "number": 51,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/51",
+      "base": "main",
+      "head": "phase/r2-task-recovery",
+      "headSha": "3176897a5f8ac74840da42b7f5315d6703f3e8bd",
+      "merged": true,
+      "mergeSha": "8391e5b0885d4af30d09d1f7ee799d2cb853fa80"
+    }
+  ],
+  "acceptedMain": "8391e5b0885d4af30d09d1f7ee799d2cb853fa80",
+  "archive": "2026-10-19-r2-framework-alignment; protected documentation promotion recorded in final handoff"
 }

@@ -7,7 +7,7 @@ Direct JDBC plumbing, manual messaging lifecycle and duplicated HTTP validation 
 - Implement the approved bounded R2.C correction: MyBatis/Spring transactions, Spring AMQP, Spring Security/typed validation and evidence-based AgentScope adapters.
 - Preserve authoritative ownership, budgets, idempotency, checkpoints and all existing public contracts.
 - Add architecture and implementation blueprints to R2–R9 and a legacy capability crosswalk. Gate R2.2 on completed correction.
-- Implementation and all local engineering/immutable-runtime/browser gates PASS; protected promotion remains pending.
+- Implementation and all local engineering/immutable-runtime/browser gates PASS; protected implementation PR50/51 are merged; R2.C VERIFIED with archival closeout.
 
 ## Capabilities
 ### New Capabilities
