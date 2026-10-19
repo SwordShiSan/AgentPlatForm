@@ -6,7 +6,7 @@ test.skip(process.env.R14_BROWSER_ACCEPTANCE !== '1', 'R1.4 isolated real API/fi
 test.use({ trace: 'off', screenshot: 'off' });
 
 test('partial unknown result has owner-only diagnostic and no automatic retry', async ({ page, browser }) => {
-  const root = resolve(import.meta.dirname, '../../../.cache/r12-local');
+  const root = process.env.IDENTITY_SECRET_ROOT ?? resolve(import.meta.dirname, '../../../.cache/r12-local');
   await page.goto('/login');
   await page.getByLabel('账号', { exact: true }).fill('bob');
   await page.getByLabel('密码', { exact: true }).fill(readFileSync(resolve(root, 'bob-password'), 'utf8').trim());

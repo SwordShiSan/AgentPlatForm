@@ -10,6 +10,8 @@ public final class HarnessPorts {
     private HarnessPorts() {}
 
     public interface ModelGateway {
+        /** Actual frozen provider model identity; standalone scripted probes keep their default. */
+        default String modelName(Scope scope) { return "scripted"; }
         CompletionStage<Round> complete(Scope scope, List<Message> messages, List<Call> toolDefinitions);
         /** Legacy complete-only adapters remain valid; production adapters deliver live deltas. */
         default CompletionStage<Round> stream(Scope scope, List<Message> messages, List<Call> toolDefinitions,

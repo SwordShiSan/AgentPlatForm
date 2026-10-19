@@ -20,6 +20,8 @@ test('real login, refresh, two-user isolation, logout and protected route', asyn
       await page.getByLabel('账号', { exact: true }).fill(name);
       await page.getByLabel('密码', { exact: true }).fill(secret(name));
       await page.getByRole('button', { name: '登录', exact: true }).click();
+      await expect(page).not.toHaveURL(/\/login$/);
+      await page.goto('/app/settings/account');
       await expect(page.getByRole('heading', { name: '我的账号' })).toBeVisible();
       await expect(page.locator('.user-menu')).toContainText(name);
       await page.reload();
@@ -47,7 +49,9 @@ test('login errors, keyboard, responsive themes and session loss', async ({ page
   await expect(page.getByLabel('密码', { exact: true })).toHaveValue('');
   await page.getByLabel('密码', { exact: true }).fill(secret('bob'));
   await page.getByLabel('密码', { exact: true }).press('Enter');
-  await expect(page.getByRole('heading', { name: '我的账号' })).toBeVisible();
+  await expect(page).not.toHaveURL(/\/login$/);
+      await page.goto('/app/settings/account');
+      await expect(page.getByRole('heading', { name: '我的账号' })).toBeVisible();
   for (const width of [375, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     for (const theme of ['light', 'dark']) {

@@ -13,7 +13,7 @@ function password(name: string) {
     const data = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../../evidence/r1.4/private/accounts.json'), 'utf8'));
     return data.accounts.find((row: { username: string }) => row.username === name).password as string;
   }
-  return readFileSync(resolve(import.meta.dirname, `../../../.cache/r12-local/${name}-password`), 'utf8').trim();
+  return readFileSync(resolve(process.env.IDENTITY_SECRET_ROOT ?? resolve(import.meta.dirname, '../../../.cache/r12-local'), `${name}-password`), 'utf8').trim();
 }
 async function login(page: Page, name = users[0]!) {
   await page.goto('/login');

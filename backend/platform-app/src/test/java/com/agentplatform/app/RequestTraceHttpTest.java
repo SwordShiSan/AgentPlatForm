@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 class RequestTraceHttpTest {
     @LocalServerPort int port;
     @Configuration(proxyBeanMethods=false) @EnableAutoConfiguration
-    @Import({ProblemHandler.class,RequestTraceFilter.class,Endpoint.class})
+    @Import({ProblemHandler.class,RequestTraceFilter.class,Endpoint.class,com.agentplatform.trigger.http.HttpSecurityConfiguration.class})
     static class Config {}
     @RestController static class Endpoint {
         @GetMapping("/trace-test") Object fail() { throw new ChatFailure(403,"CREDENTIAL_REVOKED"); }

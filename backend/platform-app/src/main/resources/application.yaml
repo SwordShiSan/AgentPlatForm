@@ -1,4 +1,11 @@
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
   application:
     name: agentplatform
   mvc:
@@ -24,3 +31,12 @@ platform:
   runtime:
     agentscope:
       enabled: false
+
+mybatis:
+  mapper-locations: classpath*:mybatis/mapper/**/*.xml
+  type-handlers-package: com.agentplatform.infrastructure.dao.typehandler
+  configuration:
+    map-underscore-to-camel-case: true
+    local-cache-scope: STATEMENT
+    cache-enabled: false
+    default-statement-timeout: 5

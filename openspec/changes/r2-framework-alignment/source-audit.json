@@ -1,0 +1,107 @@
+{
+  "date": "2026-10-18",
+  "kind": "SOURCE_REVIEW_ONLY",
+  "baselines": {
+    "platform": "20b7690f87c1fc5e16a36dfb7ba6adc6df08f6d8",
+    "legacy": "a142b10292e7724a170fd4a6aee0441116288f3f",
+    "sdk": "0b6743b263ba8e39eb417e35048026f1e0196548"
+  },
+  "files": [
+    {
+      "repository": "AgentPlatForm",
+      "path": "backend/platform-trigger/src/main/java/com/agentplatform/trigger/http/ChatController.java",
+      "sha256": "1e5254614aa274828772064b277c38feb38bfefa29872991f949f0fe689f3a6b"
+    },
+    {
+      "repository": "AgentPlatForm",
+      "path": "backend/platform-trigger/src/main/java/com/agentplatform/trigger/http/IdentityController.java",
+      "sha256": "8b43dc9618e804c55df828f991e11a75099eb191cbc830b9827a732900a5a589"
+    },
+    {
+      "repository": "AgentPlatForm",
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/chat/DeepSeekChatProvider.java",
+      "sha256": "6878f5789592b5e589323239ec1fd00d5b0a62083b130613ebba09f6f526e283"
+    },
+    {
+      "repository": "AgentPlatForm",
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/chat/JdbcChatRepository.java",
+      "sha256": "3cfca77cb35db673bd4ddf9fc7c4701c83f9f8cf7ca9790ce55cb4c2d6e985db"
+    },
+    {
+      "repository": "AgentPlatForm",
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/chat/JdbcExecutionLedger.java",
+      "sha256": "da72ddacd522610f18c1e164ad5932df92cacc9a6ebd746042a702baa5b49bc0"
+    },
+    {
+      "repository": "AgentPlatForm",
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/chat/RabbitDispatchTransport.java",
+      "sha256": "8b7af98d8c4f61a64b435e43ce5d819c66fd53709e714a2bfbf3d0221505ef72"
+    },
+    {
+      "repository": "AgentPlatForm",
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/identity/JdbcIdentityStore.java",
+      "sha256": "294710e8cf1a6bbad8a18ae13c96997dc24248cb9c62d5f6571e976431aa07a4"
+    },
+    {
+      "repository": "AgentPlatForm",
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/storage/PostgresStateStorage.java",
+      "sha256": "e09fe5786c2dc67dc27dc197bf54e3a023a1d0d5c2257fb9dc26aa8a524fcb85"
+    },
+    {
+      "repository": "AgentPlatForm",
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/harness/agentscope/AgentScopeRuntimeFactory.java",
+      "sha256": "4b51e67b71bbc76e46b591ff38510f3ce409095b954788ab5bfbd4b30c2b2325"
+    },
+    {
+      "repository": "AgentPlatForm",
+      "path": "backend/platform-app/src/main/java/com/agentplatform/app/chat/ChatConfiguration.java",
+      "sha256": "522dadb77f135547b248ad77cff7d58645c624c8ab55ca88ba6b40143bb32900"
+    },
+    {
+      "repository": "AgentPlatForm",
+      "path": "backend/platform-app/src/main/java/com/agentplatform/app/chat/ChatWebConfiguration.java",
+      "sha256": "0726d2403c535b47403236554dbe5e82964addce0807ca417d45ee0444f37f00"
+    },
+    {
+      "repository": "ai-agent",
+      "path": "ai-agent-infrastructure/src/main/java/com/lailihao/infrastructure/dao/IAiAgentRunDao.java",
+      "sha256": "0d7c95dca2b9d8dc5d783458f5070f7d1babec0d74019dc0d029cbc433489061"
+    },
+    {
+      "repository": "ai-agent",
+      "path": "ai-agent-infrastructure/src/main/java/com/lailihao/infrastructure/queue/AgentOutboxRelay.java",
+      "sha256": "962c23f8468efedd5eb20a75a859272ba52b74858f03cb2119af9b08ad10faaa"
+    },
+    {
+      "repository": "ai-agent",
+      "path": "ai-agent-infrastructure/src/main/java/com/lailihao/infrastructure/queue/AgentQueueConfiguration.java",
+      "sha256": "5dc1f4fa0e40e762a186827579466322b9b209220de0a9289c1b0bd07fc6091d"
+    },
+    {
+      "repository": "ai-agent",
+      "path": "ai-agent-infrastructure/src/main/java/com/lailihao/infrastructure/dao/po/AiAgentRun.java",
+      "sha256": "33a986d3b377efe473b992f42c8b50c95e785fb43d514771661de109bfb9172d"
+    },
+    {
+      "repository": "ai-agent",
+      "path": "ai-agent-infrastructure/src/main/java/com/lailihao/infrastructure/adapter/repository/DurableExecutionRepository.java",
+      "sha256": "7f30fdce6aa9625c9f9126417c1a7cb8c43e0b4da1d51390be233a40fcdbf418"
+    },
+    {
+      "repository": "ai-agent",
+      "path": "ai-agent-infrastructure/src/main/java/com/lailihao/infrastructure/adapter/repository/WorkspaceRepository.java",
+      "sha256": "ec4e7d494ef1321e5b38bbec07dba92aaf8cd400ecfca2dd0b6b190904c8558b"
+    },
+    {
+      "repository": "ai-agent",
+      "path": "ai-agent-app/src/main/resources/mybatis/mapper/ai_agent_run_mapper.xml",
+      "sha256": "4d8705f26658b96be0e6953298b79ee3c1e8a822bd5bb008011b716508e966c6"
+    },
+    {
+      "repository": "ai-agent",
+      "path": "ai-agent-infrastructure/src/main/java/com/lailihao/infrastructure/queue/AgentRunWorker.java",
+      "sha256": "2abf405f914b1c16a767c86946d02321b07d657a7fac0d95c678e8f09362e5a4"
+    }
+  ],
+  "runtime_acceptance": "NOT_RUN"
+}

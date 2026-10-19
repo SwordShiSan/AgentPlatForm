@@ -20,14 +20,15 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.*;
 
 @SpringBootTest(classes = ChatStreamingHttpTest.Config.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {"spring.profiles.active=chat-local,chat-stream-test", "server.shutdown=immediate"})
+        properties = {"spring.profiles.active=identity-local,chat-local,chat-stream-test", "server.shutdown=immediate"})
 class ChatStreamingHttpTest {
     @LocalServerPort int port;
     @org.springframework.beans.factory.annotation.Autowired org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor executor;
     @Configuration(proxyBeanMethods = false)
     @Profile("chat-stream-test")
     @EnableAutoConfiguration
-    @Import({ChatController.class, ChatWebConfiguration.class, com.agentplatform.trigger.http.ProblemHandler.class})
+    @Import({ChatController.class, ChatWebConfiguration.class, com.agentplatform.trigger.http.ProblemHandler.class,
+            com.agentplatform.trigger.http.HttpSecurityConfiguration.class, com.agentplatform.trigger.http.RequestTraceFilter.class})
     static class Config {
         @Bean ChatApi chat() {
             var chat = mock(ChatApi.class);

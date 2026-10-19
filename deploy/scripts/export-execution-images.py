@@ -9,8 +9,8 @@ import subprocess
 import tarfile
 from docker_preflight import require_linux
 
-ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / '.cache/r21-local/artifacts'
+from execution_fixture import ROOT, DATA, STAGE
+OUT = DATA / 'artifacts'
 COMPONENTS = ['api', 'gateway', 'provider-fixture', 'framework-probe']
 
 
@@ -23,7 +23,7 @@ def sha(path):
 
 
 def export(component):
-    tag = 'agentplatform-' + component + ':r2.1-local'
+    tag = 'agentplatform-' + component + (':r2.1-local' if STAGE == 'r21' else ':r2c-local')
     archive, compressed = OUT / (component + '.tar'), OUT / (component + '.tar.gz')
     subprocess.run(['docker', 'image', 'save', '--output', str(archive), tag], check=True)
     actual = json.loads(subprocess.check_output(['docker', 'image', 'inspect', tag]))[0]
