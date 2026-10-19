@@ -48,3 +48,7 @@ No Java/Vue/SQL/runtime configuration or production changes in the planning deli
 
 ## Approved implementation gate (2026-10-19)
 User approved implementation of this same correction. MyBatis starter is pinned to4.0.0; its official POM returned HTTP200. Boot4.0.8 manages Spring dependencies. Runtime acceptance remains NOT_RUN until fresh evidence exists. Source802f46a; cloud R1 unchanged; real provider calls0.
+
+## Final full-patch formatting check
+
+The initial working-copy diff check did not cover previously committed trailing spaces. Final full-stage `git diff20b7690 HEAD --check` exposed41 lines in7 Java files; corrected in formatting source 0ecc76d00d9418d748780792c46dc04e15eefc73. A packaging-only Maven run passes (tests deliberately not rerun or recounted). The rebuilt artifact was compared with the jar extracted from the accepted immutable API image:375 class entries and all third-party jars byte-identical; nine XML/YAML/POM entries differ only CRLF/LF, all other entries identical (538 total). Exact per-file/hash evidence is in deploy/r2.c-byte-equivalence.json. Source-image provenance distinguishes original artifact source from later whitespace-only source. No semantic, line-count, migration, contract or runtime-bundle change; original runtime gates remain valid. Full-stage diff check now PASS. Follow-up protected PR identities are recorded in the final handoff.

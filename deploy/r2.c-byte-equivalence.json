@@ -1,0 +1,107 @@
+{
+  "artifactSource": "cd879ff273846c47a4da483a17b4a3b50462eb93",
+  "kind": "TRAILING_WHITESPACE_ONLY",
+  "files": [
+    {
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/adapter/repository/chat/ChatPersistenceSupport.java",
+      "beforeSha256": "ba2e6976ada366b9a04f246e46654374ec26b3cae5cf426dd542ac3eaf65383a",
+      "afterSha256": "36406908079e3761480e5d7dae913ddf04d9c9af7658f381bd9f0c0af7d297a4"
+    },
+    {
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/adapter/repository/chat/ConfigurationPersistence.java",
+      "beforeSha256": "de51dc572e2ef00d21971c9641794289552e782fa3dddbfb4d4200fe831e69fb",
+      "afterSha256": "ccb2cc60721178220225fde7b9271775c4ac8f6097b7fbe7a927e7e8231a6a30"
+    },
+    {
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/adapter/repository/chat/ConversationPersistence.java",
+      "beforeSha256": "8c8adc68cbce57bb6c5cd1fa6e2d5bcc2447a79ddfa56dcfde5de50b19303af8",
+      "afterSha256": "20bb0bf2e394b70d9f891d6a14045bf82ceccc200638be063ec0c31856ce397b"
+    },
+    {
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/adapter/repository/chat/DispatchPersistence.java",
+      "beforeSha256": "e20b8b63675e19423725a300406b1239b99cfc42d4ea2d22384dc4b08a626088",
+      "afterSha256": "f8a7c900f8ca9918752625b648a87effc7e800cd1b774ebdb6b3168d88aa7b42"
+    },
+    {
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/adapter/repository/chat/ExecutionPersistence.java",
+      "beforeSha256": "22b633eece5b15a10384cecee5654b70c5515ba626cc023096fe1923e7ee5f33",
+      "afterSha256": "709d6a9ffc34163c66c9cadd1e59b6737242726a8b48d18596805dd60a31cafa"
+    },
+    {
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/adapter/repository/chat/MyBatisExecutionLedger.java",
+      "beforeSha256": "390eeb004ff6898b3bface8a0b6785418af1bac0047ac746bc59532a53fe5a89",
+      "afterSha256": "67fce545c5057f03fd95b7d40c0fe433f05ecf8d25e80a89a15b038e84bd78a2"
+    },
+    {
+      "path": "backend/platform-trigger/src/main/java/com/agentplatform/trigger/http/ChatRequests.java",
+      "beforeSha256": "98db0776dfcb67046e55e718e041ff5e67f4843351d252794551052e8442f3b5",
+      "afterSha256": "77f20f095741aee78db08f279701701c3667c737122a5044c1e2fa3d4cbc5c62"
+    }
+  ],
+  "candidateJarSha256": "ca0056710f0cd60dd45282333fd59c33f0584240dbe71285b3e7aaddbbe35bda",
+  "status": "PASS",
+  "jarEntries": 538,
+  "exactEntries": 529,
+  "classEntries": 375,
+  "allClassesByteIdentical": true,
+  "textLineEndingOnly": [
+    {
+      "path": "BOOT-INF/classes/application.yaml",
+      "candidateSha256": "09ea898f37d916516cb7cc99a55658d0ca52ef359573878567adcda802a9fbbe",
+      "rebuiltSha256": "b6a33c18c6760fdcdddbb655e2052687a705328435c43ec770ce48b06d184e81",
+      "lfNormalizedSha256": "b6a33c18c6760fdcdddbb655e2052687a705328435c43ec770ce48b06d184e81"
+    },
+    {
+      "path": "BOOT-INF/classes/mybatis/mapper/chat/AccountingMapper.xml",
+      "candidateSha256": "f9397660b83c0bd9061f3a165aef885f3a64d0964d81e0d057fd5b7d9a68dac4",
+      "rebuiltSha256": "cc99af43e1e28e56bbff97b5e1139378ce724da56ce4f81c27d3119eb500bf43",
+      "lfNormalizedSha256": "cc99af43e1e28e56bbff97b5e1139378ce724da56ce4f81c27d3119eb500bf43"
+    },
+    {
+      "path": "BOOT-INF/classes/mybatis/mapper/chat/ConfigurationMapper.xml",
+      "candidateSha256": "2001e63e1de62ee9959ed162c8dfcad14a62c2097e4b23b9779822f3227d64e5",
+      "rebuiltSha256": "76fad9861b73b5e3a363e7c93dc234945923c46a50b7dbf0e34527c3a287d56b",
+      "lfNormalizedSha256": "76fad9861b73b5e3a363e7c93dc234945923c46a50b7dbf0e34527c3a287d56b"
+    },
+    {
+      "path": "BOOT-INF/classes/mybatis/mapper/chat/ConversationMapper.xml",
+      "candidateSha256": "19662d6c24d932c8f5031fb0272424417b04651e306325ca37f37e57463e5122",
+      "rebuiltSha256": "4f7d6091750a9bdcbac8593c37c7d43e4e1fef10e8b3b90e8e15b74ebfb382dd",
+      "lfNormalizedSha256": "4f7d6091750a9bdcbac8593c37c7d43e4e1fef10e8b3b90e8e15b74ebfb382dd"
+    },
+    {
+      "path": "BOOT-INF/classes/mybatis/mapper/chat/DispatchMapper.xml",
+      "candidateSha256": "23caf945931ab016ef278d2c6cb92bf457ecc4660bd27d69ecd456c8e314f5a6",
+      "rebuiltSha256": "b437a83bcd5288e46bf5b9bd4e1222d5039eda6bdd82c27e837469e05463230d",
+      "lfNormalizedSha256": "b437a83bcd5288e46bf5b9bd4e1222d5039eda6bdd82c27e837469e05463230d"
+    },
+    {
+      "path": "BOOT-INF/classes/mybatis/mapper/chat/LedgerMapper.xml",
+      "candidateSha256": "ce5bca99e1222b6cebd0c5446d6b026351bf6fc42fce1d3af8f92383dae86042",
+      "rebuiltSha256": "07e9880a86c3c0483748af572b581696d8523c32141466f968945df14981ce8e",
+      "lfNormalizedSha256": "07e9880a86c3c0483748af572b581696d8523c32141466f968945df14981ce8e"
+    },
+    {
+      "path": "BOOT-INF/classes/mybatis/mapper/identity/IdentityMapper.xml",
+      "candidateSha256": "da7b086be565e923fd044d876aaeb1fc9799c7b7f3587e02743861d836503d4f",
+      "rebuiltSha256": "5f80fda31fbcb2ce6bbf0ab9430d8f55e4518a40960546c544180be22851732f",
+      "lfNormalizedSha256": "5f80fda31fbcb2ce6bbf0ab9430d8f55e4518a40960546c544180be22851732f"
+    },
+    {
+      "path": "BOOT-INF/lib/platform-infrastructure-0.1.0-SNAPSHOT.jar!/META-INF/maven/com.agentplatform/platform-infrastructure/pom.xml",
+      "candidateSha256": "a7d93c141a6e533743999181f0c7d7796ab909c147ee2da83af117c3f530ef6f",
+      "rebuiltSha256": "86832483a8a526da43d50b2afaf8a05ef72cee1e5bfaf1e94468106765c364dc",
+      "lfNormalizedSha256": "86832483a8a526da43d50b2afaf8a05ef72cee1e5bfaf1e94468106765c364dc"
+    },
+    {
+      "path": "BOOT-INF/lib/platform-trigger-0.1.0-SNAPSHOT.jar!/META-INF/maven/com.agentplatform/platform-trigger/pom.xml",
+      "candidateSha256": "83cc6e167fa163807ff4696a49be83e23fa8e06a9b7dd24815f36c6b5ef67139",
+      "rebuiltSha256": "74e8a136485371c8e6c7ea55cfd2aaa9a335f41e8120ce89b9a46e60ffce0068",
+      "lfNormalizedSha256": "74e8a136485371c8e6c7ea55cfd2aaa9a335f41e8120ce89b9a46e60ffce0068"
+    }
+  ],
+  "rebuiltJarSha256": "883e6f0ee1b3ee34a9d8aff4ed376b97c08cc79c0b885706f110eb22cd457ef7",
+  "comparison": "Every class and other unchanged jar entry is byte-identical; nine XML/YAML/POM resources differ only CRLF vs LF from checkout. Own-module nested jars compared recursively; ZIP timestamps excluded. This is not a claim that complete jar archive hashes match.",
+  "build": "Maven -DskipTests package PASS; packaging check is not counted as a new test run",
+  "testEvidence": "151 Maven,57 immutable Linux,16 browser and runtime gates apply to the identical implementation. Formatting touched41 trailing blanks in7 Java files, no line counts or tokens changed."
+}

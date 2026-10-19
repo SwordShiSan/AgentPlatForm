@@ -18,7 +18,7 @@ final class DispatchPersistence extends ChatPersistenceSupport {
 
     public List<Publish> publications(UUID relay){return tx(c->{
         List<Publish> result=new ArrayList<>();
-        { var rows49 = c.dispatch().selectEventOutbox49(); 
+        { var rows49 = c.dispatch().selectEventOutbox49();
             for (var row49 : rows49){UUID id=row49.id();c.dispatch().updateEventOutbox92(relay, id);result.add(new Publish(id,new Envelope(1,row49.eventId(),row49.spaceId(),row49.aggregateId(),row49.generation(),"execution.ready",row49.createdAt(),null,row49.aggregateId())));}
          }return List.copyOf(result);
     });}
@@ -28,7 +28,7 @@ final class DispatchPersistence extends ChatPersistenceSupport {
     });}
     public void wakeDeferred(){tx(c->{
         c.dispatch().updateExecutionSlot95();
-        { var rows48 = c.dispatch().selectExecutionDispatch48(); 
+        { var rows48 = c.dispatch().selectExecutionDispatch48();
             for (var row48 : rows48){UUID id=row48.value1();long generation=row48.value2()+1;c.dispatch().updateExecutionDispatch96(generation, id);outbox(c,new Actor(row48.value4(),row48.value3()),id,generation);}
          }return null;
     });}
@@ -40,7 +40,7 @@ final class DispatchPersistence extends ChatPersistenceSupport {
         UUID actor,convo,model,credential,assistant;long revision,messageVersion;
         { var rows45 = c.conversation().selectTask45(e.aggregateId(), e.spaceId()); var row45 = rows45.isEmpty() ? null : rows45.getFirst(); if(row45 == null)throw new ChatFailure(400,"UNKNOWN_DISPATCH_TASK");convo=row45.value1(); }
         conversation(c,new Actor(null,e.spaceId()),convo,true);
-        { var rows44 = c.conversation().selectTask44(e.spaceId(), e.aggregateId()); var row44 = rows44.isEmpty() ? null : rows44.getFirst(); 
+        { var rows44 = c.conversation().selectTask44(e.spaceId(), e.aggregateId()); var row44 = rows44.isEmpty() ? null : rows44.getFirst();
             if(row44 == null)throw new ChatFailure(400,"UNKNOWN_DISPATCH_TASK");
             actor=row44.creatorId();convo=row44.conversationId();model=row44.modelId();credential=row44.credentialId();revision=row44.credentialRevision();
             if(e.generation()!=row44.generation()||!"READY".equals(row44.dispatchStatus())||!"QUEUED".equals(row44.status())){inbox(c,e,"IGNORED");return null;}
@@ -57,7 +57,7 @@ final class DispatchPersistence extends ChatPersistenceSupport {
             event(c,a,convo,e.aggregateId(),"task.state_changed",task(c,a,e.aggregateId(),false).version(),Map.of("taskId",e.aggregateId().toString(),"status","FAILED","reasonCode","AUTHORIZATION_REVOKED"));return null;
         }
         conversation(c,a,convo,true);
-        { var rows43 = c.conversation().selectTask43(e.aggregateId()); var row43 = rows43.isEmpty() ? null : rows43.getFirst(); 
+        { var rows43 = c.conversation().selectTask43(e.aggregateId()); var row43 = rows43.isEmpty() ? null : rows43.getFirst();
             if(row43 == null||!ChatRuntime.bundle().hash().equals(row43.value1())){
                 c.conversation().updateTask100(e.aggregateId());
                 c.conversation().updateMessage101(e.aggregateId());
