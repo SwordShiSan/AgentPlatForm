@@ -1,0 +1,40 @@
+package com.agentplatform.infrastructure.dao.chat;
+import com.agentplatform.infrastructure.dao.po.ConfigurationRows.*;
+import java.util.List;
+import java.util.UUID;
+import java.time.Instant;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+@Mapper
+public interface ConfigurationMapper {
+    List<UserModelCredentialRow7> selectUserModelCredential7(@Param("spaceId") UUID spaceId, @Param("userId") UUID userId);
+    List<Integer> selectModelBinding8(@Param("spaceId") UUID spaceId, @Param("userId") UUID userId);
+    List<UserModelCredentialRow9> selectUserModelCredential9(@Param("spaceId") UUID spaceId, @Param("userId") UUID userId);
+    List<Integer> selectUserPreference11(@Param("userId") UUID userId, @Param("key") String key);
+    List<ModelDefinitionRow12> selectModelDefinition12();
+    List<Integer> selectModelDefinition13(@Param("model") UUID model);
+    List<UserPreferenceRow14> selectUserPreference14(@Param("userId") UUID userId);
+    List<UserPreferenceRevisionRow15> selectUserPreferenceRevision15(@Param("userId") UUID userId);
+    List<CredentialRow19> selectCredential19(@Param("credential") UUID credential);
+    List<Integer> selectCredential20(@Param("id") UUID id);
+    List<CredentialRow21> selectCredential21();
+    List<CredentialRow32> selectCredential32(@Param("credentialId") UUID credentialId, @Param("credentialRevision") long credentialRevision);
+    List<RuntimeBundleRow54> selectRuntimeBundle54(@Param("BUNDLE") UUID BUNDLE);
+    List<UserModelCredentialRow55> selectUserModelCredential55(@Param("spaceId") UUID spaceId, @Param("userId") UUID userId, @Param("model") UUID model, @Param("userSource") boolean userSource);
+    List<ModelBindingRow60> selectModelBinding60(@Param("spaceId") UUID spaceId, @Param("userId") UUID userId, @Param("model") UUID model);
+    List<ModelDefinitionRow67> selectModelDefinition67(@Param("spaceId") UUID spaceId, @Param("userId") UUID userId, @Param("spaceId2") UUID spaceId2, @Param("userId2") UUID userId2);
+    int insertRuntimeBundle82(@Param("BUNDLE") UUID BUNDLE, @Param("hash") String hash, @Param("payloadJson") String payloadJson);
+    int insertChatConfigSnapshot83(@Param("snapshot") UUID snapshot, @Param("spaceId") UUID spaceId, @Param("model") UUID model, @Param("credential") UUID credential, @Param("revision") long revision, @Param("config") String config, @Param("contentHash") String contentHash);
+    int insertCredential157(@Param("id") UUID id, @Param("scope") String scope, @Param("spaceId") UUID spaceId, @Param("ownerId") UUID ownerId, @Param("ciphertext") byte[] ciphertext, @Param("nonce") byte[] nonce, @Param("keyVersion") int keyVersion, @Param("revision") long revision);
+    int updateCredential158(@Param("id") UUID id);
+    int insertModelDefinition159(@Param("model") UUID model);
+    int insertModelBinding160(@Param("spaceId") UUID spaceId, @Param("userId") UUID userId, @Param("model") UUID model, @Param("credential") UUID credential, @Param("source") String source);
+    int insertUserModelCredential162(@Param("spaceId") UUID spaceId, @Param("userId") UUID userId, @Param("credential") UUID credential);
+    int insertUserPreferenceRevision165(@Param("userId") UUID userId);
+    int updateUserPreferenceRevision166(@Param("userId") UUID userId, @Param("expected") long expected);
+    int insertUserPreference167(@Param("userId") UUID userId, @Param("getKey") String getKey, @Param("payloadJson") String payloadJson, @Param("version") long version);
+    int insertUserModelCredential168(@Param("spaceId") UUID spaceId, @Param("userId") UUID userId);
+    int updateCredential169(@Param("prior") UUID prior, @Param("spaceId") UUID spaceId, @Param("userId") UUID userId);
+    int insertCredential170(@Param("id") UUID id, @Param("spaceId") UUID spaceId, @Param("userId") UUID userId, @Param("ciphertext") byte[] ciphertext, @Param("nonce") byte[] nonce, @Param("keyVersion") int keyVersion, @Param("revision") long revision);
+    int updateUserModelCredential171(@Param("id") UUID id, @Param("spaceId") UUID spaceId, @Param("userId") UUID userId);
+}

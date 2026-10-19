@@ -4,10 +4,10 @@
 Baseline main20b7690; legacya142b102; SDK2.0.4 source0b6743b. R2.1 historical evidence is retained, not reused as proof of the new framework adapters. R2.C is a supplemental correction before R2.2, not a fifth R2 business step.
 
 ## Goals / Non-Goals
-Replace generic infrastructure plumbing with maintained frameworks while preserving execution semantics and platform completeness. Do not migrate old data, modify V1–V6, enable tools, call real providers, deploy, or fork third-party source. Current delivery is a reviewable plan, not runtime implementation.
+Replace generic infrastructure plumbing with maintained frameworks while preserving execution semantics and platform completeness. Do not migrate old data, modify V1–V6, enable tools, call real providers, deploy, or fork third-party source. The user approved implementation; runtime acceptance and promotion are separate evidence gates.
 
 ## Decisions
-1. MyBatis Boot4-compatible official starter, exact patch resolved and locked during implementation preparation. Repository→DAO→PO/XML follows the legacy organization, with transactions in the application layer and a pure domain.
+1. MyBatis Boot4-compatible official starter, pinned to4.0.0 with171 resolved artifact hashes. Repository→DAO→PO/XML follows the legacy organization, with transactions in the application layer and a pure domain.
 2. Same DataSource/Spring transaction manager for every Mapper in a unit of work. Explicit lock order and a before-commit ownership guard preserve database-time lease semantics. No per-Mapper commits or asynchronous transaction inheritance.
 3. Spring AMQP owns connection/container lifecycle, correlated confirms and returns. MANUAL ACK follows durable claim commit; outbox/inbox and DB owner remain authoritative.
 4. Spring Security adapts the current opaque session, Origin and CSRF contract. Typed DTO validation replaces boundary Map casts. Live resource authorization remains inside use cases/transactions.
@@ -26,3 +26,9 @@ Identity persistence first, then chat/config, ownership/budget/ledger/state; rem
 
 ## Open Questions
 Exact MyBatis patch and SDK compaction/state adapter feasibility need implementation preparation evidence; neither is claimed tested. R3 internal authentication and R7 legacy A2A disposition are phase-specific decisions, not permission to invent a protocol now.
+
+## Approved implementation gate (2026-10-19)
+User approved implementation of this same correction. MyBatis starter is pinned to4.0.0; its official POM returned HTTP200. Boot4.0.8 manages Spring dependencies. Runtime acceptance remains NOT_RUN until fresh evidence exists. Source802f46a; cloud R1 unchanged; real provider calls0.
+
+## Current implementation details
+Focused adapter/repository classes delegate to five typed Mapper groups; XML is packaged with app. Application TransactionTemplates share one managed DataSource/SqlSessionTemplate, with transaction synchronization for final lease and live authorization checks. Terminal failure accounting can converge after revocation, but successful/content writes cannot. Rabbit listener/publisher and scheduler lifecycles are Spring-managed. Native Jackson coercion policies enforce strict HTTP scalar types; no custom scalar parser. ASYNC/ERROR dispatch authorization preserves initial authentication while allowing existing SSE capacity Problems. Public HTTP shapes and V1–V6 are unchanged.

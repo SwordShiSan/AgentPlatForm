@@ -45,3 +45,21 @@ R2.2 SHALL wait for verified correction. Planning validation SHALL NOT count as 
 #### Scenario: Documents pass strict validation
 - **WHEN** the correction documents validate but runtime migration has not run
 - **THEN** correction implementation remains NOT_STARTED, runtime checks remain NOT_RUN and cloud R1 is unchanged
+
+### Requirement: Fixed implementation baseline
+Implementation SHALL pin MyBatis starter4.0.0, use Boot4.0.8-managed Spring adapters, and preserve V1–V6 and public contracts.
+
+#### Scenario: New framework dependencies resolve
+- **WHEN** framework dependencies are added
+- **THEN** exact resolved versions are locked and convergence plus isolation checks pass before acceptance
+
+### Requirement: Frozen model identity and asynchronous HTTP compatibility
+The SDK model identity SHALL reflect the task-frozen provider model through an additive default ModelGateway method. Native HTTP coercion and typed validation SHALL reject invalid scalar types. Initial requests SHALL authenticate normally, while Servlet ASYNC/ERROR dispatch SHALL preserve existing SSE failure contracts without reinterpreting capacity errors as authentication failures.
+
+#### Scenario: SSE connection capacity is exhausted
+- **WHEN** an authenticated ninth stream is rejected by the bounded executor
+- **THEN** the existing503 STREAM_CAPACITY_EXCEEDED Problem is returned instead of401 or a login redirect
+
+#### Scenario: Provider model differs between tasks
+- **WHEN** tasks freeze Flash and Pro respectively
+- **THEN** the bridge reports each frozen model identity and does not silently switch providers or models

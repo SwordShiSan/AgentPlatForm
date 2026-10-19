@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.chat.ConfigurationMapper">
+    <resultMap id="selectUserModelCredential7Result" type="com.agentplatform.infrastructure.dao.po.ConfigurationRows$UserModelCredentialRow7">
+        <constructor>
+            <arg name="value2" column="__column2" javaType="java.lang.Long"/>
+            <arg name="value1" column="__column1" javaType="java.util.UUID"/>
+        </constructor>
+    </resultMap>
+    <select id="selectUserModelCredential7" resultMap="selectUserModelCredential7Result"><![CDATA[SELECT credential_id AS __column1, version AS __column2 FROM pf.user_model_credential WHERE space_id=#{spaceId,jdbcType=OTHER} AND user_id=#{userId,jdbcType=OTHER} AND provider='DEEPSEEK' FOR UPDATE]]></select>
+    <select id="selectModelBinding8" resultType="java.lang.Integer"><![CDATA[SELECT 1 FROM pf.model_binding b JOIN pf.credential k ON k.id=b.credential_id WHERE b.space_id=#{spaceId,jdbcType=OTHER} AND b.user_id=#{userId,jdbcType=OTHER} AND b.source_policy='PLATFORM' AND k.scope_type='PLATFORM' AND k.status='ACTIVE' LIMIT 1]]></select>
+    <resultMap id="selectUserModelCredential9Result" type="com.agentplatform.infrastructure.dao.po.ConfigurationRows$UserModelCredentialRow9">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Long"/>
+            <arg name="value2" column="__column2" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectUserModelCredential9" resultMap="selectUserModelCredential9Result"><![CDATA[SELECT u.version AS __column1, k.status AS __column2 FROM pf.user_model_credential u LEFT JOIN pf.credential k ON k.id=u.credential_id WHERE u.space_id=#{spaceId,jdbcType=OTHER} AND u.user_id=#{userId,jdbcType=OTHER} AND u.provider='DEEPSEEK']]></select>
+    <select id="selectUserPreference11" resultType="java.lang.Integer"><![CDATA[SELECT 1 FROM pf.user_preference WHERE user_id=#{userId,jdbcType=OTHER} AND key=#{key,jdbcType=OTHER}]]></select>
+    <resultMap id="selectModelDefinition12Result" type="com.agentplatform.infrastructure.dao.po.ConfigurationRows$ModelDefinitionRow12">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.util.UUID"/>
+        </constructor>
+    </resultMap>
+    <select id="selectModelDefinition12" resultMap="selectModelDefinition12Result"><![CDATA[SELECT id AS __column1 FROM pf.model_definition WHERE model_name='deepseek-flash' AND status='ACTIVE' ORDER BY id LIMIT 1]]></select>
+    <select id="selectModelDefinition13" resultType="java.lang.Integer"><![CDATA[SELECT 1 FROM pf.model_definition WHERE id=#{model,jdbcType=OTHER} AND status='ACTIVE' AND model_name IN ('deepseek-flash','deepseek-v4-pro')]]></select>
+    <resultMap id="selectUserPreference14Result" type="com.agentplatform.infrastructure.dao.po.ConfigurationRows$UserPreferenceRow14">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+            <arg name="value2" column="__column2" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectUserPreference14" resultMap="selectUserPreference14Result"><![CDATA[SELECT key AS __column1, value_json AS __column2 FROM pf.user_preference WHERE user_id=#{userId,jdbcType=OTHER}]]></select>
+    <resultMap id="selectUserPreferenceRevision15Result" type="com.agentplatform.infrastructure.dao.po.ConfigurationRows$UserPreferenceRevisionRow15">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectUserPreferenceRevision15" resultMap="selectUserPreferenceRevision15Result"><![CDATA[SELECT version AS __column1 FROM pf.user_preference_revision WHERE user_id=#{userId,jdbcType=OTHER}]]></select>
+    <resultMap id="selectCredential19Result" type="com.agentplatform.infrastructure.dao.po.ConfigurationRows$CredentialRow19">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+            <arg name="value2" column="__column2" javaType="java.util.UUID"/>
+            <arg name="value3" column="__column3" javaType="java.util.UUID"/>
+        </constructor>
+    </resultMap>
+    <select id="selectCredential19" resultMap="selectCredential19Result"><![CDATA[SELECT scope_type AS __column1, space_id AS __column2, owner_user_id AS __column3 FROM pf.credential WHERE id=#{credential,jdbcType=OTHER} AND status='ACTIVE']]></select>
+    <select id="selectCredential20" resultType="java.lang.Integer"><![CDATA[SELECT 1 FROM pf.credential WHERE id=#{id,jdbcType=OTHER}]]></select>
+    <resultMap id="selectCredential21Result" type="com.agentplatform.infrastructure.dao.po.ConfigurationRows$CredentialRow21">
+        <constructor>
+            <arg name="id" column="id" javaType="java.util.UUID"/>
+            <arg name="scopeType" column="scope_type" javaType="java.lang.String"/>
+            <arg name="spaceId" column="space_id" javaType="java.util.UUID"/>
+            <arg name="ownerUserId" column="owner_user_id" javaType="java.util.UUID"/>
+            <arg name="ciphertext" column="ciphertext" javaType="[B"/>
+            <arg name="nonce" column="nonce" javaType="[B"/>
+            <arg name="keyVersion" column="key_version" javaType="java.lang.Integer"/>
+            <arg name="revision" column="revision" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectCredential21" resultMap="selectCredential21Result"><![CDATA[SELECT * FROM pf.credential ORDER BY id]]></select>
+    <resultMap id="selectCredential32Result" type="com.agentplatform.infrastructure.dao.po.ConfigurationRows$CredentialRow32">
+        <constructor>
+            <arg name="scopeType" column="scope_type" javaType="java.lang.String"/>
+            <arg name="spaceId" column="space_id" javaType="java.util.UUID"/>
+            <arg name="ownerUserId" column="owner_user_id" javaType="java.util.UUID"/>
+            <arg name="ciphertext" column="ciphertext" javaType="[B"/>
+            <arg name="nonce" column="nonce" javaType="[B"/>
+            <arg name="keyVersion" column="key_version" javaType="java.lang.Integer"/>
+            <arg name="revision" column="revision" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectCredential32" resultMap="selectCredential32Result"><![CDATA[SELECT * FROM pf.credential WHERE id=#{credentialId,jdbcType=OTHER} AND status='ACTIVE' AND revision=#{credentialRevision,jdbcType=OTHER}]]></select>
+    <resultMap id="selectRuntimeBundle54Result" type="com.agentplatform.infrastructure.dao.po.ConfigurationRows$RuntimeBundleRow54">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectRuntimeBundle54" resultMap="selectRuntimeBundle54Result"><![CDATA[SELECT manifest_hash AS __column1 FROM pf.runtime_bundle WHERE id=#{BUNDLE,jdbcType=OTHER}]]></select>
+    <resultMap id="selectUserModelCredential55Result" type="com.agentplatform.infrastructure.dao.po.ConfigurationRows$UserModelCredentialRow55">
+        <constructor>
+            <arg name="id" column="id" javaType="java.util.UUID"/>
+            <arg name="revision" column="revision" javaType="java.lang.Long"/>
+            <arg name="modelName" column="model_name" javaType="java.lang.String"/>
+            <arg name="pricingVersion" column="pricing_version" javaType="java.lang.String"/>
+            <arg name="modelVersion" column="model_version" javaType="java.lang.Long"/>
+            <arg name="inputMicrosPerMillion" column="input_micros_per_million" javaType="java.lang.Long"/>
+            <arg name="outputMicrosPerMillion" column="output_micros_per_million" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectUserModelCredential55" resultMap="selectUserModelCredential55Result"><choose><when test="userSource"><![CDATA[SELECT k.id,k.revision,m.model_name,m.version AS model_version,m.pricing_version,m.input_micros_per_million,m.output_micros_per_million FROM pf.user_model_credential u JOIN pf.credential k ON k.id=u.credential_id CROSS JOIN pf.model_definition m WHERE u.space_id=#{spaceId,jdbcType=OTHER} AND u.user_id=#{userId,jdbcType=OTHER} AND m.id=#{model,jdbcType=OTHER} AND k.status='ACTIVE' AND k.scope_type='USER' AND k.space_id=u.space_id AND k.owner_user_id=u.user_id AND m.status='ACTIVE' FOR SHARE OF k,u]]></when><otherwise><![CDATA[SELECT k.id,k.revision,m.model_name,m.version AS model_version,m.pricing_version,m.input_micros_per_million,m.output_micros_per_million FROM pf.model_binding b JOIN pf.credential k ON k.id=b.credential_id JOIN pf.model_definition m ON m.id=b.model_id WHERE b.space_id=#{spaceId,jdbcType=OTHER} AND b.user_id=#{userId,jdbcType=OTHER} AND b.model_id=#{model,jdbcType=OTHER} AND b.source_policy='PLATFORM' AND k.scope_type='PLATFORM' AND k.status='ACTIVE' AND m.status='ACTIVE' FOR SHARE OF k]]></otherwise></choose></select>
+    <resultMap id="selectModelBinding60Result" type="com.agentplatform.infrastructure.dao.po.ConfigurationRows$ModelBindingRow60">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectModelBinding60" resultMap="selectModelBinding60Result"><![CDATA[SELECT source_policy AS __column1 FROM pf.model_binding WHERE space_id=#{spaceId,jdbcType=OTHER} AND user_id=#{userId,jdbcType=OTHER} AND model_id=#{model,jdbcType=OTHER}]]></select>
+    <resultMap id="selectModelDefinition67Result" type="com.agentplatform.infrastructure.dao.po.ConfigurationRows$ModelDefinitionRow67">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.util.UUID"/>
+            <arg name="value2" column="__column2" javaType="java.lang.String"/>
+            <arg name="value3" column="__column3" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectModelDefinition67" resultMap="selectModelDefinition67Result"><![CDATA[SELECT id AS __column1, model_name AS __column2, version AS __column3 FROM pf.model_definition WHERE status='ACTIVE' AND model_name IN ('deepseek-flash','deepseek-v4-pro') AND (EXISTS(SELECT 1 FROM pf.model_binding b JOIN pf.credential k ON k.id=b.credential_id WHERE b.model_id=pf.model_definition.id AND b.space_id=#{spaceId,jdbcType=OTHER} AND b.user_id=#{userId,jdbcType=OTHER} AND b.source_policy=k.scope_type AND k.status='ACTIVE' AND (k.scope_type='PLATFORM' OR (k.space_id=b.space_id AND k.owner_user_id=b.user_id))) OR EXISTS(SELECT 1 FROM pf.user_model_credential u JOIN pf.credential k ON k.id=u.credential_id WHERE u.space_id=#{spaceId2,jdbcType=OTHER} AND u.user_id=#{userId2,jdbcType=OTHER} AND k.scope_type='USER' AND k.space_id=u.space_id AND k.owner_user_id=u.user_id AND k.status='ACTIVE')) ORDER BY model_name,id]]></select>
+    <insert id="insertRuntimeBundle82"><![CDATA[INSERT INTO pf.runtime_bundle(id,contract_version,manifest_hash,manifest_json) VALUES(#{BUNDLE,jdbcType=OTHER},'HC-1.1',#{hash,jdbcType=OTHER},#{payloadJson,jdbcType=OTHER}::jsonb) ON CONFLICT DO NOTHING]]></insert>
+    <insert id="insertChatConfigSnapshot83"><![CDATA[INSERT INTO pf.chat_config_snapshot(id,space_id,model_id,credential_id,credential_revision,config_json,config_hash) VALUES(#{snapshot,jdbcType=OTHER},#{spaceId,jdbcType=OTHER},#{model,jdbcType=OTHER},#{credential,jdbcType=OTHER},#{revision,jdbcType=OTHER},#{config,jdbcType=OTHER}::jsonb,#{contentHash,jdbcType=OTHER})]]></insert>
+    <insert id="insertCredential157"><![CDATA[INSERT INTO pf.credential(id,scope_type,space_id,owner_user_id,ciphertext,nonce,key_version,revision) VALUES(#{id,jdbcType=OTHER},#{scope,jdbcType=OTHER},#{spaceId,jdbcType=OTHER},#{ownerId,jdbcType=OTHER},#{ciphertext,jdbcType=OTHER},#{nonce,jdbcType=OTHER},#{keyVersion,jdbcType=OTHER},#{revision,jdbcType=OTHER})]]></insert>
+    <update id="updateCredential158"><![CDATA[UPDATE pf.credential SET status='REVOKED',revision=revision+1 WHERE id=#{id,jdbcType=OTHER} AND status='ACTIVE']]></update>
+    <insert id="insertModelDefinition159"><![CDATA[INSERT INTO pf.model_definition(id,model_name,endpoint_alias) VALUES(#{model,jdbcType=OTHER},'deepseek-flash','DEEPSEEK') ON CONFLICT DO NOTHING]]></insert>
+    <insert id="insertModelBinding160"><![CDATA[INSERT INTO pf.model_binding(space_id,user_id,model_id,credential_id,source_policy) VALUES(#{spaceId,jdbcType=OTHER},#{userId,jdbcType=OTHER},#{model,jdbcType=OTHER},#{credential,jdbcType=OTHER},#{source,jdbcType=OTHER}) ON CONFLICT(space_id,user_id,model_id) DO UPDATE SET credential_id=EXCLUDED.credential_id,source_policy=EXCLUDED.source_policy,version=pf.model_binding.version+1]]></insert>
+    <insert id="insertUserModelCredential162"><![CDATA[INSERT INTO pf.user_model_credential(space_id,user_id,provider,credential_id,version) VALUES(#{spaceId,jdbcType=OTHER},#{userId,jdbcType=OTHER},'DEEPSEEK',#{credential,jdbcType=OTHER},1) ON CONFLICT(space_id,user_id,provider) DO UPDATE SET credential_id=excluded.credential_id,version=pf.user_model_credential.version+1]]></insert>
+    <insert id="insertUserPreferenceRevision165"><![CDATA[INSERT INTO pf.user_preference_revision(user_id) VALUES(#{userId,jdbcType=OTHER}) ON CONFLICT DO NOTHING]]></insert>
+    <update id="updateUserPreferenceRevision166"><![CDATA[UPDATE pf.user_preference_revision SET version=version+1 WHERE user_id=#{userId,jdbcType=OTHER} AND version=#{expected,jdbcType=OTHER}]]></update>
+    <insert id="insertUserPreference167"><![CDATA[INSERT INTO pf.user_preference(user_id,key,value_json,version) VALUES(#{userId,jdbcType=OTHER},#{getKey,jdbcType=OTHER},#{payloadJson,jdbcType=OTHER}::jsonb,#{version,jdbcType=OTHER}) ON CONFLICT(user_id,key) DO UPDATE SET value_json=excluded.value_json,version=excluded.version]]></insert>
+    <insert id="insertUserModelCredential168"><![CDATA[INSERT INTO pf.user_model_credential(space_id,user_id,provider) VALUES(#{spaceId,jdbcType=OTHER},#{userId,jdbcType=OTHER},'DEEPSEEK') ON CONFLICT DO NOTHING]]></insert>
+    <update id="updateCredential169"><![CDATA[UPDATE pf.credential SET status='REVOKED',revision=revision+1 WHERE id=#{prior,jdbcType=OTHER} AND scope_type='USER' AND space_id=#{spaceId,jdbcType=OTHER} AND owner_user_id=#{userId,jdbcType=OTHER}]]></update>
+    <insert id="insertCredential170"><![CDATA[INSERT INTO pf.credential(id,scope_type,space_id,owner_user_id,ciphertext,nonce,key_version,revision) VALUES(#{id,jdbcType=OTHER},'USER',#{spaceId,jdbcType=OTHER},#{userId,jdbcType=OTHER},#{ciphertext,jdbcType=OTHER},#{nonce,jdbcType=OTHER},#{keyVersion,jdbcType=OTHER},#{revision,jdbcType=OTHER})]]></insert>
+    <update id="updateUserModelCredential171"><![CDATA[UPDATE pf.user_model_credential SET credential_id=#{id,jdbcType=OTHER},version=version+1 WHERE space_id=#{spaceId,jdbcType=OTHER} AND user_id=#{userId,jdbcType=OTHER} AND provider='DEEPSEEK']]></update>
+</mapper>

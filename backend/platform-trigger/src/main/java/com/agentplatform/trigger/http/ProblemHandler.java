@@ -34,6 +34,30 @@ public final class ProblemHandler extends ResponseEntityExceptionHandler {
             Exception exception, Object body, org.springframework.http.HttpHeaders headers,
             org.springframework.http.HttpStatusCode status,
             org.springframework.web.context.request.WebRequest request) {
+        if (status.value() == 400 && (exception instanceof org.springframework.http.converter.HttpMessageNotReadableException
+                || exception instanceof org.springframework.web.bind.MethodArgumentNotValidException)) {
+            var servlet = ((org.springframework.web.context.request.ServletWebRequest) request).getRequest();
+            String path = servlet.getRequestURI();
+            boolean unknown = false;
+            String field = null;
+            for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+                if (cause instanceof tools.jackson.databind.exc.UnrecognizedPropertyException) unknown = true;
+                if (cause instanceof tools.jackson.databind.DatabindException mapping && !mapping.getPath().isEmpty()) {
+                    field = mapping.getPath().getFirst().getPropertyName();
+                }
+            }
+            org.springframework.http.ResponseEntity<ProblemDetail> response;
+            if (path.equals("/api/v1/auth/login")) {
+                response = identityFailure(new com.agentplatform.domain.identity.IdentityFailure(400, "INVALID_LOGIN_REQUEST"));
+            } else {
+                String error = unknown ? "UNKNOWN_REQUEST_FIELD" : path.endsWith("/model-credentials/deepseek") ? "INVALID_CREDENTIAL"
+                        : "title".equals(field) ? "INVALID_TITLE" : "INVALID_TASK_REQUEST";
+                int codeStatus = 400;
+                if (unknown && path.equals("/api/v1/me/preferences")) { error = "UNSUPPORTED_PREFERENCE"; codeStatus = 422; }
+                response = chatFailure(new com.agentplatform.domain.chat.ChatFailure(codeStatus, error));
+            }
+            return new org.springframework.http.ResponseEntity<>(response.getBody(), response.getHeaders(), response.getStatusCode());
+        }
         String code = switch (status.value()) {
             case 404 -> "RESOURCE_NOT_FOUND";
             case 405 -> "METHOD_NOT_ALLOWED";

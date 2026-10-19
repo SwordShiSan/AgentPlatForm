@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.agentplatform.domain.chat.ChatData.*;
 import com.agentplatform.domain.chat.ChatFailure;
 import com.agentplatform.infrastructure.chat.CredentialCipher;
-import com.agentplatform.infrastructure.chat.JdbcChatRepository;
-import com.agentplatform.infrastructure.identity.JdbcIdentityStore;
+import com.agentplatform.infrastructure.adapter.repository.chat.MyBatisChatRepository;
+import com.agentplatform.domain.identity.IdentityStore;
 import com.agentplatform.types.harness.HarnessData.Round;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -24,8 +24,8 @@ import org.junit.jupiter.api.io.TempDir;
 class ChatPostgresTest {
     private static String url, password;
     @TempDir Path workspace;
-    private JdbcChatRepository repository;
-    private JdbcIdentityStore identity;
+    private com.agentplatform.domain.chat.ChatRepository repository;
+    private IdentityStore identity;
     private com.zaxxer.hikari.HikariDataSource pool;
     private final CredentialCipher cipher = new CredentialCipher(new byte[32]);
     private Actor alice, bob;
@@ -36,7 +36,7 @@ class ChatPostgresTest {
     @BeforeAll static void migrate() throws Exception {
         url = System.getenv("R12_TEST_JDBC_URL");
         Assumptions.assumeTrue(url != null, "Real R1.2 PostgreSQL not configured; not acceptance evidence");
-        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15442/chat_test?") || ("1".equals(System.getenv("R21_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15443/chat_test?")), "Refusing another project's database");
+        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15442/chat_test?") || ("1".equals(System.getenv("R21_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15443/chat_test?")) || ("1".equals(System.getenv("R2C_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15444/chat_test?")), "Refusing a database outside the explicitly named isolated fixture");
         password = Files.readString(Path.of(System.getenv("R12_TEST_PASSWORD_FILE"))).strip();
         // Destructive reset is restricted above to this explicitly named, isolated test database.
         Flyway.configure().dataSource(url, "postgres", password).defaultSchema("pf").schemas("pf", "pf_runtime")
@@ -57,8 +57,8 @@ class ChatPostgresTest {
         config.setJdbcUrl(url); config.setUsername("postgres"); config.setPassword(password);
         config.setMaximumPoolSize(4); config.setMinimumIdle(1); config.setConnectionTimeout(500);
         pool = new com.zaxxer.hikari.HikariDataSource(config);
-        repository = new JdbcChatRepository(pool);
-        identity = new JdbcIdentityStore(pool);
+        repository = com.agentplatform.app.chat.ChatPersistenceFixture.create(pool);
+        identity = com.agentplatform.app.identity.IdentityPersistenceFixture.create(pool);
         alice = actor("alice", true);
         bob = actor("bob", false);
     }
@@ -301,7 +301,7 @@ class ChatPostgresTest {
         String file = System.getenv("R12_TEST_MQ_PASSWORD_FILE");
         Assumptions.assumeTrue(file != null, "Real isolated RabbitMQ fixture not configured");
         var factory = new com.rabbitmq.client.ConnectionFactory();
-        factory.setHost("127.0.0.1"); factory.setPort("1".equals(System.getenv("R21_ACCEPTANCE")) ? 15693 : 15692);
+        factory.setHost("127.0.0.1"); factory.setPort("1".equals(System.getenv("R2C_ACCEPTANCE")) ? 15694 : "1".equals(System.getenv("R21_ACCEPTANCE")) ? 15693 : 15692);
         factory.setVirtualHost("/agentplatform-r12-test"); factory.setUsername("ap_operator");
         factory.setPassword(Files.readString(Path.of(file)).strip());
         factory.setAutomaticRecoveryEnabled(false); factory.setConnectionTimeout(2000);
@@ -328,7 +328,7 @@ class ChatPostgresTest {
         repository.bind(MODEL, alice, key("PLATFORM", null), "PLATFORM");
         var task = submit(alice); var item = repository.publications(UUID.randomUUID()).getFirst();
         try(var connection = factory.newConnection();
-                var transport = new com.agentplatform.infrastructure.chat.RabbitDispatchTransport(factory, repository)) {
+                var transport = new com.agentplatform.infrastructure.chat.SpringAmqpDispatchTransport(new org.springframework.amqp.rabbit.connection.CachingConnectionFactory(factory), repository)) {
             var first = connection.createChannel();
             topology(first); transport.publish(item.envelope());
             var delivery = received(first);
@@ -352,7 +352,7 @@ class ChatPostgresTest {
         repository.bind(MODEL, alice, key("PLATFORM", null), "PLATFORM"); submit(alice);
         var item = repository.publications(relay).getFirst();
         try(var connection = factory.newConnection();var receiver = connection.createChannel();
-                var transport = new com.agentplatform.infrastructure.chat.RabbitDispatchTransport(factory, repository)) {
+                var transport = new com.agentplatform.infrastructure.chat.SpringAmqpDispatchTransport(new org.springframework.amqp.rabbit.connection.CachingConnectionFactory(factory), repository)) {
             var publisher = connection.createChannel();
             topology(receiver); publisher.confirmSelect();
             publisher.basicPublish("ap.commands.v1", "execution.ready", true,
@@ -419,7 +419,7 @@ class ChatPostgresTest {
         repository.finish(lease, "FAILED", "FIXTURE_FINISHED");
         var next = claim(submit(alice)); var call = repository.beginCall(next, true);
         sql("UPDATE pf.acceptance_model_meter SET physical_calls=20,reserved_micros=990000,consumed_micros=100000");
-        var recreated = new JdbcChatRepository(pool);
+        var recreated = com.agentplatform.app.chat.ChatPersistenceFixture.create(pool);
         recreated.startCall(next, call, true);
         assertEquals(21,count("SELECT physical_calls FROM pf.acceptance_model_meter"));
         assertTrue(count("SELECT reserved_micros FROM pf.acceptance_model_meter")>990000);

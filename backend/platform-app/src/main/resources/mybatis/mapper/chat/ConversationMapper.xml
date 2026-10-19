@@ -1,0 +1,315 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.chat.ConversationMapper">
+    <resultMap id="selectMessage2Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$MessageRow2">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Boolean"/>
+        </constructor>
+    </resultMap>
+    <select id="selectMessage2" resultMap="selectMessage2Result"><![CDATA[SELECT EXISTS(SELECT 1 FROM pf.message WHERE task_id=#{id,jdbcType=OTHER} AND role='ASSISTANT' AND status='PARTIAL' AND length(blocks_json->0->>'text')>0) AS __column1]]></select>
+    <resultMap id="selectTask3Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$TaskRow3">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Object"/>
+        </constructor>
+    </resultMap>
+    <select id="selectTask3" resultMap="selectTask3Result"><![CDATA[SELECT trace_id AS __column1 FROM pf.task WHERE id=#{id,jdbcType=OTHER}]]></select>
+    <resultMap id="selectTask6Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$TaskRow6">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectTask6" resultMap="selectTask6Result"><![CDATA[SELECT s.config_json AS __column1 FROM pf.task t JOIN pf.chat_config_snapshot s ON s.id=t.config_snapshot_id WHERE t.id=#{taskId,jdbcType=OTHER} AND t.space_id=#{spaceId,jdbcType=OTHER}]]></select>
+    <resultMap id="selectTask10Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$TaskRow10">
+        <constructor>
+            <arg name="configJson" column="config_json" javaType="java.lang.String"/>
+            <arg name="id" column="id" javaType="java.lang.Object"/>
+            <arg name="configHash" column="config_hash" javaType="java.lang.String"/>
+            <arg name="bundleId" column="bundle_id" javaType="java.lang.Object"/>
+            <arg name="credentialActive" column="credential_active" javaType="java.lang.Boolean"/>
+            <arg name="modelActive" column="model_active" javaType="java.lang.Boolean"/>
+        </constructor>
+    </resultMap>
+    <select id="selectTask10" resultMap="selectTask10Result"><![CDATA[SELECT s.*,t.bundle_id,k.status='ACTIVE' AND k.revision=s.credential_revision AS credential_active,m.status='ACTIVE' AS model_active FROM pf.task t JOIN pf.chat_config_snapshot s ON s.id=t.config_snapshot_id JOIN pf.credential k ON k.id=s.credential_id JOIN pf.model_definition m ON m.id=s.model_id WHERE t.id=#{id,jdbcType=OTHER} AND t.space_id=#{spaceId,jdbcType=OTHER}]]></select>
+    <resultMap id="selectConversation16Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$ConversationRow16">
+        <constructor>
+            <arg name="id" column="id" javaType="java.util.UUID"/>
+            <arg name="title" column="title" javaType="java.lang.String"/>
+            <arg name="version" column="version" javaType="java.lang.Long"/>
+            <arg name="updatedAt" column="updated_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+    <select id="selectConversation16" resultMap="selectConversation16Result"><![CDATA[SELECT * FROM pf.conversation WHERE id=#{id,jdbcType=OTHER}]]></select>
+    <resultMap id="selectTask17Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$TaskRow17">
+        <constructor>
+            <arg name="id" column="id" javaType="java.util.UUID"/>
+            <arg name="conversationId" column="conversation_id" javaType="java.util.UUID"/>
+            <arg name="status" column="status" javaType="java.lang.String"/>
+            <arg name="cancelRequested" column="cancel_requested" javaType="java.lang.Boolean"/>
+            <arg name="reasonCode" column="reason_code" javaType="java.lang.String"/>
+            <arg name="version" column="version" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectTask17" resultMap="selectTask17Result"><![CDATA[SELECT * FROM pf.task WHERE conversation_id=#{existing,jdbcType=OTHER} ORDER BY created_at,id LIMIT 1]]></select>
+    <resultMap id="selectConversation18Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$ConversationRow18">
+        <constructor>
+            <arg name="id" column="id" javaType="java.util.UUID"/>
+            <arg name="title" column="title" javaType="java.lang.String"/>
+            <arg name="version" column="version" javaType="java.lang.Long"/>
+            <arg name="updatedAt" column="updated_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+    <select id="selectConversation18" resultMap="selectConversation18Result"><![CDATA[SELECT * FROM pf.conversation WHERE space_id=#{spaceId,jdbcType=OTHER} AND id=#{existing,jdbcType=OTHER}]]></select>
+    <resultMap id="selectAuthorizeChatCredential25Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$AuthorizeChatCredentialRow25">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Boolean"/>
+            <arg name="value2" column="__column2" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectAuthorizeChatCredential25" resultMap="selectAuthorizeChatCredential25Result"><![CDATA[SELECT pf.authorize_chat_credential(s.credential_id,s.credential_revision,t.space_id,t.creator_id) AS __column1, m.status AS __column2 FROM pf.task t JOIN pf.chat_config_snapshot s ON s.id=t.config_snapshot_id JOIN pf.model_definition m ON m.id=s.model_id WHERE t.id=#{slotTask,jdbcType=OTHER}]]></select>
+    <resultMap id="selectTask26Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$TaskRow26">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.util.UUID"/>
+            <arg name="value2" column="__column2" javaType="java.util.UUID"/>
+            <arg name="value3" column="__column3" javaType="java.util.UUID"/>
+            <arg name="value4" column="__column4" javaType="java.util.UUID"/>
+            <arg name="value5" column="__column5" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+    <select id="selectTask26" resultMap="selectTask26Result"><![CDATA[SELECT t.space_id AS __column1, t.creator_id AS __column2, t.conversation_id AS __column3, m.id AS __column4, a.started_at AS __column5 FROM pf.task t JOIN pf.attempt a ON a.task_id=t.id JOIN pf.message m ON m.task_id=t.id AND m.role='ASSISTANT' WHERE t.id=#{slotTask,jdbcType=OTHER} AND a.id=#{attemptId,jdbcType=OTHER} AND a.owner_id=#{slotOwner,jdbcType=OTHER} AND a.fencing_token=#{fence,jdbcType=OTHER} AND a.status='RUNNING']]></select>
+    <resultMap id="selectStoppedOwnerProof27Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$StoppedOwnerProofRow27">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectStoppedOwnerProof27" resultMap="selectStoppedOwnerProof27Result"><![CDATA[SELECT evidence_hash AS __column1 FROM pf.stopped_owner_proof WHERE owner_id=#{ownerId,jdbcType=OTHER}]]></select>
+    <resultMap id="selectMessage29Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$MessageRow29">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+            <arg name="value2" column="__column2" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectMessage29" resultMap="selectMessage29Result"><![CDATA[SELECT blocks_json AS __column1, version AS __column2 FROM pf.message WHERE id=#{assistantId,jdbcType=OTHER}]]></select>
+    <resultMap id="selectMessage30Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$MessageRow30">
+        <constructor>
+            <arg name="value3" column="__column3" javaType="java.lang.Long"/>
+            <arg name="value1" column="__column1" javaType="java.util.UUID"/>
+            <arg name="value2" column="__column2" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectMessage30" resultMap="selectMessage30Result"><![CDATA[SELECT id AS __column1, status AS __column2, version AS __column3 FROM pf.message WHERE space_id=#{spaceId,jdbcType=OTHER} AND task_id=#{task,jdbcType=OTHER} AND role='ASSISTANT']]></select>
+    <resultMap id="selectAuthorizeChatCredential31Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$AuthorizeChatCredentialRow31">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Boolean"/>
+        </constructor>
+    </resultMap>
+    <select id="selectAuthorizeChatCredential31" resultMap="selectAuthorizeChatCredential31Result"><![CDATA[SELECT pf.authorize_chat_credential(#{credentialId,jdbcType=OTHER},#{credentialRevision,jdbcType=OTHER},#{spaceId,jdbcType=OTHER},#{userId,jdbcType=OTHER}) AS __column1]]></select>
+    <resultMap id="selectMessage36Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$MessageRow36">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+            <arg name="value2" column="__column2" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectMessage36" resultMap="selectMessage36Result"><![CDATA[SELECT blocks_json AS __column1, version AS __column2 FROM pf.message WHERE id=#{assistantId,jdbcType=OTHER}]]></select>
+    <resultMap id="selectMessage37Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$MessageRow37">
+        <constructor>
+            <arg name="value2" column="__column2" javaType="java.lang.String"/>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectMessage37" resultMap="selectMessage37Result"><![CDATA[SELECT m.role AS __column1, m.blocks_json AS __column2 FROM pf.message m JOIN pf.task t ON t.id=m.task_id WHERE m.space_id=#{spaceId,jdbcType=OTHER} AND m.conversation_id=#{conversationId,jdbcType=OTHER} AND ((t.status='SUCCEEDED' AND m.status='COMPLETED') OR (t.id=#{taskId,jdbcType=OTHER} AND m.role='USER')) ORDER BY t.created_at,t.id,CASE m.role WHEN 'USER' THEN 0 ELSE 1 END,m.id]]></select>
+    <select id="selectTask38" resultType="java.lang.Integer"><![CDATA[SELECT 1 FROM pf.task t JOIN pf.chat_config_snapshot f ON f.id=t.config_snapshot_id JOIN pf.message m ON m.task_id=t.id AND m.role='ASSISTANT' WHERE t.id=#{taskId,jdbcType=OTHER} AND t.creator_id=#{userId,jdbcType=OTHER} AND t.conversation_id=#{conversationId,jdbcType=OTHER} AND f.model_id=#{modelId,jdbcType=OTHER} AND f.credential_id=#{credentialId,jdbcType=OTHER} AND f.credential_revision=#{credentialRevision,jdbcType=OTHER} AND m.id=#{assistantId,jdbcType=OTHER}]]></select>
+    <resultMap id="selectMessage41Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$MessageRow41">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.util.UUID"/>
+            <arg name="value2" column="__column2" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectMessage41" resultMap="selectMessage41Result"><![CDATA[SELECT id AS __column1, version AS __column2 FROM pf.message WHERE task_id=#{aggregateId,jdbcType=OTHER} AND role='ASSISTANT']]></select>
+    <select id="selectTask42" resultType="java.lang.Integer"><![CDATA[SELECT 1 FROM pf.task t WHERE t.conversation_id=#{convo,jdbcType=OTHER} AND t.id<>#{aggregateId,jdbcType=OTHER} AND t.status IN ('QUEUED','RUNNING') AND (t.created_at,t.id)<(SELECT created_at,id FROM pf.task WHERE id=#{aggregateId2,jdbcType=OTHER}) LIMIT 1]]></select>
+    <resultMap id="selectTask43Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$TaskRow43">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectTask43" resultMap="selectTask43Result"><![CDATA[SELECT b.manifest_hash AS __column1 FROM pf.task t JOIN pf.runtime_bundle b ON b.id=t.bundle_id WHERE t.id=#{aggregateId,jdbcType=OTHER}]]></select>
+    <resultMap id="selectTask44Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$TaskRow44">
+        <constructor>
+            <arg name="creatorId" column="creator_id" javaType="java.util.UUID"/>
+            <arg name="conversationId" column="conversation_id" javaType="java.util.UUID"/>
+            <arg name="modelId" column="model_id" javaType="java.util.UUID"/>
+            <arg name="credentialId" column="credential_id" javaType="java.util.UUID"/>
+            <arg name="credentialRevision" column="credential_revision" javaType="java.lang.Long"/>
+            <arg name="generation" column="generation" javaType="java.lang.Long"/>
+            <arg name="dispatchStatus" column="dispatch_status" javaType="java.lang.String"/>
+            <arg name="status" column="status" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectTask44" resultMap="selectTask44Result"><![CDATA[SELECT t.*,d.generation,d.status AS dispatch_status,s.model_id,s.credential_id,s.credential_revision FROM pf.task t JOIN pf.execution_dispatch d ON d.task_id=t.id JOIN pf.chat_config_snapshot s ON s.id=t.config_snapshot_id WHERE t.space_id=#{spaceId,jdbcType=OTHER} AND t.id=#{aggregateId,jdbcType=OTHER} FOR UPDATE OF t,d]]></select>
+    <resultMap id="selectTask45Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$TaskRow45">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.util.UUID"/>
+        </constructor>
+    </resultMap>
+    <select id="selectTask45" resultMap="selectTask45Result"><![CDATA[SELECT conversation_id AS __column1 FROM pf.task WHERE id=#{aggregateId,jdbcType=OTHER} AND space_id=#{spaceId,jdbcType=OTHER}]]></select>
+    <resultMap id="selectPlatformEvent51Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$PlatformEventRow51">
+        <constructor>
+            <arg name="id" column="id" javaType="java.util.UUID"/>
+            <arg name="taskId" column="task_id" javaType="java.util.UUID"/>
+            <arg name="seq" column="seq" javaType="java.lang.Long"/>
+            <arg name="type" column="type" javaType="java.lang.String"/>
+            <arg name="entityVersion" column="entity_version" javaType="java.lang.Long"/>
+            <arg name="createdAt" column="created_at" javaType="java.time.Instant"/>
+            <arg name="payloadJson" column="payload_json" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectPlatformEvent51" resultMap="selectPlatformEvent51Result"><![CDATA[SELECT * FROM pf.platform_event WHERE space_id=#{spaceId,jdbcType=OTHER} AND conversation_id=#{id,jdbcType=OTHER} AND seq>#{after,jdbcType=OTHER} AND created_at>=now()-interval '30 days' ORDER BY seq LIMIT 256]]></select>
+    <resultMap id="selectPlatformEvent52Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$PlatformEventRow52">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectPlatformEvent52" resultMap="selectPlatformEvent52Result"><![CDATA[SELECT min(seq) AS __column1 FROM pf.platform_event WHERE conversation_id=#{id,jdbcType=OTHER} AND created_at>=now()-interval '30 days']]></select>
+    <resultMap id="selectConversation53Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$ConversationRow53">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectConversation53" resultMap="selectConversation53Result"><![CDATA[SELECT next_seq AS __column1 FROM pf.conversation WHERE id=#{id,jdbcType=OTHER}]]></select>
+    <resultMap id="selectTask57Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$TaskRow57">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectTask57" resultMap="selectTask57Result"><![CDATA[SELECT count(*) AS __column1 FROM pf.task WHERE creator_id=#{userId,jdbcType=OTHER} AND status='QUEUED']]></select>
+    <resultMap id="selectTask58Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$TaskRow58">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectTask58" resultMap="selectTask58Result"><![CDATA[SELECT count(*) AS __column1 FROM pf.task WHERE conversation_id=#{convo,jdbcType=OTHER}]]></select>
+    <select id="selectGuard59" resultType="java.lang.Integer"><![CDATA[SELECT 1 FROM pg_advisory_xact_lock(1200201)]]></select>
+    <resultMap id="selectTask61Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$TaskRow61">
+        <constructor>
+            <arg name="id" column="id" javaType="java.util.UUID"/>
+            <arg name="conversationId" column="conversation_id" javaType="java.util.UUID"/>
+            <arg name="status" column="status" javaType="java.lang.String"/>
+            <arg name="cancelRequested" column="cancel_requested" javaType="java.lang.Boolean"/>
+            <arg name="reasonCode" column="reason_code" javaType="java.lang.String"/>
+            <arg name="version" column="version" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectTask61" resultMap="selectTask61Result"><![CDATA[SELECT * FROM pf.task WHERE space_id=#{spaceId,jdbcType=OTHER} AND conversation_id=#{id,jdbcType=OTHER} ORDER BY created_at,id]]></select>
+    <resultMap id="selectMessage62Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$MessageRow62">
+        <constructor>
+            <arg name="id" column="id" javaType="java.util.UUID"/>
+            <arg name="taskId" column="task_id" javaType="java.util.UUID"/>
+            <arg name="role" column="role" javaType="java.lang.String"/>
+            <arg name="blocksJson" column="blocks_json" javaType="java.lang.String"/>
+            <arg name="status" column="status" javaType="java.lang.String"/>
+            <arg name="version" column="version" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectMessage62" resultMap="selectMessage62Result"><![CDATA[SELECT * FROM pf.message WHERE space_id=#{spaceId,jdbcType=OTHER} AND conversation_id=#{id,jdbcType=OTHER} ORDER BY created_at,task_id,CASE role WHEN 'USER' THEN 0 ELSE 1 END,id]]></select>
+    <resultMap id="selectConversation63Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$ConversationRow63">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectConversation63" resultMap="selectConversation63Result"><![CDATA[SELECT next_seq AS __column1 FROM pf.conversation WHERE space_id=#{spaceId,jdbcType=OTHER} AND id=#{id,jdbcType=OTHER}]]></select>
+    <resultMap id="selectConversation64Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$ConversationRow64">
+        <constructor>
+            <arg name="id" column="id" javaType="java.util.UUID"/>
+            <arg name="title" column="title" javaType="java.lang.String"/>
+            <arg name="version" column="version" javaType="java.lang.Long"/>
+            <arg name="updatedAt" column="updated_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+    <select id="selectConversation64" resultMap="selectConversation64Result"><![CDATA[SELECT * FROM pf.conversation WHERE space_id=#{spaceId,jdbcType=OTHER} AND id=#{id,jdbcType=OTHER}]]></select>
+    <resultMap id="selectConversation65Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$ConversationRow65">
+        <constructor>
+            <arg name="id" column="id" javaType="java.util.UUID"/>
+            <arg name="title" column="title" javaType="java.lang.String"/>
+            <arg name="version" column="version" javaType="java.lang.Long"/>
+            <arg name="updatedAt" column="updated_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+    <select id="selectConversation65" resultMap="selectConversation65Result"><![CDATA[SELECT * FROM pf.conversation WHERE space_id=#{spaceId,jdbcType=OTHER} AND (#{before,jdbcType=OTHER}::uuid IS NULL OR (created_at,id)<(SELECT created_at,id FROM pf.conversation WHERE space_id=#{spaceId2,jdbcType=OTHER} AND id=#{before2,jdbcType=OTHER})) ORDER BY created_at DESC,id DESC LIMIT #{limit,jdbcType=OTHER}]]></select>
+    <resultMap id="selectConversation66Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$ConversationRow66">
+        <constructor>
+            <arg name="id" column="id" javaType="java.util.UUID"/>
+            <arg name="title" column="title" javaType="java.lang.String"/>
+            <arg name="version" column="version" javaType="java.lang.Long"/>
+            <arg name="updatedAt" column="updated_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+    <select id="selectConversation66" resultMap="selectConversation66Result"><![CDATA[SELECT * FROM pf.conversation WHERE space_id=#{spaceId,jdbcType=OTHER} AND id=#{id,jdbcType=OTHER}]]></select>
+    <resultMap id="updateConversation68Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$ConversationRow68">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="updateConversation68" resultMap="updateConversation68Result" affectData="true" flushCache="true" useCache="false"><![CDATA[UPDATE pf.conversation SET next_seq=next_seq+1,updated_at=now(),version=version+1 WHERE space_id=#{spaceId,jdbcType=OTHER} AND id=#{conversation,jdbcType=OTHER} RETURNING next_seq AS __column1]]></select>
+    <resultMap id="selectIdempotencyRecord69Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$IdempotencyRecordRow69">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+            <arg name="value2" column="__column2" javaType="java.util.UUID"/>
+        </constructor>
+    </resultMap>
+    <select id="selectIdempotencyRecord69" resultMap="selectIdempotencyRecord69Result"><![CDATA[SELECT body_hash AS __column1, resource_id AS __column2 FROM pf.idempotency_record WHERE user_id=#{userId,jdbcType=OTHER} AND space_id=#{spaceId,jdbcType=OTHER} AND method='POST' AND canonical_path=#{path,jdbcType=OTHER} AND key=#{key,jdbcType=OTHER}]]></select>
+    <select id="selectGuard70" resultType="java.lang.Integer"><![CDATA[SELECT 1 FROM pg_advisory_xact_lock(#{lockKey,jdbcType=OTHER})]]></select>
+    <resultMap id="selectTask71Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$TaskRow71">
+        <constructor>
+            <arg name="id" column="id" javaType="java.util.UUID"/>
+            <arg name="conversationId" column="conversation_id" javaType="java.util.UUID"/>
+            <arg name="status" column="status" javaType="java.lang.String"/>
+            <arg name="cancelRequested" column="cancel_requested" javaType="java.lang.Boolean"/>
+            <arg name="reasonCode" column="reason_code" javaType="java.lang.String"/>
+            <arg name="version" column="version" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectTask71" resultMap="selectTask71Result"><![CDATA[SELECT * FROM pf.task WHERE space_id=#{spaceId,jdbcType=OTHER} AND id=#{id,jdbcType=OTHER}]]><if test="lock"> FOR UPDATE</if></select>
+    <select id="selectConversation72" resultType="java.lang.Integer"><![CDATA[SELECT 1 FROM pf.conversation WHERE space_id=#{spaceId,jdbcType=OTHER} AND id=#{id,jdbcType=OTHER}]]><if test="lock"> FOR UPDATE</if></select>
+    <resultMap id="selectAuthorizeChatActor73Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$AuthorizeChatActorRow73">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Boolean"/>
+        </constructor>
+    </resultMap>
+    <select id="selectAuthorizeChatActor73" resultMap="selectAuthorizeChatActor73Result"><![CDATA[SELECT pf.authorize_chat_actor(#{userId,jdbcType=OTHER},#{spaceId,jdbcType=OTHER}) AS __column1]]></select>
+    <insert id="insertIdempotencyRecord75"><![CDATA[INSERT INTO pf.idempotency_record(user_id,space_id,method,canonical_path,key,body_hash,resource_id) VALUES(#{userId,jdbcType=OTHER},#{spaceId,jdbcType=OTHER},'POST',#{path,jdbcType=OTHER},#{key,jdbcType=OTHER},#{fingerprint,jdbcType=OTHER},#{resource,jdbcType=OTHER})]]></insert>
+    <insert id="insertPlatformEvent76"><![CDATA[INSERT INTO pf.platform_event(id,space_id,conversation_id,task_id,seq,type,entity_version,payload_json) VALUES(#{id,jdbcType=OTHER},#{spaceId,jdbcType=OTHER},#{conversation,jdbcType=OTHER},#{task,jdbcType=OTHER},#{seq,jdbcType=OTHER},#{kind,jdbcType=OTHER},#{version,jdbcType=OTHER},#{payloadJson,jdbcType=OTHER}::jsonb)]]></insert>
+    <insert id="insertConversation78"><![CDATA[INSERT INTO pf.conversation(id,space_id,creator_id,title) VALUES(#{id,jdbcType=OTHER},#{spaceId,jdbcType=OTHER},#{userId,jdbcType=OTHER},#{name,jdbcType=OTHER})]]></insert>
+    <insert id="insertTask84"><![CDATA[INSERT INTO pf.task(id,space_id,conversation_id,creator_id,config_snapshot_id,bundle_id,remaining_micros,trace_id) VALUES(#{id,jdbcType=OTHER},#{spaceId,jdbcType=OTHER},#{convo,jdbcType=OTHER},#{userId,jdbcType=OTHER},#{snapshot,jdbcType=OTHER},#{BUNDLE,jdbcType=OTHER},#{totalCost,jdbcType=OTHER},#{traceId,jdbcType=OTHER})]]></insert>
+    <insert id="insertMessage85"><![CDATA[INSERT INTO pf.message(id,space_id,conversation_id,task_id,role,blocks_json,status) VALUES(#{userMessage,jdbcType=OTHER},#{spaceId,jdbcType=OTHER},#{convo,jdbcType=OTHER},#{id,jdbcType=OTHER},'USER',#{payloadJson,jdbcType=OTHER}::jsonb,'COMPLETED'),(#{assistant,jdbcType=OTHER},#{spaceId2,jdbcType=OTHER},#{convo2,jdbcType=OTHER},#{id2,jdbcType=OTHER},'ASSISTANT',#{payloadJson2,jdbcType=OTHER}::jsonb,'STREAMING')]]></insert>
+    <update id="updateTask88"><![CDATA[UPDATE pf.task SET status='CANCELLED',cancel_requested=true,version=version+1,updated_at=now() WHERE id=#{id,jdbcType=OTHER}]]></update>
+    <update id="updateMessage90"><![CDATA[UPDATE pf.message SET status='FAILED',version=version+1 WHERE task_id=#{id,jdbcType=OTHER} AND role='ASSISTANT']]></update>
+    <update id="updateTask91"><![CDATA[UPDATE pf.task SET cancel_requested=true,version=version+1 WHERE id=#{id,jdbcType=OTHER}]]></update>
+    <update id="updateTask97"><![CDATA[UPDATE pf.task SET status='FAILED',reason_code='AUTHORIZATION_REVOKED',version=version+1 WHERE id=#{aggregateId,jdbcType=OTHER}]]></update>
+    <update id="updateMessage98"><![CDATA[UPDATE pf.message SET status='FAILED',version=version+1 WHERE task_id=#{aggregateId,jdbcType=OTHER} AND role='ASSISTANT']]></update>
+    <update id="updateTask100"><![CDATA[UPDATE pf.task SET status='BLOCKED',reason_code='BUNDLE_INCOMPATIBLE',version=version+1 WHERE id=#{aggregateId,jdbcType=OTHER}]]></update>
+    <update id="updateMessage101"><![CDATA[UPDATE pf.message SET status='FAILED',version=version+1 WHERE task_id=#{aggregateId,jdbcType=OTHER} AND role='ASSISTANT']]></update>
+    <update id="updateTask108"><![CDATA[UPDATE pf.task SET status='RUNNING',version=version+1,updated_at=now() WHERE id=#{aggregateId,jdbcType=OTHER}]]></update>
+    <update id="updateMessage114"><![CDATA[UPDATE pf.message SET blocks_json=#{payloadJson,jdbcType=OTHER}::jsonb,version=#{version,jdbcType=OTHER},updated_at=now() WHERE id=#{assistantId,jdbcType=OTHER}]]></update>
+    <update id="updateTask115"><![CDATA[UPDATE pf.task SET remaining_tokens=remaining_tokens-9216,remaining_micros=remaining_micros-#{allowance,jdbcType=OTHER} WHERE id=#{taskId,jdbcType=OTHER} AND remaining_tokens>=9216 AND remaining_micros>=#{allowance2,jdbcType=OTHER}]]></update>
+    <update id="updateTask130"><![CDATA[UPDATE pf.task SET remaining_tokens=0,remaining_micros=0 WHERE id=#{task,jdbcType=OTHER}]]></update>
+    <update id="updateTask135"><![CDATA[UPDATE pf.task SET status=#{status,jdbcType=OTHER},reason_code=#{reason,jdbcType=OTHER},version=version+1,updated_at=now() WHERE id=#{taskId,jdbcType=OTHER}]]></update>
+    <update id="updateMessage136"><![CDATA[UPDATE pf.message SET status=#{messageStatus,jdbcType=OTHER},version=#{messageVersion,jdbcType=OTHER},updated_at=now() WHERE id=#{assistantId,jdbcType=OTHER}]]></update>
+    <insert id="insertStoppedOwnerProof143"><![CDATA[INSERT INTO pf.stopped_owner_proof(owner_id,space_id,task_id,attempt_id,fencing_token,container_id,image_id,started_at,stopped_at,observed_at,evidence_hash) VALUES(#{slotOwner,jdbcType=OTHER},#{space,jdbcType=OTHER},#{slotTask,jdbcType=OTHER},#{attemptId,jdbcType=OTHER},#{fence,jdbcType=OTHER},#{containerId,jdbcType=OTHER},#{imageId,jdbcType=OTHER},#{startedAt,jdbcType=OTHER},#{stoppedAt,jdbcType=OTHER},#{observedAt,jdbcType=OTHER},#{evidenceHash,jdbcType=OTHER})]]></insert>
+    <update id="updateMessage150"><![CDATA[UPDATE pf.message SET blocks_json=#{payloadJson,jdbcType=OTHER}::jsonb,status='COMPLETED',version=version+1 WHERE id=#{assistant,jdbcType=OTHER}]]></update>
+    <update id="updateMessage151"><![CDATA[UPDATE pf.message SET status=CASE WHEN blocks_json->0->>'text'='' THEN 'FAILED' ELSE 'PARTIAL' END,version=version+1 WHERE id=#{assistant,jdbcType=OTHER}]]></update>
+    <update id="updateTask154"><![CDATA[UPDATE pf.task SET status=#{status,jdbcType=OTHER},reason_code=#{reason,jdbcType=OTHER},version=version+1,updated_at=now() WHERE id=#{slotTask,jdbcType=OTHER}]]></update>
+    <insert id="insertChatAudit163"><![CDATA[INSERT INTO pf.chat_audit(id,space_id,user_id,kind,resource_id,trace_id) VALUES(#{id,jdbcType=OTHER},#{spaceId,jdbcType=OTHER},#{userId,jdbcType=OTHER},#{kind,jdbcType=OTHER},#{resource,jdbcType=OTHER},#{trace,jdbcType=OTHER})]]></insert>
+    <insert id="insertConversation164"><![CDATA[INSERT INTO pf.conversation(id,space_id,creator_id,title) VALUES(#{id,jdbcType=OTHER},#{spaceId,jdbcType=OTHER},#{userId,jdbcType=OTHER},#{name,jdbcType=OTHER})]]></insert>
+    <resultMap id="selectTask174Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$TaskRow174">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectTask174" resultMap="selectTask174Result"><![CDATA[SELECT b.manifest_hash AS __column1 FROM pf.task t JOIN pf.runtime_bundle b ON b.id=t.bundle_id WHERE t.id=#{taskId,jdbcType=OTHER} AND t.space_id=#{spaceId,jdbcType=OTHER}]]></select>
+    <resultMap id="selectMessage186Result" type="com.agentplatform.infrastructure.dao.po.ConversationRows$MessageRow186">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+            <arg name="value2" column="__column2" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectMessage186" resultMap="selectMessage186Result"><![CDATA[SELECT m.role AS __column1, m.blocks_json->0->>'text' AS __column2 FROM pf.message m JOIN pf.task t ON t.id=m.task_id WHERE m.space_id=#{spaceId,jdbcType=OTHER} AND m.conversation_id=#{conversationId,jdbcType=OTHER} AND ((t.status='SUCCEEDED' AND m.status='COMPLETED') OR (t.id=#{taskId,jdbcType=OTHER} AND m.role='USER')) ORDER BY t.created_at,t.id,CASE m.role WHEN 'USER' THEN 0 ELSE 1 END,m.id]]></select>
+</mapper>

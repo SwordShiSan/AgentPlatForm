@@ -14,13 +14,8 @@ import uuid
 from stopped_owner import reconcile
 from execution_images import pin_exported
 
-ROOT = Path(__file__).resolve().parents[2]
-DATA = ROOT / '.cache/r21-local'
+from execution_fixture import ROOT, DATA, ENV, COMPOSE, BASE, PROJECT
 OUT = DATA / 'acceptance'
-ENV = dict(os.environ, R21_ROOT=DATA.as_posix(), R21_MQ_HOSTNAME='agentplatform-r21-mq',
-           R21_PROVIDER_BASE='http://fixture:8080', R21_FIXTURE_PROVIDER='true')
-COMPOSE = ['docker', 'compose', '-p', 'agentplatform-r21-local', '-f', 'deploy/compose.execution-local.yaml']
-BASE = 'http://127.0.0.1:18088'
 POINTS = ['claim-before-ack', 'ack-before-model', 'response-before-round', 'round-before-checkpoint', 'checkpoint-before-seal', 'checkpoint-after-seal']
 
 
@@ -70,8 +65,8 @@ def workers(point=None):
     override.write_text(json.dumps({'services': {'worker': {'environment': {'PLATFORM_CHAT_FIXTURE_FAULT': point or ''}}}}))
     args = COMPOSE + ['-f', override.as_posix()]
     command(args + ['up', '-d', '--no-deps', '--force-recreate', 'worker'])
-    wait(lambda: command(['docker', 'inspect', 'agentplatform-r21-local-worker-1', '--format', '{{.State.Health.Status}}']) == 'healthy')
-    inspection=json.loads(command(['docker','inspect','agentplatform-r21-local-worker-1']))[0]
+    wait(lambda: command(['docker', 'inspect', PROJECT + '-worker-1', '--format', '{{.State.Health.Status}}']) == 'healthy')
+    inspection=json.loads(command(['docker','inspect',PROJECT + '-worker-1']))[0]
     assert 'PLATFORM_CHAT_PROVIDER_BASE=http://fixture:8080' in inspection['Config']['Env']
     assert 'PLATFORM_CHAT_FIXTURE_PROVIDER=true' in inspection['Config']['Env']
     return args
@@ -84,7 +79,7 @@ def status(task):
 def sample():
     ids = command(COMPOSE + ['ps', '-q']).splitlines()
     inspections = json.loads(command(['docker', 'inspect', *ids]))
-    assert all(row['Config']['Labels']['com.docker.compose.project'] == 'agentplatform-r21-local' for row in inspections)
+    assert all(row['Config']['Labels']['com.docker.compose.project'] == PROJECT for row in inspections)
     total = sum(row['HostConfig']['Memory'] for row in inspections)
     assert all(row['HostConfig']['Memory'] > 0 for row in inspections) and total <= 2887*1024*1024
     assert all(row['HostConfig']['MemorySwap'] == row['HostConfig']['Memory'] for row in inspections)
@@ -105,7 +100,7 @@ def crash(client, point):
     args = workers(point)
     task = client.submit('fixture:normal:r21:' + point + ':' + str(uuid.uuid4()))
     def marker():
-        result = subprocess.run(['docker', 'exec', 'agentplatform-r21-local-worker-1', 'cat', '/tmp/chat-fault-ready'], cwd=ROOT, capture_output=True, text=True)
+        result = subprocess.run(['docker', 'exec', PROJECT + '-worker-1', 'cat', '/tmp/chat-fault-ready'], cwd=ROOT, capture_output=True, text=True)
         return result.returncode == 0 and result.stdout.strip() == point
     wait(marker)
     command(COMPOSE + ['up', '-d', '--no-deps', 'worker-2'])
@@ -162,7 +157,7 @@ def http_status(client, path):
 
 
 def healthy(service):
-    return command(['docker', 'inspect', 'agentplatform-r21-local-' + service + '-1', '--format', '{{.State.Health.Status}}']) == 'healthy'
+    return command(['docker', 'inspect', PROJECT + '-' + service + '-1', '--format', '{{.State.Health.Status}}']) == 'healthy'
 
 
 def outages(client):
@@ -185,7 +180,7 @@ def outages(client):
     owner = sql("SELECT owner_id FROM pf.execution_slot WHERE task_id='" + task + "'")
     owned_service = None
     for service in ['worker', 'worker-2']:
-        marker = command(['docker', 'exec', 'agentplatform-r21-local-' + service + '-1', 'cat', '/tmp/chat-worker-ready'])
+        marker = command(['docker', 'exec', PROJECT + '-' + service + '-1', 'cat', '/tmp/chat-worker-ready'])
         if marker == owner:
             owned_service = service
     assert owned_service is not None
@@ -196,7 +191,7 @@ def outages(client):
     command(COMPOSE + ['start', 'postgres'])
     wait(lambda: healthy('postgres'), 60)
     wait(lambda: http_status(client, '/api/v1/me') == 200, 60)
-    wait(lambda: command(['docker', 'inspect', 'agentplatform-r21-local-' + owned_service + '-1', '--format', '{{.State.Health.Status}}']) == 'healthy', 60)
+    wait(lambda: command(['docker', 'inspect', PROJECT + '-' + owned_service + '-1', '--format', '{{.State.Health.Status}}']) == 'healthy', 60)
     if status(task) == 'RUNNING':
         proof = reconcile(ROOT, DATA, ENV, COMPOSE, service=owned_service, force=True)
         assert status(task) == 'BLOCKED'
@@ -204,7 +199,7 @@ def outages(client):
         # The original owner may finish failure cleanup after DB recovery. Do not
         # fabricate an active slot/proof merely to force one scheduling outcome.
         assert status(task) in {'FAILED', 'CANCELLED', 'BLOCKED'}
-        container = json.loads(command(['docker','inspect','agentplatform-r21-local-' + owned_service + '-1']))[0]
+        container = json.loads(command(['docker','inspect',PROJECT + '-' + owned_service + '-1']))[0]
         command(['docker','stop','--time','15',container['Id']])
         after = json.loads(command(['docker','inspect',container['Id']]))[0]
         assert not after['State']['Running'] and after['State']['StartedAt'] == container['State']['StartedAt']

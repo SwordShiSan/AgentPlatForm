@@ -10,7 +10,7 @@ test('submit and cancel work when public-HTTP-only browser capabilities are avai
     Object.defineProperty(navigator, 'clipboard', { value: undefined });
   });
   await page.goto('/login'); await page.getByLabel('账号', { exact: true }).fill('bob');
-  await page.getByLabel('密码', { exact: true }).fill(readFileSync(resolve(import.meta.dirname, '../../../.cache/r12-local/bob-password'), 'utf8').trim());
+  await page.getByLabel('密码', { exact: true }).fill(readFileSync(resolve(process.env.IDENTITY_SECRET_ROOT ?? resolve(import.meta.dirname, '../../../.cache/r12-local'), 'bob-password'), 'utf8').trim());
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await expect(page.getByRole('heading', { name: '普通聊天', exact: true })).toBeVisible();
   await expect(page.getByLabel('模型', { exact: true })).toHaveValue(/.+/);

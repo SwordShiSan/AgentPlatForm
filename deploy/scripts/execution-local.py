@@ -8,16 +8,15 @@ import subprocess
 import sys
 from execution_images import pin_exported
 
-ROOT = Path(__file__).resolve().parents[2]
-DATA = ROOT / '.cache/r21-local'
+from execution_fixture import ROOT, DATA, ENV, COMPOSE, PORTS, STAGE
+
 spec = importlib.util.spec_from_file_location('chat_fixture', Path(__file__).with_name('chat-local.py'))
 fixture = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fixture)
 fixture.DATA = DATA
 fixture.MQ_IDENTITY = DATA / 'mq-hostname'
-fixture.ENV = dict(os.environ, R21_ROOT=DATA.as_posix(), R12_ROOT=DATA.as_posix(), R21_MQ_HOSTNAME='agentplatform-r21-mq',
-                   R21_PROVIDER_BASE='http://fixture:8080', R21_FIXTURE_PROVIDER='true')
-fixture.COMPOSE = ['docker', 'compose', '-p', 'agentplatform-r21-local', '-f', 'deploy/compose.execution-local.yaml']
+fixture.ENV = ENV
+fixture.COMPOSE = COMPOSE
 
 
 def main():
@@ -28,12 +27,12 @@ def main():
         # No second project's ports/data are borrowed, even when that project is stopped.
         own = subprocess.check_output(fixture.COMPOSE + ['ps', '-a', '-q'], cwd=ROOT, env=fixture.ENV, text=True).strip()
         if not own:
-            for port in (15443, 15683, 15693, 18088):
+            for port in PORTS:
                 with socket.socket() as check:
                     check.bind(('127.0.0.1', port))
         DATA.mkdir(parents=True, exist_ok=True)
         if not fixture.MQ_IDENTITY.exists():
-            fixture.MQ_IDENTITY.write_text('agentplatform-r21-mq', encoding='utf-8')
+            fixture.MQ_IDENTITY.write_text('agentplatform-' + STAGE + '-mq', encoding='utf-8')
     if mode == 'start':
         config = json.loads(subprocess.check_output(fixture.COMPOSE + ['--profile', 'fixture', 'config', '--format', 'json'], cwd=ROOT, env=fixture.ENV))
         services = ['postgres', 'rabbitmq', 'redis', 'api', 'worker', 'worker-2', 'gateway', 'fixture']

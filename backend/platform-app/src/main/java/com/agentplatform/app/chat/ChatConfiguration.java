@@ -1,57 +1,59 @@
 package com.agentplatform.app.chat;
 
+import com.agentplatform.infrastructure.adapter.repository.chat.MyBatisChatRepository;
+
 import com.agentplatform.api.chat.ChatApi;
 import com.agentplatform.domain.chat.*;
 import com.agentplatform.domain.chat.ChatData.*;
 import com.agentplatform.domain.health.ReadinessProbe;
 import com.agentplatform.domain.identity.IdentityStore;
 import com.agentplatform.infrastructure.chat.*;
-import com.rabbitmq.client.ConnectionFactory;
 import java.nio.file.*;
 import java.util.UUID;
 import java.util.concurrent.*;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.ObjectProvider;
-import javax.sql.DataSource;
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.context.annotation.*;
 
 @Configuration(proxyBeanMethods=false) @Profile({"chat-local","chat-worker","chat-ops"})
 public class ChatConfiguration {
-    @Bean(destroyMethod="close") @Profile({"chat-local","chat-worker"})
-    HikariDataSource chatDataSource(@Value("${platform.storage.jdbc-url}")String url,@Value("${platform.storage.user}")String user,@Value("${platform.storage.password-file}")String file)throws Exception{
-        var config=new HikariConfig();config.setPoolName("chat-jdbc");config.setJdbcUrl(url);config.setUsername(user);config.setPassword(Files.readString(Path.of(file)).strip());
-        config.setMaximumPoolSize(4);config.setMinimumIdle(1);config.setConnectionTimeout(2000);config.setValidationTimeout(1000);config.setIdleTimeout(120000);config.setMaxLifetime(600000);config.setInitializationFailTimeout(-1);
-        return new HikariDataSource(config);
+    @Bean com.agentplatform.infrastructure.dao.chat.ChatMappers chatMappers(
+            com.agentplatform.infrastructure.dao.chat.LedgerMapper ledger,
+            com.agentplatform.infrastructure.dao.chat.ConversationMapper conversation,
+            com.agentplatform.infrastructure.dao.chat.DispatchMapper dispatch,
+            com.agentplatform.infrastructure.dao.chat.AccountingMapper accounting,
+            com.agentplatform.infrastructure.dao.chat.ConfigurationMapper configuration) {
+        return new com.agentplatform.infrastructure.dao.chat.ChatMappers(ledger, conversation, dispatch, accounting, configuration);
     }
-    @Bean ChatRepository chatRepository(ObjectProvider<DataSource> pool,@Value("${platform.storage.jdbc-url}")String url,@Value("${platform.storage.user}")String user,@Value("${platform.storage.password-file}")String password)throws Exception{
-        var source=pool.getIfAvailable();return source==null?new JdbcChatRepository(url,user,Files.readString(Path.of(password)).strip()):new JdbcChatRepository(source);
+    @Bean ChatRepository chatRepository(com.agentplatform.infrastructure.dao.chat.ChatMappers mappers,
+            org.springframework.transaction.support.TransactionTemplate transactions) {
+        return new TransactionalChatRepository(new MyBatisChatRepository(mappers), transactions);
     }
-    @Bean @Profile({"chat-local","chat-worker"})
-    DispatchTransport chatTransport(ChatRepository repository,@Value("${platform.chat.mq-host}")String host,@Value("${platform.chat.mq-user}")String user,@Value("${platform.chat.mq-password-file}")String file)throws Exception{
-        var factory=new ConnectionFactory();factory.setHost(host);factory.setVirtualHost("/agentplatform");factory.setUsername(user);factory.setPassword(Files.readString(Path.of(file)).strip());factory.setConnectionTimeout(3000);factory.setRequestedHeartbeat(15);factory.setAutomaticRecoveryEnabled(false);
-        return new RabbitDispatchTransport(factory,repository);
+    @Configuration(proxyBeanMethods=false)
+    @Profile({"chat-local","chat-worker"})
+    @org.springframework.boot.context.properties.EnableConfigurationProperties(ChatMessagingProperties.class)
+    static class MessagingConfiguration {
+        @Bean(destroyMethod="destroy")
+        org.springframework.amqp.rabbit.connection.CachingConnectionFactory chatConnections(ChatMessagingProperties properties) throws Exception {
+            var connections = new org.springframework.amqp.rabbit.connection.CachingConnectionFactory(properties.mqHost());
+            connections.setVirtualHost("/agentplatform");
+            connections.setUsername(properties.mqUser());
+            connections.setPassword(Files.readString(properties.mqPasswordFile()).strip());
+            connections.setConnectionTimeout(3000);
+            connections.setRequestedHeartBeat(15);
+            return connections;
+        }
+        @Bean(destroyMethod="close")
+        DispatchTransport chatTransport(ChatRepository repository, org.springframework.amqp.rabbit.connection.CachingConnectionFactory connections) {
+            return new SpringAmqpDispatchTransport(connections,repository);
+        }
     }
     @Bean @Profile("chat-local") ChatApi chatApi(ChatRepository repository,@Value("${platform.chat.cursor-key-file}")String file,CredentialCipher cipher)throws Exception{return new ChatService(repository,new ChatCursor(Files.readAllBytes(Path.of(file))),cipher);}
     @Bean @Profile("chat-local") ReadinessProbe chatReadiness(ChatRepository repository,IdentityStore identity,DispatchTransport transport){return ()->identity.ready()&&repository.ready()&&transport.connected();}
     @Bean @Profile({"chat-local","chat-worker","chat-ops"}) CredentialCipher credentialCipher(@Value("${platform.chat.master-key-file}")String file)throws Exception{return new CredentialCipher(Files.readAllBytes(Path.of(file)));}
     @Bean @Profile("chat-worker") ChatProvider chatProvider(@Value("${platform.chat.provider-base:https://api.deepseek.com}")String base,@Value("${platform.chat.fixture-provider:false}")boolean fixture){return new DeepSeekChatProvider(base,fixture);}
-    @Bean @Profile("chat-worker") ChatExecution chatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,@Value("${platform.chat.workspace-root:/tmp/chat-runtime}")String root){return new ChatExecution(repository,provider,cipher,Path.of(root));}
-    @Bean(destroyMethod="shutdownNow") @Profile("chat-local")
-    ScheduledExecutorService outboxRelay(ChatRepository repository,DispatchTransport transport){
-        var timer=Executors.newSingleThreadScheduledExecutor();UUID relay=UUID.randomUUID();
-        timer.scheduleWithFixedDelay(()->{try{repository.wakeDeferred();for(var item:repository.publications(relay)){boolean ok=false;try{transport.publish(item.envelope());ok=true;}catch(ChatFailure failed){}repository.published(relay,item,ok);}}catch(Exception error){System.getLogger(getClass().getName()).log(System.Logger.Level.WARNING,"Outbox relay waiting for dependency");}},0,500,TimeUnit.MILLISECONDS);return timer;
-    }
-    @Bean(destroyMethod="shutdownNow") @Profile("chat-worker")
-    ScheduledExecutorService workerConsumer(ChatRepository repository,DispatchTransport transport,ChatExecution execution){
-        var timer=Executors.newSingleThreadScheduledExecutor();UUID owner=UUID.randomUUID();
-        timer.scheduleWithFixedDelay(()->{try{
-            if(!repository.ready())throw new ChatFailure(503,"CHAT_STORAGE_UNAVAILABLE");
-            transport.consume(delivery->handoff(repository,execution,owner,delivery));
-            Files.writeString(Path.of("/tmp/chat-worker-ready"),owner.toString());
-        }catch(Exception error){try{Files.deleteIfExists(Path.of("/tmp/chat-worker-ready"));}catch(Exception ignored){}}},0,2,TimeUnit.SECONDS);return timer;
-    }
+    @Bean @Profile("chat-worker") ChatExecution chatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,DispatchTransport transport,
+            @org.springframework.beans.factory.annotation.Qualifier("executionTimers") org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler timers,
+            @Value("${platform.chat.workspace-root:/tmp/chat-runtime}")String root){return new ChatExecution(repository,provider,cipher,Path.of(root),timers.getScheduledExecutor());}
     static void handoff(ChatRepository repository,ChatExecution execution,UUID owner,DispatchTransport.Delivery delivery){
         // Different AMQP channels can dispatch concurrently during reconnect. Keep
         // claim/ACK/run cleanup serial inside one worker, in addition to the DB fence.

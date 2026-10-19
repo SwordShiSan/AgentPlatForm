@@ -1,5 +1,7 @@
 package com.agentplatform.app.chat;
 
+import com.agentplatform.infrastructure.adapter.repository.chat.MyBatisChatRepository;
+
 import static org.junit.jupiter.api.Assertions.*;
 import com.agentplatform.domain.chat.ChatData.*;
 import com.agentplatform.domain.chat.ChatFailure;
@@ -7,7 +9,7 @@ import com.agentplatform.domain.chat.ChatProvider;
 import com.agentplatform.domain.chat.ChatRuntime;
 import com.agentplatform.domain.chat.ExecutionLedger.*;
 import com.agentplatform.infrastructure.chat.*;
-import com.agentplatform.infrastructure.identity.JdbcIdentityStore;
+import com.agentplatform.domain.identity.IdentityStore;
 import com.agentplatform.types.harness.HarnessData;
 import com.agentplatform.types.harness.HarnessData.*;
 import java.nio.charset.StandardCharsets;
@@ -25,7 +27,7 @@ import org.junit.jupiter.api.io.TempDir;
 class OwnershipPostgresTest {
     static String url,password;
     static final UUID MODEL=UUID.fromString("0199e000-0000-7000-8000-000000000002");
-    JdbcChatRepository repository;
+    com.agentplatform.domain.chat.ChatRepository repository;
     com.zaxxer.hikari.HikariDataSource pool;
     Actor actor;
     final CredentialCipher cipher=new CredentialCipher(new byte[32]);
@@ -33,7 +35,7 @@ class OwnershipPostgresTest {
 
     @BeforeAll static void migrate()throws Exception {
         url=System.getenv("R21_TEST_JDBC_URL");Assumptions.assumeTrue(url!=null,"R2.1 real PG not configured: NOT_RUN");
-        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15443/ownership_test?"),"Refusing another database");
+        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15443/ownership_test?") || ("1".equals(System.getenv("R2C_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15444/ownership_test?")), "Refusing a database outside the explicitly named isolated fixture");
         password=Files.readString(Path.of(System.getenv("R21_TEST_PASSWORD_FILE"))).strip();
         var old=Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").cleanDisabled(false).target("5").load();
         old.clean();old.migrate();
@@ -46,8 +48,8 @@ class OwnershipPostgresTest {
     @BeforeEach void setup()throws Exception {
         sql("TRUNCATE pf.app_user CASCADE; TRUNCATE pf_runtime.state_slot; UPDATE pf.execution_slot SET task_id=NULL,owner_id=NULL,lease_until=NULL; INSERT INTO pf.execution_slot(id) VALUES(1) ON CONFLICT DO NOTHING");
         var config=new com.zaxxer.hikari.HikariConfig();config.setJdbcUrl(url);config.setUsername("postgres");config.setPassword(password);config.setMaximumPoolSize(4);config.setMinimumIdle(1);
-        pool=new com.zaxxer.hikari.HikariDataSource(config);repository=new JdbcChatRepository(pool);
-        var identity=new JdbcIdentityStore(pool);UUID user=identity.provision(UUID.randomUUID(),"r21alice","R21 Alice","unused-test-password-hash",true);
+        pool=new com.zaxxer.hikari.HikariDataSource(config);repository=com.agentplatform.app.chat.ChatPersistenceFixture.create(pool);
+        var identity=com.agentplatform.app.identity.IdentityPersistenceFixture.create(pool);UUID user=identity.provision(UUID.randomUUID(),"r21alice","R21 Alice","unused-test-password-hash",true);
         actor=new Actor(user,identity.spaces(user).getFirst().id());
         UUID key=repository.importCredential(cipher.encrypt(UUID.randomUUID(),"PLATFORM",null,null,"R21_SENTINEL_NEVER_A_REAL_KEY"));repository.bind(MODEL,actor,key,"PLATFORM");
     }
@@ -65,6 +67,22 @@ class OwnershipPostgresTest {
     void commit(Lease l,UUID id,Turn turn,com.agentplatform.domain.chat.ChatData.Call call){repository.commitRound(l,id,turn,new CallResult(call,true,"fixture",false));}
     StoppedOwner proof(Lease l){return new StoppedOwner(l.ownerId(),l.taskId(),l.attemptId(),l.fence(),"a".repeat(64),"sha256:"+"b".repeat(64),Instant.now().minusSeconds(60),Instant.now(),Instant.now().plusMillis(1),UUID.randomUUID().toString().replace("-","").repeat(2));}
     void expire()throws SQLException{sql("UPDATE pf.execution_slot SET lease_until=now()-interval '1 second'");}
+
+    @Test void authorizationChangedInsideMutationIsRejectedBeforeCommitAndEverythingRollsBack() throws Exception {
+        Lease lease = lease();
+        long events = count("SELECT count(*) FROM pf.platform_event");
+        sql("CREATE FUNCTION pf.fixture_revoke_before_commit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN "
+                + "UPDATE pf.membership SET status='REVOKED' WHERE user_id='" + actor.userId() + "'; RETURN NEW; END $$; "
+                + "CREATE TRIGGER fixture_revoke_before_commit AFTER UPDATE ON pf.message FOR EACH ROW EXECUTE FUNCTION pf.fixture_revoke_before_commit()");
+        try {
+            denied("RESOURCE_NOT_FOUND", () -> repository.delta(lease, "must roll back"));
+            assertEquals("", text("SELECT blocks_json->0->>'text' FROM pf.message WHERE id='" + lease.assistantId() + "'"));
+            assertEquals(events, count("SELECT count(*) FROM pf.platform_event"));
+            assertEquals("ACTIVE", text("SELECT status FROM pf.membership WHERE user_id='" + actor.userId() + "'"));
+        } finally {
+            sql("DROP TRIGGER fixture_revoke_before_commit ON pf.message; DROP FUNCTION pf.fixture_revoke_before_commit()");
+        }
+    }
 
     @Test void twoClaimantsCommitOnlyOneOwnerAndRedeliveryIsHarmless()throws Exception {
         Task task=task();Envelope envelope=envelope(task);CountDownLatch start=new CountDownLatch(1);
@@ -206,14 +224,14 @@ class OwnershipPostgresTest {
     }
     @Test void oldFrozenBundleBlocksBeforeAnyPhysicalRequestAndIsNeverRewritten()throws Exception {
         Task task=task();Envelope envelope=envelope(task);
-        sql("UPDATE pf.runtime_bundle SET manifest_hash='old-frozen-r1' WHERE id='"+JdbcChatRepository.BUNDLE+"'");
+        sql("UPDATE pf.runtime_bundle SET manifest_hash='old-frozen-r1' WHERE id='"+MyBatisChatRepository.BUNDLE+"'");
         assertNull(repository.claim(envelope,UUID.randomUUID()));
         assertEquals("BLOCKED",repository.task(actor,task.id()).status());
         assertEquals("BUNDLE_INCOMPATIBLE",repository.task(actor,task.id()).reasonCode());
         assertEquals(0,count("SELECT count(*) FROM pf.model_call"));
-        assertEquals("old-frozen-r1",text("SELECT manifest_hash FROM pf.runtime_bundle WHERE id='"+JdbcChatRepository.BUNDLE+"'"));
+        assertEquals("old-frozen-r1",text("SELECT manifest_hash FROM pf.runtime_bundle WHERE id='"+MyBatisChatRepository.BUNDLE+"'"));
         // Restore only the test-created manifest row so subsequent independent test cases can submit.
-        sql("UPDATE pf.runtime_bundle SET manifest_hash='"+ChatRuntime.bundle().hash()+"' WHERE id='"+JdbcChatRepository.BUNDLE+"'");
+        sql("UPDATE pf.runtime_bundle SET manifest_hash='"+ChatRuntime.bundle().hash()+"' WHERE id='"+MyBatisChatRepository.BUNDLE+"'");
     }
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(booleans={false,true})

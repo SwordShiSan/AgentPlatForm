@@ -188,7 +188,7 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
         @Override public void close() { if (!result.isDone()) cancel(); if (!started.get()) { boundary.release(request.scope()); agent.close(); } }
 
         private final class BridgeModel implements Model {
-            @Override public String getModelName() { return "platform-scripted"; }
+            @Override public String getModelName() { return model.modelName(request.scope()); }
             @Override public Flux<ChatResponse> stream(List<Msg> messages, List<ToolSchema> definitions, GenerateOptions options) {
                 return Flux.create(sink -> {
                     AtomicBoolean emitted = new AtomicBoolean();
