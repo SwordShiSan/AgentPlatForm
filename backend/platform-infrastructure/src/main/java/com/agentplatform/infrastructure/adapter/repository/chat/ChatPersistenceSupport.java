@@ -43,7 +43,7 @@ abstract class ChatPersistenceSupport {
         // Row locks prevent takeovers during the transaction; DB time still advances.
         // A slow SQL statement must not commit content after expiry. Terminal cleanup
         // clears the slot, so it is checked against the deadline captured before clearing.
-        { var rows74 = c.dispatch().selectExecutionSlot74(); var row74 = rows74.isEmpty() ? null : rows74.getFirst(); 
+        { var rows74 = c.dispatch().selectExecutionSlot74(); var row74 = rows74.isEmpty() ? null : rows74.getFirst();
             if(row74 == null)throw new ChatFailure(409,"EXECUTION_FENCE_LOST");Instant now=row74.value5();
             if(row74.value1()==null){if(!deadline.isAfter(now))throw new ChatFailure(409,"EXECUTION_FENCE_LOST");}
             else if(!l.taskId().equals(row74.value1())||!l.ownerId().equals(row74.value2())||l.fence()!=row74.value3()||row74.value4()==null||!row74.value4().isAfter(now))throw new ChatFailure(409,"EXECUTION_FENCE_LOST");
@@ -54,7 +54,7 @@ abstract class ChatPersistenceSupport {
     @SuppressWarnings("unchecked") static Map<String,Object> object(String value){return JSON.readValue(value,Map.class);}
     static String hash(String value){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));}catch(Exception e){throw new IllegalStateException(e);}}
     protected static void auth(ChatMappers c,Actor a){
-        { var rows73 = c.conversation().selectAuthorizeChatActor73(a.userId(), a.spaceId()); var row73 = rows73.isEmpty() ? null : rows73.getFirst(); 
+        { var rows73 = c.conversation().selectAuthorizeChatActor73(a.userId(), a.spaceId()); var row73 = rows73.isEmpty() ? null : rows73.getFirst();
             if(row73 == null||!row73.value1())throw new ChatFailure(404,"RESOURCE_NOT_FOUND");
          }
     }
@@ -68,7 +68,7 @@ abstract class ChatPersistenceSupport {
     }
     protected static UUID idempotency(ChatMappers c,Actor a,UUID key,String path,String fingerprint){
         { c.conversation().selectGuard70((long)(a+path+key).hashCode()); }
-        { var rows69 = c.conversation().selectIdempotencyRecord69(a.userId(), a.spaceId(), path, key); var row69 = rows69.isEmpty() ? null : rows69.getFirst(); 
+        { var rows69 = c.conversation().selectIdempotencyRecord69(a.userId(), a.spaceId(), path, key); var row69 = rows69.isEmpty() ? null : rows69.getFirst();
             if(row69 == null)return null;if(!fingerprint.equals(row69.value1()))throw new ChatFailure(409,"IDEMPOTENCY_CONFLICT");return row69.value2();
          }
     }
@@ -97,7 +97,7 @@ abstract class ChatPersistenceSupport {
         var resolved=resolve(c,a,selectedModel,selectedSource);
         UUID model=(UUID)resolved.get("modelId");String policy=(String)resolved.get("credentialSource");
         UUID credential;long revision,modelVersion,inputPrice,outputPrice;String name,pricing;
-        { var rows55 = c.configuration().selectUserModelCredential55(a.spaceId(), a.userId(), model, "USER".equals(policy)); var row55 = rows55.isEmpty() ? null : rows55.getFirst(); 
+        { var rows55 = c.configuration().selectUserModelCredential55(a.spaceId(), a.userId(), model, "USER".equals(policy)); var row55 = rows55.isEmpty() ? null : rows55.getFirst();
             if(row55 == null)throw new ChatFailure(422,"CREDENTIAL_SOURCE_UNAVAILABLE");credential=row55.id();revision=row55.revision();name=row55.modelName();pricing=row55.pricingVersion();modelVersion=row55.modelVersion();inputPrice=row55.inputMicrosPerMillion();outputPrice=row55.outputMicrosPerMillion();
          }
         c.accounting().insertBudgetAccount80(a.spaceId(), a.userId());
@@ -146,7 +146,7 @@ abstract class ChatPersistenceSupport {
         event(c,new Actor(l.userId(),l.spaceId()),l.conversationId(),l.taskId(),"usage.updated",call.ordinal(),Map.of("callId",call.id().toString(),"inputTokens",round.inputTokens(),"outputTokens",round.outputTokens(),"costMicros",cost,"estimated",true));return;
     }
     static void authorizeCredential(ChatMappers c,Lease l){
-        { var rows31 = c.conversation().selectAuthorizeChatCredential31(l.credentialId(), l.credentialRevision(), l.spaceId(), l.userId()); var row31 = rows31.isEmpty() ? null : rows31.getFirst(); 
+        { var rows31 = c.conversation().selectAuthorizeChatCredential31(l.credentialId(), l.credentialRevision(), l.spaceId(), l.userId()); var row31 = rows31.isEmpty() ? null : rows31.getFirst();
             if(row31 == null||!row31.value1())throw new ChatFailure(403,"CREDENTIAL_REVOKED");
          }
     }
@@ -155,7 +155,7 @@ abstract class ChatPersistenceSupport {
         c.conversation().updateTask130(task);
     }
     protected static void assistantTerminalEvent(ChatMappers c,Actor a,UUID conversation,UUID task){
-        { var rows30 = c.conversation().selectMessage30(a.spaceId(), task); var row30 = rows30.isEmpty() ? null : rows30.getFirst(); 
+        { var rows30 = c.conversation().selectMessage30(a.spaceId(), task); var row30 = rows30.isEmpty() ? null : rows30.getFirst();
             if(row30 != null)event(c,a,conversation,task,"message.completed",row30.value3(),Map.of("messageId",row30.value1().toString(),"status",row30.value2()));
          }
     }
@@ -174,18 +174,18 @@ abstract class ChatPersistenceSupport {
                 ||!proof.startedAt().isBefore(proof.stoppedAt())||proof.stoppedAt().isAfter(proof.observedAt()))
             throw new ChatFailure(409,"STOPPED_OWNER_PROOF_INVALID");
         Instant databaseNow;UUID slotTask,slotOwner;long fence;
-        { var rows28 = c.dispatch().selectExecutionSlot28(); var row28 = rows28.isEmpty() ? null : rows28.getFirst(); 
+        { var rows28 = c.dispatch().selectExecutionSlot28(); var row28 = rows28.isEmpty() ? null : rows28.getFirst();
             slotTask=row28.value1();slotOwner=row28.value2();fence=row28.value3();databaseNow=row28.value5();
             if(proof.observedAt().isAfter(databaseNow.plusSeconds(5))||proof.observedAt().isBefore(databaseNow.minusSeconds(300)))throw new ChatFailure(409,"STOPPED_OWNER_PROOF_STALE");
             if(!proof.ownerId().equals(slotOwner)||!proof.taskId().equals(slotTask)||proof.fence()!=fence){
-                { var rows27 = c.conversation().selectStoppedOwnerProof27(proof.ownerId()); var row27 = rows27.isEmpty() ? null : rows27.getFirst(); 
+                { var rows27 = c.conversation().selectStoppedOwnerProof27(proof.ownerId()); var row27 = rows27.isEmpty() ? null : rows27.getFirst();
                     if(row27 != null&&proof.evidenceHash().equals(row27.value1()))return;
                  }throw new ChatFailure(409,"STOPPED_OWNER_PROOF_MISMATCH");
             }
             if(row28.value4()==null||row28.value4().isAfter(databaseNow))throw new ChatFailure(409,"OWNER_LEASE_NOT_EXPIRED");
          }
         UUID space,user,conversation,assistant;Instant attemptStarted;
-        { var rows26 = c.conversation().selectTask26(slotTask, proof.attemptId(), slotOwner, fence); var row26 = rows26.isEmpty() ? null : rows26.getFirst(); 
+        { var rows26 = c.conversation().selectTask26(slotTask, proof.attemptId(), slotOwner, fence); var row26 = rows26.isEmpty() ? null : rows26.getFirst();
             if(row26 == null)throw new ChatFailure(409,"STOPPED_OWNER_PROOF_MISMATCH");space=row26.value1();user=row26.value2();conversation=row26.value3();assistant=row26.value4();attemptStarted=row26.value5();
          }
         if(proof.startedAt().isAfter(attemptStarted)||proof.stoppedAt().isBefore(attemptStarted))throw new ChatFailure(409,"STOPPED_OWNER_PROOF_MISMATCH");
@@ -194,12 +194,12 @@ abstract class ChatPersistenceSupport {
         c.dispatch().updateAttempt142(proof.attemptId());
         c.conversation().insertStoppedOwnerProof143(slotOwner, space, slotTask, proof.attemptId(), fence, proof.containerId(), proof.imageId(), proof.startedAt(), proof.stoppedAt(), proof.observedAt(), proof.evidenceHash());
         boolean authorized=true;
-        try{auth(c,actor);{ var rows25 = c.conversation().selectAuthorizeChatCredential25(slotTask); var row25 = rows25.isEmpty() ? null : rows25.getFirst(); 
+        try{auth(c,actor);{ var rows25 = c.conversation().selectAuthorizeChatCredential25(slotTask); var row25 = rows25.isEmpty() ? null : rows25.getFirst();
             authorized=row25.value1()&&"ACTIVE".equals(row25.value2()); }
         }catch(ChatFailure revoked){authorized=false;}
         boolean uncertain,started;String finalText=null;
         { var rows24 = c.accounting().selectModelCall24(slotTask, slotTask); var row24 = rows24.isEmpty() ? null : rows24.getFirst(); uncertain=row24.value1();started=row24.value2(); }
-        { var rows23 = c.ledger().selectModelTurn23(slotTask); var row23 = rows23.isEmpty() ? null : rows23.getFirst(); 
+        { var rows23 = c.ledger().selectModelTurn23(slotTask); var row23 = rows23.isEmpty() ? null : rows23.getFirst();
             if(row23 != null){var round=object(row23.value1());if("stop".equals(round.get("finishReason"))&&round.get("calls") instanceof List<?> calls&&calls.isEmpty())finalText=(String)round.get("text");}
          }
         String status,reason;

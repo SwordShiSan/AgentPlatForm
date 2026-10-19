@@ -157,5 +157,17 @@
     }
   ],
   "acceptedMain": "8391e5b0885d4af30d09d1f7ee799d2cb853fa80",
-  "archive": "2026-10-19-r2-framework-alignment; protected documentation promotion recorded in final handoff"
+  "archive": "2026-10-19-r2-framework-alignment; protected documentation promotion recorded in final handoff",
+  "formattingFollowup": {
+    "source": "0ecc76d00d9418d748780792c46dc04e15eefc73",
+    "backendTree": "8389f692f28cfa2bf8f01c88091ec4156181002b",
+    "frontendTree": "1cc14b5209ee59c1850c0cb15a8dac17bf2740f5",
+    "proof": "deploy/r2.c-byte-equivalence.json",
+    "changedJavaFiles": 7,
+    "trailingWhitespaceLines": 41,
+    "classEntriesByteIdentical": 375,
+    "resourceLineEndingOnlyEntries": 9,
+    "runtimeArtifactSource": "cd879ff273846c47a4da483a17b4a3b50462eb93",
+    "note": "Only trailing spaces changed. Accepted image retained; no new image/provider/runtime request. Full stage diff is checked, not only uncommitted files."
+  }
 }
