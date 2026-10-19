@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.chat.AccountingMapper">
+    <resultMap id="selectModelCall5Result" type="com.agentplatform.infrastructure.dao.po.AccountingRows$ModelCallRow5">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Boolean"/>
+        </constructor>
+    </resultMap>
+    <select id="selectModelCall5" resultMap="selectModelCall5Result"><![CDATA[SELECT EXISTS(SELECT 1 FROM pf.model_call WHERE task_id=#{id,jdbcType=OTHER} AND status='UNKNOWN') OR EXISTS(SELECT 1 FROM pf.budget_reservation WHERE task_id=#{id2,jdbcType=OTHER} AND state='RECONCILING') AS __column1]]></select>
+    <resultMap id="selectModelCall24Result" type="com.agentplatform.infrastructure.dao.po.AccountingRows$ModelCallRow24">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Boolean"/>
+            <arg name="value2" column="__column2" javaType="java.lang.Boolean"/>
+        </constructor>
+    </resultMap>
+    <select id="selectModelCall24" resultMap="selectModelCall24Result"><![CDATA[SELECT EXISTS(SELECT 1 FROM pf.model_call WHERE task_id=#{slotTask,jdbcType=OTHER} AND status IN ('STARTED','UNKNOWN')) AS __column1, EXISTS(SELECT 1 FROM pf.model_call WHERE task_id=#{slotTask2,jdbcType=OTHER} AND NOT(status='PREPARED' OR (status='FAILED' AND error_code='CALL_NOT_SENT'))) AS __column2]]></select>
+    <select id="selectModelCall33" resultType="java.lang.Integer"><![CDATA[SELECT 1 FROM pf.model_call WHERE id=#{call,jdbcType=OTHER} AND task_id=#{taskId,jdbcType=OTHER} AND attempt_id=#{attemptId,jdbcType=OTHER} AND space_id=#{spaceId,jdbcType=OTHER} AND status='PREPARED']]></select>
+    <resultMap id="selectBudgetReservation34Result" type="com.agentplatform.infrastructure.dao.po.AccountingRows$BudgetReservationRow34">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectBudgetReservation34" resultMap="selectBudgetReservation34Result"><![CDATA[SELECT r.state AS __column1 FROM pf.budget_reservation r JOIN pf.model_call m ON m.id=r.call_id WHERE r.call_id=#{id,jdbcType=OTHER} AND m.task_id=#{taskId,jdbcType=OTHER} AND m.attempt_id=#{attemptId,jdbcType=OTHER} AND m.space_id=#{spaceId,jdbcType=OTHER} FOR UPDATE OF r]]></select>
+    <resultMap id="selectModelCall35Result" type="com.agentplatform.infrastructure.dao.po.AccountingRows$ModelCallRow35">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Integer"/>
+            <arg name="value2" column="__column2" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+    <select id="selectModelCall35" resultMap="selectModelCall35Result"><![CDATA[SELECT count(*) AS __column1, min(created_at) AS __column2 FROM pf.model_call WHERE task_id=#{taskId,jdbcType=OTHER}]]></select>
+    <resultMap id="selectModelCall50Result" type="com.agentplatform.infrastructure.dao.po.AccountingRows$ModelCallRow50">
+        <constructor>
+            <arg name="id" column="id" javaType="java.util.UUID"/>
+            <arg name="status" column="status" javaType="java.lang.String"/>
+            <arg name="inputTokens" column="input_tokens" javaType="java.lang.Long"/>
+            <arg name="outputTokens" column="output_tokens" javaType="java.lang.Long"/>
+            <arg name="costMicros" column="cost_micros" javaType="java.lang.Long"/>
+            <arg name="estimated" column="estimated" javaType="java.lang.Boolean"/>
+        </constructor>
+    </resultMap>
+    <select id="selectModelCall50" resultMap="selectModelCall50Result"><![CDATA[SELECT * FROM pf.model_call WHERE space_id=#{spaceId,jdbcType=OTHER} AND task_id=#{id,jdbcType=OTHER} ORDER BY ordinal]]></select>
+    <insert id="insertBudgetAccount80"><![CDATA[INSERT INTO pf.budget_account(space_id,user_id) VALUES(#{spaceId,jdbcType=OTHER},#{userId,jdbcType=OTHER}) ON CONFLICT DO NOTHING]]></insert>
+    <update id="updateBudgetAccount81"><![CDATA[UPDATE pf.budget_account SET reserved_tokens=reserved_tokens+36864,reserved_micros=reserved_micros+#{totalCost,jdbcType=OTHER},version=version+1 WHERE space_id=#{spaceId,jdbcType=OTHER} AND user_id=#{userId,jdbcType=OTHER} AND reserved_tokens+consumed_tokens+36864<=token_limit AND reserved_micros+consumed_micros+#{totalCost2,jdbcType=OTHER}<=cost_limit_micros]]></update>
+    <insert id="insertModelCall116"><![CDATA[INSERT INTO pf.model_call(id,space_id,task_id,attempt_id,ordinal,price_version,status,turn_id) VALUES(#{id,jdbcType=OTHER},#{spaceId,jdbcType=OTHER},#{taskId,jdbcType=OTHER},#{attemptId,jdbcType=OTHER},#{ordinal,jdbcType=OTHER},#{price,jdbcType=OTHER},'PREPARED',#{turn,jdbcType=OTHER})]]></insert>
+    <insert id="insertBudgetReservation117"><![CDATA[INSERT INTO pf.budget_reservation(call_id,task_id,amount_micros) VALUES(#{id,jdbcType=OTHER},#{taskId,jdbcType=OTHER},#{allowance,jdbcType=OTHER})]]></insert>
+    <update id="updateAcceptanceModelMeter118"><![CDATA[UPDATE pf.acceptance_model_meter SET physical_calls=physical_calls+1,reserved_micros=reserved_micros+#{allowance,jdbcType=OTHER} WHERE id=1]]></update>
+    <update id="updateModelCall119"><![CDATA[UPDATE pf.model_call SET status='STARTED' WHERE id=#{id,jdbcType=OTHER} AND task_id=#{taskId,jdbcType=OTHER} AND status='PREPARED']]></update>
+    <update id="updateModelCall120"><![CDATA[UPDATE pf.model_call SET status=#{outcome,jdbcType=OTHER},error_code=#{error,jdbcType=OTHER},ended_at=now() WHERE id=#{id,jdbcType=OTHER}]]></update>
+    <update id="updateBudgetReservation121"><![CDATA[UPDATE pf.budget_reservation SET state=#{reservationState,jdbcType=OTHER} WHERE call_id=#{id,jdbcType=OTHER}]]></update>
+    <update id="updateBudgetAccount122"><![CDATA[UPDATE pf.budget_account SET reserved_tokens=reserved_tokens-9216,reserved_micros=reserved_micros-#{allowance,jdbcType=OTHER},version=version+1 WHERE space_id=#{spaceId,jdbcType=OTHER} AND user_id=#{userId,jdbcType=OTHER}]]></update>
+    <update id="updateAcceptanceModelMeter123"><![CDATA[UPDATE pf.acceptance_model_meter SET reserved_micros=reserved_micros-#{allowance,jdbcType=OTHER} WHERE id=1]]></update>
+    <update id="updateModelCall124"><![CDATA[UPDATE pf.model_call SET status='COMPLETED',input_tokens=#{inputTokens,jdbcType=OTHER},output_tokens=#{outputTokens,jdbcType=OTHER},cost_micros=#{cost,jdbcType=OTHER},estimated=true,provider_request_id=#{requestId,jdbcType=OTHER},ended_at=now() WHERE id=#{id,jdbcType=OTHER}]]></update>
+    <update id="updateBudgetReservation125"><![CDATA[UPDATE pf.budget_reservation SET state='SETTLED' WHERE call_id=#{id,jdbcType=OTHER}]]></update>
+    <update id="updateBudgetAccount126"><![CDATA[UPDATE pf.budget_account SET reserved_tokens=reserved_tokens-9216,reserved_micros=reserved_micros-#{allowance,jdbcType=OTHER},consumed_tokens=consumed_tokens+#{tokens,jdbcType=OTHER},consumed_micros=consumed_micros+#{cost,jdbcType=OTHER},version=version+1 WHERE space_id=#{spaceId,jdbcType=OTHER} AND user_id=#{userId,jdbcType=OTHER}]]></update>
+    <update id="updateAcceptanceModelMeter127"><![CDATA[UPDATE pf.acceptance_model_meter SET reserved_micros=reserved_micros-#{allowance,jdbcType=OTHER},consumed_micros=consumed_micros+#{cost,jdbcType=OTHER} WHERE id=1]]></update>
+    <insert id="insertCredentialAccessAudit128"><![CDATA[INSERT INTO pf.credential_access_audit(id,credential_id,call_id,result) VALUES(#{id,jdbcType=OTHER},#{credentialId,jdbcType=OTHER},#{call,jdbcType=OTHER},'AUTHORIZED')]]></insert>
+    <update id="updateBudgetAccount129"><![CDATA[UPDATE pf.budget_account b SET reserved_tokens=b.reserved_tokens-t.remaining_tokens,reserved_micros=b.reserved_micros-t.remaining_micros,version=b.version+1 FROM pf.task t WHERE t.id=#{task,jdbcType=OTHER} AND b.space_id=#{spaceId,jdbcType=OTHER} AND b.user_id=#{userId,jdbcType=OTHER}]]></update>
+    <update id="releasePreparedReservations"><![CDATA[WITH released AS (UPDATE pf.budget_reservation r SET state='RELEASED' FROM pf.model_call m WHERE r.call_id=m.id AND m.task_id=#{task,jdbcType=OTHER} AND m.status='PREPARED' AND r.state='RESERVED' RETURNING r.tokens,r.amount_micros) UPDATE pf.budget_account SET reserved_tokens=reserved_tokens-(SELECT coalesce(sum(tokens),0) FROM released),reserved_micros=reserved_micros-(SELECT coalesce(sum(amount_micros),0) FROM released),version=version+1 WHERE space_id=#{spaceId,jdbcType=OTHER} AND user_id=#{userId,jdbcType=OTHER}]]></update>
+    <update id="updateModelCall132"><![CDATA[UPDATE pf.model_call SET status='FAILED',error_code='CALL_NOT_SENT',ended_at=now() WHERE task_id=#{task,jdbcType=OTHER} AND status='PREPARED']]></update>
+    <update id="updateBudgetReservation133"><![CDATA[UPDATE pf.budget_reservation r SET state='RECONCILING' FROM pf.model_call m WHERE r.call_id=m.id AND m.task_id=#{taskId,jdbcType=OTHER} AND r.state='RESERVED']]></update>
+    <update id="updateModelCall134"><![CDATA[UPDATE pf.model_call SET status='UNKNOWN',error_code=coalesce(error_code,#{reason,jdbcType=OTHER}),ended_at=now() WHERE task_id=#{taskId,jdbcType=OTHER} AND status='STARTED']]></update>
+    <update id="restorePreparedReservationAllowance"><![CDATA[WITH released AS (UPDATE pf.budget_reservation b SET state='RELEASED' FROM pf.model_call m WHERE b.call_id=m.id AND m.task_id=#{slotTask,jdbcType=OTHER} AND m.status='PREPARED' AND b.state='RESERVED' RETURNING b.tokens,b.amount_micros) UPDATE pf.task SET remaining_tokens=remaining_tokens+(SELECT coalesce(sum(tokens),0) FROM released),remaining_micros=remaining_micros+(SELECT coalesce(sum(amount_micros),0) FROM released) WHERE id=#{slotTask2,jdbcType=OTHER}]]></update>
+    <update id="updateModelCall145"><![CDATA[UPDATE pf.model_call SET status='FAILED',error_code='CALL_NOT_SENT',ended_at=now() WHERE task_id=#{slotTask,jdbcType=OTHER} AND status='PREPARED']]></update>
+    <update id="updateModelCall147"><![CDATA[UPDATE pf.model_call SET status='UNKNOWN',error_code='WORKER_INTERRUPTED',ended_at=now() WHERE task_id=#{slotTask,jdbcType=OTHER} AND status='STARTED']]></update>
+    <update id="updateBudgetReservation148"><![CDATA[UPDATE pf.budget_reservation SET state='RECONCILING' WHERE task_id=#{slotTask,jdbcType=OTHER} AND state='RESERVED']]></update>
+    <insert id="insertBudgetAccount161"><![CDATA[INSERT INTO pf.budget_account(space_id,user_id) VALUES(#{spaceId,jdbcType=OTHER},#{userId,jdbcType=OTHER}) ON CONFLICT DO NOTHING]]></insert>
+    <select id="selectModelCall184" resultType="java.lang.Integer"><![CDATA[SELECT 1 FROM pf.model_call WHERE id=#{id,jdbcType=OTHER} AND turn_id=#{id2,jdbcType=OTHER} AND task_id=#{taskId,jdbcType=OTHER} AND attempt_id=#{attemptId,jdbcType=OTHER} AND status='STARTED' FOR UPDATE]]></select>
+</mapper>

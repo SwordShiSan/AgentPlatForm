@@ -1,0 +1,42 @@
+package com.agentplatform.infrastructure.dao.chat;
+import com.agentplatform.infrastructure.dao.po.AccountingRows.*;
+import java.util.List;
+import java.util.UUID;
+import java.time.Instant;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+@Mapper
+public interface AccountingMapper {
+    List<ModelCallRow5> selectModelCall5(@Param("id") UUID id, @Param("id2") UUID id2);
+    List<ModelCallRow24> selectModelCall24(@Param("slotTask") UUID slotTask, @Param("slotTask2") UUID slotTask2);
+    List<Integer> selectModelCall33(@Param("call") UUID call, @Param("taskId") UUID taskId, @Param("attemptId") UUID attemptId, @Param("spaceId") UUID spaceId);
+    List<BudgetReservationRow34> selectBudgetReservation34(@Param("id") UUID id, @Param("taskId") UUID taskId, @Param("attemptId") UUID attemptId, @Param("spaceId") UUID spaceId);
+    List<ModelCallRow35> selectModelCall35(@Param("taskId") UUID taskId);
+    List<ModelCallRow50> selectModelCall50(@Param("spaceId") UUID spaceId, @Param("id") UUID id);
+    int insertBudgetAccount80(@Param("spaceId") UUID spaceId, @Param("userId") UUID userId);
+    int updateBudgetAccount81(@Param("totalCost") long totalCost, @Param("spaceId") UUID spaceId, @Param("userId") UUID userId, @Param("totalCost2") long totalCost2);
+    int insertModelCall116(@Param("id") UUID id, @Param("spaceId") UUID spaceId, @Param("taskId") UUID taskId, @Param("attemptId") UUID attemptId, @Param("ordinal") int ordinal, @Param("price") String price, @Param("turn") UUID turn);
+    int insertBudgetReservation117(@Param("id") UUID id, @Param("taskId") UUID taskId, @Param("allowance") long allowance);
+    int updateAcceptanceModelMeter118(@Param("allowance") long allowance);
+    int updateModelCall119(@Param("id") UUID id, @Param("taskId") UUID taskId);
+    int updateModelCall120(@Param("outcome") String outcome, @Param("error") String error, @Param("id") UUID id);
+    int updateBudgetReservation121(@Param("reservationState") String reservationState, @Param("id") UUID id);
+    int updateBudgetAccount122(@Param("allowance") long allowance, @Param("spaceId") UUID spaceId, @Param("userId") UUID userId);
+    int updateAcceptanceModelMeter123(@Param("allowance") long allowance);
+    int updateModelCall124(@Param("inputTokens") long inputTokens, @Param("outputTokens") long outputTokens, @Param("cost") long cost, @Param("requestId") String requestId, @Param("id") UUID id);
+    int updateBudgetReservation125(@Param("id") UUID id);
+    int updateBudgetAccount126(@Param("allowance") long allowance, @Param("tokens") long tokens, @Param("cost") long cost, @Param("spaceId") UUID spaceId, @Param("userId") UUID userId);
+    int updateAcceptanceModelMeter127(@Param("allowance") long allowance, @Param("cost") long cost);
+    int insertCredentialAccessAudit128(@Param("id") UUID id, @Param("credentialId") UUID credentialId, @Param("call") UUID call);
+    int updateBudgetAccount129(@Param("task") UUID task, @Param("spaceId") UUID spaceId, @Param("userId") UUID userId);
+    int releasePreparedReservations(@Param("task") UUID task, @Param("spaceId") UUID spaceId, @Param("userId") UUID userId);
+    int updateModelCall132(@Param("task") UUID task);
+    int updateBudgetReservation133(@Param("taskId") UUID taskId);
+    int updateModelCall134(@Param("reason") String reason, @Param("taskId") UUID taskId);
+    int restorePreparedReservationAllowance(@Param("slotTask") UUID slotTask, @Param("slotTask2") UUID slotTask2);
+    int updateModelCall145(@Param("slotTask") UUID slotTask);
+    int updateModelCall147(@Param("slotTask") UUID slotTask);
+    int updateBudgetReservation148(@Param("slotTask") UUID slotTask);
+    int insertBudgetAccount161(@Param("spaceId") UUID spaceId, @Param("userId") UUID userId);
+    List<Integer> selectModelCall184(@Param("id") UUID id, @Param("id2") UUID id2, @Param("taskId") UUID taskId, @Param("attemptId") UUID attemptId);
+}

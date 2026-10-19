@@ -13,6 +13,12 @@ class ArchitectureTest {
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS).importPackages("com.agentplatform");
 
     @Test
+    void businessPersistenceCannotIntroduceRawJdbcPlumbing() {
+        noClasses().that().resideInAnyPackage("com.agentplatform.infrastructure.adapter.repository..", "com.agentplatform.infrastructure.chat..")
+                .should().dependOnClassesThat().resideInAnyPackage("java.sql..").check(classes);
+    }
+
+    @Test
     void modulesHaveNoCycles() {
         slices().matching("com.agentplatform.(*)..").should().beFreeOfCycles().check(classes);
     }

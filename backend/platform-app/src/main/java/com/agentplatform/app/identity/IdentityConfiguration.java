@@ -4,7 +4,9 @@ import com.agentplatform.api.identity.IdentityApi;
 import com.agentplatform.domain.identity.IdentitySecrets;
 import com.agentplatform.domain.identity.IdentityStore;
 import com.agentplatform.infrastructure.identity.ArgonIdentitySecrets;
-import com.agentplatform.infrastructure.identity.JdbcIdentityStore;
+import com.agentplatform.infrastructure.adapter.repository.identity.MyBatisIdentityStore;
+import com.agentplatform.infrastructure.dao.identity.IdentityMapper;
+import org.springframework.transaction.support.TransactionTemplate;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,11 +21,8 @@ import org.springframework.context.annotation.Profile;
 @Profile({"identity-local", "identity-ops"})
 public class IdentityConfiguration {
     @Bean IdentitySecrets identitySecrets() { return new ArgonIdentitySecrets(); }
-    @Bean IdentityStore identityStore(@Value("${platform.storage.jdbc-url}") String url,
-            @Value("${platform.storage.user}") String user, @Value("${platform.storage.password-file}") String file,
-            org.springframework.beans.factory.ObjectProvider<javax.sql.DataSource> pool) throws Exception {
-        var source = pool.getIfAvailable();
-        return source == null ? new JdbcIdentityStore(url, user, Files.readString(Path.of(file)).strip()) : new JdbcIdentityStore(source);
+    @Bean IdentityStore identityStore(IdentityMapper mapper, TransactionTemplate transactions) {
+        return new TransactionalIdentityStore(new MyBatisIdentityStore(mapper), transactions);
     }
     @Bean @Profile("identity-local")
     IdentityApi identityApi(IdentityStore store, IdentitySecrets secrets,

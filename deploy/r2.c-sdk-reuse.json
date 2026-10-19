@@ -1,0 +1,49 @@
+{
+  "sdkVersion": "2.0.4",
+  "officialSourceCommit": "0b6743b263ba8e39eb417e35048026f1e0196548",
+  "files": [
+    {
+      "path": "agentscope-core/src/main/java/io/agentscope/core/ReActAgent.java",
+      "sha256": "14cfa9f70f771fd0cdf7ee19b51cd89acca3a3a1a260f492e870a496e83e41ae"
+    },
+    {
+      "path": "agentscope-core/src/main/java/io/agentscope/core/state/AgentState.java",
+      "sha256": "b459c820be4dde4530071fd22ec75f86d572640f9c6d0ccd669bb60bbd4fe9b3"
+    },
+    {
+      "path": "agentscope-harness/src/main/java/io/agentscope/harness/agent/memory/compaction/ConversationCompactor.java",
+      "sha256": "b4ecc8393207058ac6375a4b15e96cf950c3662696a4de7773c15c88e39100e1"
+    }
+  ],
+  "methods": [
+    "ReActAgent.getAgentState(RuntimeContext): AgentState",
+    "ReActAgent.saveAgentState(RuntimeContext): void",
+    "ConversationCompactor.compactIfNeeded(RuntimeContext,List<Msg>,CompactionConfig,String,String): Mono<Optional<List<Msg>>>"
+  ],
+  "reuse": [
+    {
+      "capability": "Harness/ReAct, Toolkit and OpenAI extension",
+      "decision": "REUSE, one SDK loop; platform durable orchestration remains authoritative"
+    },
+    {
+      "capability": "Model identity",
+      "decision": "REUSE bridge now reports frozen task model; scripted default retained only for old probes"
+    },
+    {
+      "capability": "SDK private state",
+      "decision": "NARROW_ADAPTER_RETAINED: active CallExecution loadedVersion prevents safe direct live-save replacement; independent codec clone + fenced CAS + immutable checkpoint remain required"
+    },
+    {
+      "capability": "Compaction",
+      "decision": "EXPERIMENT_ONLY: text summary, tail preservation, cancellation and AgentState copy tests pass; tool facts/budget/restore integration not delivered; disabled until R6"
+    }
+  ],
+  "tests": [
+    "AgentScopeContractProbeTest",
+    "ProviderAndStateProbeTest",
+    "AgentScopeExtensionProbeTest",
+    "OwnershipPostgresTest"
+  ],
+  "realProviderCalls": 0,
+  "thirdPartySourceModified": false
+}

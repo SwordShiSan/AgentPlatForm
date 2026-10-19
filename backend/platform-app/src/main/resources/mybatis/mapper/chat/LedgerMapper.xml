@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.chat.LedgerMapper">
+    <resultMap id="selectCheckpoint1Result" type="com.agentplatform.infrastructure.dao.po.LedgerRows$CheckpointRow1">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Boolean"/>
+        </constructor>
+    </resultMap>
+    <select id="selectCheckpoint1" resultMap="selectCheckpoint1Result"><![CDATA[SELECT to_regclass('pf.checkpoint') IS NOT NULL AND to_regclass('pf.conversation_lease') IS NOT NULL AND to_regclass('pf.failure_record') IS NOT NULL AND to_regclass('pf.user_model_credential') IS NOT NULL AND to_regclass('pf.user_preference_revision') IS NOT NULL AND to_regclass('pf.task') IS NOT NULL AND to_regclass('pf.event_outbox') IS NOT NULL AND to_regclass('pf.acceptance_model_meter') IS NOT NULL AND (SELECT schema_version=1 FROM pf.baseline_version WHERE id=1) AS __column1]]></select>
+    <resultMap id="selectModelTurn23Result" type="com.agentplatform.infrastructure.dao.po.LedgerRows$ModelTurnRow23">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectModelTurn23" resultMap="selectModelTurn23Result"><![CDATA[SELECT round_json AS __column1 FROM pf.model_turn WHERE task_id=#{slotTask,jdbcType=OTHER} AND status='COMMITTED' ORDER BY committed_at DESC,id DESC LIMIT 1]]></select>
+    <update id="updateToolOperation149"><![CDATA[UPDATE pf.tool_operation SET status='UNKNOWN',ended_at=now() WHERE task_id=#{slotTask,jdbcType=OTHER} AND status='RUNNING']]></update>
+    <resultMap id="selectCheckpoint172Result" type="com.agentplatform.infrastructure.dao.po.LedgerRows$CheckpointRow172">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.util.UUID"/>
+        </constructor>
+    </resultMap>
+    <select id="selectCheckpoint172" resultMap="selectCheckpoint172Result"><![CDATA[SELECT attempt_id AS __column1 FROM pf.checkpoint WHERE id=#{id,jdbcType=OTHER}]]></select>
+    <resultMap id="selectCheckpoint173Result" type="com.agentplatform.infrastructure.dao.po.LedgerRows$CheckpointRow173">
+        <constructor>
+            <arg name="manifestJson" column="manifest_json" javaType="java.lang.String"/>
+            <arg name="bundleHash" column="bundle_hash" javaType="java.lang.String"/>
+            <arg name="stateJson" column="state_json" javaType="java.lang.String"/>
+            <arg name="canonicalJson" column="canonical_json" javaType="java.lang.String"/>
+            <arg name="watermark" column="watermark" javaType="java.lang.Long"/>
+            <arg name="canonicalHash" column="canonical_hash" javaType="java.lang.String"/>
+            <arg name="stateHash" column="state_hash" javaType="java.lang.String"/>
+            <arg name="manifestHash" column="manifest_hash" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectCheckpoint173" resultMap="selectCheckpoint173Result"><![CDATA[SELECT * FROM pf.checkpoint WHERE id=#{id,jdbcType=OTHER} AND space_id=#{spaceId,jdbcType=OTHER} AND task_id=#{taskId,jdbcType=OTHER} AND status='COMMITTED']]></select>
+    <resultMap id="selectToolOperation175Result" type="com.agentplatform.infrastructure.dao.po.LedgerRows$ToolOperationRow175">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectToolOperation175" resultMap="selectToolOperation175Result"><![CDATA[SELECT result_json AS __column1 FROM pf.tool_operation WHERE turn_id=#{turnId,jdbcType=OTHER} AND status='SUCCEEDED' ORDER BY created_at,id]]></select>
+    <resultMap id="selectModelTurn176Result" type="com.agentplatform.infrastructure.dao.po.LedgerRows$ModelTurnRow176">
+        <constructor>
+            <arg name="value2" column="__column2" javaType="java.lang.String"/>
+            <arg name="value3" column="__column3" javaType="java.lang.String"/>
+            <arg name="value1" column="__column1" javaType="java.util.UUID"/>
+        </constructor>
+    </resultMap>
+    <select id="selectModelTurn176" resultMap="selectModelTurn176Result"><![CDATA[SELECT id AS __column1, input_json AS __column2, round_json AS __column3 FROM pf.model_turn WHERE task_id=#{taskId,jdbcType=OTHER} AND status='COMMITTED' ORDER BY committed_at,id]]></select>
+    <resultMap id="selectToolOperation177Result" type="com.agentplatform.infrastructure.dao.po.LedgerRows$ToolOperationRow177">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+            <arg name="value2" column="__column2" javaType="java.lang.String"/>
+            <arg name="value3" column="__column3" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectToolOperation177" resultMap="selectToolOperation177Result"><![CDATA[SELECT call_json AS __column1, status AS __column2, result_json AS __column3 FROM pf.tool_operation WHERE task_id=#{taskId,jdbcType=OTHER} ORDER BY created_at,id]]></select>
+    <resultMap id="selectModelTurn178Result" type="com.agentplatform.infrastructure.dao.po.LedgerRows$ModelTurnRow178">
+        <constructor>
+            <arg name="value2" column="__column2" javaType="java.lang.String"/>
+            <arg name="value4" column="__column4" javaType="java.lang.String"/>
+            <arg name="value5" column="__column5" javaType="java.lang.String"/>
+            <arg name="value6" column="__column6" javaType="java.lang.String"/>
+            <arg name="value1" column="__column1" javaType="java.lang.Object"/>
+        </constructor>
+    </resultMap>
+    <select id="selectModelTurn178" resultMap="selectModelTurn178Result"><![CDATA[SELECT id AS __column1, round_json AS __column2, ordinal, content_hash AS __column4, input_json AS __column5, input_hash AS __column6 FROM pf.model_turn WHERE task_id=#{taskId,jdbcType=OTHER} AND status='COMMITTED' ORDER BY committed_at,id]]></select>
+    <resultMap id="selectStateSlot179Result" type="com.agentplatform.infrastructure.dao.po.LedgerRows$StateSlotRow179">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectStateSlot179" resultMap="selectStateSlot179Result"><![CDATA[SELECT state_key AS __column1 FROM pf_runtime.state_slot WHERE space_id=#{spaceId,jdbcType=OTHER} AND user_id=#{userId,jdbcType=OTHER} AND conversation_id=#{conversationId,jdbcType=OTHER} AND starts_with(state_key,#{prefix,jdbcType=OTHER})]]></select>
+    <resultMap id="updateStateSlot180Result" type="com.agentplatform.infrastructure.dao.po.LedgerRows$StateSlotRow180">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="updateStateSlot180" resultMap="updateStateSlot180Result" affectData="true" flushCache="true" useCache="false"><![CDATA[UPDATE pf_runtime.state_slot SET payload_json=#{payload,jdbcType=OTHER}::jsonb,version=version+1,updated_at=now() WHERE space_id=#{spaceId,jdbcType=OTHER} AND user_id=#{userId,jdbcType=OTHER} AND conversation_id=#{conversationId,jdbcType=OTHER} AND state_key=#{stateKey,jdbcType=OTHER} AND version=#{version,jdbcType=OTHER} AND framework_version='2.0.4' RETURNING version AS __column1]]></select>
+    <resultMap id="insertStateSlot181Result" type="com.agentplatform.infrastructure.dao.po.LedgerRows$StateSlotRow181">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="insertStateSlot181" resultMap="insertStateSlot181Result" affectData="true" flushCache="true" useCache="false"><![CDATA[INSERT INTO pf_runtime.state_slot(space_id,user_id,conversation_id,state_key,version,framework_version,payload_json) VALUES(#{spaceId,jdbcType=OTHER},#{userId,jdbcType=OTHER},#{conversationId,jdbcType=OTHER},#{stateKey,jdbcType=OTHER},1,'2.0.4',#{payload,jdbcType=OTHER}::jsonb) ON CONFLICT DO NOTHING RETURNING version AS __column1]]></select>
+    <resultMap id="selectStateSlot182Result" type="com.agentplatform.infrastructure.dao.po.LedgerRows$StateSlotRow182">
+        <constructor>
+            <arg name="value3" column="__column3" javaType="java.lang.String"/>
+            <arg name="value1" column="__column1" javaType="java.lang.Long"/>
+            <arg name="value2" column="__column2" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectStateSlot182" resultMap="selectStateSlot182Result"><![CDATA[SELECT version AS __column1, payload_json::text AS __column2, framework_version AS __column3 FROM pf_runtime.state_slot WHERE space_id=#{spaceId,jdbcType=OTHER} AND user_id=#{userId,jdbcType=OTHER} AND conversation_id=#{conversationId,jdbcType=OTHER} AND state_key=#{stateKey,jdbcType=OTHER}]]></select>
+    <resultMap id="selectToolOperation183Result" type="com.agentplatform.infrastructure.dao.po.LedgerRows$ToolOperationRow183">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+            <arg name="value2" column="__column2" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectToolOperation183" resultMap="selectToolOperation183Result"><![CDATA[SELECT status AS __column1, result_hash AS __column2 FROM pf.tool_operation WHERE space_id=#{spaceId,jdbcType=OTHER} AND task_id=#{taskId,jdbcType=OTHER} AND attempt_id=#{attemptId,jdbcType=OTHER} AND fencing_token=#{fence,jdbcType=OTHER} AND call_id=#{id,jdbcType=OTHER} AND call_hash=#{contentHash,jdbcType=OTHER} FOR UPDATE]]></select>
+    <resultMap id="selectModelTurn185Result" type="com.agentplatform.infrastructure.dao.po.LedgerRows$ModelTurnRow185">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+            <arg name="value3" column="__column3" javaType="java.lang.Long"/>
+            <arg name="value2" column="__column2" javaType="java.lang.String"/>
+            <arg name="value4" column="__column4" javaType="java.util.UUID"/>
+        </constructor>
+    </resultMap>
+    <select id="selectModelTurn185" resultMap="selectModelTurn185Result"><![CDATA[SELECT status AS __column1, content_hash AS __column2, ordinal AS __column3, accepted_call_id AS __column4 FROM pf.model_turn WHERE id=#{id,jdbcType=OTHER} AND space_id=#{spaceId,jdbcType=OTHER} AND task_id=#{taskId,jdbcType=OTHER} AND attempt_id=#{attemptId,jdbcType=OTHER} AND fencing_token=#{fence,jdbcType=OTHER} FOR UPDATE]]></select>
+    <resultMap id="selectModelTurn187Result" type="com.agentplatform.infrastructure.dao.po.LedgerRows$ModelTurnRow187">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.util.UUID"/>
+        </constructor>
+    </resultMap>
+    <select id="selectModelTurn187" resultMap="selectModelTurn187Result"><![CDATA[SELECT id AS __column1 FROM pf.model_turn WHERE attempt_id=#{attemptId,jdbcType=OTHER} AND status='OPEN']]></select>
+    <insert id="insertModelTurn188"><![CDATA[INSERT INTO pf.model_turn(id,space_id,task_id,attempt_id,fencing_token,ordinal,input_json,input_hash) SELECT #{id,jdbcType=OTHER},#{spaceId,jdbcType=OTHER},#{taskId,jdbcType=OTHER},#{attemptId,jdbcType=OTHER},#{fence,jdbcType=OTHER},coalesce(max(ordinal),0)+1,#{input,jdbcType=OTHER}::jsonb,#{contentHash,jdbcType=OTHER} FROM pf.model_turn WHERE attempt_id=#{attemptId2,jdbcType=OTHER}]]></insert>
+    <insert id="insertToolOperation189"><![CDATA[INSERT INTO pf.tool_operation(id,space_id,task_id,attempt_id,turn_id,fencing_token,call_id,call_json,call_hash) VALUES(#{id,jdbcType=OTHER},#{spaceId,jdbcType=OTHER},#{taskId,jdbcType=OTHER},#{attemptId,jdbcType=OTHER},#{id2,jdbcType=OTHER},#{fence,jdbcType=OTHER},#{id3,jdbcType=OTHER},#{canonicalJson,jdbcType=OTHER}::jsonb,#{contentHash,jdbcType=OTHER})]]></insert>
+    <update id="updateModelTurn190"><![CDATA[UPDATE pf.model_turn SET status='COMMITTED',sdk_turn_id=#{turnId,jdbcType=OTHER},round_json=#{body,jdbcType=OTHER}::jsonb,content_hash=#{fingerprint,jdbcType=OTHER},accepted_call_id=#{id,jdbcType=OTHER},committed_at=now() WHERE id=#{id2,jdbcType=OTHER}]]></update>
+    <update id="updateToolOperation191"><![CDATA[UPDATE pf.tool_operation SET status='RUNNING' WHERE space_id=#{spaceId,jdbcType=OTHER} AND task_id=#{taskId,jdbcType=OTHER} AND attempt_id=#{attemptId,jdbcType=OTHER} AND fencing_token=#{fence,jdbcType=OTHER} AND call_id=#{id,jdbcType=OTHER} AND call_hash=#{contentHash,jdbcType=OTHER} AND status='PREPARED']]></update>
+    <update id="updateToolOperation192"><![CDATA[UPDATE pf.tool_operation SET status='SUCCEEDED',result_json=#{body,jdbcType=OTHER}::jsonb,result_hash=#{digest,jdbcType=OTHER},ended_at=now() WHERE task_id=#{taskId,jdbcType=OTHER} AND call_id=#{id,jdbcType=OTHER}]]></update>
+    <delete id="deleteStateSlot193"><![CDATA[DELETE FROM pf_runtime.state_slot WHERE space_id=#{spaceId,jdbcType=OTHER} AND user_id=#{userId,jdbcType=OTHER} AND conversation_id=#{conversationId,jdbcType=OTHER} AND state_key=#{stateKey,jdbcType=OTHER}]]></delete>
+    <insert id="insertCheckpoint194"><![CDATA[INSERT INTO pf.checkpoint(id,space_id,task_id,attempt_id,fencing_token,bundle_id,bundle_hash,manifest_json,manifest_hash,canonical_json,canonical_hash,watermark,state_json,state_hash) VALUES(#{id,jdbcType=OTHER},#{spaceId,jdbcType=OTHER},#{taskId,jdbcType=OTHER},#{attemptId,jdbcType=OTHER},#{fence,jdbcType=OTHER},#{BUNDLE,jdbcType=OTHER},#{hash,jdbcType=OTHER},#{manifest,jdbcType=OTHER}::jsonb,#{contentHash,jdbcType=OTHER},#{canonical,jdbcType=OTHER}::jsonb,#{contentHash2,jdbcType=OTHER},#{watermark,jdbcType=OTHER},#{state,jdbcType=OTHER}::jsonb,#{contentHash3,jdbcType=OTHER})]]></insert>
+</mapper>

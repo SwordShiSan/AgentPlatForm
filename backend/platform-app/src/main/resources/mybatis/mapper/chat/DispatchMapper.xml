@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.chat.DispatchMapper">
+    <resultMap id="selectEventOutbox4Result" type="com.agentplatform.infrastructure.dao.po.DispatchRows$EventOutboxRow4">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="selectEventOutbox4" resultMap="selectEventOutbox4Result"><![CDATA[SELECT last_error AS __column1 FROM pf.event_outbox WHERE aggregate_id=#{id,jdbcType=OTHER} AND last_error IS NOT NULL ORDER BY created_at DESC LIMIT 1]]></select>
+    <resultMap id="selectExecutionDispatch22Result" type="com.agentplatform.infrastructure.dao.po.DispatchRows$ExecutionDispatchRow22">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectExecutionDispatch22" resultMap="selectExecutionDispatch22Result"><![CDATA[SELECT generation AS __column1 FROM pf.execution_dispatch WHERE task_id=#{slotTask,jdbcType=OTHER}]]></select>
+    <resultMap id="selectExecutionSlot28Result" type="com.agentplatform.infrastructure.dao.po.DispatchRows$ExecutionSlotRow28">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.util.UUID"/>
+            <arg name="value2" column="__column2" javaType="java.util.UUID"/>
+            <arg name="value3" column="__column3" javaType="java.lang.Long"/>
+            <arg name="value5" column="__column5" javaType="java.time.Instant"/>
+            <arg name="value4" column="__column4" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+    <select id="selectExecutionSlot28" resultMap="selectExecutionSlot28Result"><![CDATA[SELECT task_id AS __column1, owner_id AS __column2, fencing_token AS __column3, lease_until AS __column4, clock_timestamp() AS __column5 FROM pf.execution_slot WHERE id=1 FOR UPDATE]]></select>
+    <select id="selectExecutionDispatch39" resultType="java.lang.Integer"><![CDATA[SELECT 1 FROM pf.execution_dispatch d JOIN pf.attempt a ON a.task_id=d.task_id JOIN pf.conversation_lease v ON v.attempt_id=a.id WHERE d.task_id=#{taskId,jdbcType=OTHER} AND d.status='CLAIMED' AND d.lease_owner=#{ownerId,jdbcType=OTHER} AND d.fencing_token=#{fence,jdbcType=OTHER} AND d.lease_until>clock_timestamp() AND a.id=#{attemptId,jdbcType=OTHER} AND a.space_id=#{spaceId,jdbcType=OTHER} AND a.owner_id=#{ownerId2,jdbcType=OTHER} AND a.fencing_token=#{fence2,jdbcType=OTHER} AND a.status='RUNNING' AND a.dispatch_generation=d.generation AND v.space_id=#{spaceId2,jdbcType=OTHER} AND v.conversation_id=#{conversationId,jdbcType=OTHER} AND v.owner_id=#{ownerId3,jdbcType=OTHER} AND v.fencing_token=#{fence3,jdbcType=OTHER} AND v.generation=d.generation AND v.lease_until>clock_timestamp() FOR UPDATE OF d,a,v]]></select>
+    <resultMap id="selectExecutionSlot40Result" type="com.agentplatform.infrastructure.dao.po.DispatchRows$ExecutionSlotRow40">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+    <select id="selectExecutionSlot40" resultMap="selectExecutionSlot40Result"><![CDATA[SELECT lease_until AS __column1 FROM pf.execution_slot WHERE id=1 AND task_id=#{taskId,jdbcType=OTHER} AND owner_id=#{ownerId,jdbcType=OTHER} AND fencing_token=#{fence,jdbcType=OTHER} AND lease_until>clock_timestamp() FOR UPDATE]]></select>
+    <resultMap id="selectExecutionSlot46Result" type="com.agentplatform.infrastructure.dao.po.DispatchRows$ExecutionSlotRow46">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Object"/>
+            <arg name="value2" column="__column2" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+    <select id="selectExecutionSlot46" resultMap="selectExecutionSlot46Result"><![CDATA[SELECT task_id AS __column1, fencing_token AS __column2 FROM pf.execution_slot WHERE id=1 FOR UPDATE]]></select>
+    <select id="selectConsumerInbox47" resultType="java.lang.Integer"><![CDATA[SELECT 1 FROM pf.consumer_inbox WHERE consumer_name='execution' AND event_id=#{eventId,jdbcType=OTHER}]]></select>
+    <resultMap id="selectExecutionDispatch48Result" type="com.agentplatform.infrastructure.dao.po.DispatchRows$ExecutionDispatchRow48">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.util.UUID"/>
+            <arg name="value2" column="__column2" javaType="java.lang.Long"/>
+            <arg name="value4" column="__column4" javaType="java.util.UUID"/>
+            <arg name="value3" column="__column3" javaType="java.util.UUID"/>
+        </constructor>
+    </resultMap>
+    <select id="selectExecutionDispatch48" resultMap="selectExecutionDispatch48Result"><![CDATA[SELECT d.task_id AS __column1, d.generation AS __column2, t.space_id AS __column3, t.creator_id AS __column4 FROM pf.execution_dispatch d JOIN pf.task t ON t.id=d.task_id WHERE d.status='DEFERRED' AND d.available_at<=now() AND t.status='QUEUED' AND NOT EXISTS(SELECT 1 FROM pf.execution_slot WHERE task_id IS NOT NULL) AND NOT EXISTS(SELECT 1 FROM pf.task prior WHERE prior.conversation_id=t.conversation_id AND prior.status IN ('QUEUED','RUNNING') AND (prior.created_at,prior.id)<(t.created_at,t.id)) ORDER BY t.created_at,t.id FOR UPDATE OF d SKIP LOCKED LIMIT 1]]></select>
+    <resultMap id="selectEventOutbox49Result" type="com.agentplatform.infrastructure.dao.po.DispatchRows$EventOutboxRow49">
+        <constructor>
+            <arg name="id" column="id" javaType="java.util.UUID"/>
+            <arg name="eventId" column="event_id" javaType="java.util.UUID"/>
+            <arg name="spaceId" column="space_id" javaType="java.util.UUID"/>
+            <arg name="aggregateId" column="aggregate_id" javaType="java.util.UUID"/>
+            <arg name="generation" column="generation" javaType="java.lang.Long"/>
+            <arg name="createdAt" column="created_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+    <select id="selectEventOutbox49" resultMap="selectEventOutbox49Result"><![CDATA[SELECT * FROM pf.event_outbox WHERE (status='PENDING' AND available_at<=now()) OR (status='PUBLISHING' AND publish_lease_until<now()) ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 100]]></select>
+    <resultMap id="selectEventOutbox56Result" type="com.agentplatform.infrastructure.dao.po.DispatchRows$EventOutboxRow56">
+        <constructor>
+            <arg name="value1" column="__column1" javaType="java.lang.Long"/>
+            <arg name="value2" column="__column2" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+    <select id="selectEventOutbox56" resultMap="selectEventOutbox56Result"><![CDATA[SELECT count(*) AS __column1, min(created_at) AS __column2 FROM pf.event_outbox WHERE status IN ('PENDING','PUBLISHING','REVIEW')]]></select>
+    <resultMap id="selectExecutionSlot74Result" type="com.agentplatform.infrastructure.dao.po.DispatchRows$ExecutionSlotRow74">
+        <constructor>
+            <arg name="value5" column="__column5" javaType="java.time.Instant"/>
+            <arg name="value1" column="__column1" javaType="java.util.UUID"/>
+            <arg name="value2" column="__column2" javaType="java.util.UUID"/>
+            <arg name="value3" column="__column3" javaType="java.lang.Long"/>
+            <arg name="value4" column="__column4" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+    <select id="selectExecutionSlot74" resultMap="selectExecutionSlot74Result"><![CDATA[SELECT task_id AS __column1, owner_id AS __column2, fencing_token AS __column3, lease_until AS __column4, clock_timestamp() AS __column5 FROM pf.execution_slot WHERE id=1]]></select>
+    <insert id="insertEventOutbox77"><![CDATA[INSERT INTO pf.event_outbox(id,space_id,event_id,aggregate_id,generation) VALUES(#{id,jdbcType=OTHER},#{spaceId,jdbcType=OTHER},#{id2,jdbcType=OTHER},#{task,jdbcType=OTHER},#{generation,jdbcType=OTHER})]]></insert>
+    <update id="updateExecutionSlot79"><![CDATA[UPDATE pf.execution_slot SET id=id WHERE id=1]]></update>
+    <insert id="insertExecutionDispatch86"><![CDATA[INSERT INTO pf.execution_dispatch(task_id) VALUES(#{id,jdbcType=OTHER})]]></insert>
+    <update id="updateExecutionSlot87"><![CDATA[UPDATE pf.execution_slot SET id=id WHERE id=1]]></update>
+    <update id="updateExecutionDispatch89"><![CDATA[UPDATE pf.execution_dispatch SET status='IDLE' WHERE task_id=#{id,jdbcType=OTHER}]]></update>
+    <update id="updateEventOutbox92"><![CDATA[UPDATE pf.event_outbox SET status='PUBLISHING',publish_owner=#{relay,jdbcType=OTHER},publish_lease_until=now()+interval '30 seconds',attempts=attempts+1 WHERE id=#{id,jdbcType=OTHER}]]></update>
+    <update id="updateEventOutbox93"><![CDATA[UPDATE pf.event_outbox SET status='PUBLISHED',publish_lease_until=NULL,last_error=NULL WHERE id=#{id,jdbcType=OTHER} AND publish_owner=#{relay,jdbcType=OTHER} AND status='PUBLISHING']]></update>
+    <update id="updateEventOutbox94"><![CDATA[UPDATE pf.event_outbox SET status=CASE WHEN attempts>=10 THEN 'REVIEW' ELSE 'PENDING' END,available_at=now()+make_interval(secs=>CASE WHEN attempts=1 THEN 1 WHEN attempts=2 THEN 5 WHEN attempts=3 THEN 30 WHEN attempts=4 THEN 120 ELSE 600 END),publish_lease_until=NULL,last_error='PUBLISH_NOT_CONFIRMED' WHERE id=#{id,jdbcType=OTHER} AND publish_owner=#{relay,jdbcType=OTHER} AND status='PUBLISHING']]></update>
+    <update id="updateExecutionSlot95"><![CDATA[UPDATE pf.execution_slot SET id=id WHERE id=1]]></update>
+    <update id="updateExecutionDispatch96"><![CDATA[UPDATE pf.execution_dispatch SET status='READY',generation=#{generation,jdbcType=OTHER},available_at=now() WHERE task_id=#{id,jdbcType=OTHER}]]></update>
+    <update id="updateExecutionDispatch99"><![CDATA[UPDATE pf.execution_dispatch SET status='IDLE' WHERE task_id=#{aggregateId,jdbcType=OTHER}]]></update>
+    <update id="updateExecutionDispatch102"><![CDATA[UPDATE pf.execution_dispatch SET status='IDLE' WHERE task_id=#{aggregateId,jdbcType=OTHER}]]></update>
+    <update id="updateExecutionDispatch103"><![CDATA[UPDATE pf.execution_dispatch SET status='DEFERRED',available_at=now()+interval '1 second' WHERE task_id=#{aggregateId,jdbcType=OTHER}]]></update>
+    <update id="updateExecutionSlot104"><![CDATA[UPDATE pf.execution_slot SET task_id=#{aggregateId,jdbcType=OTHER},owner_id=#{owner,jdbcType=OTHER},fencing_token=#{fence,jdbcType=OTHER},lease_until=now()+interval '60 seconds' WHERE id=1]]></update>
+    <update id="updateExecutionDispatch105"><![CDATA[UPDATE pf.execution_dispatch SET status='CLAIMED',lease_owner=#{owner,jdbcType=OTHER},fencing_token=#{fence,jdbcType=OTHER},lease_until=now()+interval '60 seconds' WHERE task_id=#{aggregateId,jdbcType=OTHER}]]></update>
+    <insert id="insertAttempt106"><![CDATA[INSERT INTO pf.attempt(id,space_id,task_id,ordinal,owner_id,fencing_token,dispatch_generation) SELECT #{attempt,jdbcType=OTHER},space_id,id,(SELECT count(*)+1 FROM pf.attempt WHERE task_id=#{aggregateId,jdbcType=OTHER}),#{owner,jdbcType=OTHER},#{fence,jdbcType=OTHER},#{generation,jdbcType=OTHER} FROM pf.task WHERE id=#{aggregateId2,jdbcType=OTHER}]]></insert>
+    <insert id="insertConversationLease107"><![CDATA[INSERT INTO pf.conversation_lease(space_id,conversation_id,task_id,attempt_id,owner_id,generation,fencing_token,lease_until) VALUES(#{spaceId,jdbcType=OTHER},#{convo,jdbcType=OTHER},#{aggregateId,jdbcType=OTHER},#{attempt,jdbcType=OTHER},#{owner,jdbcType=OTHER},#{generation,jdbcType=OTHER},#{fence,jdbcType=OTHER},now()+interval '60 seconds') ON CONFLICT(space_id,conversation_id) DO UPDATE SET task_id=excluded.task_id,attempt_id=excluded.attempt_id,owner_id=excluded.owner_id,generation=excluded.generation,fencing_token=excluded.fencing_token,lease_until=excluded.lease_until]]></insert>
+    <insert id="insertConsumerInbox109"><![CDATA[INSERT INTO pf.consumer_inbox(consumer_name,event_id,space_id,aggregate_id,generation,disposition) VALUES('execution',#{eventId,jdbcType=OTHER},#{spaceId,jdbcType=OTHER},#{aggregateId,jdbcType=OTHER},#{generation,jdbcType=OTHER},#{disposition,jdbcType=OTHER}) ON CONFLICT DO NOTHING]]></insert>
+    <insert id="insertDispatchQuarantine110"><![CDATA[INSERT INTO pf.dispatch_quarantine(id,reason_code) VALUES(#{id,jdbcType=OTHER},#{reason,jdbcType=OTHER})]]></insert>
+    <update id="updateExecutionSlot111"><![CDATA[UPDATE pf.execution_slot SET lease_until=now()+interval '60 seconds' WHERE id=1]]></update>
+    <update id="updateExecutionDispatch112"><![CDATA[UPDATE pf.execution_dispatch SET lease_until=now()+interval '60 seconds' WHERE task_id=#{taskId,jdbcType=OTHER}]]></update>
+    <update id="updateConversationLease113"><![CDATA[UPDATE pf.conversation_lease SET lease_until=now()+interval '60 seconds' WHERE attempt_id=#{attemptId,jdbcType=OTHER}]]></update>
+    <update id="updateAttempt137"><![CDATA[UPDATE pf.attempt SET status=#{status,jdbcType=OTHER},reason_code=#{reason,jdbcType=OTHER},ended_at=now() WHERE id=#{attemptId,jdbcType=OTHER}]]></update>
+    <update id="updateExecutionDispatch138"><![CDATA[UPDATE pf.execution_dispatch SET status='IDLE',lease_until=NULL WHERE task_id=#{taskId,jdbcType=OTHER}]]></update>
+    <delete id="deleteConversationLease139"><![CDATA[DELETE FROM pf.conversation_lease WHERE attempt_id=#{attemptId,jdbcType=OTHER}]]></delete>
+    <update id="updateExecutionSlot140"><![CDATA[UPDATE pf.execution_slot SET task_id=NULL,owner_id=NULL,lease_until=NULL WHERE id=1]]></update>
+    <update id="updateExecutionDispatch141"><![CDATA[UPDATE pf.execution_dispatch SET task_id=task_id WHERE task_id=#{slotTask,jdbcType=OTHER}]]></update>
+    <update id="updateAttempt142"><![CDATA[UPDATE pf.attempt SET id=id WHERE id=#{attemptId,jdbcType=OTHER}]]></update>
+    <update id="updateExecutionDispatch146"><![CDATA[UPDATE pf.execution_dispatch SET status='READY',generation=generation+1,lease_owner=NULL,lease_until=NULL,available_at=now() WHERE task_id=#{slotTask,jdbcType=OTHER}]]></update>
+    <update id="updateExecutionDispatch152"><![CDATA[UPDATE pf.execution_dispatch SET status='IDLE',lease_owner=NULL,lease_until=NULL WHERE task_id=#{slotTask,jdbcType=OTHER}]]></update>
+    <update id="updateAttempt153"><![CDATA[UPDATE pf.attempt SET status='INTERRUPTED',reason_code='WORKER_INTERRUPTED',ended_at=now() WHERE id=#{attemptId,jdbcType=OTHER}]]></update>
+    <delete id="deleteConversationLease155"><![CDATA[DELETE FROM pf.conversation_lease WHERE attempt_id=#{attemptId,jdbcType=OTHER}]]></delete>
+    <update id="updateExecutionSlot156"><![CDATA[UPDATE pf.execution_slot SET task_id=NULL,owner_id=NULL,lease_until=NULL,fencing_token=fencing_token+1 WHERE id=1]]></update>
+</mapper>

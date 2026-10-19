@@ -59,14 +59,6 @@
       }
     },
     {
-      "coordinate": "org.apache.tomcat.embed:tomcat-embed-el:jar:11.0.25",
-      "sha256": "5f84c660ff9a8f85b1c28e1ebe75bb2df486f2457d00257c823888a2e964a793",
-      "modules": {
-        "platform-app": "compile",
-        "platform-trigger": "compile"
-      }
-    },
-    {
       "coordinate": "org.apache.tomcat.embed:tomcat-embed-websocket:jar:11.0.25",
       "sha256": "7d05c8cac38f39e2e0ac6e6d7d0920823372b3f9dc4fac53aaea96727107601a",
       "modules": {
@@ -99,15 +91,6 @@
       }
     },
     {
-      "coordinate": "org.springframework:spring-beans:jar:7.0.9",
-      "sha256": "ff218b827a25c9e8929b0cd56dfb56916cea9d5b669ed97dc7cb262508ff548b",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "test",
-        "platform-trigger": "compile"
-      }
-    },
-    {
       "coordinate": "org.springframework.boot:spring-boot-webmvc:jar:4.0.8",
       "sha256": "92052c430ea18f39f34c4f05feaebb108ee1a145263f46bbc3b3506fed598b81",
       "modules": {
@@ -132,21 +115,191 @@
       }
     },
     {
-      "coordinate": "org.springframework:spring-aop:jar:7.0.9",
-      "sha256": "b8c5d6bfcb1f4993f2cc124f7ab7fac40edf5256b9e43c2f7250a733cb5510e9",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "test",
-        "platform-trigger": "compile"
-      }
-    },
-    {
       "coordinate": "org.springframework:spring-expression:jar:7.0.9",
       "sha256": "046434c40f43819729b9b1db0e6c659dfa68184c1c2c2efa5f7b3a5b27c4e2e2",
       "modules": {
         "platform-app": "compile",
-        "platform-infrastructure": "test",
+        "platform-infrastructure": "compile",
         "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-starter-security:jar:4.0.8",
+      "sha256": "eced7ea931a6229b09645b4fe8a9a939e67b2f45f190c17dbde6d14ad30e7451",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-security:jar:4.0.8",
+      "sha256": "7a52b309ac7a604e9c2aefd4389773ba8cacd3d0a01989b55d3a45576654e48a",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.security:spring-security-config:jar:7.0.7",
+      "sha256": "a601134be90447b371c0679a21fc0c797f9a2e8d05ca8f821020a7d952985464",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.security:spring-security-core:jar:7.0.7",
+      "sha256": "e1f9eacc6a91fadc2d63155ccb8896c19cc945239ac126f2556fffe15effe596",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.security:spring-security-web:jar:7.0.7",
+      "sha256": "b9935b0ab3ddbf4df963b2c7fa8fc98245687398ef3e22253c26e1d53db75388",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework:spring-aop:jar:7.0.9",
+      "sha256": "b8c5d6bfcb1f4993f2cc124f7ab7fac40edf5256b9e43c2f7250a733cb5510e9",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework:spring-beans:jar:7.0.9",
+      "sha256": "ff218b827a25c9e8929b0cd56dfb56916cea9d5b669ed97dc7cb262508ff548b",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-starter-validation:jar:4.0.8",
+      "sha256": "9b06ec0bd640ba9d2bc8d034e514f3d5078670fb4232430f9271181f71d152c7",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-validation:jar:4.0.8",
+      "sha256": "25b357a3d7cc84cc6ebb14b38ae28cfd27a3e1468fb5d0891b87f6bb30494a52",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.apache.tomcat.embed:tomcat-embed-el:jar:11.0.25",
+      "sha256": "5f84c660ff9a8f85b1c28e1ebe75bb2df486f2457d00257c823888a2e964a793",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.hibernate.validator:hibernate-validator:jar:9.0.1.Final",
+      "sha256": "25f40118fa4c50f8522d090d25d52d5a38953b0ccd1250835f052e7bd3164ce0",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "jakarta.validation:jakarta.validation-api:jar:3.1.1",
+      "sha256": "63ce00156388c365f3ac1be71fcfaf114682fc0c452020b5df6e7ec236e142ab",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.jboss.logging:jboss-logging:jar:3.6.3.Final",
+      "sha256": "7c12ee575508f81e22b1db9334b969d0ec54ef0fd1dcba24eeab1a44235fc366",
+      "modules": {
+        "platform-app": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "com.fasterxml:classmate:jar:1.7.3",
+      "sha256": "75fbda45456f123fb6e2028a6189442d8d0730b357adce4c0a6d7e789f70669b",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.mybatis.spring.boot:mybatis-spring-boot-starter:jar:4.0.0",
+      "sha256": "497cb441e453b46ce7dbc13891a62008b89fd1708aa4b59d0cc2de3cc5b0f45b",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-starter-jdbc:jar:4.0.8",
+      "sha256": "8417bd40a516dd2bd2bb450b84dfc16cacb708a4282901146104ff5cef957590",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-jdbc:jar:4.0.8",
+      "sha256": "794570e0962830d4d6ea356ec9dbbfee595afbb8cdf3a95eb7d331e900401f80",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-sql:jar:4.0.8",
+      "sha256": "cd88bfdcb52b5aa5b4124c65909cd57c2b414a8a2776c4c087dd75b7427a8e0c",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework:spring-jdbc:jar:7.0.9",
+      "sha256": "ca0d9af1c5721eef8cac1f94c8b9d27a753248bc33c86e3472bd3d1dbd78f450",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.mybatis.spring.boot:mybatis-spring-boot-autoconfigure:jar:4.0.0",
+      "sha256": "688044fa5a134596ac0f8926e7f933d31a02b48d5127d651a083eaeb7671becc",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.mybatis:mybatis:jar:3.5.19",
+      "sha256": "93eea616ae355751bd5fbabb57f0732713fbe79f3196f33c51a0aeeb4255862a",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.mybatis:mybatis-spring:jar:4.0.0",
+      "sha256": "53d57084e5c6c6fae60b25576f35ab69cd24c2ecd03c420dbfa98819cba7ff08",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
       }
     },
     {
@@ -164,6 +317,46 @@
         "platform-app": "compile",
         "platform-infrastructure": "compile",
         "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-starter-amqp:jar:4.0.8",
+      "sha256": "07a9f903aa506a20a783f02aca7c93992714eae6bbafebdd6fbe8c7ec3df0f9e",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-amqp:jar:4.0.8",
+      "sha256": "d4bd5d0ec955844e1ef0c12600b7d5ebeef2fa50d669846997654775ce71e04b",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework:spring-messaging:jar:7.0.9",
+      "sha256": "19ea7561e5d61e19bee0c94733d03bbf9384c9356eea2d4e90cce7ba3c0ab01b",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.amqp:spring-rabbit:jar:4.0.5",
+      "sha256": "2e49b194d32d226624ed9e3e0947bcae85cb1a2f198b22f86e05bfac1eb3065e",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.amqp:spring-amqp:jar:4.0.5",
+      "sha256": "e9ba220333889618b6013ca88557164871fcf9aaea9212a84081de7bd2a4eb8f",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
       }
     },
     {
@@ -263,6 +456,30 @@
       }
     },
     {
+      "coordinate": "org.springframework:spring-tx:jar:7.0.9",
+      "sha256": "bfb15da6e096e2c0752e9db9987d2415bf0da1d744efc988535c10c6b6c2eedd",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-transaction:jar:4.0.8",
+      "sha256": "cf86b197ceb6f352ec32c8a1374520c2361c8b2c08ec0dca2753480d097dcfc6",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-persistence:jar:4.0.8",
+      "sha256": "663b2018a8820bee73cc99314a7a7e64275706e615c4274efb80f90207098263",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
       "coordinate": "tools.jackson.core:jackson-databind:jar:3.1.7",
       "sha256": "48c781de87e2016e1f0d973748a27130f11643e7ac080173f40e2d9669d84be3",
       "modules": {
@@ -294,7 +511,8 @@
       "sha256": "e03b7570b6bac4a7d4837542e9317bc65158cfc96485564a29e7bb6747f218aa",
       "modules": {
         "platform-app": "compile",
-        "platform-infrastructure": "compile"
+        "platform-infrastructure": "compile",
+        "platform-trigger": "compile"
       }
     },
     {
@@ -340,14 +558,6 @@
     {
       "coordinate": "com.github.victools:jsonschema-generator:jar:4.38.0",
       "sha256": "ade4aeb301db4028ac6bcba016c31405677e37aae6eebaf13c99de3fdb3531b4",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
-      "coordinate": "com.fasterxml:classmate:jar:1.7.3",
-      "sha256": "75fbda45456f123fb6e2028a6189442d8d0730b357adce4c0a6d7e789f70669b",
       "modules": {
         "platform-app": "compile",
         "platform-infrastructure": "compile"
@@ -668,7 +878,7 @@
       "sha256": "f910a1b87c6c39097f5125d96c019135e8dc3bee0322c20f9271e0777aa70ee1",
       "modules": {
         "platform-app": "compile",
-        "platform-infrastructure": "test",
+        "platform-infrastructure": "compile",
         "platform-trigger": "compile"
       }
     },
@@ -677,7 +887,7 @@
       "sha256": "6c1f7cd8e38ac0dfbc92979c1b2eb8df5b11b026299d763c8864c8a473ef76d8",
       "modules": {
         "platform-app": "compile",
-        "platform-infrastructure": "test",
+        "platform-infrastructure": "compile",
         "platform-trigger": "compile"
       }
     },
@@ -686,7 +896,7 @@
       "sha256": "afb439c61fa287c9e1925523b13baab03617e724406a389d48b61c2c3e46b700",
       "modules": {
         "platform-app": "compile",
-        "platform-infrastructure": "test",
+        "platform-infrastructure": "compile",
         "platform-trigger": "compile"
       }
     },
@@ -695,7 +905,7 @@
       "sha256": "a855a0fc97b1d06f4efb1c3bba5ebd0eb508d8b58e68e89e4bbc23a85135c883",
       "modules": {
         "platform-app": "compile",
-        "platform-infrastructure": "test",
+        "platform-infrastructure": "compile",
         "platform-trigger": "compile"
       }
     },
@@ -704,7 +914,7 @@
       "sha256": "b68e8b47342dbc9b35644a14fe2efc0b7bf18da703910cd05ad5501ffe07bba1",
       "modules": {
         "platform-app": "compile",
-        "platform-infrastructure": "test",
+        "platform-infrastructure": "compile",
         "platform-trigger": "compile"
       }
     },
@@ -713,7 +923,7 @@
       "sha256": "64777f73ea0b3104c04eb82befbdccc30a425a19e83ad06cb2f93aa303511863",
       "modules": {
         "platform-app": "compile",
-        "platform-infrastructure": "test",
+        "platform-infrastructure": "compile",
         "platform-trigger": "compile"
       }
     },
@@ -722,7 +932,7 @@
       "sha256": "cbb7d1aaaa9e871eb1a06594abd911bf97027152976edf1edc315be75239204e",
       "modules": {
         "platform-app": "compile",
-        "platform-infrastructure": "test",
+        "platform-infrastructure": "compile",
         "platform-trigger": "compile"
       }
     },
@@ -731,7 +941,7 @@
       "sha256": "6beeb105cceae1df37957d35e1bf8d060e7bde61537569decae3f976f6b54919",
       "modules": {
         "platform-app": "compile",
-        "platform-infrastructure": "test",
+        "platform-infrastructure": "compile",
         "platform-trigger": "compile"
       }
     },
@@ -740,7 +950,7 @@
       "sha256": "b01f55552284cfb149411e64eabca75e942d26d2e1786b32914250e4330afaa2",
       "modules": {
         "platform-app": "compile",
-        "platform-infrastructure": "test",
+        "platform-infrastructure": "compile",
         "platform-trigger": "compile"
       }
     },
@@ -800,7 +1010,7 @@
       "sha256": "ef1a4917ff5dfd41de20b7441a7830eaeae0a01229998c3aa2f471b96bc2b38f",
       "modules": {
         "platform-app": "compile",
-        "platform-infrastructure": "test",
+        "platform-infrastructure": "compile",
         "platform-trigger": "compile"
       }
     },
@@ -809,7 +1019,7 @@
       "sha256": "7552a2fcfa30cea53eb14d7a65a7a8e1b1dd82e832a7164fb7e6fb105f438858",
       "modules": {
         "platform-app": "compile",
-        "platform-infrastructure": "test",
+        "platform-infrastructure": "compile",
         "platform-trigger": "compile"
       }
     },
@@ -818,7 +1028,7 @@
       "sha256": "74f9e4d51ef30c141de8a2409879282e572eef98665e033e8922c2fbee16862d",
       "modules": {
         "platform-app": "compile",
-        "platform-infrastructure": "test",
+        "platform-infrastructure": "compile",
         "platform-trigger": "compile"
       }
     },
@@ -836,7 +1046,7 @@
       "sha256": "cd1ad64a94650a2ed3988a4ab48c9a7fad40c4986a81e328194dd757b5170273",
       "modules": {
         "platform-app": "compile",
-        "platform-infrastructure": "test",
+        "platform-infrastructure": "compile",
         "platform-trigger": "compile"
       }
     },
@@ -1096,7 +1306,7 @@
       "sha256": "5195f4722699b39878d99a832549fe65df2890b159d063b88fff31b1ca65ae36",
       "modules": {
         "platform-app": "compile",
-        "platform-infrastructure": "test",
+        "platform-infrastructure": "compile",
         "platform-trigger": "compile"
       }
     },
@@ -1105,7 +1315,7 @@
       "sha256": "f8ead8943401081dea0aa824b5b1ba40a0e4ed297a572a0f02258150a0b62357",
       "modules": {
         "platform-app": "compile",
-        "platform-infrastructure": "test",
+        "platform-infrastructure": "compile",
         "platform-trigger": "compile"
       }
     },

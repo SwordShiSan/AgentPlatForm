@@ -11,7 +11,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-@Component @Order(-100)
+@Component @Order(-200)
 public final class RequestTraceFilter extends OncePerRequestFilter {
     @Override protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,FilterChain chain) throws ServletException,IOException {
         UUID trace=UUID.randomUUID();RequestTrace.enter(trace);response.setHeader("X-Trace-Id",trace.toString());

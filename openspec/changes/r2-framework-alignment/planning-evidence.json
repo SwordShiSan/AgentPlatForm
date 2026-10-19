@@ -1,0 +1,162 @@
+{
+  "date": "2026-10-18",
+  "kind": "PLANNING_ONLY",
+  "source_baseline": "20b7690f87c1fc5e16a36dfb7ba6adc6df08f6d8",
+  "branch": "step/r2-framework-alignment",
+  "checks": {
+    "openspec_all_strict": {
+      "pass": 13,
+      "fail": 0
+    },
+    "repository_links": 25,
+    "canonical_and_changed_links": 316,
+    "phase_plans": 8,
+    "unfinished_step_blueprints": 31,
+    "git_diff_check": "PASS",
+    "archive_file_hashes": "PASS"
+  },
+  "implementation": "NOT_STARTED",
+  "runtime_acceptance": "NOT_RUN",
+  "real_provider_calls": 0,
+  "promotion": "NOT_RUN",
+  "cloud_changes": false,
+  "canonical_delivery": {
+    "location": "D:\\java\\Projects\\AgentPlatForm\\evidence\\framework-alignment\\canonical-plans-2026-10-18.zip",
+    "sha256": "5cd1e58eec40f695a6ff20b35efba4b8ebfa79ee5d96b4a48e5f941ad5dc5a54",
+    "remote_sync": false,
+    "files": [
+      {
+        "path": "00-总体方案/00-文档导航与阅读顺序.md",
+        "sha256": "586bd66026266b32e6ccee14e7580e54509335147a1a7c058c2dcd070196e6f1"
+      },
+      {
+        "path": "00-总体方案/02-总体架构与领域边界.md",
+        "sha256": "6a10fb16e6dc2a64f52a85ebf5108b6245318a14a10baba1d286221486963654"
+      },
+      {
+        "path": "00-总体方案/03-单仓与工程规范.md",
+        "sha256": "e5d7251c6f371ffd9cadb7afe33b25d56d85740ed9a7cf14c28be3d1dd3c66ec"
+      },
+      {
+        "path": "00-总体方案/04-技术选型与ADR.md",
+        "sha256": "4307ca076336f825c9599a0b51e26044bfb4ac0938693986c29e7188e3b8c8e8"
+      },
+      {
+        "path": "00-总体方案/05-旧功能处置矩阵.md",
+        "sha256": "50b77a961ac4046ee59cfcbfa470ef3938e3452532f3ce6ce3db83abbc6fe6d5"
+      },
+      {
+        "path": "00-总体方案/07-中间件选型与可靠消息架构.md",
+        "sha256": "c1ed40a93ec2af252c5dbd8e9c1841d1f2430a12e4a15ff089b159ca301dac86"
+      },
+      {
+        "path": "00-总体方案/08-框架复用与平台完整性专项评估.md",
+        "sha256": "0952d66e2ad8a5c87c6f063f99936b3c7a1a4a5b3747fce2274e5a50adaac54c"
+      },
+      {
+        "path": "01-统一契约/06-Harness组件契约与版本兼容.md",
+        "sha256": "7408c1cec9d1e8724828b677e11dc3c8ca910215852fd3180e782d9b5f20017c"
+      },
+      {
+        "path": "02-核心执行/01-AgentScope接入与模型路由.md",
+        "sha256": "213e2dfa78f7dd95247f7b4ed91546bf33a66fbc6fe95ddcfda374b7d45cc319"
+      },
+      {
+        "path": "02-核心执行/06-上下文与记忆.md",
+        "sha256": "d4f27e7e5c93b3cf34bade8c6b3f0e0322e46b074869ccd557bed7d2d621661b"
+      },
+      {
+        "path": "02-核心执行/07-模块化Harness与ReAct内核.md",
+        "sha256": "5fe82ca667f1511901e80194494761b9cdb840982caef2af4197a925d6b54bee"
+      },
+      {
+        "path": "02-核心执行/08-上下文引擎与渐进加载.md",
+        "sha256": "c027e6f527dc2a9a85160a172231e9eef1315c695fbde215384f0daf96e44b1d"
+      },
+      {
+        "path": "03-工作区与产物/01-云端工作区与沙箱.md",
+        "sha256": "f825d458dc38c093fceb1cf7d0abc7ad0f0327f87ed3ac3fdfade79139d53ee1"
+      },
+      {
+        "path": "05-平台治理/04-安全与凭据.md",
+        "sha256": "15745ded67c32f7212920bab5bbb8a83c17ea66528af977304b2f10dbc9ae109"
+      },
+      {
+        "path": "07-交付与验收/01-连续迭代路线.md",
+        "sha256": "c608b003710f39efefb6b7d0bde28ab18698ff65073942f0e220d51d95cb577b"
+      },
+      {
+        "path": "07-交付与验收/02-测试矩阵与阶段门禁.md",
+        "sha256": "787c1d59a8a431644a0b6d48dec984a0fcd39959513bdab8e9c89497bcc655a9"
+      },
+      {
+        "path": "07-交付与验收/03-本地与云端部署.md",
+        "sha256": "8a82986a82d9f23e332bc84d1f163493e0115b8c7e39faba11c32d494a709f9e"
+      },
+      {
+        "path": "07-交付与验收/05-实施交接及追踪矩阵.md",
+        "sha256": "409c552fec4a0c6c5885d75d0d9f0b71e689fd6ecef14af52d88ae28b37d648f"
+      },
+      {
+        "path": "07-交付与验收/07-后续阶段技术架构与实现约束.md",
+        "sha256": "2956db431d7f1dd9673baebf21b813404059d9077c81b69b804e6e233064270b"
+      },
+      {
+        "path": "07-交付与验收/阶段/R2-后台任务与恢复.md",
+        "sha256": "825f04791eb10454a7aef850eecb68cae8af2d2c493dca9c0efaaf34d73c443d"
+      },
+      {
+        "path": "07-交付与验收/阶段/R2.C-框架化与平台架构纠正计划.md",
+        "sha256": "0984192183a53853d39f5fc5e2100ddbf13815f3c4a2072b2083c85683902313"
+      },
+      {
+        "path": "07-交付与验收/阶段/R3-云端工作区.md",
+        "sha256": "df21ccb5abb3101c9df95fa6007b5f71641b81ae723aa0884c4ad055e9e543aa"
+      },
+      {
+        "path": "07-交付与验收/阶段/R4-Plan与权限交互.md",
+        "sha256": "36fad28167a50fa2c9423095eafc1cfe2ad760addde8c0a5eb180571fd551c32"
+      },
+      {
+        "path": "07-交付与验收/阶段/R5-文件与产物工作台.md",
+        "sha256": "578011c2541eb800a79044cd95aac50072cbeda98f2ce7346828c2a0270ee0aa"
+      },
+      {
+        "path": "07-交付与验收/阶段/R6-个人能力与知识.md",
+        "sha256": "decc5eba74b20708c5631a26bb72e497e3dc1b794d07ea83e6aba1c4c254b9ce"
+      },
+      {
+        "path": "07-交付与验收/阶段/R7-协作与自动化.md",
+        "sha256": "06f8cb21ebe8d6262f3db8bdf37c9c9448f53918fe998c0ef8044f50d075fefc"
+      },
+      {
+        "path": "07-交付与验收/阶段/R8-组织与能力治理.md",
+        "sha256": "c650db5fd34b66785b76873603efcdd2f06c3dee0270608ab11083b1c6ec3aaf"
+      },
+      {
+        "path": "07-交付与验收/阶段/R9-发布收尾.md",
+        "sha256": "01b1e534ce25d227d384daad31a6c73214f393f969b4433df6daada1a16b7c5b"
+      },
+      {
+        "path": "08-重构进度管控/01-全局重构进度.md",
+        "sha256": "3436fffd2ad04cf520379aeb2f125beb755fb873f1e9b3106a975ba82ebe2086"
+      },
+      {
+        "path": "08-重构进度管控/03-风险问题与决策台账.md",
+        "sha256": "c48f55b38618f5c17bfe638dd166a7b95a0f6af8e38ffa50b1c74d0704a844ec"
+      },
+      {
+        "path": "08-重构进度管控/05-变更与交接记录.md",
+        "sha256": "29f945a8fb199daa97457380bef7f5fdbd0f82164eb7c9938b60b5a890cdb6a4"
+      },
+      {
+        "path": "08-重构进度管控/阶段/R2-后台任务与恢复.md",
+        "sha256": "63237e784552abb0344f08c035e8eb9fe94f87df056644418a04c1f5924726d6"
+      },
+      {
+        "path": "README.md",
+        "sha256": "d024ba44359136b4c802fc9321d8891e9ef5160b43bd2f33bd06221fd9c83057"
+      }
+    ]
+  }
+}

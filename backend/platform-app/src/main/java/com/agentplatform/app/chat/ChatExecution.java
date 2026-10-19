@@ -20,10 +20,13 @@ public final class ChatExecution implements AutoCloseable {
     private final ChatProvider provider;
     private final CredentialCipher cipher;
     private final Path work;
-    private final ScheduledExecutorService timers=Executors.newScheduledThreadPool(2);
+    private final ScheduledExecutorService timers;
+    private final boolean ownsTimers;
     private volatile PreparedRun active;
     private volatile Lease current;
-    public ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,Path work){this.repository=repository;this.provider=provider;this.cipher=cipher;this.work=work;}
+    public ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,Path work){this(repository,provider,cipher,work,Executors.newScheduledThreadPool(2),true);}
+    public ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,Path work,ScheduledExecutorService timers){this(repository,provider,cipher,work,timers,false);}
+    private ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,Path work,ScheduledExecutorService timers,boolean ownsTimers){this.repository=repository;this.provider=provider;this.cipher=cipher;this.work=work;this.timers=timers;this.ownsTimers=ownsTimers;}
     /** Compatibility for existing probes; private state always uses the fenced repository. */
     public ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,StateStorage ignored,Path work){this(repository,provider,cipher,work);}
     public void run(Lease lease){
@@ -34,7 +37,9 @@ public final class ChatExecution implements AutoCloseable {
             Scope scope=new Scope(lease.spaceId().toString(),lease.userId().toString(),lease.conversationId().toString(),lease.taskId().toString(),lease.attemptId().toString(),lease.fence(),false);
             AtomicReference<UUID> turnId=new AtomicReference<>();
             AtomicReference<ExecutionLedger.CallResult> accepted=new AtomicReference<>();
+            String frozenModelName=repository.modelName(lease);
             ModelGateway metered=new ModelGateway(){
+                @Override public String modelName(Scope ignored){return frozenModelName;}
                 public CompletionStage<Round> complete(Scope s,List<Message> messages,List<com.agentplatform.types.harness.HarnessData.Call> tools){return stream(s,messages,tools,text->{});}
                 public CompletionStage<Round> stream(Scope s,List<Message> messages,List<com.agentplatform.types.harness.HarnessData.Call> tools,Consumer<String> onText){
                     if(!tools.isEmpty())return CompletableFuture.failedFuture(new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH"));
@@ -127,5 +132,5 @@ public final class ChatExecution implements AutoCloseable {
         synchronized void append(String text){buffer.append(text);bytes+=text.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;if(bytes>=4096)flush();}
         synchronized void flush(){if(buffer.isEmpty())return;repository.delta(lease,buffer.toString());buffer.setLength(0);bytes=0;}
     }
-    @Override public void close(){if(active!=null)active.cancel();timers.shutdownNow();}
+    @Override public void close(){if(active!=null)active.cancel();if(ownsTimers)timers.shutdownNow();}
 }

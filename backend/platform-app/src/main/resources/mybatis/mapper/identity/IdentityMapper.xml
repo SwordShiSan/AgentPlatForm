@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.identity.IdentityMapper">
+    <select id="lock" resultType="java.lang.Object"><![CDATA[SELECT 1 FROM pg_advisory_xact_lock(#{key})]]></select>
+    <select id="operation" resultType="com.agentplatform.infrastructure.dao.po.IdentityRows$OperationRow"><![CDATA[SELECT input_hash,user_id,bootstrap FROM pf.identity_operation WHERE request_id=#{request}]]></select>
+    <select id="bootstrapConsumed" resultType="boolean"><![CDATA[SELECT EXISTS(SELECT 1 FROM pf.identity_operation WHERE bootstrap)]]></select>
+    <insert id="insertUser"><![CDATA[INSERT INTO pf.app_user(id,username_norm,password_hash,status,platform_admin) VALUES(#{id},#{name},#{hash},'ACTIVE',#{bootstrap})]]></insert>
+    <insert id="insertSpace"><![CDATA[INSERT INTO pf.space(id,type,owner_user_id) VALUES(#{space},'PERSONAL',#{user})]]></insert>
+    <insert id="insertMembership"><![CDATA[INSERT INTO pf.membership(space_id,user_id,role,status) VALUES(#{space},#{user},'OWNER','ACTIVE')]]></insert>
+    <insert id="insertStorage"><![CDATA[INSERT INTO pf.space_storage(space_id) VALUES(#{space})]]></insert>
+    <insert id="insertOperation"><![CDATA[INSERT INTO pf.identity_operation(request_id,input_hash,user_id,bootstrap) VALUES(#{request},#{fingerprint},#{user},#{bootstrap})]]></insert>
+    <select id="findUser" resultType="com.agentplatform.infrastructure.dao.po.IdentityRows$UserRow"><![CDATA[SELECT id,username_norm AS username,password_hash,status='ACTIVE' AS active,platform_admin FROM pf.app_user WHERE username_norm=#{name}]]></select>
+    <select id="user" resultType="com.agentplatform.infrastructure.dao.po.IdentityRows$UserRow"><![CDATA[SELECT id,username_norm AS username,password_hash,status='ACTIVE' AS active,platform_admin FROM pf.app_user WHERE id=#{id} AND status='ACTIVE']]></select>
+    <select id="spaces" resultType="com.agentplatform.infrastructure.dao.po.IdentityRows$SpaceRow"><![CDATA[SELECT s.id,s.type,m.role,st.object_limit_bytes FROM pf.space s JOIN pf.membership m ON m.space_id=s.id JOIN pf.space_storage st ON st.space_id=s.id JOIN pf.app_user u ON u.id=m.user_id WHERE u.id=#{user} AND u.status='ACTIVE' AND m.status='ACTIVE' AND (s.type<>'PERSONAL' OR s.owner_user_id=u.id) ORDER BY s.id]]></select>
+    <select id="session" resultType="com.agentplatform.infrastructure.dao.po.IdentityRows$SessionRow"><![CDATA[SELECT a.token_hash,a.csrf_hash,a.user_id,a.created_at,a.last_seen_at,a.expires_at FROM pf.auth_session a LEFT JOIN pf.app_user u ON u.id=a.user_id WHERE token_hash=#{token} AND revoked_at IS NULL AND expires_at>#{now} AND last_seen_at>#{idle} AND (a.user_id IS NULL OR u.status='ACTIVE') FOR UPDATE OF a]]></select>
+    <update id="touchSession"><![CDATA[UPDATE pf.auth_session SET last_seen_at=#{now} WHERE token_hash=#{token}]]></update>
+    <insert id="insertSession"><![CDATA[INSERT INTO pf.auth_session(id,token_hash,csrf_hash,user_id,created_at,last_seen_at,expires_at) VALUES(#{id},#{token},#{csrf},#{user},#{created},#{seen},#{expires})]]></insert>
+    <delete id="pruneSessions"><![CDATA[DELETE FROM pf.auth_session WHERE id IN (SELECT id FROM pf.auth_session WHERE expires_at<=#{now} OR revoked_at<=#{retention} LIMIT 100)]]></delete>
+    <delete id="pruneRates"><![CDATA[DELETE FROM pf.auth_rate WHERE bucket IN (SELECT bucket FROM pf.auth_rate WHERE window_start<#{retention} AND (locked_until IS NULL OR locked_until<#{now}) LIMIT 100)]]></delete>
+    <update id="csrf"><![CDATA[UPDATE pf.auth_session SET csrf_hash=#{csrf} WHERE token_hash=#{token} AND revoked_at IS NULL]]></update>
+    <select id="consumeSession" resultType="java.util.UUID" affectData="true" flushCache="true" useCache="false"><![CDATA[UPDATE pf.auth_session SET revoked_at=#{now} WHERE token_hash=#{token} AND revoked_at IS NULL AND expires_at>#{now} AND last_seen_at>#{idle} RETURNING id]]></select>
+    <update id="revoke"><![CDATA[UPDATE pf.auth_session SET revoked_at=#{now} WHERE token_hash=#{token}]]></update>
+    <update id="disable"><![CDATA[UPDATE pf.app_user SET status='DISABLED',authz_revision=authz_revision+1 WHERE id=#{id}]]></update>
+    <update id="password"><![CDATA[UPDATE pf.app_user SET password_hash=#{hash},authz_revision=authz_revision+1 WHERE id=#{id}]]></update>
+    <update id="revokeUser"><![CDATA[UPDATE pf.auth_session SET revoked_at=#{now} WHERE user_id=#{id} AND revoked_at IS NULL]]></update>
+    <select id="rate" resultType="int" affectData="true" flushCache="true" useCache="false"><![CDATA[INSERT INTO pf.auth_rate(bucket,window_start,attempts) VALUES(#{key},#{now},1) ON CONFLICT(bucket) DO UPDATE SET attempts=CASE WHEN pf.auth_rate.window_start<=#{boundary} THEN 1 ELSE pf.auth_rate.attempts+1 END,window_start=CASE WHEN pf.auth_rate.window_start<=#{boundary} THEN EXCLUDED.window_start ELSE pf.auth_rate.window_start END RETURNING attempts]]></select>
+    <select id="rateRow" resultType="com.agentplatform.infrastructure.dao.po.IdentityRows$RateRow"><![CDATA[SELECT window_start,attempts,locked_until FROM pf.auth_rate WHERE bucket=#{key}]]></select>
+    <insert id="ensureRate"><![CDATA[INSERT INTO pf.auth_rate(bucket,window_start) VALUES(#{key},#{now}) ON CONFLICT DO NOTHING]]></insert>
+    <select id="lockRate" resultType="com.agentplatform.infrastructure.dao.po.IdentityRows$RateRow"><![CDATA[SELECT window_start,attempts,locked_until FROM pf.auth_rate WHERE bucket=#{key} FOR UPDATE]]></select>
+    <update id="accountResult"><![CDATA[UPDATE pf.auth_rate SET attempts=#{attempts},window_start=#{start},locked_until=#{locked,jdbcType=TIMESTAMP} WHERE bucket=#{key}]]></update>
+    <select id="ready" resultType="boolean"><![CDATA[SELECT to_regclass('pf.app_user') IS NOT NULL AND to_regclass('pf.space') IS NOT NULL AND to_regclass('pf.membership') IS NOT NULL AND to_regclass('pf.auth_session') IS NOT NULL AND to_regclass('pf.identity_operation') IS NOT NULL AND to_regclass('pf.auth_rate') IS NOT NULL AND to_regclass('pf.space_storage') IS NOT NULL AND (SELECT schema_version=1 FROM pf.baseline_version WHERE id=1)]]></select>
+</mapper>

@@ -5,7 +5,7 @@ import com.agentplatform.domain.identity.IdentityFailure;
 import com.agentplatform.domain.identity.IdentityRules;
 import com.agentplatform.domain.identity.IdentityStore;
 import com.agentplatform.infrastructure.identity.ArgonIdentitySecrets;
-import com.agentplatform.infrastructure.identity.JdbcIdentityStore;
+import com.agentplatform.domain.identity.IdentityStore;
 import com.agentplatform.infrastructure.health.DependencyReadinessProbe;
 import com.agentplatform.infrastructure.storage.PostgresStateStorage;
 import java.nio.file.Files;
@@ -30,7 +30,7 @@ class IdentityPostgresTest {
     private static String password;
     private static ArgonIdentitySecrets secrets;
     private static String encoded;
-    private JdbcIdentityStore store;
+    private IdentityStore store;
     private MutableClock clock;
     private IdentityService service;
     private static final String PASSWORD = "Local-fixture-password-2026";
@@ -44,7 +44,7 @@ class IdentityPostgresTest {
     @BeforeAll static void database() throws Exception {
         url = System.getenv("R11_TEST_JDBC_URL");
         Assumptions.assumeTrue(url != null, "Real PostgreSQL fixture not configured; not acceptance evidence");
-        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15441/identity_test?") || ("1".equals(System.getenv("R21_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15443/identity_test?")), "Refusing a database outside the isolated identity test fixture");
+        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15441/identity_test?") || ("1".equals(System.getenv("R21_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15443/identity_test?")) || ("1".equals(System.getenv("R2C_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15444/identity_test?")), "Refusing a database outside the explicitly named isolated fixture");
         password = Files.readString(Path.of(System.getenv("R11_TEST_PASSWORD_FILE"))).strip();
         // Only this named isolated test DB is reset; prove a fresh V1 installation every run.
         Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime")
@@ -56,7 +56,7 @@ class IdentityPostgresTest {
     }
     @BeforeEach void setup() throws Exception {
         sql("TRUNCATE pf.identity_operation,pf.auth_session,pf.membership,pf.space_storage,pf.space,pf.app_user,pf.auth_rate CASCADE");
-        store = new JdbcIdentityStore(url,"postgres",password); clock = new MutableClock();
+        store = com.agentplatform.app.identity.IdentityPersistenceFixture.create(url,"postgres",password); clock = new MutableClock();
         service = new IdentityService(store,secrets,clock,Set.of(ORIGIN));
     }
     private static void sql(String statement) throws Exception { try(var c=DriverManager.getConnection(url,"postgres",password);var q=c.createStatement()){q.execute(statement);} }
@@ -162,7 +162,7 @@ class IdentityPostgresTest {
     @Test void preAuthExpiresAndRestartRetainsDurableSessions() {
         provision("alice",false);var pre=service.csrf(null);clock.now=clock.now.plusSeconds(900);
         failure(401,()->service.login(pre.cookieToken(),pre.csrfToken(),ORIGIN,"ip",new IdentityApi.LoginRequest("alice",PASSWORD)));
-        var auth=login("alice");var restarted=new IdentityService(new JdbcIdentityStore(url,"postgres",password),secrets,clock,Set.of(ORIGIN));
+        var auth=login("alice");var restarted=new IdentityService(com.agentplatform.app.identity.IdentityPersistenceFixture.create(url,"postgres",password),secrets,clock,Set.of(ORIGIN));
         assertEquals("alice",restarted.me(auth.cookieToken(),null).username());
     }
     @Test void ipWindowAndAccountLockPersist() {
@@ -176,7 +176,7 @@ class IdentityPostgresTest {
         failure(401,()->store.authenticateSession(secrets.hash(pre.cookieToken()),encoded,new IdentityStore.Session(secrets.hash("replacement"),secrets.hash("csrf"),a,clock.now,clock.now,clock.now.plusSeconds(604800)),clock.now));
     }
     @Test void unavailableDatabaseFailsClosed() {
-        var unavailable=new JdbcIdentityStore("jdbc:postgresql://127.0.0.1:1/no?connectTimeout=1","none","none");
+        var unavailable=com.agentplatform.app.identity.IdentityPersistenceFixture.create("jdbc:postgresql://127.0.0.1:1/no?connectTimeout=1","none","none");
         assertFalse(unavailable.ready());failure(503,()->unavailable.user(UUID.randomUUID()));
     }
     @Test void argonParametersAndWrongPassword() {
