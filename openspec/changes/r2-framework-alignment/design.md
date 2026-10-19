@@ -25,7 +25,7 @@ Replace generic infrastructure plumbing with maintained frameworks while preserv
 Identity persistence first, then chat/config, ownership/budget/ledger/state; remove replaced active write paths. Follow with MQ/Web adapters, SDK experiments, full regression and two-level PR promotion. Default no DDL change. Semantic/codec changes require bundle compatibility and draining or retaining old bundles. On failure retain previous candidate and evidence; do not promote or deploy.
 
 ## Open Questions
-Exact MyBatis patch and SDK compaction/state adapter feasibility need implementation preparation evidence; neither is claimed tested. R3 internal authentication and R7 legacy A2A disposition are phase-specific decisions, not permission to invent a protocol now.
+MyBatis patch is resolved to4.0.0. SDK public compaction/state experiments pass their limited deterministic assertions; live CallExecution state-version restrictions require retaining the narrow fenced checkpoint adapter. See deploy/r2.c-sdk-reuse.json for source hashes, method signatures and per-capability decisions. Full compaction integration remains R6 and checkpoint continuation remains R2.4. R3 internal authentication and R7 legacy A2A disposition remain phase-specific decisions, not permission to invent a protocol now.
 
 ## Approved implementation gate (2026-10-19)
 User approved implementation of this same correction. MyBatis starter is pinned to4.0.0; its official POM returned HTTP200. Boot4.0.8 manages Spring dependencies. Runtime acceptance remains NOT_RUN until fresh evidence exists. Source802f46a; cloud R1 unchanged; real provider calls0.

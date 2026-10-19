@@ -1,0 +1,139 @@
+{
+  "status": "ACCEPTANCE_PASS_PROMOTION_PENDING",
+  "date": "2026-10-19",
+  "baseline": "802f46a",
+  "source": "cd879ff273846c47a4da483a17b4a3b50462eb93",
+  "backendTree": "de0106fc3e5e68cb9c8443c04c965d7cc57227c4",
+  "frontendTree": "1cc14b5209ee59c1850c0cb15a8dac17bf2740f5",
+  "engineeringTests": 151,
+  "linuxNonRootTests": 57,
+  "frontendTests": 22,
+  "browserSuites": {
+    "identity": 2,
+    "home-entry": 5,
+    "ownership": 3,
+    "chat-config": 4,
+    "chat-http": 1,
+    "chat-diagnostics": 1
+  },
+  "browserTests": 16,
+  "actualWorkerCrashWindows": 6,
+  "serialResourceTasks": 12,
+  "resourceSamples": 13,
+  "realProviderCalls": 0,
+  "migrations": "V1-V6 unchanged; Flyway6 and runtime baseline1",
+  "maxContainerLimitsMiB": 2528.0,
+  "sampledMinHostAvailableMiB": 5642.53125,
+  "databaseGrowthBytes": 360448,
+  "resourceNote": "Local Docker Desktop VM is larger than the minimum cloud host. Sampled extrema only; no absolute peak, cloud capacity or parallel execution claim. Container swap does not extend limits.",
+  "frameworks": {
+    "mybatis": "4.0.0",
+    "boot": "4.0.8",
+    "agentscope": "2.0.4",
+    "resolvedArtifacts": 171,
+    "poolMax": 4,
+    "poolMinIdle": 1,
+    "jdbcExactExceptions": 3
+  },
+  "sdkReuse": "deploy/r2.c-sdk-reuse.json",
+  "cloud": "R1 unchanged; no deployment or production tag",
+  "r2": "1/4 VERIFIED; NOT RELEASED; R2.2 needs separate Plan/OpenSpec",
+  "images": [
+    {
+      "component": "api",
+      "source": "cd879ff273846c47a4da483a17b4a3b50462eb93",
+      "localId": "sha256:67cd2f37abfcc4d7aa13230afe9a99549a11db5a2bd7228e7cef84f553ef87fc",
+      "manifestDigest": "sha256:7abeb8356c90edc443c5d53c792cd95eaa3e40a5be7850150cb53e486d54e1dd",
+      "configId": "sha256:575101a4369227f81c4bd57bd5c28ff40318e28815f47973a4ea729b477a3f96",
+      "platform": "linux/amd64",
+      "archiveSha256": "4faa22964b04ab45d11a60f6080b5e95af08383724c6fb01d1d225b89444e366",
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    },
+    {
+      "component": "gateway",
+      "source": "cd879ff273846c47a4da483a17b4a3b50462eb93",
+      "localId": "sha256:e201eb4ffdd6b9bc34e2f013f936db6101c539783b2005a6a986218a3e4db8b3",
+      "manifestDigest": "sha256:23a24b752f55ae384986516fd368fbdf4a62900c43431573153670823459b54b",
+      "configId": "sha256:8ba5a03c91a6d53bd685d84de6107a6617360b683467af3daa8454b196732b49",
+      "platform": "linux/amd64",
+      "archiveSha256": "588f0d55007dedbe603ecf8c3860e50b6e7b171078e123342119534f36e86b14",
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    },
+    {
+      "component": "provider-fixture",
+      "source": "cd879ff273846c47a4da483a17b4a3b50462eb93",
+      "localId": "sha256:e347a88ecee3eb68a8722100d9edbc27bf3ec4389bb23072e168d088af8b2dd9",
+      "manifestDigest": "sha256:ab4e48babb9b389ce87c65ffd6be0853bd47f7036192273499a971a5a2dff18b",
+      "configId": "sha256:423367d6aeb1e487d71bc455cde49a4ea03012d12894019eaabc260625cb2956",
+      "platform": "linux/amd64",
+      "archiveSha256": "a82ebd4b0481b15b302d35a702909b266fd24a61bb60f8aa4a2a0a6f10520d61",
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    },
+    {
+      "component": "framework-probe",
+      "source": "cd879ff273846c47a4da483a17b4a3b50462eb93",
+      "localId": "sha256:373dc77eb0cd6b0614860b6ccd8bae1fefcd8bfa875d8feae022321196d6adf7",
+      "manifestDigest": "sha256:da9abf7871f89ddc9ab07cb1ac212f45ea7ab17127a258f4c9b7f40b52fd53e3",
+      "configId": "sha256:efa21924d19bbbdeef77565786664f9e6617004e54d08662cc35a76f605de5f6",
+      "platform": "linux/amd64",
+      "archiveSha256": "e62480e897a25c2f29e21ecaecedcd9b0b90bfd71198940dc1a12dc973f0a591",
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    }
+  ],
+  "evidence": {
+    "ack-before-model-before.json": "6152c95d9a5b50722b9f67b1ef67ab21862af81d6a1476f4cb75b040892a1d29",
+    "ack-before-model.json": "24ac8139604eeb5039a8e1291faa90305a784feeb7e2285bd2e9f14e876604e5",
+    "browser.json": "28c40dd7c648ad748acd19a5d14b8ebbd9f803cdd1f6d62751023e54f9e95b16",
+    "checkpoint-after-seal-before.json": "369d748f07ece1be5d58f52112730849a77d5efd4fc53b302c093f0a36512eae",
+    "checkpoint-after-seal.json": "7bc92573e4854b0e11798d119febfa3e8c2774de137c6e4e1927552ad61b8cdb",
+    "checkpoint-before-seal-before.json": "328ee3617880fe7f796bc3b963905523c6d8e1f357a6a61d6ca678b8827c8842",
+    "checkpoint-before-seal.json": "5285a2296c3fc43fdcbcce627342ce94a7c82e893db6b986296dbadc53145555",
+    "claim-before-ack-before.json": "ac8f4f46378373f517a92b39c83a5158c1aed64abe28ff0692e3515af083faea",
+    "claim-before-ack.json": "a8189f66a9e2ce3fd1172deee11312b3813afe27d399c8ca87bd051f77d69894",
+    "continuous.json": "c42aceb0663c66851f29340f5b8861f6cf55df70f695d7cf6a905ebc0f2c6fb5",
+    "http.json": "736cd6faa864f07a9c62d94157ee43ec7a0e8bec917b2868fccb8243743ca274",
+    "outages.json": "43be69b5d79e0317b395f753f857c61cd98c077fcd6a44c843c39555be4959cd",
+    "response-before-round-before.json": "df14c0f9a76852f0534b40bf1d06395710a80945f9b9a0384a68f7ce5600e7d2",
+    "response-before-round.json": "cdbdbc4150c6a761beff87eed41fefab422cea731b8ce32987423b672ea9a14d",
+    "round-before-checkpoint-before.json": "5e725b4b3658f775bd34c0cc4e8c453429011f0e2363f6cefb978ff16be04cae",
+    "round-before-checkpoint.json": "543a325fca15106df59c914d7f961abce50d0c822e52eec94ce92e5b7de03384",
+    "runtime-audit.json": "efd7ec8b564d9d9fb08a1d4bf471381ffe1014527f4b5a1006abe73f4270f3f7"
+  },
+  "commands": {
+    "engineering": "backend/mvnw.cmd clean verify (R2C_ACCEPTANCE=1; separate identity_test/chat_test/ownership_test PostgreSQL and MQ)",
+    "linux": "immutable framework-probe as UID10001, readonly, network none, 512MiB, 128 PIDs",
+    "runtime": [
+      "AGENTPLATFORM_ACCEPTANCE_STAGE=r2c execution-acceptance.py crashes",
+      "execution-acceptance.py outages",
+      "execution-acceptance.py continuous",
+      "test-framework-http.py"
+    ],
+    "browser": "six explicitly enabled fixture-only Playwright suites at127.0.0.1:18089; no real-provider suites",
+    "static": [
+      "check-persistence-boundaries.py",
+      "frontend contracts:check/contracts:test/links:check",
+      "openspec validate --all --strict"
+    ]
+  },
+  "historicalFailures": [
+    "early Java compile/query/HTTP test integration failures corrected before151/151 final verify",
+    "sandbox Node temporary-file EPERM fixed by normal host execution",
+    "fresh local broker cookie ownership corrected on isolated R2.C volume; official image unchanged"
+  ],
+  "delivery": "Separate canonical-body and sanitized-evidence packages recorded in protected evidence/r2c/r2c-handoff.json after promotion; raw logs/secrets/database data excluded",
+  "staticChecks": {
+    "repositoryLinks": 30,
+    "canonicalLinks": 290,
+    "canonicalFilesChecked": 33,
+    "futureStepBlueprints": 31,
+    "openspecStrictItems": 13,
+    "persistenceJavaFiles": 95
+  },
+  "prePromotionCanonicalDelivery": {
+    "archive": "evidence/r2c/canonical-r2c-acceptance.zip",
+    "sha256": "332ec81df2d48b8bca65c23abb3569e7c2b164d791f8b6e62dfd463589bae36e",
+    "files": 97,
+    "protectedCopy": ".cache/r2c-local/delivery",
+    "remoteSync": false
+  }
+}

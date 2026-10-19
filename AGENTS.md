@@ -40,3 +40,5 @@ No default full-power guest account. FULL tool permission does not bypass space 
 
 ## Framework alignment and implementation readiness (2026-10-18)
 Before R2.2, complete the pending `r2-framework-alignment` correction. Read the canonical corrective plan and remaining-stage architecture guide linked in README. Every future Plan must name framework APIs, module/adapter/Mapper/XML/UI responsibilities, transaction and data flow, failure/recovery assertions and legacy capability mapping. Feature lists alone are insufficient. Prefer MyBatis/Spring transactions, Spring AMQP and supported AgentScope extensions; preserve platform ownership, budgets and authorization. No new business JDBC helper framework, hidden second scheduler/loop, or third-party source fork without an explicit reviewed design. This rule is a planning constraint, not a claim that migration is complete.
+
+Every persistence change must also pass `python deploy/scripts/check-persistence-boundaries.py`. Its exact driver/probe/TypeHandler exceptions are reviewed scope; do not broaden them to permit business JDBC in another package. ArchUnit enforces repository and DDD dependency boundaries in Maven.

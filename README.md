@@ -47,4 +47,4 @@ R0.3采用云端Linux开发验收替代本机Docker必测；现有4核/3655MiB/4
 - [R2.C框架化纠正计划](../项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R2.C-框架化与平台架构纠正计划.md)
 - [R2–R9技术架构与实现约束](../项目文档/06-AgentScope重构专项/07-交付与验收/07-后续阶段技术架构与实现约束.md)
 
-当前交付为计划补充；R2.C尚未实施，R2.2需等待纠正验收。正文在仓库外，Git推送不代表正文同步。
+R2.C框架纠正已完成全部本地验收，保护PR晋级与归档待完成；[验收收据](deploy/r2.c-acceptance.json)、[本地复验](deploy/R2.C-LOCAL.md)、[SDK复用结论](deploy/r2.c-sdk-reuse.json)。R2仍1/4、未RELEASED，云端R1不变；R2.2另行Plan/OpenSpec。正文在仓库外，Git推送不代表正文同步。
