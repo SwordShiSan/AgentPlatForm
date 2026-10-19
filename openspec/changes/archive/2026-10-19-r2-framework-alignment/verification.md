@@ -1,6 +1,6 @@
 # Current acceptance (2026-10-19)
 
-All mandatory local gates PASS; protected PR promotion and archival remain pending. Source cd879ff273846c47a4da483a17b4a3b50462eb93; exact backend/frontend trees and four immutable image/index/manifest/config/archive hashes are in deploy/r2.c-acceptance.json. V1–V6 and public wire contracts unchanged, cloud R1 unchanged, real provider calls0.
+All mandatory local gates PASS. Implementation PR50 (step→phase) and51 (phase→main) are merged; accepted main8391e5b0885d4af30d09d1f7ee799d2cb853fa80. R2.C VERIFIED. This change is archived with protected documentation promotion; final merge/delivery identities are recorded separately in the protected handoff. Source cd879ff273846c47a4da483a17b4a3b50462eb93; exact backend/frontend trees and four immutable image/index/manifest/config/archive hashes are in deploy/r2.c-acceptance.json. V1–V6 and public wire contracts unchanged, cloud R1 unchanged, real provider calls0.
 
 | Group | Current result | Evidence |
 |---|---|---|
@@ -12,6 +12,10 @@ All mandatory local gates PASS; protected PR promotion and archival remain pendi
 | Engineering/governance | PASS | Vue22/typecheck/build/contracts normal+invalid; six module trees/171 hash-locked artifacts; source JDBC boundary95 files/3 exact exceptions; links30, canonical290 and31 future-step blueprints; strict13 |
 
 This local Docker VM is larger than the minimum cloud host. Samples are not absolute peaks or a cloud/higher-concurrency promise. SDK compaction remains off until R6; full checkpoint continuation remains R2.4. No deployment, tools or real provider enabled. Local fixture stopped with data/images retained. Raw logs and secrets stay protected; only sanitized receipts are in Git. Historical early compile/SQL/HTTP integration failures and Node sandbox EPERM are retained locally and followed by clean passing regressions.
+
+## Promotion and scope
+
+PR50: https://github.com/SwordShiSan/AgentPlatForm/pull/50 ; PR51: https://github.com/SwordShiSan/AgentPlatForm/pull/51 . Actions remain disabled; no required check was bypassed or synthesized. Application trees match the accepted source; closure commits only change governance/evidence/scripts. R2 remains1/4, unreleased; R2.2 correction block removed but separate Plan/OpenSpec remains mandatory. Local fixture stopped, cloud unchanged. Canonical body and sanitized evidence packaged separately, hash-checked protected local copies retained through at least2026-11-18; no cloud body sync claimed.
 
 ## Historical engineering and planning records
 

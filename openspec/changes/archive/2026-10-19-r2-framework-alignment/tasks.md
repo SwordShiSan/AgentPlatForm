@@ -19,4 +19,4 @@
 ## 4. Acceptance and promotion
 - [x] 4.1 Run engineering, R1, R2.1, two-worker PG/MQ, SDK compatibility, browser and constrained resource regressions; real provider calls0.
 - [x] 4.2 Bind final source/images/schema/commands/results and canonical document delivery hashes.
-- [ ] 4.3 Review step→phase→main PRs; archive only after mandatory gates pass; update correction status and unblock R2.2.
+- [x] 4.3 Review step→phase→main PRs; archive only after mandatory gates pass; update correction status and unblock R2.2.
