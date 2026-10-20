@@ -66,6 +66,7 @@ final class DispatchPersistence extends ChatPersistenceSupport {
             }
          }
         { var rows42 = c.conversation().selectTask42(convo, e.aggregateId(), e.aggregateId()); busy |= !rows42.isEmpty(); }
+        if(!RecoveryPersistence.admitClaim(c,a,e.aggregateId())){inbox(c,e,"IGNORED");return null;}
         if(busy){c.dispatch().updateExecutionDispatch103(e.aggregateId());inbox(c,e,"DEFERRED");return null;}
         UUID attempt=Uuid7.next();
         c.dispatch().updateExecutionSlot104(e.aggregateId(), owner, fence);
@@ -74,9 +75,11 @@ final class DispatchPersistence extends ChatPersistenceSupport {
         c.dispatch().insertConversationLease107(e.spaceId(), convo, e.aggregateId(), attempt, owner, e.generation(), fence);
         c.conversation().updateTask108(e.aggregateId());inbox(c,e,"CLAIMED");
         { var rows41 = c.conversation().selectMessage41(e.aggregateId()); var row41 = rows41.isEmpty() ? null : rows41.getFirst(); assistant=row41.value1();messageVersion=row41.value2(); }
+        Lease lease=new Lease(e.aggregateId(),e.spaceId(),actor,convo,attempt,owner,fence,model,credential,revision,assistant);
+        RecoveryPersistence.claimed(c,lease);
         event(c,a,convo,e.aggregateId(),"task.state_changed",task(c,a,e.aggregateId(),false).version(),Map.of("taskId",e.aggregateId().toString(),"status","RUNNING"));
         event(c,a,convo,e.aggregateId(),"message.started",messageVersion,Map.of("messageId",assistant.toString(),"blockId",assistant.toString(),"role","ASSISTANT"));
-        return new Lease(e.aggregateId(),e.spaceId(),actor,convo,attempt,owner,fence,model,credential,revision,assistant);
+        return lease;
     });}
     public void quarantine(String reason){tx(c->{c.dispatch().insertDispatchQuarantine110(Uuid7.next(), reason);return null;});}
     public void recoverStopped(ExecutionLedger.StoppedOwner proof){tx(c->{reconcileStopped(c,proof);return null;});}

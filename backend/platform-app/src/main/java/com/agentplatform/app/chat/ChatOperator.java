@@ -22,6 +22,8 @@ import org.springframework.stereotype.Component;
 @Component
 @Profile("chat-ops")
 public final class ChatOperator implements ApplicationRunner {
+    private record RestoreEvidence(UUID commandId,UUID taskId,UUID checkpointId,UUID stopAttemptId,
+            Long expectedTaskVersion,Long expectedRevision,String operator) {}
     private record ReconciliationEvidence(UUID callId,UUID commandId,Long expectedRevision,
             com.agentplatform.domain.chat.CancellationLedger.Decision decision,UUID evidenceReference,
             String evidenceKind,String operator,String providerRequestId,Long inputTokens,Long outputTokens) {}
@@ -87,6 +89,24 @@ public final class ChatOperator implements ApplicationRunner {
             case "inspect-reconciliation" -> {
                 var projection=new ReconciliationService(repository).inspect(UUID.fromString(option(args,"task-id")));
                 System.out.println(tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(projection));
+            }
+            case "inspect-recovery" -> {
+                var projection=new CheckpointRestoreService(repository).inspect(UUID.fromString(option(args,"task-id")));
+                System.out.println(tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(projection));
+            }
+            case "recover-checkpoint" -> {
+                byte[] bytes=privateFile(Path.of(option(args,"evidence-file")));
+                try {
+                    RestoreEvidence evidence;
+                    try { evidence=tools.jackson.databind.json.JsonMapper.builder()
+                            .enable(tools.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).build().readValue(bytes,RestoreEvidence.class); }
+                    catch(RuntimeException invalid){throw new ChatFailure(422,"RECOVERY_COMMAND_INVALID");}
+                    if(evidence.expectedTaskVersion()==null||evidence.expectedRevision()==null||evidence.expectedTaskVersion()<1||evidence.expectedRevision()<0)
+                        throw new ChatFailure(422,"RECOVERY_COMMAND_INVALID");
+                    var result=new CheckpointRestoreService(repository).restore(new com.agentplatform.domain.chat.RecoveryLedger.RestoreCommand(
+                            evidence.commandId(),evidence.taskId(),evidence.checkpointId(),evidence.stopAttemptId(),evidence.expectedTaskVersion(),evidence.expectedRevision(),evidence.operator()));
+                    System.out.println("Recovery command recorded; task="+result.taskId()+" revision="+result.revision()+"; dispatch uses the existing outbox/MQ path.");
+                } finally {Arrays.fill(bytes,(byte)0);}
             }
             case "reconcile-call" -> {
                 byte[] bytes=privateFile(Path.of(option(args,"evidence-file")));

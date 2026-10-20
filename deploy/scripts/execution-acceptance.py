@@ -180,7 +180,7 @@ def outages(client):
     owner = sql("SELECT owner_id FROM pf.execution_slot WHERE task_id='" + task + "'")
     owned_service = None
     for service in ['worker', 'worker-2']:
-        marker = command(['docker', 'exec', PROJECT + '-' + service + '-1', 'cat', '/tmp/chat-worker-ready'])
+        marker = command(['docker', 'exec', PROJECT + '-' + service + '-1', 'cat', '/tmp/chat-worker-instance' if STAGE in {'r23','r24'} else '/tmp/chat-worker-ready'])
         if marker == owner:
             owned_service = service
     assert owned_service is not None
@@ -191,7 +191,7 @@ def outages(client):
     command(COMPOSE + ['start', 'postgres'])
     wait(lambda: healthy('postgres'), 60)
     wait(lambda: http_status(client, '/api/v1/me') == 200, 60)
-    if STAGE != 'r23':
+    if STAGE not in {'r23','r24'}:
         wait(lambda: command(['docker', 'inspect', PROJECT + '-' + owned_service + '-1', '--format', '{{.State.Health.Status}}']) == 'healthy', 60)
     if status(task) == 'RUNNING':
         proof = reconcile(ROOT, DATA, ENV, COMPOSE, service=owned_service, force=True)

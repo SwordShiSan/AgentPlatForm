@@ -23,8 +23,9 @@ public class ChatConfiguration {
             com.agentplatform.infrastructure.dao.chat.AccountingMapper accounting,
             com.agentplatform.infrastructure.dao.chat.ConfigurationMapper configuration,
             com.agentplatform.infrastructure.dao.chat.EventMapper event,
-            com.agentplatform.infrastructure.dao.chat.ControlMapper control) {
-        return new com.agentplatform.infrastructure.dao.chat.ChatMappers(ledger, conversation, dispatch, accounting, configuration, event, control);
+            com.agentplatform.infrastructure.dao.chat.ControlMapper control,
+            com.agentplatform.infrastructure.dao.chat.RecoveryMapper recovery) {
+        return new com.agentplatform.infrastructure.dao.chat.ChatMappers(ledger, conversation, dispatch, accounting, configuration, event, control, recovery);
     }
     @Bean ChatRepository chatRepository(com.agentplatform.infrastructure.dao.chat.ChatMappers mappers,
             org.springframework.transaction.support.TransactionTemplate transactions) {
@@ -52,10 +53,16 @@ public class ChatConfiguration {
     @Bean @Profile("chat-local") ChatApi chatApi(ChatRepository repository,@Value("${platform.chat.cursor-key-file}")String file,CredentialCipher cipher)throws Exception{return new ChatService(repository,new ChatCursor(Files.readAllBytes(Path.of(file))),cipher);}
     @Bean @Profile("chat-local") ReadinessProbe chatReadiness(ChatRepository repository,IdentityStore identity,DispatchTransport transport){return ()->identity.ready()&&repository.ready()&&transport.connected();}
     @Bean @Profile({"chat-local","chat-worker","chat-ops"}) CredentialCipher credentialCipher(@Value("${platform.chat.master-key-file}")String file)throws Exception{return new CredentialCipher(Files.readAllBytes(Path.of(file)));}
-    @Bean @Profile("chat-worker") ChatProvider chatProvider(@Value("${platform.chat.provider-base:https://api.deepseek.com}")String base,@Value("${platform.chat.fixture-provider:false}")boolean fixture){return new DeepSeekChatProvider(base,fixture);}
+    @Bean @Profile("chat-worker") ChatProvider chatProvider(@Value("${platform.chat.provider-base:https://api.deepseek.com}")String base,@Value("${platform.chat.fixture-provider:false}")boolean fixture,
+            @Value("${platform.chat.fixture-tools:false}")boolean tools,org.springframework.core.env.Environment environment){
+        if(tools&&!environment.acceptsProfiles(org.springframework.core.env.Profiles.of("recovery-fixture")))throw new IllegalArgumentException("FIXTURE_PROFILE_REQUIRED");
+        return new DeepSeekChatProvider(base,fixture,tools);
+    }
     @Bean @Profile("chat-worker") ChatExecution chatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,DispatchTransport transport,
             @org.springframework.beans.factory.annotation.Qualifier("executionTimers") org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler timers,
-            @Value("${platform.chat.workspace-root:/tmp/chat-runtime}")String root){return new ChatExecution(repository,provider,cipher,Path.of(root),timers.getScheduledExecutor());}
+            @Value("${platform.chat.workspace-root:/tmp/chat-runtime}")String root,
+            @Value("${platform.chat.fixture-tools:false}")boolean tools){return new ChatExecution(repository,provider,cipher,Path.of(root),timers.getScheduledExecutor(),
+                    tools?new com.agentplatform.infrastructure.chat.RecoveryFixtureTool(Path.of(root).resolve("fixture-effects")):null);}
     static void handoff(ChatRepository repository,ChatExecution execution,UUID owner,DispatchTransport.Delivery delivery){
         // Different AMQP channels can dispatch concurrently during reconnect. Keep
         // claim/ACK/run cleanup serial inside one worker, in addition to the DB fence.

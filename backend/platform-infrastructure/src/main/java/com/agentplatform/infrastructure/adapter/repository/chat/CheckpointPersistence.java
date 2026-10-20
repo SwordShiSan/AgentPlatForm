@@ -25,7 +25,7 @@ final class CheckpointPersistence extends ChatPersistenceSupport {
     public Set<String> stateKeys(Lease l){return tx(c->MyBatisExecutionLedger.stateKeys(c,l));}
     public void stateDelete(Lease l,String key){tx(c->{MyBatisExecutionLedger.stateDelete(c,l,key);return null;});}
     public UUID sealCheckpoint(Lease l,HarnessData.Bundle bundle){return tx(c->MyBatisExecutionLedger.seal(c,l,bundle));}
-    public List<HarnessData.Message> checkpointHistory(Lease l){return tx(c->MyBatisExecutionLedger.history(c,l));}
-    public void validateCheckpoint(Lease l,UUID id,HarnessData.Bundle bundle){tx(c->{MyBatisExecutionLedger.checkpoint(c,l,id,bundle);return null;});}
-    public void restoreCheckpoint(Lease l,UUID id,HarnessData.Bundle bundle){tx(c->{MyBatisExecutionLedger.restore(c,l,id,bundle);return null;});}
+    public List<HarnessData.Message> checkpointHistory(Lease l){return tx(c->RecoveryPersistence.history(c,l));}
+    public void validateCheckpoint(Lease l,UUID id,HarnessData.Bundle bundle){tx(c->{if(c.recovery().checkpoint(id,l.taskId())!=null)RecoveryPersistence.verify(c,l,id,bundle);else MyBatisExecutionLedger.checkpoint(c,l,id,bundle);return null;});}
+    public void restoreCheckpoint(Lease l,UUID id,HarnessData.Bundle bundle){tx(c->{if(c.recovery().checkpoint(id,l.taskId())!=null)RecoveryPersistence.copy(c,l,id);else MyBatisExecutionLedger.restore(c,l,id,bundle);return null;});}
 }

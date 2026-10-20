@@ -56,6 +56,11 @@ public final class HarnessPorts {
         /** Canonical history for immutable safe-point snapshots; empty preserves legacy adapters. */
         default List<Message> checkpointHistory(Scope scope) { return List.of(); }
         default List<Message> recoveryHistory(Scope scope) { throw new IllegalStateException("CHECKPOINT_NOT_COMMITTED"); }
+        /** Explicit production capability; legacy probes retain their original save/seal contract. */
+        default boolean atomicCheckpoints(Scope scope) { return false; }
+        default void commitCheckpoint(Scope scope, Bundle bundle, CheckpointDraft draft) {
+            throw new IllegalStateException("ATOMIC_CHECKPOINT_NOT_SUPPORTED");
+        }
     }
     /** Opaque, atomically versioned private state; never a public message or domain fact. */
     public interface StateStorage {
