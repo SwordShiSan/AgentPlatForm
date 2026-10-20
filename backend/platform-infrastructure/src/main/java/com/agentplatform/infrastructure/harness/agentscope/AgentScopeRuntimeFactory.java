@@ -70,6 +70,7 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
         private final java.util.concurrent.CopyOnWriteArrayList<CompletableFuture<?>> pendingFutures = new java.util.concurrent.CopyOnWriteArrayList<>();
         private final AtomicLong nextTurn;
         private final CompletableFuture<Outcome> result = new CompletableFuture<>();
+        private final CompletableFuture<Void> terminated = new CompletableFuture<>();
         private final HarnessAgent agent;
         private final AgentRun<AgentEvent> run;
 
@@ -148,8 +149,8 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
                 return await(() -> boundary.beforeStop(request.scope(), candidate))
                         .map(decision -> new Outcome(decision, candidate.text(), List.of()));
             })).doFinally(signal -> {
-                boundary.release(request.scope());
-                agent.close();
+                try { boundary.release(request.scope()); agent.close(); terminated.complete(null); }
+                catch (Throwable failure) { terminated.completeExceptionally(failure); }
             }).subscribe(result::complete, error -> {
                 if (error instanceof CancellationException || closed.get()) result.complete(new Outcome(Completion.CANCELLED, "", List.of()));
                 else result.completeExceptionally(error);
@@ -182,10 +183,17 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
         @Override public boolean cancel() {
             closed.set(true); boundary.cancelPending(request.scope()); pendingFutures.forEach(future -> future.cancel(true)); return run.cancel();
         }
+        @Override public CompletionStage<Void> terminated() { return terminated; }
         @Override public boolean interrupt() {
             boolean interrupted = run.interrupt(); closed.set(true); boundary.cancelPending(request.scope()); pendingFutures.forEach(future -> future.cancel(true)); return interrupted;
         }
-        @Override public void close() { if (!result.isDone()) cancel(); if (!started.get()) { boundary.release(request.scope()); agent.close(); } }
+        @Override public void close() {
+            if (!result.isDone()) cancel();
+            if (!started.get()) {
+                try { boundary.release(request.scope()); agent.close(); terminated.complete(null); }
+                catch (Throwable failure) { terminated.completeExceptionally(failure); }
+            }
+        }
 
         private final class BridgeModel implements Model {
             @Override public String getModelName() { return model.modelName(request.scope()); }

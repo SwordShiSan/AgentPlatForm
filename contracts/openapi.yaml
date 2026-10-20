@@ -276,7 +276,7 @@ paths:
         - $ref: "#/components/parameters/IdempotencyKey"
       responses:
         "202":
-          description: Authorized committed platform state; no provider secrets or internal reasoning
+          description: Cancel intent committed; execution is not stopped until confirmed. Repeated intent is idempotent; prior terminal success remains unchanged. Unknown remote outcome retains reservations and is never replayed.
           content:
             application/json:
               schema:
@@ -571,6 +571,39 @@ paths:
                 $ref: "#/components/schemas/TaskDiagnostics"
         default:
           $ref: "#/components/responses/IdentityProblem"
+  /api/v1/tasks/{id}/reconciliation:
+    get:
+      operationId: getTaskReconciliation
+      tags:
+        - chat
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Live-authorized read-only cancellation and reconciliation projection; no evidence content, provider secrets or internal paths
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskReconciliation"
+        default:
+          description: Problem
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Space-Id
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
 components:
   securitySchemes:
     session:
@@ -1159,3 +1192,88 @@ components:
         automaticReplayAllowed:
           type: boolean
           const: false
+    CallReconciliation:
+      type: object
+      additionalProperties: false
+      required:
+        - callId
+        - status
+        - reservationState
+        - inputTokens
+        - outputTokens
+        - costMicros
+        - revision
+      properties:
+        callId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - PREPARED
+            - STARTED
+            - COMPLETED
+            - FAILED
+            - UNKNOWN
+        reservationState:
+          type: string
+          enum:
+            - RESERVED
+            - RECONCILING
+            - SETTLED
+            - RELEASED
+        inputTokens: &a13
+          type:
+            - integer
+            - "null"
+          format: int64
+          minimum: 0
+          maximum: 9007199254740991
+        outputTokens: *a13
+        costMicros: *a13
+        revision: &a14
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 9007199254740991
+    TaskReconciliation:
+      type: object
+      additionalProperties: false
+      required:
+        - taskId
+        - stopStage
+        - stopConfirmed
+        - unknownCalls
+        - calls
+        - suggestedAction
+        - excludedFromContext
+        - version
+      properties:
+        taskId:
+          type: string
+          format: uuid
+        stopStage:
+          type: string
+          enum:
+            - NOT_REQUESTED
+            - STOPPING
+            - UNCONFIRMED
+            - STOPPED
+        stopConfirmed:
+          type: boolean
+        unknownCalls:
+          type: integer
+          minimum: 0
+        calls:
+          type: array
+          items:
+            $ref: "#/components/schemas/CallReconciliation"
+        suggestedAction:
+          type: string
+          enum:
+            - NONE
+            - WAIT_FOR_STOP
+            - CONTACT_OPERATOR_FOR_RECONCILIATION
+        excludedFromContext:
+          type: boolean
+        version: *a14

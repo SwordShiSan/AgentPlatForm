@@ -19,7 +19,7 @@ test('submit and cancel work when public-HTTP-only browser capabilities are avai
   await expect(page).toHaveURL(/\/app\/chat\/[a-f0-9-]+$/);
   await expect(page.locator('.chat-message.assistant .chat-text').last()).toContainText('慢速');
   await page.getByRole('button', { name: '取消回复', exact: true }).click();
-  await expect(page.getByRole('status').first()).toContainText('已取消');
+  await expect(page.getByRole('status').first()).toContainText(process.env.R23_BROWSER_ACCEPTANCE === '1' ? '需要处理' : '已取消');
   const panel = page.getByRole('region', { name: '任务诊断' });
   await panel.getByRole('button', { name: '复制诊断编号' }).click();
   await expect(panel.getByRole('status')).toContainText('手动复制');

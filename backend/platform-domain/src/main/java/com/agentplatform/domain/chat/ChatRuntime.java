@@ -8,7 +8,7 @@ public final class ChatRuntime {
     private ChatRuntime() {}
     public static Bundle bundle() {
         return new Bundle("2.0.4", 1, 1, "platform-v1", "deepseek-flash", Map.of(
-                "loop", "agentscope-stream-ledger-v1", "context", "canonical-chat-v1",
+                "loop", "agentscope-stream-ledger-cancel-v2", "context", "canonical-chat-v1",
                 "memory", "disabled", "retrieval", "disabled", "completion", "text-completion-v1"));
     }
 }

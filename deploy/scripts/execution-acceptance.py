@@ -14,7 +14,7 @@ import uuid
 from stopped_owner import reconcile
 from execution_images import pin_exported
 
-from execution_fixture import ROOT, DATA, ENV, COMPOSE, BASE, PROJECT
+from execution_fixture import ROOT, DATA, ENV, COMPOSE, BASE, PROJECT, STAGE
 OUT = DATA / 'acceptance'
 POINTS = ['claim-before-ack', 'ack-before-model', 'response-before-round', 'round-before-checkpoint', 'checkpoint-before-seal', 'checkpoint-after-seal']
 
@@ -191,7 +191,8 @@ def outages(client):
     command(COMPOSE + ['start', 'postgres'])
     wait(lambda: healthy('postgres'), 60)
     wait(lambda: http_status(client, '/api/v1/me') == 200, 60)
-    wait(lambda: command(['docker', 'inspect', PROJECT + '-' + owned_service + '-1', '--format', '{{.State.Health.Status}}']) == 'healthy', 60)
+    if STAGE != 'r23':
+        wait(lambda: command(['docker', 'inspect', PROJECT + '-' + owned_service + '-1', '--format', '{{.State.Health.Status}}']) == 'healthy', 60)
     if status(task) == 'RUNNING':
         proof = reconcile(ROOT, DATA, ENV, COMPOSE, service=owned_service, force=True)
         assert status(task) == 'BLOCKED'

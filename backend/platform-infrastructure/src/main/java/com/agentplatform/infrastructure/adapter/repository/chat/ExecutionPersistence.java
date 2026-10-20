@@ -44,7 +44,7 @@ final class ExecutionPersistence extends ChatPersistenceSupport {
         authorizeCredential(c,l);activeModel(c,l);
         long allowance=callAllowance(c,l);
         if(real&&c.accounting().updateAcceptanceModelMeter118(allowance)!=1)throw new ChatFailure(503,"ACCEPTANCE_METER_UNAVAILABLE");
-        if(c.accounting().updateModelCall119(call.id(), l.taskId())!=1)throw new ChatFailure(409,"CALL_ALREADY_STARTED");return null;
+        if(c.accounting().updateModelCall119(call.id(), l.taskId())!=1)throw new ChatFailure(409,"CALL_ALREADY_STARTED");c.control().providerKind(call.id(),real?"REAL":"DETERMINISTIC");return null;
     });}
     public void settle(Lease l,Call call,HarnessData.Round round,String requestId,String error,boolean real){tx(c->{settleCall(c,l,call,round,requestId,error,real);return null;});}
     public Credential credential(Lease l,UUID call){return tx(c->{
@@ -59,7 +59,7 @@ final class ExecutionPersistence extends ChatPersistenceSupport {
          }
     });}
     public void finish(Lease l,String status,String reason){tx(c->{
-        owned(c,l,true);if("SUCCEEDED".equals(status)){owned(c,l,false);authorizeCredential(c,l);activeModel(c,l);}if(!Set.of("SUCCEEDED","FAILED","CANCELLED","BLOCKED").contains(status))throw new IllegalArgumentException("Invalid terminal outcome");
+        owned(c,l,true);if(c.control().stopCount(l)!=1)throw new ChatFailure(409,"EXECUTION_STOP_NOT_CONFIRMED");if("SUCCEEDED".equals(status)){owned(c,l,false);authorizeCredential(c,l);activeModel(c,l);}if(!Set.of("SUCCEEDED","FAILED","CANCELLED","BLOCKED").contains(status))throw new IllegalArgumentException("Invalid terminal outcome");
         releasePrepared(c,new Actor(l.userId(),l.spaceId()),l.taskId());
         // An open call cannot disappear when cancellation/provider failure interrupts its result.
         c.accounting().updateBudgetReservation133(l.taskId());
@@ -70,7 +70,7 @@ final class ExecutionPersistence extends ChatPersistenceSupport {
         { var rows29 = c.conversation().selectMessage29(l.assistantId()); var row29 = rows29.isEmpty() ? null : rows29.getFirst(); text=String.valueOf(blocks(row29.value1()).getFirst().get("text"));messageVersion=row29.value2()+1; }
         String messageStatus="SUCCEEDED".equals(status)?"COMPLETED":text.isEmpty()?"FAILED":"PARTIAL";
         c.conversation().updateMessage136(messageStatus, messageVersion, l.assistantId());
-        c.dispatch().updateAttempt137(status, reason, l.attemptId());c.dispatch().updateExecutionDispatch138(l.taskId());
+        c.dispatch().updateAttempt137("BLOCKED".equals(status)?"INTERRUPTED":status, reason, l.attemptId());c.dispatch().updateExecutionDispatch138(l.taskId());
         c.dispatch().deleteConversationLease139(l.attemptId());
         c.dispatch().updateExecutionSlot140();
         Actor a=new Actor(l.userId(),l.spaceId());event(c,a,l.conversationId(),l.taskId(),"message.completed",messageVersion,Map.of("messageId",l.assistantId().toString(),"status",messageStatus));Task task=task(c,a,l.taskId(),false);

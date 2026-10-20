@@ -22,8 +22,9 @@ public class ChatConfiguration {
             com.agentplatform.infrastructure.dao.chat.DispatchMapper dispatch,
             com.agentplatform.infrastructure.dao.chat.AccountingMapper accounting,
             com.agentplatform.infrastructure.dao.chat.ConfigurationMapper configuration,
-            com.agentplatform.infrastructure.dao.chat.EventMapper event) {
-        return new com.agentplatform.infrastructure.dao.chat.ChatMappers(ledger, conversation, dispatch, accounting, configuration, event);
+            com.agentplatform.infrastructure.dao.chat.EventMapper event,
+            com.agentplatform.infrastructure.dao.chat.ControlMapper control) {
+        return new com.agentplatform.infrastructure.dao.chat.ChatMappers(ledger, conversation, dispatch, accounting, configuration, event, control);
     }
     @Bean ChatRepository chatRepository(com.agentplatform.infrastructure.dao.chat.ChatMappers mappers,
             org.springframework.transaction.support.TransactionTemplate transactions) {
@@ -59,6 +60,7 @@ public class ChatConfiguration {
         // Different AMQP channels can dispatch concurrently during reconnect. Keep
         // claim/ACK/run cleanup serial inside one worker, in addition to the DB fence.
         synchronized(execution){
+            if(!execution.accepting()){delivery.retryAfterDisconnect();return;}
             try{var lease=repository.claim(delivery.envelope(),owner);if(lease!=null)FixtureFaults.pause("claim-before-ack");delivery.ack();if(lease!=null){FixtureFaults.pause("ack-before-model");execution.run(lease);}}
             catch(ChatFailure error){if(error.status()==400){repository.quarantine(error.code());delivery.ack();}else {delivery.retryAfterDisconnect();System.getLogger(ChatConfiguration.class.getName()).log(System.Logger.Level.WARNING,"Claim not acknowledged: "+error.code());}}
         }
