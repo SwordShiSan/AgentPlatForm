@@ -6,6 +6,8 @@ import json
 import time
 import socket
 import subprocess
+import shutil
+from concurrent.futures import ThreadPoolExecutor
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -99,11 +101,49 @@ def protocol():
             'sample':execution.sample(),'realProviderCalls':0}
 
 
+def collection():
+    client=execution.Client()
+    conversation=completed(client)
+    snapshot=client.request('GET','/api/v1/conversations/'+conversation+'/snapshot')
+    old_task=snapshot['tasks'][-1]['taskId'];floor=snapshot['cursor']
+    wait(lambda: sql("SELECT status FROM pf.event_outbox WHERE aggregate_id='"+old_task+"'")=='PUBLISHED')
+    tables={'task':'id','message':'task_id','attempt':'task_id','model_call':'task_id','model_turn':'task_id',
+            'checkpoint':'task_id','budget_reservation':'task_id','event_outbox':'aggregate_id','consumer_inbox':'aggregate_id'}
+    def fingerprints():
+        return {table:hashlib.sha256(sql("SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text),'[]'::jsonb)::text "
+            +"FROM pf."+table+" t WHERE "+column+"='"+old_task+"'").encode('utf-8')).hexdigest() for table,column in tables.items()}
+    before=fingerprints()
+    assert int(sql("SELECT count(*) FROM pf.checkpoint WHERE task_id='"+old_task+"'"))>0
+    sql("UPDATE pf.platform_event SET created_at=now()-interval '31 days' WHERE conversation_id='"+conversation+"' AND seq<="+str(floor))
+    task=client.request('POST','/api/v1/conversations/'+conversation+'/tasks',{'options':{'modelId':'0199e000-0000-7000-8000-000000000002','credentialSource':'PLATFORM'},'input':{'text':'fixture:slow'}})['taskId']
+    deleted=[]
+    try:
+        wait(lambda: sql("SELECT count(*) FROM pf.message WHERE task_id='"+task+"' AND role='ASSISTANT' AND length(blocks_json->0->>'text')>0")=='1')
+        def collect(_):return int(sql("SELECT pf.collect_expired_replay('"+conversation+"')"))
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            deleted=list(pool.map(collect,range(6)))
+        assert all(0<=value<=1000 for value in deleted)
+        assert int(sql("SELECT replay_pruned_through FROM pf.conversation WHERE id='"+conversation+"'"))==floor
+    finally:
+        client.request('POST','/api/v1/tasks/'+task+'/cancel',{})
+        wait(lambda: execution.status(task) in {'CANCELLED','SUCCEEDED'},90)
+    assert before==fingerprints(),'GC changed a canonical message/ledger/checkpoint/outbox/inbox'
+    current=client.request('GET','/api/v1/conversations/'+conversation+'/snapshot')
+    assert current['cursor']>floor
+    assert int(sql("SELECT count(*) FROM pf.platform_event WHERE conversation_id='"+conversation+"'"))==current['cursor']-floor
+    assert status(client,conversation,0)==410 and status(client,conversation,floor)==200
+    return {'status':'PASS','realApplicationHistory':True,'simulatedAgeOnly':True,'collectors':2,'oldPrefix':floor,'deletedPerCall':deleted,
+            'preservedFactSha256':before,'youngTailContiguous':True,'realProviderCalls':0}
+
+
 def observe():
+    retained=collection()
+    (OUT/'replay-collection.json').write_text(json.dumps(retained,indent=2),encoding='utf-8')
     client=execution.Client()
     started=time.monotonic()
     samples=[]
     completed_conversations=[]
+    interruption=None
     while True:
         conversation=completed(client)
         snapshot=client.request('GET','/api/v1/conversations/'+conversation+'/snapshot')
@@ -115,6 +155,15 @@ def observe():
             assert status(client,conversation,snapshot['cursor'])==200
         assert snapshot==client.request('GET','/api/v1/conversations/'+conversation+'/snapshot')
         completed_conversations.append(conversation)
+        if interruption is None and time.monotonic()-started>=600:
+            began=time.monotonic()-started
+            if (OUT/'outages.json').exists():
+                shutil.copy2(OUT/'outages.json',OUT/'outages-before-observation.json')
+            execution.outages(client)
+            command(COMPOSE+['up','-d','--no-deps','--wait','--wait-timeout','180','worker','worker-2'])
+            interruption={'status':'PASS','startedAtSeconds':began,'endedAtSeconds':time.monotonic()-started,
+                          'brokerAndActiveDatabaseFailure':True,'unknownNotReplayed':True,
+                          'evidenceSha256':hashlib.sha256((OUT/'outages.json').read_bytes()).hexdigest()}
         item=execution.sample()
         item['elapsedSeconds']=time.monotonic()-started
         item['replayRows']=int(sql('SELECT count(*) FROM pf.platform_event'))
@@ -127,7 +176,9 @@ def observe():
             break
         time.sleep(min(30,1800-item['elapsedSeconds']))
     assert samples[-1]['prunedConversations']>samples[0]['prunedConversations'], 'Actual scheduled collection must run'
+    assert interruption is not None and interruption['endedAtSeconds']>=600
     return {'status':'PASS','durationSeconds':time.monotonic()-started,'samples':samples,'tasks':len(completed_conversations),
+            'retentionConcurrency':retained,'inWindowDependencyFailure':interruption,
             'realProviderCalls':0,'capacityClaim':'Single-slot container limits and sampled usage only; actual host identity is in samples'}
 
 
@@ -256,7 +307,7 @@ def rollback():
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode',choices=['protocol','failures','pressure','observe','rollback'])
+    parser.add_argument('mode',choices=['protocol','failures','pressure','collection','observe','rollback'])
     args=parser.parse_args()
     pin_exported(ENV,DATA,required=True)
     OUT.mkdir(parents=True,exist_ok=True)
