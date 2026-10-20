@@ -121,6 +121,17 @@ class RecoveryPostgresTest {
         assertEquals("FAILED",fixture.repository.task(fixture.actor,c.lease().taskId()).status());
         assertEquals(1,count("SELECT count(*) FROM pf.attempt"));
     }
+    @Test void unknownToolCannotBeHiddenByAReportedSuccessfulStop() throws Exception {
+        var lease=fixture.lease();fixture.repository.executionStartup(lease);
+        var turn=fixture.repository.beginTurn(lease);var call=fixture.started(lease);
+        var tool=new com.agentplatform.types.harness.HarnessData.Call("uncertain-tool","recovery_probe",Map.of("text","one"),false);
+        fixture.commit(lease,turn,fixture.turn("",List.of(tool)),call);fixture.repository.startTool(lease,tool);
+        fixture.repository.stopped(lease,"SUCCEEDED",null,null,"5".repeat(64));
+        assertEquals("BLOCKED",fixture.repository.task(fixture.actor,lease.taskId()).status());
+        assertEquals(1,count("SELECT count(*) FROM pf.tool_operation WHERE status='UNKNOWN'"));
+        var recovery=fixture.repository.recovery(fixture.actor,lease.taskId());
+        assertFalse(recovery.eligible());assertEquals("RECOVERY_UNKNOWN_EFFECT",recovery.reasonCode());
+    }
     @Test void restoredInputRunsThroughActualSdkAndCommitsOnePhysicalCall() throws Exception {
         var c=stoppedInput();fixture.repository.restore(command(c));
         var target=fixture.repository.claim(fixture.envelope(fixture.repository.task(fixture.actor,c.lease().taskId())),UUID.randomUUID());

@@ -48,7 +48,8 @@ final class ControlPersistence extends ChatPersistenceSupport implements Cancell
             String code=cancelled?"TASK_CANCEL_REQUESTED":reason;
             // Stopping a transport cannot prove the outcome of an already started tool.
             c.ledger().updateToolOperation149(lease.taskId());
-            if(c.recovery().unknown(lease.taskId())>0&&!"SUCCEEDED".equals(terminal)){terminal="BLOCKED";code="EXTERNAL_RESULT_UNKNOWN";}
+            boolean unknownTool=c.recovery().operations(lease.taskId()).stream().anyMatch(operation->Set.of("RUNNING","UNKNOWN").contains(operation.status()));
+            if(unknownTool||(c.recovery().unknown(lease.taskId())>0&&!"SUCCEEDED".equals(terminal))){terminal="BLOCKED";code="EXTERNAL_RESULT_UNKNOWN";}
             new ExecutionPersistence(c).finish(lease,terminal,code);
             return null;
         });
