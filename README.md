@@ -1,6 +1,6 @@
 # AgentPlatForm
 
-当前实施：**R2.4 IMPLEMENTING，R2仍3/4 VERIFIED、未 RELEASED**。[checkpoint续跑本地验收](deploy/R2.4-LOCAL.md)及[R2发行边界](deploy/R2-RELEASE.md)。强制门禁和两级PR尚未完成；本阶段未变更云端，SSH连接问题仍待排查，当前公网健康未核验。以下保留已验收基线和历史记录。
+当前实施：**R2.4本地功能门禁PASS，保护晋级待完成，尚未VERIFIED**。[checkpoint续跑本地验收](deploy/R2.4-LOCAL.md)、[脱敏证据](deploy/r2.4-acceptance.json)及[R2发行边界](deploy/R2-RELEASE.md)。本地fixture已停止、数据/镜像保留；本阶段未变更云端，SSH连接问题仍待排查，当前公网健康未核验。OpenSpec保持活动，云端门禁通过前不建R2生产tag、不进入R3。以下保留已验收基线和历史记录。
 
 当前开发：**R2.3 VERIFIED，R2完成3/4、未 RELEASED**。取消收敛、停止回执、未知调用只读投影及受保护运维对账已通过本地强制门禁和两级PR；[本地说明](deploy/R2.3-LOCAL.md)、[脱敏证据](deploy/r2.3-acceptance.json)。云端R1未改，真实供应商调用0；R2.4另行Plan/OpenSpec。
 

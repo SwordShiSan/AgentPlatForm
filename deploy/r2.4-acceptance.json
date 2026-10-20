@@ -1,0 +1,527 @@
+{
+  "stage": "R2.4",
+  "status": "LOCAL_FUNCTIONAL_GATES_PASS_PROMOTION_PENDING",
+  "recordedAt": 1792521747.223278,
+  "baseline": "23f68812c8a8438684653d2ec89fbbef9293fb07",
+  "receiptSource": "b09768eba469f098c87e517472b220ae342566fe",
+  "candidateSource": "6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19",
+  "backendTree": "0e271cbf0a936dc89fdc8765ccea569121e65bf7",
+  "frontendTree": "b6313c023c68e737ec5c158d9f226d4b8e8aa38e",
+  "frontendRuntimeSourceTree": "1b11d73d78b9724ae837c1e6462efdcd92558034",
+  "testOnlyFrontendChangesAfterCandidate": [
+    "frontend/tests/e2e/replay.spec.ts"
+  ],
+  "jarSha256": "54d201fa3c10a5ab6acbb43b00015b622aa8fcc800d93e74b94a9e0016ffdb3b",
+  "schema": 9,
+  "runtimeBaseline": 1,
+  "migrationsV1ThroughV8Unchanged": true,
+  "images": [
+    {
+      "component": "api",
+      "tag": "agentplatform-api:r24-local",
+      "source": "6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19",
+      "localId": "sha256:8411db9973e56ae85d8d4b8ca05632f74c5629595d41e459fe66b0ce3fd662e3",
+      "indexDigest": "sha256:8411db9973e56ae85d8d4b8ca05632f74c5629595d41e459fe66b0ce3fd662e3",
+      "manifestDigest": "sha256:b1c843b205f22b7292709f0a3edca3ad99af2ec3d46c0e338c81fb95c7c9500d",
+      "configId": "sha256:0d33cf464cc602519f2ac7ef7cc22a392dd5dd8ef7846ddb759956e8ebc43571",
+      "platform": "linux/amd64",
+      "archiveBytes": 172105187,
+      "archiveSha256": "50a1bd906f391589498af37eef3ac02b2a6b8323f3b296319b193ed0ec7fdbb0",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/0d33cf464cc602519f2ac7ef7cc22a392dd5dd8ef7846ddb759956e8ebc43571",
+          "RepoTags": [
+            "agentplatform-api:r24-local"
+          ],
+          "Layers": [
+            "blobs/sha256/a60ef8ec184edb5ed91f5983f00261359fb2fe20f603e8d488b9477d32fcad70",
+            "blobs/sha256/49b14164d4d96e593cb68db980906b691931cdcde6f60b918280317c89e55462",
+            "blobs/sha256/7c48d168a51b541814c6814256cd298e11114f5f088e4511cffb4f6b3622d1b6",
+            "blobs/sha256/5165dac19553999758e23bf9247e5bac05f0d26ee503d13bf70c1e8873eb8d37",
+            "blobs/sha256/02e0e048361058af7411fe47569c4d90b68a917dba037514c3831b7bf7029c7b",
+            "blobs/sha256/412e0e29481a7beb80ad1ff4a3d8b9e96ab550d543ca4bc6f517f1e3d0760a0a",
+            "blobs/sha256/cba3fe01224b42721f05e1f4246894b216acf2e5d87fc9ed1e2187cfd4104679",
+            "blobs/sha256/baa8c8f3dae03ee7c2be479219abd69b3912afba967b7c030579f2803c530413"
+          ]
+        }
+      ],
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    },
+    {
+      "component": "gateway",
+      "tag": "agentplatform-gateway:r24-local",
+      "source": "6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19",
+      "localId": "sha256:59946971e68bac9884b92e58fd7754ef39502b18c5de0a411111ec367bfd4988",
+      "indexDigest": "sha256:59946971e68bac9884b92e58fd7754ef39502b18c5de0a411111ec367bfd4988",
+      "manifestDigest": "sha256:bfff393adbb4228d9468e81cb5b6fd8c98237065003d92866db05e0da2229747",
+      "configId": "sha256:42841ce73de7791e00b182ef1b6f867193a1160e96197844ecfae0d288da53ac",
+      "platform": "linux/amd64",
+      "archiveBytes": 25607685,
+      "archiveSha256": "26c51168a493725c1eb82f586f353c8b0d2020e9c1387a7a9cac797a563ade2e",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/42841ce73de7791e00b182ef1b6f867193a1160e96197844ecfae0d288da53ac",
+          "RepoTags": [
+            "agentplatform-gateway:r24-local"
+          ],
+          "Layers": [
+            "blobs/sha256/e2de96513ba9eb53b431787ec8a65cdde380ac4772a3e4c4b714dcfde2a102b5",
+            "blobs/sha256/655cdf110ce6cc8b81dc0bf0d471a4fb200eac950a7a108ed5335b91ed3ef07b",
+            "blobs/sha256/cb3dcaeaef3012c03cc5ba44f04289e06247ee28b0396073f0c1aa4667e08cd6",
+            "blobs/sha256/c792e3f2c3b45eb2b0ab9ca191eb1c881394ef80dc9b03a728d4241709cfd309",
+            "blobs/sha256/dfd17a001b4375f4b03069aa2c6c03e965543d91589d9f7399dae7c3798037bd",
+            "blobs/sha256/69146b4a52cfd86bdd87919b33fc3c6afd168c7911c27d3805d48212887b2e4f",
+            "blobs/sha256/1f9e9a0fcad78d32ce75d315476a02e8c85818e0db3191e375796df6d1594dda",
+            "blobs/sha256/db0e3cd9a4f71fb319f83c2b8da0c7ba756419e6d8a8671e117dcba315656b39",
+            "blobs/sha256/ab0d6d0b8f06a2555ffb7e2777729ed4c2c656d62a2869414c9df71b527c4b41",
+            "blobs/sha256/1a40e1af238bd84dadee218bc7fbcea56c26ec7fdab39ebd9f67d1d1a5bb9ea3",
+            "blobs/sha256/546c192720c911be060e0ec76ce0c71fae575f45ff5e35e6d30ec2c11923d8a5"
+          ]
+        }
+      ],
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    },
+    {
+      "component": "provider-fixture",
+      "tag": "agentplatform-provider-fixture:r24-local",
+      "source": "6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19",
+      "localId": "sha256:be35ea877a0a6dadb8b5dd738493b08071d0ff7ac465d2162ae57b3d22853458",
+      "indexDigest": "sha256:be35ea877a0a6dadb8b5dd738493b08071d0ff7ac465d2162ae57b3d22853458",
+      "manifestDigest": "sha256:2013831060c8164397a711c37c95d371d10ef4597d65c3ee2e4f646d854a3404",
+      "configId": "sha256:fd79df4745a15df8dbbb7481a4cc2f3c528bd91f9a24f5e75d5d7ac8a86bff4b",
+      "platform": "linux/amd64",
+      "archiveBytes": 42953842,
+      "archiveSha256": "5d76e7ac24d757881aed9ac356055758f38d00daed74ae27b6832d81527a6353",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/fd79df4745a15df8dbbb7481a4cc2f3c528bd91f9a24f5e75d5d7ac8a86bff4b",
+          "RepoTags": [
+            "agentplatform-provider-fixture:r24-local"
+          ],
+          "Layers": [
+            "blobs/sha256/ecc510c1e359bdc007b39802570bb7e4dec7d6ebccf357c3201a74299113e05e",
+            "blobs/sha256/75b6a36c64a1cf3520fc4b4aae4739d5caa8a6a05c27835a920a61784c9c32f8",
+            "blobs/sha256/6912e23eb44595b44dc6d9882b34f305ad6f6e9667cec70b13e5dbc4f8cd97f4",
+            "blobs/sha256/bbc5a12237474ec0b23b5051260d56d6436a24d70d9cad961adebe7a037ed813",
+            "blobs/sha256/1b57fc85e0135d1b199891c948a7376f4c21a243c06c6b10e934a9fab60bdc1d"
+          ]
+        }
+      ],
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    },
+    {
+      "component": "framework-probe",
+      "tag": "agentplatform-framework-probe:r24-local",
+      "source": "6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19",
+      "localId": "sha256:e249106bcc830b64af775b803fba506a168ad190e7e2a80ede7538b9255bf9c0",
+      "indexDigest": "sha256:e249106bcc830b64af775b803fba506a168ad190e7e2a80ede7538b9255bf9c0",
+      "manifestDigest": "sha256:b5cdbafaee73d791b9be4810da3d2bb91143c5bad118f4d058827075b1631dfe",
+      "configId": "sha256:48406ec8f46b0d5e5846d3d24a52a88a34c56f4648e26389f2e6682d10e366e9",
+      "platform": "linux/amd64",
+      "archiveBytes": 303133502,
+      "archiveSha256": "45edfa46e772d8534e90e3459aa3df786ea93af736b4004ae4dcacd16b398931",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/48406ec8f46b0d5e5846d3d24a52a88a34c56f4648e26389f2e6682d10e366e9",
+          "RepoTags": [
+            "agentplatform-framework-probe:r24-local"
+          ],
+          "Layers": [
+            "blobs/sha256/a60ef8ec184edb5ed91f5983f00261359fb2fe20f603e8d488b9477d32fcad70",
+            "blobs/sha256/8b068c321b37c6e50e8ca50209806303ebbb676b492a08070ba9d79a0f7df6f8",
+            "blobs/sha256/61d5a0d738f6fd8344abcdcf7c1b734d9adbf8d5161b30b80fbf9533b8ab0bb2",
+            "blobs/sha256/dc6abd946a0778c24a3d28c86aa3ecec2fbb7f1f681a12f2411c7664d5652812",
+            "blobs/sha256/ab0753bfa4f1a7af00cc2acca04a6ef15ab39b5b5f182052d379bb3980dfc1d2",
+            "blobs/sha256/ba8298971da319dc1d90f8792c3c7a2fde9957949c8e1e0be6a2f86b5fd529e6",
+            "blobs/sha256/1054c6ec12654dfbee33b0f9d363eb970b63e6d4ad16844290a1305e35c68940",
+            "blobs/sha256/5ca9196db7531991684edabe7ece3bc46b125f3aaf71cf628b37a4bd80e3f25a",
+            "blobs/sha256/7cc5f526c2dbd0c3548ff90852eb2ff187cb4a24358afb5c26bb08bc1e3ead09",
+            "blobs/sha256/890fd4fda306012b043e6f7ebb0d96298a112fcf36720e9a8b04510e381e1704",
+            "blobs/sha256/3212a47ee2acba8381d69bd88d9eed3985848e56123034a38b780640b81b91c0",
+            "blobs/sha256/78df1a9ef722674f0b148dcdeeb3daa682619bdf99f306793d86673695e3942a"
+          ]
+        }
+      ],
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    }
+  ],
+  "engineering": {
+    "maven": {
+      "tests": 196,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "vueUnitTests": 34,
+    "linuxNonRootTests": 69,
+    "inheritedBrowserTests": 20,
+    "recoveryBrowserStates": 4,
+    "strictItems": 16
+  },
+  "recovery": {
+    "windows": [
+      {
+        "status": "PASS",
+        "effects": 0,
+        "independentAttempts": 2,
+        "deadlineUnchanged": true,
+        "name": "input"
+      },
+      {
+        "status": "PASS",
+        "effects": 1,
+        "independentAttempts": 2,
+        "deadlineUnchanged": true,
+        "name": "prepared-tool"
+      },
+      {
+        "status": "PASS",
+        "effects": 1,
+        "independentAttempts": 2,
+        "deadlineUnchanged": true,
+        "name": "committed-tool"
+      },
+      {
+        "status": "PASS",
+        "noReplayedCall": true,
+        "name": "terminal"
+      },
+      {
+        "status": "PASS",
+        "refusal": "RECOVERY_UNKNOWN_EFFECT",
+        "calls": 1,
+        "name": "unknown-model"
+      },
+      {
+        "status": "PASS",
+        "refusal": "CHECKPOINT_LEDGER_ADVANCED",
+        "calls": 1,
+        "name": "advanced-round"
+      },
+      {
+        "status": "PASS",
+        "refusal": "RECOVERY_UNKNOWN_EFFECT",
+        "calls": 1,
+        "name": "unknown-tool"
+      },
+      {
+        "status": "PASS",
+        "refusal": "CHECKPOINT_LEDGER_ADVANCED",
+        "calls": 1,
+        "name": "advanced-tool"
+      }
+    ],
+    "integrityCases": 10,
+    "integrityProbeIsNotContainerStopProof": true,
+    "unknownNeverReplayed": true,
+    "stableIdentities": true,
+    "taskDeadlineAndCallLimitNotReset": true
+  },
+  "inheritedProcessModes": [
+    "ack-before-claim-commit",
+    "ack-after-claim-commit",
+    "dependency-outages",
+    "replay-protocol",
+    "replay-failures",
+    "replay-collection",
+    "replay-pressure",
+    "cancellation-protocol",
+    "cancellation-accounting",
+    "cancellation-stuck",
+    "cancellation-windows",
+    "r1-v9-compatibility"
+  ],
+  "oldR1ImageOnV9": {
+    "status": "PASS",
+    "cloudRollbackClaim": false,
+    "oldCloudConfigId": "sha256:6853788d51b309e45ff36200a533304431266fb3feaaf121209daa807fffe757"
+  },
+  "resources": {
+    "project": "agentplatform-r24-local",
+    "initialLimitMiB": 2528,
+    "maxCombinedMiB": 2887,
+    "hostReserveMiB": 768,
+    "actualDockerVmApproxGiB": 7.69,
+    "singleExecutionSlot": true,
+    "minimumPhysicalHostClaim": false,
+    "dualExecutionClaim": false,
+    "swapExpansion": false
+  },
+  "observation": {
+    "status": "PASS",
+    "durationSeconds": 1807.688234500005,
+    "samples": 67,
+    "tasks": 66,
+    "sampledAvailableMinBytes": 5963935744,
+    "maxContainerLimitBytes": 2650800128,
+    "swapUsedFirstBytes": 0,
+    "swapUsedLastBytes": 0,
+    "databaseGrowthBytes": 2031616,
+    "inWindowDependencyFaults": "PASS",
+    "absolutePeakClaim": false
+  },
+  "sampledPeaks": {
+    "containerMemoryBytes": {
+      "agentplatform-r24-local-api-1": 493355008,
+      "agentplatform-r24-local-fixture-1": 14281605,
+      "agentplatform-r24-local-gateway-1": 2391802,
+      "agentplatform-r24-local-postgres-1": 80719380,
+      "agentplatform-r24-local-rabbitmq-1": 185388237,
+      "agentplatform-r24-local-redis-1": 3624927,
+      "agentplatform-r24-local-worker-1": 250504806,
+      "agentplatform-r24-local-worker-2-1": 247254221
+    },
+    "containerCpuPercent": {
+      "agentplatform-r24-local-api-1": 82.59,
+      "agentplatform-r24-local-fixture-1": 0.04,
+      "agentplatform-r24-local-gateway-1": 2.17,
+      "agentplatform-r24-local-postgres-1": 20.65,
+      "agentplatform-r24-local-rabbitmq-1": 72.22,
+      "agentplatform-r24-local-redis-1": 0.96,
+      "agentplatform-r24-local-worker-1": 11.89,
+      "agentplatform-r24-local-worker-2-1": 100.48
+    },
+    "javaThreadsByService": {
+      "api": 48,
+      "worker": 33,
+      "worker-2": 33
+    },
+    "databaseConnections": 10,
+    "absolutePeakClaim": false
+  },
+  "localDiskSamples": {
+    "count": 119,
+    "dockerFilesystemUsedGrowthBytes": 2375680,
+    "dockerFilesystemFreeMinBytes": 945695346688,
+    "workspaceDriveUsedGrowthBytes": 1200128,
+    "cloudDiskClaim": false
+  },
+  "realProvider": {
+    "status": "PASS",
+    "physicalRequests": 1,
+    "frozenInputRestart": true,
+    "committedFinalNoReplay": true,
+    "knownUsage": {
+      "callId": "01a15a9d-09ff-7975-b017-42030031be45",
+      "status": "COMPLETED",
+      "inputTokens": 31,
+      "outputTokens": 1,
+      "estimatedCostMicros": 70,
+      "pricingVersion": "deepseek-flash-2026-10-16-peak-bound"
+    },
+    "frozenPriceCostIsEstimate": true,
+    "plaintextKeyLeaks": 0
+  },
+  "historicalMeter": {
+    "knownCallsLowerBound": 19,
+    "knownUnknownReserveMicros": 49152,
+    "currentGlobalBalanceClaim": false,
+    "reset": false
+  },
+  "cloud": {
+    "status": "NOT_RUN_SSH_CLOSED_BEFORE_AUTHENTICATION",
+    "mutatedByThisRun": false,
+    "lastRecordedRelease": "R1",
+    "liveHealthVerified": false,
+    "productionR2TagCreated": false
+  },
+  "boundaries": [
+    "No production tools/shell/sandbox/compaction or R3",
+    "UNKNOWN holds preserved, never filled with zero or replayed",
+    "Fixture probe receipts are not real container stop evidence",
+    "R2 release requires all separate cloud gates",
+    "Body and evidence delivery is separate from Git"
+  ],
+  "historicalFailures": [
+    "80f actual subscriber callback teardown race retained; corrected in4612c45",
+    "6af legacy browser assumed UNKNOWN before a guaranteed physical request; corrected test requires persisted stop/call facts",
+    "Earlier compile/schema/bundle/SSE failures retained as history, not final passes"
+  ],
+  "evidenceIndex": [
+    {
+      "name": ".cache/r24-local/final-candidate.json",
+      "sha256": "645c27a1a9b0885cf44490b0cebb6739d0635980aea1d94d24e598b0d00f9a80",
+      "bytes": 425
+    },
+    {
+      "name": ".cache/r24-local/engineering.json",
+      "sha256": "01c95e24c7caefca3aa70fd26c7a5cb6442016c72815c02828577e162d44e2ff",
+      "bytes": 2583
+    },
+    {
+      "name": ".cache/r24-local/artifacts/images.json",
+      "sha256": "a3acf9d190bb26d18274f865c312c525e51e0a83db85a361bba5a25366514c73",
+      "bytes": 7677
+    },
+    {
+      "name": ".cache/r24-local/acceptance/final-local-progress.json",
+      "sha256": "4d90c524ea18af89673aa11949ee8a31e584aa810bd1d43e329334edce6eb1eb",
+      "bytes": 2948
+    },
+    {
+      "name": ".cache/r24-local/acceptance/inherited-gates-pass.json",
+      "sha256": "beb37b42721282fae7ba0ddb2f9a5e11ce20756fc61f1c2733f8808769fe154b",
+      "bytes": 1645
+    },
+    {
+      "name": ".cache/r24-local/acceptance/runtime-audit.json",
+      "sha256": "c9eea51d0ad4963ddd37fea8af6b542b692527ca5d5e4d18369894480fa4fdb8",
+      "bytes": 3191
+    },
+    {
+      "name": ".cache/r24-local/acceptance/integrity-probe.json",
+      "sha256": "ec48b889dafec90dea03ee6bf870beb7d50beec73b4a5aca140972d1b673f772",
+      "bytes": 714
+    },
+    {
+      "name": ".cache/r24-local/acceptance/database-fingerprint-local-check.json",
+      "sha256": "343bd4b28c45f06565452af17cb7526af499b92c21e081b12ba2e3e867204f79",
+      "bytes": 229
+    },
+    {
+      "name": ".cache/r24-local/acceptance/recovery-browser/result.json",
+      "sha256": "dadde4128cc769f949aafed64f9b4b0193ba1322401f1e6e49f4a035abba50b1",
+      "bytes": 1476
+    },
+    {
+      "name": ".cache/r24-local/acceptance/cancellation/observation.json",
+      "sha256": "993e736a17503d40be9780912bd125eff25b6908f4ada54b1b058ab38802da8a",
+      "bytes": 406994
+    },
+    {
+      "name": ".cache/r24-local/acceptance/real-recovery/result.json",
+      "sha256": "d781bd31bfc97e32f03e8b4b624a06155babb84f1f6e1bdf5f7e0dcd85619dd1",
+      "bytes": 1498
+    },
+    {
+      "name": ".cache/r24-local/acceptance/historical-supplier-meter.json",
+      "sha256": "227679e5801363a9717ba58592cbaeaa7224bb510f7ab1d79d20895e3c1a8aac",
+      "bytes": 984
+    },
+    {
+      "name": ".cache/r24-local/acceptance/r1-v9-compatibility.json",
+      "sha256": "843ef2813a3c4516915f47d7742461eb59bced2fe81a747ca4f173bc257a0bf1",
+      "bytes": 482
+    },
+    {
+      "name": ".cache/r24-local/acceptance/github-protection.json",
+      "sha256": "e21e52b8111c3030351e968ecdb206896fa050489d04e9ef99271cbb6aa646d4",
+      "bytes": 502
+    },
+    {
+      "name": ".cache/r24-local/acceptance/cancellation/disk-observation.json",
+      "sha256": "3f4605f275102a2b0a7fd9171aa7bdc126d544f3b391bb51f6e96ca05c78a2da",
+      "bytes": 47711
+    },
+    {
+      "name": ".cache/r24-local/acceptance/recovery/input.json",
+      "sha256": "9ba4f30a7eadf27795960a02fb104bfac99266d102d9cfaf8c1641dc898b3ea8",
+      "bytes": 729
+    },
+    {
+      "name": ".cache/r24-local/acceptance/recovery/prepared-tool.json",
+      "sha256": "32aecc873de39dcc7a92ffc1ab21e70101ad49d14d141bbb5b5daacfc8560f01",
+      "bytes": 729
+    },
+    {
+      "name": ".cache/r24-local/acceptance/recovery/committed-tool.json",
+      "sha256": "642f84466d05eb395446dd93e8c0c5a9d3ef2cec0a4eb0452ab922944121c80a",
+      "bytes": 729
+    },
+    {
+      "name": ".cache/r24-local/acceptance/recovery/terminal.json",
+      "sha256": "20a702d7106d3c34dacf6b8843766f689509b36907bf8a1f59ec4ad0bf1add57",
+      "bytes": 680
+    },
+    {
+      "name": ".cache/r24-local/acceptance/recovery/unknown-model.json",
+      "sha256": "cc303d4d84c6456cdbfb80f8045efb64be28c9fc45b032599a2bb82e492c7d66",
+      "bytes": 501
+    },
+    {
+      "name": ".cache/r24-local/acceptance/recovery/advanced-round.json",
+      "sha256": "1a796d801fb96a3bf4b6b47918fc0ac0f254f859a69890bd8d3bce6d05cec1cb",
+      "bytes": 504
+    },
+    {
+      "name": ".cache/r24-local/acceptance/recovery/unknown-tool.json",
+      "sha256": "344134fc83d7f07ee2ba45be7602340638aa987ece9722947dfbd4d3fae3b5cf",
+      "bytes": 501
+    },
+    {
+      "name": ".cache/r24-local/acceptance/recovery/advanced-tool.json",
+      "sha256": "3799cf07e3deeca440640805501bbf839ef6bfe5276d3c286154b2a49f89515b",
+      "bytes": 504
+    },
+    {
+      "name": ".cache/r24-maven-verify.log",
+      "sha256": "01c0726595d17d5596058ef9bb983ba387bbc7553e4005adb6ef0d5ed8d4bba3",
+      "bytes": 158251
+    },
+    {
+      "name": ".cache/r24-typecheck.log",
+      "sha256": "32b41c21d6960872188dd6527d9af1d550cf9a31fa518ac39cfc6bafacf61064",
+      "bytes": 102
+    },
+    {
+      "name": ".cache/r24-test.log",
+      "sha256": "46408b52c1fa61ebf0cfe32ae844e1d00da0e571ad621f5a31b98e8285ec9f21",
+      "bytes": 317
+    },
+    {
+      "name": ".cache/r24-strict.log",
+      "sha256": "05926653a6ab68dea43b279a22d0a5e93da402ff4db3e7e692b1d36d0b0366c2",
+      "bytes": 550
+    },
+    {
+      "name": ".cache/r24-linux-sdk.log",
+      "sha256": "dcc2fe8922b216e092fed41566b4ff4cd66e4fa3c185ccffb101414dad95aa65",
+      "bytes": 40997
+    },
+    {
+      "name": ".cache/r24-browser.log",
+      "sha256": "fd1da41a591dfb0e7037d0b6837f7c5db3c48ea8f0b1a04fb313c8ecf3b6587c",
+      "bytes": 3714
+    },
+    {
+      "name": ".cache/r24-final-inherited.log",
+      "sha256": "a1fc453d48ec13ae94d07ba1e78f83fb00311d74928eca41f0fcbf067b045db0",
+      "bytes": 1172
+    },
+    {
+      "name": ".cache/r24-final-integrity.log",
+      "sha256": "43ce462ef733244ee6195dceca8b8d9119929bcf234830cab515bf8b44cdbaeb",
+      "bytes": 1912
+    },
+    {
+      "name": ".cache/r24-final-recovery-browser.log",
+      "sha256": "2bb525c18d79a12e64ef167f1c0661ab6135b67f65acbe85a2582cda2586d111",
+      "bytes": 61
+    },
+    {
+      "name": ".cache/r24-final-runtime-audit.log",
+      "sha256": "c6b3612e6805485faee08eb2b9d39a4e71f55c9bcff4b2a5ba9a9a71feead9e6",
+      "bytes": 468
+    },
+    {
+      "name": ".cache/r24-final-observation.log",
+      "sha256": "c96f3696e20f477f9e118f55f2b6ef9b39f406a2ec37f6d178edab0510faed41",
+      "bytes": 2708
+    }
+  ],
+  "localFixtureStop": {
+    "status": "PASS",
+    "runningContainers": 0,
+    "fixtureProfileIncluded": true,
+    "volumesRetained": 2,
+    "candidateImagesRetained": 4,
+    "dataDeleted": false,
+    "cloudMutated": false
+  },
+  "publicSecretAudit": {
+    "status": "PASS",
+    "files": 567,
+    "privateValuesFound": 0,
+    "universalDlpClaim": false
+  }
+}

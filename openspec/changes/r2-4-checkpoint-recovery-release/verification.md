@@ -1,3 +1,17 @@
+# Current local conclusion (2026-10-21)
+
+All mandatory local functional gates PASS; protected promotion pending, not yet VERIFIED. Application source `6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19`; Maven196, Vue34, non-root Linux69, real API browser20 plus4 recovery states, eight exact-container windows, ten V2 integrity cases, actual PG/MQ/ACK/dependency/cancel/accounting suites and actual released-R1 backend on V9 all PASS. Additive V9, runtime baseline1 and unchanged V1–V8. Later test/doc/evidence commits retain the original image source identities.
+
+Observation1807.69seconds/67samples/66tasks included broker/active-DB interruption and recovery. One real metered DeepSeek request verified frozen-input restart and committed-final stop/convergence without replay. Known usage cost uses the frozen-price estimate. UNKNOWN histories and holds remain intact; no quota/counter reset. Actual Docker VM7.69GiB and sampled values are not proof of minimum physical host or absolute peaks.
+
+Local fixture including its provider is stopped, volumes/images retained; explicit private-value scan of public worktree passes. Secrets, raw SQL, logs and host-proof signatures are outside public Git. The final body/evidence packages are separate protected local handoff artifacts, not Git delivery or cloud synchronization.
+
+Pending protected step→phase→main PRs; not yet VERIFIED.
+
+Cloud SSH closes before authentication, so cloud deployment/observation/serial restore/R1 rollback are NOT_RUN. No R2 production tag or R3. The same OpenSpec change remains active with release/archival tasks incomplete; R2 is not RELEASED. Historical failures below are retained, not reclassified as passing.
+
+## Historical process records
+
 # R2.4 verification ledger
 
 Status IMPLEMENTING, not VERIFIED or RELEASED. Approved Plan in conversation; formal body is outside Git. Baseline23f68812c8a8438684653d2ec89fbbef9293fb07. No new supplier call, cloud mutation or capability is claimed by the governance files.
@@ -12,11 +26,11 @@ Status IMPLEMENTING, not VERIFIED or RELEASED. Approved Plan in conversation; fo
 | Recovery | INPUT_READY/model/tool/terminal checkpoints, immutable independent state, stable identities and side-effect count | PASS: all eight exact6af7aa50 image windows, stable message/deadline, independent attempt, shared tool effect1 |
 | Refusal | hash/state/bundle/codec/watermark/newer-task/UNKNOWN/cancel/revocation/deadline/budget/concurrent-command rejection | PASS on6af7aa50: repository/exact-process gates plus ten actual V2 integrity cases; local47-table fingerprint equality/mismatch tooling check also PASS, not a cloud restore |
 | UI | live API, dual user/admin isolation, read-only recovery stages, partial/refresh/SSE, widths/zoom/keyboard/themes | PASS: inherited20/20 and four recovery-stage real-API/strict-SSE cases on6af7aa50; test correction453c115; UNKNOWN screenshot visually reviewed |
-| Real model | minimal frozen-input restart and committed-final no-replay; meter existing holds, stop at provider quota | NOT_RUN |
-| Resources | final frozen candidate>=1800seconds with dependencies failing/restoring, transient resource limits included, no swap extension | NOT_RUN |
-| Local promotion | exact source/config/image/export/evidence hashes; protected two-level PRs; Actions disabled | NOT_RUN |
+| Real model | minimal frozen-input restart and committed-final no-replay; meter existing holds, stop at provider quota | PASS: one real metered request; frozen-input restart and committed-final no-replay, known usage, no plaintext key leak; historical UNKNOWN holds preserved |
+| Resources | final frozen candidate>=1800seconds with dependencies failing/restoring, transient resource limits included, no swap extension | PASS: frozen candidate1807.69s, dependency faults, memory/swap/thread/connection/actual disk samples; no minimum-host/absolute-peak claim |
+| Local promotion | exact source/config/image/export/evidence hashes; protected two-level PRs; Actions disabled | Pending protected step→phase→main PRs; not yet VERIFIED. |
 | Cloud | verified R1 identity/capacity, immutable deploy/migrations/permissions, HTTP/smoke/observation, serial consistent restore and R1 rollback | NOT_RUN |
-| Delivery | local and cloud protected evidence; separate body copies/SHA256/retention>=30days; local stack explicitly stopped | NOT_RUN |
+| Delivery | local and cloud protected evidence; separate body copies/SHA256/retention>=30days; local stack explicitly stopped | NOT_COMPLETE: cloud delivery/archive pending; final local package/main/hash receipts are maintained separately outside Git |
 
 Tests use isolated agentplatform-r24-local,15447/15697/15687/18092, initial2528MiB/max2887MiB plus host reserve768MiB. Actual Docker VM about8GiB; no minimum-physical-host or double-execution capacity claim. Every command records source/script/artifact identity, exit code and assertions. Failure and NOT_RUN stay visible. Raw SQL, keys/passwords, host proof signatures and unsanitized browser logs are protected and excluded from Git.
 
