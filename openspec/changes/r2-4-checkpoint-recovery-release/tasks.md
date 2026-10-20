@@ -13,7 +13,7 @@
 - [x] 5.1 Full engineering, fresh/V8/R1 upgrades, old image V9 compatibility and non-root SDK (engineering196, Linux69 and actual old-R1/V9 container rerun PASS on6af7aa50).
 - [x] 5.2 Actual PG/MQ/two-worker crash/competition/cancel/authorization/refusal/accounting tests and browser gates.
 - [x] 5.3 Minimal real supplier checkpoint tests, secrets/resources and final candidate1800second observation.
-- [ ] 5.4 Immutable artifacts, exact-source acceptance and protected two-level PRs; local VERIFIED only.
+- [x] 5.4 Immutable artifacts, exact-source acceptance and protected two-level PRs; local VERIFIED only.
 ## 6. Release and closure
 - [ ] 6.1 Exact cloud release manifest, permissions, capacity admission, maintenance/quiescent backup and immutable import.
 - [ ] 6.2 HTTP identity/chat/SSE/recovery smoke,30minute cloud observation, isolated restore and R1 rollback/redeploy.
