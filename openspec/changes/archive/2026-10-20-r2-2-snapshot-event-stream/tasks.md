@@ -12,4 +12,4 @@
 ## 5. Acceptance and closure
 - [x] 5.1 Full engineering/R1/R2.1/R2.C real dependencies and immutable Linux acceptance.
 - [x] 5.2 At least30minute deterministic single-slot/reconnect/GC observation and prior-image compatibility rollback.
-- [ ] 5.3 Exact-source images/evidence, protected two-level PRs, archive, ledgers and hashed protected delivery.
+- [x] 5.3 Exact-source images/evidence, protected two-level PRs, archive, ledgers and hashed protected delivery.

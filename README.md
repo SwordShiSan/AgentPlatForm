@@ -1,6 +1,6 @@
 # AgentPlatForm
 
-当前开发：**R2.2 IMPLEMENTING，尚未 VERIFIED**，独立本地快照/事件回放与受控前缀回收；[本地环境说明](deploy/R2.2-LOCAL.md)。R2仍1/4，云端继续已发行R1，供应商调用为0。下述R1生产身份保持有效。
+当前开发：**R2.2 VERIFIED，R2完成2/4、未 RELEASED**。一致快照、可靠事件续读及30天受控前缀清理已通过本地验收和两级PR；[本地说明](deploy/R2.2-LOCAL.md)、[脱敏证据](deploy/r2.2-acceptance.json)。云端继续已发行R1，真实供应商调用0；R2.3另行Plan/OpenSpec。
 
 当前：**R1.4 VERIFIED，R1 4/4 VERIFIED，R1 RELEASED**。云端HTTP已开放身份、个人空间、普通聊天、配置及密钥管理；[访问平台](http://124.222.55.140)。生产tag `production-r1-24b3c6558d17`。当前及后续HTTP、HTTPS保留暂不实现，不检查/修改DNS。R2.1 VERIFIED（本地执行所有权与账本，R2完成1/4、未RELEASED）；详见[R1发行与恢复记录](deploy/R1-RELEASE.md)及[脱敏验收摘要](deploy/r1.4-acceptance.json)。以下为历史阶段记录。
 

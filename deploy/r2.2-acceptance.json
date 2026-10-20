@@ -1,6 +1,6 @@
 {
   "stage": "R2.2",
-  "status": "FUNCTIONAL_GATES_PASS_PROMOTION_PENDING",
+  "status": "VERIFIED",
   "recordedAt": 1792472531.7589262,
   "baseline": "9412d2c6b741791ad850ec870f359852dff52a63",
   "receiptSource": "1ac938fcfd09e6804810ad8eb2ed65474730a761",
@@ -531,5 +531,30 @@
     "apiCiphertextReadDenied": true,
     "workerStopProofReadDenied": true,
     "schema": 7
+  },
+  "promotion": [
+    {
+      "number": 56,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/56",
+      "base": "phase/r2-task-recovery",
+      "head": "step/r2.2-snapshot-event-stream",
+      "headSha": "2997426bf84af1a406a5b3ac3f1b924f89bef4fe",
+      "merged": true,
+      "mergeSha": "b594b013967b989b3f9aff8a9d559bb48b4f041f"
+    },
+    {
+      "number": 57,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/57",
+      "base": "main",
+      "head": "phase/r2-task-recovery",
+      "headSha": "b594b013967b989b3f9aff8a9d559bb48b4f041f",
+      "merged": true,
+      "mergeSha": "d4d685b515483e7df746f5dc501aa0d1c5be7ae4"
+    }
+  ],
+  "releaseState": {
+    "R2": "2/4 VERIFIED, NOT RELEASED",
+    "cloud": "R1 unchanged",
+    "nextStage": "R2.3 requires separate Plan/OpenSpec"
   }
 }

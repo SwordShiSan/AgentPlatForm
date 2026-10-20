@@ -4,6 +4,16 @@ All mandatory engineering and exact-candidate runtime gates PASS. Maven160, Vue3
 
 Actual Docker host is approximately8GiB; combined container limits2528MiB are below2887MiB and sampled host reserve exceeds768MiB. Sampling is not an absolute peak or minimum3.6GiB physical-host certification. Real supplier calls0; cloudR1 unchanged. Historical FAIL/PARTIAL/NOT_RUN entries below are preserved as process history and superseded only by these explicit passing reruns. Public receipt excludes raw logs, browser contexts/form values, SQL, secrets and proof signatures.
 
+Implementation promoted through protected step→phase→main PRs 56,57. R2.2 VERIFIED; R2 2/4 VERIFIED, NOT RELEASED. This archival/receipt update is promoted through the same protection; final merge and protected delivery hashes are recorded outside Git in evidence/r22/r22-handoff.json. No new runtime build is implied by metadata-only commits.
+
+## Historical process records
+
+# Current acceptance conclusion (2026-10-20)
+
+All mandatory engineering and exact-candidate runtime gates PASS. Maven160, Vue34, Linux non-root58, actual API browser18/18, six actual worker crash windows, broker/active-DB failure,12 sequential tasks, retention concurrency and prior R2.C image/V7 compatibility passed. The30minute observation included actual scheduled GC and an in-window dependency interruption/recovery. Detailed measured values and hashes are in `deploy/r2.2-acceptance.json`.
+
+Actual Docker host is approximately8GiB; combined container limits2528MiB are below2887MiB and sampled host reserve exceeds768MiB. Sampling is not an absolute peak or minimum3.6GiB physical-host certification. Real supplier calls0; cloudR1 unchanged. Historical FAIL/PARTIAL/NOT_RUN entries below are preserved as process history and superseded only by these explicit passing reruns. Public receipt excludes raw logs, browser contexts/form values, SQL, secrets and proof signatures.
+
 Protected two-level promotion, archival and delivery are pending; R2.2 is not yet VERIFIED.
 
 ## Historical process records
