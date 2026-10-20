@@ -10,7 +10,7 @@
 ## 4. API and frontend
 - [x] 4.1 OpenAPI/generated clients, protected operator commands, authorized read-only recovery UI and tests.
 ## 5. Local verification
-- [x] 5.1 Full engineering, fresh/V8/R1 upgrades, old image V9 compatibility and non-root SDK.
+- [ ] 5.1 Full engineering, fresh/V8/R1 upgrades, old image V9 compatibility and non-root SDK (rerun after the live callback race correction).
 - [ ] 5.2 Actual PG/MQ/two-worker crash/competition/cancel/authorization/refusal/accounting tests and browser gates.
 - [ ] 5.3 Minimal real supplier checkpoint tests, secrets/resources and final candidate1800second observation.
 - [ ] 5.4 Immutable artifacts, exact-source acceptance and protected two-level PRs; local VERIFIED only.

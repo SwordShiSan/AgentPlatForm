@@ -32,6 +32,10 @@ Tests use isolated agentplatform-r24-local,15447/15697/15687/18092, initial2528M
 
 ## Frozen application progress, 2026-10-21
 
+Final-candidate correction: the live delayed-snapshot/cancel browser case failed on80f0bd31. Database remained RUNNING/EXECUTION_STOP_UNCONFIRMED with the slot retained; provider logs showed a text callback exception dropped by the terminal Reactor subscriber. This is an actual cancellation race, not a browser assertion adjustment. Existing80f evidence remains historical pending a new candidate, regression and rerun. Real supplier, observation, promotion and cloud remain blocked by their own mandatory gates.
+
+The affected owner was stopped by its exact container identity and reconciled through the signed host-proof path; UNKNOWN accounting was retained. The added one-shot HTTP callback-error test also passed on the old implementation, so it is not claimed as a deterministic red reproduction. Keep the original failing browser/log/DB evidence and use the corrected candidate's live browser and repeated-cancellation observation as independent mandatory gates.
+
 - Application source80f0bd31ec326320b38925fd1612e081a0c3f8bf, backend tree dee6f5c6213672742a5c80e728a2eaa98aa70611. Later acceptance-only scripts and ledger commits do not silently change the accepted application trees. Image/export/config identities are retained in the protected final-candidate and image-chain records.
 - All eight real-container windows passed: input, prepared-tool, committed-tool, terminal, unknown-model, advanced-round, unknown-tool and advanced-tool. Stops use exact identities and natural lease expiry, without extending the task-wide deadline. Unknown and advanced refusal assertions check the exact error code.
 - Inherited actual PG/MQ/process gates passed: claim/ACK boundaries, dependency outages, replay/cancellation suites, and the released R1 image on V9. The old image is resolved through its verified local OCI ID and export-chain cloud config ID, not through a mutable tag.

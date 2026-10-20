@@ -60,7 +60,20 @@ public final class DeepSeekChatProvider implements ChatProvider, AutoCloseable {
         var cancellation=new AtomicBoolean();
         var callbacks=new Phaser(1);
         var subscription=model.stream(input.stream().map(messageCodec::encode).toList(),List.of(),options)
-                .timeout(Duration.ofSeconds(120)).doFinally(signal->{
+                .timeout(Duration.ofSeconds(120)).doOnNext(response->{
+                    if(callbacks.register()<0)return;
+                    try {
+                    if(cancellation.get())return;
+                    if(response.getId()!=null)id.set(response.getId());if(response.getFinishReason()!=null)finish.set(response.getFinishReason());
+                    for(var block:response.getContent()){
+                        if(block instanceof TextBlock b&&!b.getText().isEmpty()){if(text.length()+b.getText().length()>65536)throw new ChatFailure(422,"MODEL_OUTPUT_LIMIT");text.append(b.getText());onText.accept(b.getText());}
+                        else if(block instanceof ToolUseBlock tool){if(!fixtureTools)throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");accumulatedTools.add(tool);}
+                        // Thinking blocks are deliberately not copied into any platform buffer.
+                    }
+                    if(response.getUsage()!=null){usage.set(true);in.set(response.getUsage().getInputTokens());out.set(response.getUsage().getOutputTokens());}
+                    } finally { callbacks.arriveAndDeregister(); }
+                }).doFinally(signal->{
+                    // Process callback failures as upstream signals before teardown can close the phaser.
                     // Future completion is earlier than transport teardown. Never block an HTTP callback in close().
                     http.shutdownNow();
                     try { cleanup.execute(() -> {
@@ -73,20 +86,7 @@ public final class DeepSeekChatProvider implements ChatProvider, AutoCloseable {
                             terminated.complete(null);
                         } catch (Throwable failure) { terminated.completeExceptionally(failure); }
                     }); } catch (RejectedExecutionException failure) { terminated.completeExceptionally(failure); }
-                })
-                .subscribe(response->{
-                    if(callbacks.register()<0)return;
-                    try {
-                    if(cancellation.get())return;
-                    if(response.getId()!=null)id.set(response.getId());if(response.getFinishReason()!=null)finish.set(response.getFinishReason());
-                    for(var block:response.getContent()){
-                        if(block instanceof TextBlock b&&!b.getText().isEmpty()){if(text.length()+b.getText().length()>65536)throw new ChatFailure(422,"MODEL_OUTPUT_LIMIT");text.append(b.getText());onText.accept(b.getText());}
-                        else if(block instanceof ToolUseBlock tool){if(!fixtureTools)throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");accumulatedTools.add(tool);}
-                        // Thinking blocks are deliberately not copied into any platform buffer.
-                    }
-                    if(response.getUsage()!=null){usage.set(true);in.set(response.getUsage().getInputTokens());out.set(response.getUsage().getOutputTokens());}
-                    } finally { callbacks.arriveAndDeregister(); }
-                },error->{
+                }).subscribe(ignored->{},error->{
                     if(callbacks.register()<0)return;
                     try { result.completeExceptionally(classify(error)); } finally { callbacks.arriveAndDeregister(); }
                 },()->{
