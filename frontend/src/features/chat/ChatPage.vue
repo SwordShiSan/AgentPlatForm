@@ -8,8 +8,8 @@ import { ApiError } from '../../shared/api/request';
 import { api } from '../../shared/api/client';
 import { newRequestId } from '../../shared/api/request-id';
 import { setCsrf } from '../../shared/api/session';
-import { applyChatEvent, type ChatSnapshot } from './stream-state';
-import type { PlatformEvent } from '../../shared/api/generated/events';
+import { applyChatEvent, SnapshotRequired, type ChatSnapshot } from './stream-state';
+import { subscribeReplay, type StreamStatus } from './event-stream';
 
 const route = useRoute(); const router = useRouter(); const cache = useQueryClient();
 const draft = ref(''); const error = ref(''); const busy = ref(false);
@@ -23,11 +23,11 @@ const effective = useQuery({ queryKey: computed(() => ['chat', actor.value, 'eff
 const preferences = useQuery({ queryKey: computed(() => ['chat', actor.value, 'preferences']), enabled: computed(() => !!actor.value), queryFn: async () => (await api.GET('/api/v1/me/preferences')).data! });
 
 const listKey = computed(() => ['chat', actor.value, 'conversations']);
-const snapshotKey = computed(() => ['chat', actor.value, 'snapshot', selected.value]);
+const snapshotKey = computed(() => ['chat', actor.value, space.value, 'snapshot', selected.value]);
 const models = useQuery({ queryKey: computed(() => ['chat', actor.value, 'models']), enabled: computed(() => !!actor.value), queryFn: async () => (await api.GET('/api/v1/models')).data! });
 const modelAvailable = computed(() => models.data.value?.items.some(item => item.id === selectedModel.value) ?? false);
 const conversations = useQuery({ queryKey: listKey, enabled: computed(() => !!actor.value), queryFn: async () => (await api.GET('/api/v1/conversations', { params: { query: { limit: 100 } } })).data! });
-const snapshot = useQuery({ queryKey: snapshotKey, enabled: computed(() => !!actor.value && !!selected.value), queryFn: async () => (await api.GET('/api/v1/conversations/{id}/snapshot', { params: { path: { id: selected.value } } })).data! });
+const snapshot = useQuery({ queryKey: snapshotKey, enabled: computed(() => !!actor.value && !!space.value && !!selected.value), queryFn: async ({ queryKey, signal }) => (await api.GET('/api/v1/conversations/{id}/snapshot', { signal, params: { path: { id: queryKey[4]! }, header: { 'X-Space-Id': queryKey[2]! } } })).data! });
 const lastTask = computed(() => snapshot.data.value?.tasks.at(-1));
 const config = useQuery({ queryKey: computed(() => ['chat', actor.value, 'configuration', lastTask.value?.taskId]), enabled: computed(() => !!lastTask.value), queryFn: async () => (await api.GET('/api/v1/tasks/{id}/configuration', { params: { path: { id: lastTask.value!.taskId } } })).data! });
 const running = computed(() => snapshot.data.value?.tasks.some(item => ['QUEUED', 'RUNNING'].includes(item.status)) ?? false);
@@ -67,36 +67,40 @@ const reason = computed(() => {
   }
 });
 const labels: Record<string, string> = { QUEUED: '排队中', RUNNING: '正在回复', SUCCEEDED: '已完成', FAILED: '失败', CANCELLED: '已取消', BLOCKED: '需要处理' };
-let stream: EventSource | undefined; let reconnect: ReturnType<typeof setTimeout> | undefined;
+let stream: (() => void) | undefined;
+let generation = 0;
+const streamStatus = ref<StreamStatus>('connecting');
 let mounted = true;
 
 async function csrf() {
   const value = (await api.GET('/api/v1/auth/csrf')).data!;
   setCsrf(value.csrfToken); return value.csrfToken;
 }
-function stopStream() { stream?.close(); stream = undefined; if (reconnect) clearTimeout(reconnect); reconnect = undefined; }
+function stopStream() { generation++; stream?.(); stream = undefined; }
 function connect() {
-  if (!mounted || stream || !selected.value || !snapshot.data.value) return;
+  if (!mounted || stream || !actor.value || !space.value || !selected.value || !cache.getQueryData<ChatSnapshot>(snapshotKey.value)) return;
   const conversation = selected.value; const key = [...snapshotKey.value];
-  const source = new EventSource(`/api/v1/conversations/${encodeURIComponent(conversation)}/events?after=${snapshot.data.value.cursor}`);
-  stream = source;
-  source.addEventListener('platform_event', event => {
-    if (!mounted || conversation !== selected.value) return;
-    try {
-      const body = JSON.parse((event as MessageEvent<string>).data) as PlatformEvent;
-      if (body.conversationId !== conversation) throw new Error('Foreign event');
-      cache.setQueryData<ChatSnapshot>(key, previous => previous ? applyChatEvent(previous, body) : previous);
-      if (body.type === 'usage.updated') void cache.invalidateQueries({ queryKey: ['chat', actor.value, 'usage'] });
-    } catch { stopStream(); void snapshot.refetch().then(() => { if (mounted) connect(); }); }
+  const current = ++generation; const user = actor.value; const selectedSpace = space.value;
+  const valid = () => mounted && generation === current && conversation === selected.value && user === actor.value && selectedSpace === space.value;
+  stream = subscribeReplay({
+    conversation, space: selectedSpace,
+    cursor: () => cache.getQueryData<ChatSnapshot>(key)?.cursor ?? 0,
+    apply: body => {
+      if (!valid()) return;
+      cache.setQueryData<ChatSnapshot>(key, previous => {
+        if (!previous) throw new SnapshotRequired('Canonical projection is missing');
+        return applyChatEvent(previous, body);
+      });
+      if (body.type === 'usage.updated') void cache.invalidateQueries({ queryKey: ['chat', user, 'usage'] });
+    },
+    rebase: async signal => {
+      const result = await api.GET('/api/v1/conversations/{id}/snapshot', { signal, params: { path: { id: conversation }, header: { 'X-Space-Id': selectedSpace } } });
+      if (valid() && !signal.aborted) cache.setQueryData(key, result.data!);
+    },
+    status: value => { if (valid()) streamStatus.value = value; },
+    unauthorized: () => { if (valid()) globalThis.dispatchEvent(new Event('platform:session-expired')); },
+    failed: () => { if (valid()) error.value = '实时连接已暂停，已有消息已保留，请刷新核对。'; },
   });
-  source.onerror = () => {
-    stopStream();
-    reconnect = setTimeout(async () => {
-      if (!mounted || conversation !== selected.value) return;
-      const result = await snapshot.refetch();
-      if (!result.isError) connect(); else error.value = '连接暂时不可用，请刷新重试。';
-    }, 1000);
-  };
 }
 watch(() => snapshot.data.value, connect);
 let restoring = false;
@@ -107,7 +111,7 @@ function restoreDraft() {
   draft.value = value.text; pending.value = value.pending; selectedModel.value = value.model || effective.data.value?.values.modelId || ''; source.value = value.model ? value.source : effective.data.value?.values.credentialSource || 'PLATFORM';
   restoring = false;
 }
-watch([actor, space, selected], () => { stopStream(); error.value = ''; restoreDraft(); }, { immediate: true });
+watch([actor, space, selected], () => { stopStream(); error.value = ''; restoreDraft(); connect(); }, { immediate: true, flush: 'sync' });
 watch(() => effective.data.value, () => { if (!selectedModel.value) restoreDraft(); });
 watch([draft, selectedModel, source, pending], () => { if (mounted && !restoring) drafts.save(actor.value, space.value, selected.value, { text: draft.value, model: selectedModel.value, source: source.value, ...(pending.value ? { pending: pending.value } : {}) }); }, { deep: true, flush: 'sync' });
 onBeforeUnmount(() => { mounted = false; stopStream(); });
@@ -187,6 +191,7 @@ async function cancel() {
       <header><h1>普通聊天</h1><p class="intro">{{ models.data.value?.items.find(item => item.id === selectedModel)?.name ?? '请选择模型' }}</p></header>
       <p v-if="!selected" class="intro">新对话草稿，发送首条消息后保存。</p>
       <p v-if="snapshot.isError.value" role="alert">对话暂时不可用。</p>
+      <p v-if="selected && ['reconnecting', 'offline'].includes(streamStatus)" role="status">{{ streamStatus === 'offline' ? '网络已断开，联网后继续读取。' : '正在重新连接，已有消息已保留。' }}</p>
       <div class="chat-messages" aria-label="消息历史" :aria-busy="snapshot.isFetching.value">
         <article v-for="message in snapshot.data.value?.messages" :key="message.id" :class="['chat-message', message.role.toLowerCase()]">
           <p class="eyebrow">{{ message.role === 'USER' ? '你' : '助手' }}<span v-if="message.status === 'PARTIAL'"> · 回复未完成</span></p>

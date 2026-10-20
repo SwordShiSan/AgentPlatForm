@@ -10,6 +10,16 @@ import java.util.*;
 import org.junit.jupiter.api.Test;
 
 class ChatProjectionTest {
+    @Test void replayEnvelopePreservesNullableTaskIdentity() {
+        UUID user=UUID.randomUUID(),space=UUID.randomUUID(),conversation=UUID.randomUUID();
+        var repository=mock(ChatRepository.class);
+        when(repository.events(new Actor(user,space),conversation,0)).thenReturn(List.of(
+                new Event(UUID.randomUUID(),space,conversation,null,1,"membership.changed",1,java.time.Instant.now(),Map.of())));
+        var service=new ChatService(repository,new ChatCursor(new byte[32]));
+        var events=service.events(new ChatApi.Caller(user.toString(),space.toString()),conversation.toString(),0);
+        assertNull(events.getFirst().taskId());
+        assertEquals(1,events.getFirst().seq());
+    }
     @Test void publicBlocksExcludeControlReasoningAndUnknownFields() {
         UUID user=UUID.randomUUID(),space=UUID.randomUUID(),conversation=UUID.randomUUID(),task=UUID.randomUUID(),message=UUID.randomUUID();
         var repository=mock(ChatRepository.class);

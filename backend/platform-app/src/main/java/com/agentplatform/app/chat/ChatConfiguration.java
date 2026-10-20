@@ -21,8 +21,9 @@ public class ChatConfiguration {
             com.agentplatform.infrastructure.dao.chat.ConversationMapper conversation,
             com.agentplatform.infrastructure.dao.chat.DispatchMapper dispatch,
             com.agentplatform.infrastructure.dao.chat.AccountingMapper accounting,
-            com.agentplatform.infrastructure.dao.chat.ConfigurationMapper configuration) {
-        return new com.agentplatform.infrastructure.dao.chat.ChatMappers(ledger, conversation, dispatch, accounting, configuration);
+            com.agentplatform.infrastructure.dao.chat.ConfigurationMapper configuration,
+            com.agentplatform.infrastructure.dao.chat.EventMapper event) {
+        return new com.agentplatform.infrastructure.dao.chat.ChatMappers(ledger, conversation, dispatch, accounting, configuration, event);
     }
     @Bean ChatRepository chatRepository(com.agentplatform.infrastructure.dao.chat.ChatMappers mappers,
             org.springframework.transaction.support.TransactionTemplate transactions) {
