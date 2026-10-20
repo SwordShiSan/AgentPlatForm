@@ -1,4 +1,6 @@
 # Verification
+Final harness compatibility correction: slow-reader pressure uses the explicitly selected stage BASE port (R2.3 18091), never the R2.2 port18090. Retention cancellation checks an actually confirmed stop and empty slot; a cancelled in-flight unknown call must remain BLOCKED with null usage and RECONCILING reservation, rather than the old R2.2 CANCELLED assumption. Runtime backend/frontend and immutable images remain unchanged; test source/hash is recorded independently. The first wrong-port failure is retained as NOT_RUN pressure evidence, not a platform failure or PASS.
+
 Current implementation update (2026-10-20): the corrected backend passes176 Maven tests, zero failures/errors/skips, including known BLOCKED cancellation, historical missing-proof rejection and the actual SDK/HTTP/PG cancellation pipeline. SDK state, model commit and checkpoint callbacks now enter the same tracked stop barrier as transport/writer/timer work. Final immutable-candidate Linux/container/browser/30minute gates are pending; preliminary dc812ca results below are not final-candidate acceptance. Stage remains IMPLEMENTING.
 
 Status IMPLEMENTING, not VERIFIED. All new runtime assertions NOT_RUN until measured. Baseline7598163, real supplier calls0, cloudR1 unchanged.

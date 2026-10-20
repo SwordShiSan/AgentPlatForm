@@ -10,6 +10,7 @@ import shutil
 from concurrent.futures import ThreadPoolExecutor
 import urllib.error
 import urllib.request
+import urllib.parse
 from pathlib import Path
 
 from execution_fixture import ROOT, DATA, ENV, COMPOSE, BASE, PROJECT, STAGE
@@ -126,7 +127,16 @@ def collection():
         assert int(sql("SELECT replay_pruned_through FROM pf.conversation WHERE id='"+conversation+"'"))==floor
     finally:
         client.request('POST','/api/v1/tasks/'+task+'/cancel',{})
-        wait(lambda: execution.status(task) in {'CANCELLED','SUCCEEDED'},90)
+        terminal = {'CANCELLED','SUCCEEDED','BLOCKED'} if STAGE == 'r23' else {'CANCELLED','SUCCEEDED'}
+        wait(lambda: execution.status(task) in terminal,90)
+        if STAGE == 'r23':
+            stopped = client.request('GET','/api/v1/tasks/'+task+'/reconciliation')
+            assert stopped['stopConfirmed'] and stopped['stopStage']=='STOPPED'
+            assert sql('SELECT count(*) FROM pf.execution_slot WHERE task_id IS NOT NULL')=='0'
+            if execution.status(task)=='BLOCKED':
+                assert stopped['unknownCalls']==1 and stopped['excludedFromContext']
+                assert stopped['calls'][0]['inputTokens'] is None
+                assert sql("SELECT count(*) FROM pf.budget_reservation WHERE task_id='"+task+"' AND state='RECONCILING'")=='1'
     assert before==fingerprints(),'GC changed a canonical message/ledger/checkpoint/outbox/inbox'
     current=client.request('GET','/api/v1/conversations/'+conversation+'/snapshot')
     assert current['cursor']>floor
@@ -247,7 +257,9 @@ def pressure():
     time.sleep(35)  # Do not include previous gates' asynchronous socket cleanup.
     started=time.monotonic()
     try:
-        sock.connect(('127.0.0.1',18090))
+        endpoint=urllib.parse.urlsplit(BASE)
+        assert endpoint.hostname=='127.0.0.1' and endpoint.port is not None
+        sock.connect((endpoint.hostname,endpoint.port))
         wire=('GET /api/v1/conversations/'+conversation+'/events?after=0 HTTP/1.1\r\nHost: 127.0.0.1\r\nAccept: text/event-stream\r\nCookie: '+cookie+'\r\n\r\n').encode('ascii')
         sock.sendall(wire)
         # Consume headers, then deliberately stop reading the socket.
