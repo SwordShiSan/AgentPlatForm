@@ -316,6 +316,7 @@ def main():
         result=globals()[args.mode]()
         assert sql('SELECT physical_calls FROM pf.acceptance_model_meter WHERE id=1')=='0'
     except BaseException as failure:
+        result['status']='FAIL'
         result['failureType']=type(failure).__name__
         raise
     finally:
