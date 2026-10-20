@@ -15,7 +15,7 @@ import tools.jackson.databind.json.JsonMapper;
 /** Shared authorization, ownership guards and canonical conversions, without SQL plumbing. */
 abstract class ChatPersistenceSupport {
 
-    public static final UUID BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000004");
+    public static final UUID BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000008");
     static final JsonMapper JSON=JsonMapper.builder().build();
     protected final ChatMappers mappers;
     protected ChatPersistenceSupport(ChatMappers mappers) { this.mappers = mappers; }
@@ -193,6 +193,7 @@ abstract class ChatPersistenceSupport {
         c.dispatch().updateExecutionDispatch141(slotTask);
         c.dispatch().updateAttempt142(proof.attemptId());
         c.conversation().insertStoppedOwnerProof143(slotOwner, space, slotTask, proof.attemptId(), fence, proof.containerId(), proof.imageId(), proof.startedAt(), proof.stoppedAt(), proof.observedAt(), proof.evidenceHash());
+        c.control().recordHostStop(proof,space);
         boolean authorized=true;
         try{auth(c,actor);{ var rows25 = c.conversation().selectAuthorizeChatCredential25(slotTask); var row25 = rows25.isEmpty() ? null : rows25.getFirst();
             authorized=row25.value1()&&"ACTIVE".equals(row25.value2()); }
@@ -212,7 +213,8 @@ abstract class ChatPersistenceSupport {
             { var rows22 = c.dispatch().selectExecutionDispatch22(slotTask); var row22 = rows22.isEmpty() ? null : rows22.getFirst(); outbox(c,actor,slotTask,row22.value1()); }
         }else{
             status=authorized&&!uncertain&&finalText!=null&&!task(c,actor,slotTask,false).cancelRequested()?"SUCCEEDED":"BLOCKED";
-            reason="SUCCEEDED".equals(status)?null:authorized?"WORKER_INTERRUPTED":"AUTHORIZATION_REVOKED";
+            if(task(c,actor,slotTask,false).cancelRequested()&&!uncertain)status="CANCELLED";
+            reason="SUCCEEDED".equals(status)?null:"CANCELLED".equals(status)?"TASK_CANCEL_REQUESTED":authorized?"WORKER_INTERRUPTED":"AUTHORIZATION_REVOKED";
             releasePrepared(c,actor,slotTask);
             c.accounting().updateModelCall147(slotTask);
             c.accounting().updateBudgetReservation148(slotTask);

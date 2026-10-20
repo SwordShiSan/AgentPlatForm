@@ -35,7 +35,13 @@ public final class ChatService implements ChatApi {
     public ConversationView conversation(Caller c,String value){return view(repository.conversation(actor(c),id(value)));}
     public Accepted submit(Caller c,String conversation,String key,String model,String text){Actor a=actor(c);var task=repository.submit(a,id(conversation),id(key),id(model),text);return new Accepted(task.id().toString(),task.conversationId().toString(),task.status(),repository.snapshot(a,task.conversationId()).cursor());}
     public TaskView task(Caller c,String value){return view(repository.task(actor(c),id(value)));}
-    public TaskView cancel(Caller c,String value,String key){return view(repository.cancel(actor(c),id(value),id(key)));}
+    public TaskView cancel(Caller c,String value,String key){return view(new CancellationApplicationService(repository).cancel(actor(c),id(value),id(key)));}
+    public ReconciliationView reconciliation(Caller caller,String value){
+        var state=new ReconciliationService(repository).read(actor(caller),id(value));
+        return new ReconciliationView(state.taskId().toString(),state.stopStage(),state.stopConfirmed(),state.unknownCalls(),
+                state.calls().stream().map(call->new CallReconciliationView(call.callId().toString(),call.status(),call.reservationState(),call.inputTokens(),call.outputTokens(),call.costMicros(),call.revision())).toList(),
+                state.suggestedAction(),state.excludedFromContext(),state.version());
+    }
     private static List<java.util.Map<String,Object>> publicBlocks(Message message){return message.blocks().stream().filter(b->"TEXT".equals(b.get("type"))&&b.get("blockId") instanceof String&&b.get("text") instanceof String).map(b->java.util.Map.<String,Object>of("type","TEXT","blockId",b.get("blockId"),"text",b.get("text"))).toList();}
     public Snapshot snapshot(Caller c,String value){var snapshot=repository.snapshot(actor(c),id(value));return new Snapshot(1,snapshot.cursor(),snapshot.messages().stream().filter(m->List.of("USER","ASSISTANT").contains(m.role())).map(m->new MessageView(m.id().toString(),m.taskId().toString(),m.role(),publicBlocks(m),m.status(),m.version())).toList(),snapshot.tasks().stream().map(ChatService::view).toList(),List.of(),List.of());}
     public List<EventView> events(Caller c,String value,long after){return repository.events(actor(c),id(value),after).stream().map(e->new EventView(1,e.id().toString(),e.spaceId().toString(),e.conversationId().toString(),e.taskId()==null?null:e.taskId().toString(),e.seq(),e.type(),e.occurredAt().toString(),e.version(),e.payload())).toList();}

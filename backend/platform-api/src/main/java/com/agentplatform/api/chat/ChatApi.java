@@ -12,6 +12,9 @@ public interface ChatApi {
     }
     record Conversations(List<ConversationView> items,String nextCursor) {}
     record TaskView(String taskId,String conversationId,String status,boolean cancelRequested,String reasonCode,long version) {}
+    record CallReconciliationView(String callId,String status,String reservationState,Long inputTokens,Long outputTokens,Long costMicros,long revision) {}
+    record ReconciliationView(String taskId,String stopStage,boolean stopConfirmed,int unknownCalls,
+                              List<CallReconciliationView> calls,String suggestedAction,boolean excludedFromContext,long version) {}
     record Accepted(String taskId,String conversationId,String status,long cursor) {}
     record MessageView(String id,String taskId,String role,List<Map<String,Object>> blocks,String status,long version) {}
     record Snapshot(int schemaVersion,long cursor,List<MessageView> messages,List<TaskView> tasks,List<Object> pending,List<Object> artifacts) {}
@@ -33,6 +36,7 @@ public interface ChatApi {
     Accepted submit(Caller caller,String conversation,String key,String model,String text);
     TaskView task(Caller caller,String id);
     TaskView cancel(Caller caller,String id,String key);
+    ReconciliationView reconciliation(Caller caller,String id);
     Snapshot snapshot(Caller caller,String id);
     List<EventView> events(Caller caller,String id,long after);
     List<UsageView> usage(Caller caller,String id);

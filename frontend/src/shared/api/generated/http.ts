@@ -339,6 +339,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tasks/{id}/reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTaskReconciliation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -552,6 +568,36 @@ export interface components {
             suggestedAction: "NONE" | "CHECK_ACCESS_AND_CREDENTIAL" | "CHECK_CONFIGURATION_AND_BUDGET" | "CHECK_SERVICE_STATUS" | "CONTACT_OPERATOR" | "CONTACT_OPERATOR_FOR_RECONCILIATION";
             /** @constant */
             automaticReplayAllowed: false;
+        };
+        CallReconciliation: {
+            /** Format: uuid */
+            callId: string;
+            /** @enum {string} */
+            status: "PREPARED" | "STARTED" | "COMPLETED" | "FAILED" | "UNKNOWN";
+            /** @enum {string} */
+            reservationState: "RESERVED" | "RECONCILING" | "SETTLED" | "RELEASED";
+            /** Format: int64 */
+            inputTokens: number | null;
+            /** Format: int64 */
+            outputTokens: number | null;
+            /** Format: int64 */
+            costMicros: number | null;
+            /** Format: int64 */
+            revision: number;
+        };
+        TaskReconciliation: {
+            /** Format: uuid */
+            taskId: string;
+            /** @enum {string} */
+            stopStage: "NOT_REQUESTED" | "STOPPING" | "UNCONFIRMED" | "STOPPED";
+            stopConfirmed: boolean;
+            unknownCalls: number;
+            calls: components["schemas"]["CallReconciliation"][];
+            /** @enum {string} */
+            suggestedAction: "NONE" | "WAIT_FOR_STOP" | "CONTACT_OPERATOR_FOR_RECONCILIATION";
+            excludedFromContext: boolean;
+            /** Format: int64 */
+            version: number;
         };
     };
     responses: {
@@ -975,7 +1021,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Authorized committed platform state; no provider secrets or internal reasoning */
+            /** @description Cancel intent committed; execution is not stopped until confirmed. Repeated intent is idempotent; prior terminal success remains unchanged. Unknown remote outcome retains reservations and is never replayed. */
             202: {
                 headers: {
                     [name: string]: unknown;
@@ -1274,6 +1320,39 @@ export interface operations {
                 };
             };
             default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getTaskReconciliation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Live-authorized read-only cancellation and reconciliation projection; no evidence content, provider secrets or internal paths */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskReconciliation"];
+                };
+            };
+            /** @description Problem */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
 }

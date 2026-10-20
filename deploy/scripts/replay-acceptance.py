@@ -10,12 +10,13 @@ import shutil
 from concurrent.futures import ThreadPoolExecutor
 import urllib.error
 import urllib.request
+import urllib.parse
 from pathlib import Path
 
 from execution_fixture import ROOT, DATA, ENV, COMPOSE, BASE, PROJECT, STAGE
 from execution_images import pin_exported
 
-assert STAGE == 'r22' and PROJECT == 'agentplatform-r22-local', 'Only the isolated R2.2 fixture is authorized'
+assert STAGE in {'r22', 'r23'} and PROJECT == 'agentplatform-' + STAGE + '-local', 'Only explicit isolated R2.2/R2.3 fixtures are authorized'
 spec = importlib.util.spec_from_file_location('execution_acceptance', Path(__file__).with_name('execution-acceptance.py'))
 execution = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(execution)
@@ -126,7 +127,16 @@ def collection():
         assert int(sql("SELECT replay_pruned_through FROM pf.conversation WHERE id='"+conversation+"'"))==floor
     finally:
         client.request('POST','/api/v1/tasks/'+task+'/cancel',{})
-        wait(lambda: execution.status(task) in {'CANCELLED','SUCCEEDED'},90)
+        terminal = {'CANCELLED','SUCCEEDED','BLOCKED'} if STAGE == 'r23' else {'CANCELLED','SUCCEEDED'}
+        wait(lambda: execution.status(task) in terminal,90)
+        if STAGE == 'r23':
+            stopped = client.request('GET','/api/v1/tasks/'+task+'/reconciliation')
+            assert stopped['stopConfirmed'] and stopped['stopStage']=='STOPPED'
+            assert sql('SELECT count(*) FROM pf.execution_slot WHERE task_id IS NOT NULL')=='0'
+            if execution.status(task)=='BLOCKED':
+                assert stopped['unknownCalls']==1 and stopped['excludedFromContext']
+                assert stopped['calls'][0]['inputTokens'] is None
+                assert sql("SELECT count(*) FROM pf.budget_reservation WHERE task_id='"+task+"' AND state='RECONCILING'")=='1'
     assert before==fingerprints(),'GC changed a canonical message/ledger/checkpoint/outbox/inbox'
     current=client.request('GET','/api/v1/conversations/'+conversation+'/snapshot')
     assert current['cursor']>floor
@@ -247,7 +257,9 @@ def pressure():
     time.sleep(35)  # Do not include previous gates' asynchronous socket cleanup.
     started=time.monotonic()
     try:
-        sock.connect(('127.0.0.1',18090))
+        endpoint=urllib.parse.urlsplit(BASE)
+        assert endpoint.hostname=='127.0.0.1' and endpoint.port is not None
+        sock.connect((endpoint.hostname,endpoint.port))
         wire=('GET /api/v1/conversations/'+conversation+'/events?after=0 HTTP/1.1\r\nHost: 127.0.0.1\r\nAccept: text/event-stream\r\nCookie: '+cookie+'\r\n\r\n').encode('ascii')
         sock.sendall(wire)
         # Consume headers, then deliberately stop reading the socket.
@@ -309,6 +321,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode',choices=['protocol','failures','pressure','collection','observe','rollback'])
     args=parser.parse_args()
+    assert STAGE == 'r22' or args.mode not in {'rollback', 'observe'}, 'R2.3 uses cancellation-acceptance.py for version compatibility and observation'
     pin_exported(ENV,DATA,required=True)
     OUT.mkdir(parents=True,exist_ok=True)
     result={'status':'FAIL','mode':args.mode}

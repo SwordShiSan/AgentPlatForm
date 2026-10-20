@@ -26,7 +26,7 @@ test('draft refresh, first-message commit and Flash to Pro snapshots', async ({ 
   const after = await (await page.request.get(`/api/v1/conversations/${conversation}/snapshot`)).json();
   expect(await (await page.request.get(`/api/v1/tasks/${before.tasks[0].taskId}/configuration`)).json()).toEqual(original);
   const second = await (await page.request.get(`/api/v1/tasks/${after.tasks[1].taskId}/configuration`)).json(); expect(second.values.modelName).toBe('deepseek-v4-pro');
-  const screenshots = resolve(import.meta.dirname, '../ui-evidence'); mkdirSync(screenshots, { recursive: true });
+  const screenshots = process.env.R13_SCREENSHOTS ?? resolve(import.meta.dirname, '../ui-evidence'); mkdirSync(screenshots, { recursive: true });
   for (const width of [375, 768, 1440]) { await page.setViewportSize({ width, height: 900 }); for (const theme of ['light', 'dark']) { await page.getByLabel('主题', { exact: true }).selectOption(theme); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); if (width === 1440) await page.screenshot({ path: resolve(screenshots, `r1.3-chat-${theme}.png`), fullPage: true }); } }
   await page.evaluate(() => { document.documentElement.style.zoom = '2'; }); await expect(page.getByLabel('消息', { exact: true })).toBeVisible();
 });

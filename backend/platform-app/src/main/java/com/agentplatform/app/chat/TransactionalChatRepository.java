@@ -51,6 +51,11 @@ public final class TransactionalChatRepository implements ChatRepository {
     @Override public Snapshot snapshot(Actor actor, UUID conversation) { return replay.snapshot(actor, conversation); }
     @Override public Task submit(Actor actor, UUID conversation, UUID key, UUID model, String text) { return tx(transactions, () -> delegate.submit(actor, conversation, key, model, text)); }
     @Override public Task task(Actor actor, UUID task) { return tx(transactions, () -> delegate.task(actor, task)); }
+    @Override public Reconciliation reconciliation(Actor actor,UUID task) { return tx(snapshots, () -> delegate.reconciliation(actor,task)); }
+    @Override public Reconciliation reconciliationForOperator(UUID task) { return tx(snapshots, () -> delegate.reconciliationForOperator(task)); }
+    @Override public void reconcile(Command command) { tx(transactions, () -> { delegate.reconcile(command); return null; }); }
+    @Override public void stopped(Lease lease,String status,String reason,KnownUsage known,String receiptHash) { tx(transactions, () -> { delegate.stopped(lease,status,reason,known,receiptHash); return null; }); }
+    @Override public void stopUnconfirmed(Lease lease) { tx(transactions, () -> { delegate.stopUnconfirmed(lease); return null; }); }
     @Override public Task cancel(Actor actor, UUID task, UUID key) { return tx(transactions, () -> delegate.cancel(actor, task, key)); }
     @Override public List<Event> events(Actor actor, UUID conversation, long after) { return replay.events(actor, conversation, after); }
     @Override public List<Usage> usage(Actor actor, UUID task) { return tx(transactions, () -> delegate.usage(actor, task)); }

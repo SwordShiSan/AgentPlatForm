@@ -106,3 +106,15 @@ const metadata = ajv.compile(api.components.schemas.ModelCredentials);
 assert(metadata({version:0,userConfigured:false,platformAvailable:true}));
 assert(!metadata({version:0,userConfigured:true,platformAvailable:true,apiKey:'forbidden'}));
 assert(!metadata({version:-1,userConfigured:false,platformAvailable:false}));
+
+// R2.3 metadata must preserve unknown usage as null and exclude internal evidence.
+const reconciliationSchema = structuredClone(api.components.schemas.TaskReconciliation);
+reconciliationSchema.properties.calls.items = api.components.schemas.CallReconciliation;
+const reconciliation = ajv.compile(reconciliationSchema);
+const unresolved = { taskId: fixture.payload.taskId, stopStage: 'STOPPED', stopConfirmed: true,
+  unknownCalls: 1, suggestedAction: 'CONTACT_OPERATOR_FOR_RECONCILIATION', excludedFromContext: true, version: 2,
+  calls: [{ callId: fixture.eventId, status: 'UNKNOWN', reservationState: 'RECONCILING', inputTokens: null, outputTokens: null, costMicros: null, revision: 0 }] };
+assert(reconciliation(unresolved));
+for (const patch of [{ stopStage: 'GUESS_STOPPED' }, { unknownCalls: -1 }, { evidencePath: '/internal' }, { apiKey: 'forbidden' }]) assert(!reconciliation({ ...unresolved, ...patch }));
+assert(!reconciliation({ ...unresolved, calls: [{ ...unresolved.calls[0], inputTokens: -1 }] }));
+assert(!reconciliation({ ...unresolved, calls: [{ ...unresolved.calls[0], evidence: 'private' }] }));

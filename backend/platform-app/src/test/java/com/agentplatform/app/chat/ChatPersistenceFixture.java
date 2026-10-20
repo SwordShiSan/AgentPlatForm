@@ -27,7 +27,7 @@ public final class ChatPersistenceFixture {
             factory.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:mybatis/mapper/chat/*.xml"));
             var session = new SqlSessionTemplate(factory.getObject());
             var mappers = new ChatMappers(session.getMapper(LedgerMapper.class), session.getMapper(ConversationMapper.class),
-                    session.getMapper(DispatchMapper.class), session.getMapper(AccountingMapper.class), session.getMapper(ConfigurationMapper.class), session.getMapper(EventMapper.class));
+                    session.getMapper(DispatchMapper.class), session.getMapper(AccountingMapper.class), session.getMapper(ConfigurationMapper.class), session.getMapper(EventMapper.class), session.getMapper(ControlMapper.class));
             return new TransactionalChatRepository(new MyBatisChatRepository(mappers), new TransactionTemplate(new JdbcTransactionManager(source)));
         } catch (Exception invalidConfiguration) { throw new IllegalStateException(invalidConfiguration); }
     }

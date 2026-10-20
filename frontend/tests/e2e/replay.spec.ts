@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
-test.skip(process.env.R22_BROWSER_ACCEPTANCE !== '1', 'Requires isolated R2.2 actual API/PG/MQ and deterministic provider');
+test.skip(process.env.R22_BROWSER_ACCEPTANCE !== '1' && process.env.R23_BROWSER_ACCEPTANCE !== '1', 'Requires isolated R2.2 actual API/PG/MQ and deterministic provider');
 test.use({ trace: 'off', screenshot: 'off' });
 test.setTimeout(60000);
 const root = process.env.IDENTITY_SECRET_ROOT ?? resolve(import.meta.dirname, '../../../.cache/r22-local');
@@ -39,7 +39,7 @@ test('offline resumes only applied events and never submits a second task', asyn
   const cancel = page.getByRole('button', { name: '取消回复', exact: true });
   if (snapshot.tasks.some((task: { status: string }) => ['RUNNING', 'QUEUED'].includes(task.status))) {
     await expect(cancel).toBeVisible();
-    await cancel.click(); await expect(page.getByRole('status').first()).toContainText('已取消');
+    await cancel.click(); await expect(page.getByRole('status').first()).toContainText(process.env.R23_BROWSER_ACCEPTANCE === '1' ? '需要处理' : '已取消');
   }
 });
 test('expired cursor repairs from a real snapshot once and route switching keeps histories separate', async ({ page }) => {
@@ -97,5 +97,5 @@ test('a new conversation subscription waits for its own delayed snapshot', async
   expect(early).toBe(false);
   await expect(page.locator('.chat-message.user .chat-text').first()).toHaveText('fixture:slow');
   const cancel=page.getByRole('button',{name:'取消回复',exact:true});
-  if(await cancel.isVisible()){await cancel.click();await expect(page.getByRole('status').first()).toContainText('已取消');}
+  if(await cancel.isVisible()){await cancel.click();await expect(page.getByRole('status').first()).toContainText(process.env.R23_BROWSER_ACCEPTANCE === '1' ? '需要处理' : '已取消');}
 });
