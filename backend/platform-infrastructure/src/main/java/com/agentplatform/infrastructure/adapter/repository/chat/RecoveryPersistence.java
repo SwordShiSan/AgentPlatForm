@@ -167,7 +167,7 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
         long revision=t.revision()+1;c.recovery().insertRequest(command,t.spaceId(),revision,digest);
         c.recovery().queueTask(t.id(),revision,tokens,cost);c.recovery().queueDispatch(t.id());
         var actor=new Actor(t.userId(),t.spaceId());outbox(c,actor,t.id(),c.recovery().generation(t.id()));
-        event(c,actor,t.conversationId(),t.id(),"task.state_changed",task(c,actor,t.id(),false).version(),Map.of("taskId",t.id().toString(),"status","QUEUED","recoveryRevision",revision));
+        event(c,actor,t.conversationId(),t.id(),"task.state_changed",task(c,actor,t.id(),false).version(),Map.of("taskId",t.id().toString(),"status","QUEUED"));
         audit(c,actor,"CHECKPOINT_RECOVERY_REQUESTED",t.id(),t.traceId());return projection(c,t.id());
     });}
     static boolean admitClaim(ChatMappers c,Actor actor,UUID id) {

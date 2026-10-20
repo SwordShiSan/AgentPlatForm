@@ -40,6 +40,10 @@ class RecoveryPostgresTest {
         assertTrue(c.view().eligible());assertEquals("OPERATOR_VALIDATION_REQUIRED",c.view().reasonCode());
         String deadline=text("SELECT execution_deadline_at::text FROM pf.task WHERE id='"+c.lease().taskId()+"'");
         var cmd=command(c);assertEquals("QUEUED",repository.restore(cmd).stage());
+        for(var event:repository.events(fixture.actor,c.lease().conversationId(),0))if("task.state_changed".equals(event.type())) {
+            assertTrue(Set.of("taskId","status","cancelRequested","reasonCode").containsAll(event.payload().keySet()),
+                    "Recovery must preserve the closed task.state_changed payload contract");
+        }
         repository.restore(cmd);
         assertEquals(1,count("SELECT count(*) FROM pf.checkpoint_recovery"));
         var task=repository.task(fixture.actor,c.lease().taskId());
