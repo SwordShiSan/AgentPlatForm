@@ -1,9 +1,11 @@
 """R2.2 isolated real HTTP/PG replay, observation and old-image compatibility gates."""
 import argparse
+import hashlib
 import importlib.util
 import json
 import time
 import socket
+import subprocess
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -261,9 +263,18 @@ def main():
     result={'status':'FAIL','mode':args.mode}
     try:
         result=globals()[args.mode]()
+        assert sql('SELECT physical_calls FROM pf.acceptance_model_meter WHERE id=1')=='0'
+    except BaseException as failure:
+        result['failureType']=type(failure).__name__
+        raise
     finally:
+        candidate=json.loads((DATA/'final-candidate.json').read_text(encoding='utf-8'))
         result['mode']=args.mode
         result['recordedAt']=time.time()
+        result['candidateSource']=candidate['source']
+        result['componentSources']=candidate.get('componentSources',{})
+        result['testSource']=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
+        result['scriptSha256']=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
         (OUT/('replay-'+args.mode+'.json')).write_text(json.dumps(result,indent=2),encoding='utf-8')
     print(args.mode+': PASS',flush=True)
 
