@@ -28,6 +28,7 @@ class ChatStreamingHttpTest {
     @org.springframework.beans.factory.annotation.Autowired com.agentplatform.api.chat.ChatEventStream streams;
     private static volatile LongFunction<List<ChatApi.EventView>> page = after -> List.of();
     private static final AtomicBoolean revoked = new AtomicBoolean();
+    private static volatile long authorizationDelay;
     @Configuration(proxyBeanMethods = false)
     @Profile("chat-stream-test")
     @EnableAutoConfiguration
@@ -47,6 +48,7 @@ class ChatStreamingHttpTest {
                     List.of(new IdentityApi.SpaceResponse("0199e000-0000-7000-8000-000000000002", "PERSONAL", "OWNER", 0)));
             return (IdentityApi) java.lang.reflect.Proxy.newProxyInstance(IdentityApi.class.getClassLoader(), new Class<?>[]{IdentityApi.class},
                     (proxy, method, args) -> {
+                        if (authorizationDelay > 0) Thread.sleep(authorizationDelay);
                         if (revoked.get()) throw new com.agentplatform.domain.identity.IdentityFailure(401, "AUTHENTICATION_REQUIRED");
                         if (method.getName().equals("me")) return me;
                         throw new UnsupportedOperationException(method.getName());
@@ -85,6 +87,26 @@ class ChatStreamingHttpTest {
             revoked.set(true);
             try (var body = response.body()) { awaitDisconnectedStreams(); }
         } finally { revoked.set(false); }
+    }
+
+    @Test void delayedSessionRevalidationClosesCleanlyInsteadOfOverflowingTimerDemand() throws Exception {
+        awaitDisconnectedStreams();
+        try (var client=HttpClient.newHttpClient()) {
+            var request=HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port
+                    +"/api/v1/conversations/0199e000-0000-7000-8000-000000000003/events?after=0")).build();
+            var response=client.send(request,HttpResponse.BodyHandlers.ofInputStream());
+            assertEquals(200,response.statusCode());
+            authorizationDelay=3000;
+            try(var body=response.body()) {
+                var result=CompletableFuture.supplyAsync(()-> {
+                    try {return new String(body.readAllBytes(),StandardCharsets.UTF_8);}
+                    catch(Exception failure){throw new CompletionException(failure);}
+                }).get(8,TimeUnit.SECONDS);
+                assertTrue(result.startsWith(": connected"));
+                assertFalse(result.contains("problem"));
+                awaitDisconnectedStreams();
+            }
+        } finally {authorizationDelay=0;}
     }
 
     @Test void sendsEventStreamHeadersAndFirstFrameBeforeLongPollCompletes() throws Exception {

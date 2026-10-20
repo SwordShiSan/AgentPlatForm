@@ -50,7 +50,7 @@ test('partial failure remains readable and diagnostic is denied to another user'
   const other = await browser.newContext();
   try {
     await login(await other.newPage(), 'alice');
-    for (const path of [`/api/v1/conversations/${id}`, `/api/v1/conversations/${id}/snapshot`, `/api/v1/tasks/${task}`, `/api/v1/tasks/${task}/diagnostics`]) {
+    for (const path of [`/api/v1/conversations/${id}`, `/api/v1/conversations/${id}/snapshot`, `/api/v1/conversations/${id}/events?after=0`, `/api/v1/tasks/${task}`, `/api/v1/tasks/${task}/diagnostics`]) {
       const response = await other.request.get(path); expect(response.status()).toBe(404);
     }
   } finally { await other.close(); }

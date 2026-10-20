@@ -90,6 +90,7 @@ export function subscribeReplay(options: ReplaySubscription, transport: typeof f
       }
       if (!response.ok || !response.headers.get('Content-Type')?.startsWith('text/event-stream') || !response.body) { fail(); return; }
       state('live');
+      const connectedAt = Date.now();
       let parseFailure: Error | undefined;
       let bufferedBytes = 0;
       const parser = createParser({
@@ -116,7 +117,9 @@ export function subscribeReplay(options: ReplaySubscription, transport: typeof f
       while (!stopped && !signal.aborted) {
         const item = await reader.read();
         if (item.done) {
-          const tail = decoder.decode(); if (tail) parser.feed(tail);
+          let tail: string;
+          try { tail = decoder.decode(); } catch { throw new SnapshotRequired('Invalid UTF8 tail'); }
+          if (tail) parser.feed(tail);
           // A disconnect may split a frame. Only dispatched events advanced the
           // cursor, so discard the tail and replay it from the committed cursor.
           break;
@@ -133,10 +136,13 @@ export function subscribeReplay(options: ReplaySubscription, transport: typeof f
           if (parseFailure) throw parseFailure;
         }
       }
-      if (!stopped && !signal.aborted) retry();
+      if (!stopped && !signal.aborted) {
+        if (Date.now() - connectedAt >= 20000) failures = 0;
+        retry();
+      }
     } catch (error) {
       if (!stopped && !signal.aborted) {
-        if (error instanceof SnapshotRequired || error instanceof TypeError && error.message.includes('encoded data')) {
+        if (error instanceof SnapshotRequired) {
           try { await reader?.cancel(); await repair(signal); } catch { fail(); }
         } else retry();
       }

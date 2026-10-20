@@ -25,6 +25,23 @@ function fixture(overrides: Partial<ReplaySubscription> = {}) {
 }
 
 describe('committed replay transport', () => {
+  it('renews healthy timed streams without accumulating failure backoff', async () => {
+    vi.useFakeTimers(); const options=fixture();
+    const fetcher=vi.fn<typeof fetch>().mockImplementation(async ()=> {
+      let timer: ReturnType<typeof setTimeout>;
+      return new Response(new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(': heartbeat\n\n'));
+          timer=setTimeout(()=>controller.close(),25000);
+        },
+        cancel(){clearTimeout(timer);},
+      }),{headers:{'Content-Type':'text/event-stream'}});
+    });
+    disposals.push(subscribeReplay(options,fetcher));
+    await vi.advanceTimersByTimeAsync(52500);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(options.rebase).not.toHaveBeenCalled();
+  });
   it('parses byte-split UTF8/CRLF with generated validation and resumes from applied cursor', async () => {
     vi.useFakeTimers();
     const options = fixture();
@@ -92,5 +109,13 @@ describe('committed replay transport', () => {
     stop(); resolve(response(wire())); await vi.advanceTimersByTimeAsync(60000);
     expect(options.apply).not.toHaveBeenCalled();expect(options.rebase).not.toHaveBeenCalled();
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+  it('repairs a truncated UTF8 codepoint once and stops a repeated malformed stream', async () => {
+    vi.useFakeTimers(); const options=fixture();
+    const fetcher=vi.fn<typeof fetch>().mockImplementation(async ()=>new Response(Uint8Array.of(0xf0),{headers:{'Content-Type':'text/event-stream'}}));
+    disposals.push(subscribeReplay(options,fetcher));
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(options.rebase).toHaveBeenCalledTimes(1); expect(options.failed).toHaveBeenCalledTimes(1);
+    expect(options.apply).not.toHaveBeenCalled(); expect(fetcher).toHaveBeenCalledTimes(2);
   });
 });

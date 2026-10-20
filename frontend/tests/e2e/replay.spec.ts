@@ -36,7 +36,10 @@ test('offline resumes only applied events and never submits a second task', asyn
   expect(submissions).toBe(1);
   // The only cancellation is this explicit UI action, after replay assertions.
   const cancel = page.getByRole('button', { name: '取消回复', exact: true });
-  if (await cancel.isVisible()) { await cancel.click(); await expect(page.getByRole('status').first()).toContainText('已取消'); }
+  if (snapshot.tasks.some((task: { status: string }) => ['RUNNING', 'QUEUED'].includes(task.status))) {
+    await expect(cancel).toBeVisible();
+    await cancel.click(); await expect(page.getByRole('status').first()).toContainText('已取消');
+  }
 });
 test('expired cursor repairs from a real snapshot once and route switching keeps histories separate', async ({ page }) => {
   await login(page, 'bob');

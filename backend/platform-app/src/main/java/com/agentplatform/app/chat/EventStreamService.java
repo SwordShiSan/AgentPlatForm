@@ -48,12 +48,16 @@ public final class EventStreamService implements ChatEventStream {
         var released = new AtomicBoolean();
         var watchdog = new AtomicReference<Disposable>();
         var sourceStopped = new AtomicBoolean();
+        var trace = com.agentplatform.types.RequestTrace.current();
+        java.util.function.Consumer<Throwable> recordClosure = failure -> System.getLogger(EventStreamService.class.getName())
+                .log(System.Logger.Level.WARNING, "Replay subscription closed trace={0} cause={1}", trace, failure.getClass().getSimpleName());
         Runnable stopSources = () -> {
             sourceStopped.set(true);
             var task = watchdog.getAndSet(null); if (task != null) task.dispose();
         };
         Flux<Frame> events = Flux.defer(() -> Mono.fromCallable(() -> {
-                    authorization.run();
+                    // Repository reads recheck current actor/membership in this batch.
+                    // Opaque-session checks run independently, without poll-frequency writes.
                     var page = first.getAndSet(null);
                     return page == null ? chat.events(caller, conversation, cursor.get()) : page;
                 }).subscribeOn(reads).flatMapMany(page -> {
@@ -65,10 +69,13 @@ public final class EventStreamService implements ChatEventStream {
         Flux<Frame> frames = Flux.concat(Mono.just(new Frame(" connected", null)), Flux.merge(1, events, heartbeat))
                 .take(Duration.ofSeconds(properties.lifetimeSeconds()), timers)
                 .takeUntilOther(stop.asMono())
+                .onErrorComplete(failure -> { recordClosure.accept(failure); return true; })
                 .doOnSubscribe(subscription -> {
                     var monitor = Flux.interval(Duration.ofMillis(properties.heartbeatMillis()), timers)
-                            .concatMap(tick -> Mono.fromRunnable(authorization).subscribeOn(reads), 1)
-                            .subscribe(ignored -> {}, failure -> stop.tryEmitError(failure));
+                            .onBackpressureLatest()
+                            .concatMap(tick -> Mono.fromRunnable(authorization).subscribeOn(reads)
+                                    .timeout(Duration.ofMillis(properties.heartbeatMillis()), timers), 1)
+                            .subscribe(ignored -> {}, failure -> { recordClosure.accept(failure); stop.tryEmitEmpty(); });
                     watchdog.set(monitor);
                     if (sourceStopped.get()) { var task = watchdog.getAndSet(null); if (task != null) task.dispose(); }
                 })
