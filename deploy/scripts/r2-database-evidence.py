@@ -14,6 +14,7 @@ import tempfile
 
 
 def capture(container):
+    assert re.fullmatch('[a-f0-9]{64}', container), 'Use the exact PostgreSQL container ID'
     state = json.loads(subprocess.check_output(['docker', 'inspect', container]))
     assert len(state) == 1
     state = state[0]
@@ -72,6 +73,7 @@ def capture(container):
         process.stdout.close(); process.stderr.close()
         script.close()
     return {'status': 'PASS', 'scope': 'QUIESCENT_DATABASE_FINGERPRINT_ONLY', 'metadata': metadata,
+            'captureIdentity': {'project': project, 'containerId': state['Id'], 'imageId': state['Image'], 'startedAt': state['State']['StartedAt']},
             'tables': {name: {'rows': value['rows'], 'sha256OfSortedRowSha256': value['hash'].hexdigest()} for name, value in result.items()},
             'plaintextRowsEmitted': False, 'supplierRequests': 0}
 

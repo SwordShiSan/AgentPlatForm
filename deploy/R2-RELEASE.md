@@ -17,4 +17,17 @@ Required window, each with command/exit/assertion/hash evidence:
 
 The production preflight/backup/restore driver must be reviewed against this manifest before activation. Merely adding the overlay or migrating a development database is not a cloud release or restore test.
 
+## Manifest and driver handoff
+
+Freeze the manifest from a fresh read-only inventory after local promotion. It must bind:
+
+- The two protected promotion records and final main/configuration source, separately from the accepted application source, backend/frontend runtime trees and API/gateway archive→platform manifest→config IDs. Never relabel an old image with the merge SHA.
+- R1's observed API/gateway identities, exact containers/start times/restart policies and existing deployment-file hashes. The recorded R1 homepage release uses backend config6853788d and gateway configa926aced; these are expected historical inputs to verify, not a substitute for a live inventory.
+- Effective Compose files, selected service names, resolved immutable images and memory/swap/PID/mount/network/port settings. Enumerate live services by project and service keys; do not inherit the R0 fixed image count, schema version or retired-business container list.
+- Root free bytes, incoming archive bytes, current cold-data size, a full4GiB XFS backup plus independent restore-copy allowance and the remaining5GiB reserve. Include temporary operator/probe memory in the2887MiB bound and keep at least768MiB host available.
+- Schema9/runtime baseline1, additive migration identities, key versions, source backup hashes and complete dynamic database fingerprints. Secret files, SQL, credential values and raw host proofs remain protected outside the public manifest/evidence package.
+- Restore project/root/network/ports, with canonical-path and overlap checks performed before the first mutation. Restore cleanup is installed first, stops only its own temporary projects, and unmounts only its private XFS copy. Source, restore and rollback application stacks run serially; the source XFS UUID is never changed.
+
+Implement the production driver using Docker Compose and the existing platform operator commands; do not add a second scheduler or import the local fixture database. Preserve a protected receipt for each completed operation so an interruption requires live-state verification before continuing. A failed step stops new resources and restores the exact recorded R1 application/configuration; it never invokes the legacy-business rollback scripts. Empty, stale or unverified inventory blocks activation. The current SSH prerequisite prevents a live manifest from being finalized; prepared files are not release evidence.
+
 `scripts/r2-database-evidence.py <exact-postgres-id> --output <new-private-report.json>` captures all actual tables in `pf` and `pf_runtime`, rather than reusing the R0/R1 fixed table list. The application must be stopped and the execution slot empty. Row SHA256 values are sorted in one read-only repeatable-read transaction with bounded sort memory; raw rows, keys and session tokens are never emitted. After serial restore, stop its API and capture with `--compare <source-report.json>`. A mismatch refuses the output receipt. This proves database equality only: object/workspace hashes, XFS quota enforcement, protected key decryption, readiness, independent paths/networks and rollback remain separate mandatory checks. Local capture/equality/mismatch rejection has passed on47 actual tables; no cloud restore is claimed.
