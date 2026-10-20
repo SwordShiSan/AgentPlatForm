@@ -15,7 +15,7 @@ from pathlib import Path
 from execution_fixture import ROOT, DATA, ENV, COMPOSE, BASE, PROJECT, STAGE
 from execution_images import pin_exported
 
-assert STAGE == 'r22' and PROJECT == 'agentplatform-r22-local', 'Only the isolated R2.2 fixture is authorized'
+assert STAGE in {'r22', 'r23'} and PROJECT == 'agentplatform-' + STAGE + '-local', 'Only explicit isolated R2.2/R2.3 fixtures are authorized'
 spec = importlib.util.spec_from_file_location('execution_acceptance', Path(__file__).with_name('execution-acceptance.py'))
 execution = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(execution)
@@ -309,6 +309,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode',choices=['protocol','failures','pressure','collection','observe','rollback'])
     args=parser.parse_args()
+    assert STAGE == 'r22' or args.mode not in {'rollback', 'observe'}, 'R2.3 uses cancellation-acceptance.py for version compatibility and observation'
     pin_exported(ENV,DATA,required=True)
     OUT.mkdir(parents=True,exist_ok=True)
     result={'status':'FAIL','mode':args.mode}

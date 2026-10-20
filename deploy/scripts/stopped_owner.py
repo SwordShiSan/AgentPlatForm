@@ -28,12 +28,16 @@ def reconcile(root, data, env, compose, service='worker', force=False):
     assert before['Config']['Labels']['com.docker.compose.project'] == project
     assert before['Config']['Labels']['com.docker.compose.service'] == service
     assert before['State']['Running'] and before['RestartCount'] == 0, 'Capture live original instance first'
+    # R2.3 retains a separate process identity when readiness is withdrawn.
+    # It still requires matching active database ownership, exact live container
+    # identity, observed stop and expired lease below; this file alone proves no stop.
+    marker_path = '/tmp/chat-worker-instance' if project == 'agentplatform-r23-local' else '/tmp/chat-worker-ready'
     # Docker's last healthy result may precede a DB outage. The live marker is
     # withdrawn while authorization storage is unavailable; wait for its actual
     # return, never infer an owner from a stale health result or caller input.
     deadline = time.monotonic() + 30
     while True:
-        marker = subprocess.run(['docker', 'exec', before['Id'], 'cat', '/tmp/chat-worker-ready'],
+        marker = subprocess.run(['docker', 'exec', before['Id'], 'cat', marker_path],
                                 cwd=root, env=env, text=True, capture_output=True)
         if marker.returncode == 0:
             owner = str(uuid.UUID(marker.stdout.strip()))

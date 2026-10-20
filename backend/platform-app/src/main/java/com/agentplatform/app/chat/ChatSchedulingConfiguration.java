@@ -67,23 +67,30 @@ public class ChatSchedulingConfiguration {
     }
 
     public static final class WorkerSupervisor implements DisposableBean {
-        private static final Path MARKER = Path.of("/tmp/chat-worker-ready");
+        private final Path marker;
+        private final Path instance;
         private final ChatRepository repository;
         private final DispatchTransport transport;
         private final ChatExecution execution;
         private final UUID owner = UUID.randomUUID();
         WorkerSupervisor(ChatRepository repository, DispatchTransport transport, ChatExecution execution) {
+            this(repository,transport,execution,Path.of("/tmp/chat-worker-ready"),Path.of("/tmp/chat-worker-instance"));
+        }
+        WorkerSupervisor(ChatRepository repository, DispatchTransport transport, ChatExecution execution,Path marker,Path instance) {
             this.repository = repository; this.transport = transport; this.execution = execution;
+            this.marker=marker;this.instance=instance;
         }
         @Scheduled(fixedDelay = 2000)
         public void supervise() {
             try {
+                // Instance identity survives readiness withdrawal; it is never a readiness or stop proof.
+                Files.writeString(instance, owner.toString());
                 if (!execution.accepting() || !repository.ready() || !transport.connected()) throw new ChatFailure(503, "CHAT_STORAGE_UNAVAILABLE");
                 transport.consume(delivery -> ChatConfiguration.handoff(repository, execution, owner, delivery));
-                Files.writeString(MARKER, owner.toString());
+                Files.writeString(marker, owner.toString());
             } catch (Exception unavailable) { withdraw(); }
         }
-        private void withdraw() { try { Files.deleteIfExists(MARKER); } catch (Exception ignored) { /* readiness fails closed */ } }
+        private void withdraw() { try { Files.deleteIfExists(marker); } catch (Exception ignored) { /* readiness fails closed */ } }
         @Override public void destroy() { withdraw(); }
     }
 }

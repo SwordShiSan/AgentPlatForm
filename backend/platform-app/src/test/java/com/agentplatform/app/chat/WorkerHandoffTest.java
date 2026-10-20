@@ -11,6 +11,17 @@ import java.util.concurrent.*;
 import org.junit.jupiter.api.Test;
 
 class WorkerHandoffTest {
+    @Test void instanceIdentitySurvivesReadinessWithdrawal(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory)throws Exception{
+        ChatRepository repository=mock(ChatRepository.class);ChatExecution execution=mock(ChatExecution.class);
+        var transport=mock(com.agentplatform.domain.chat.DispatchTransport.class);
+        var ready=directory.resolve("ready");var instance=directory.resolve("instance");
+        var supervisor=new ChatSchedulingConfiguration.WorkerSupervisor(repository,transport,execution,ready,instance);
+        when(execution.accepting()).thenReturn(true);when(repository.ready()).thenReturn(true);when(transport.connected()).thenReturn(true);
+        supervisor.supervise();String owner=java.nio.file.Files.readString(instance);assertEquals(owner,java.nio.file.Files.readString(ready));
+        when(execution.accepting()).thenReturn(false);supervisor.supervise();
+        assertFalse(java.nio.file.Files.exists(ready));assertEquals(owner,java.nio.file.Files.readString(instance));
+        supervisor.destroy();assertEquals(owner,java.nio.file.Files.readString(instance));
+    }
     private Lease lease(UUID owner,long fence){return new Lease(UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID(),owner,fence,UUID.randomUUID(),UUID.randomUUID(),1,UUID.randomUUID());}
     private Delivery delivery(Lease lease){var delivery=mock(Delivery.class);when(delivery.envelope()).thenReturn(new Envelope(1,UUID.randomUUID(),lease.spaceId(),lease.taskId(),1,"execution.ready",Instant.now(),null,lease.taskId()));return delivery;}
 

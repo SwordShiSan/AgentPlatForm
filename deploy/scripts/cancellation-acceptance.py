@@ -130,6 +130,69 @@ def stuck(client):
     assert sql("SELECT count(*) FROM pf.model_call WHERE task_id='" + task + "'") == '1'
     record('unconfirmed-host-proof', {'task': task, 'waitingTask': followup, 'proof': proof, 'keptSlotUntilProof': True})
 
+def windows(client):
+    results = []
+    for point in ['claim-before-ack', 'ack-before-model', 'round-before-checkpoint', 'checkpoint-before-seal', 'checkpoint-after-seal']:
+        args = execution.workers(point)
+        task = client.submit('fixture:normal:r23:cancel-window:' + point + ':' + str(uuid.uuid4()))
+        def marker():
+            r = subprocess.run(['docker', 'exec', PROJECT + '-worker-1', 'cat', '/tmp/chat-fault-ready'], capture_output=True, text=True)
+            return r.returncode == 0 and r.stdout.strip() == point
+        wait(marker)
+        cancel(client, task)
+        assert sql("SELECT count(*) FROM pf.execution_slot WHERE task_id='" + task + "'") == '1'
+        proof = execution.reconcile(ROOT, DATA, ENV, args, force=True)
+        assert status(task) == 'CANCELLED'
+        expected = 0 if point in ['claim-before-ack', 'ack-before-model'] else 1
+        assert int(sql("SELECT count(*) FROM pf.model_call WHERE task_id='" + task + "'")) == expected
+        assert projection(client, task)['unknownCalls'] == 0
+        results.append({'point': point, 'task': task, 'calls': expected, 'proof': proof})
+        print('Cancelled crash boundary: ' + point + ' PASS', flush=True)
+    execution.workers()
+    prompt = 'fixture:timeout:r23:before-output:' + str(uuid.uuid4())
+    task = client.submit(prompt)
+    wait(lambda: sql("SELECT count(*) FROM pf.model_call WHERE task_id='" + task + "' AND status='STARTED'") == '1')
+    time.sleep(1)
+    cancel(client, task)
+    wait(lambda: status(task) == 'BLOCKED')
+    assert projection(client, task)['stopConfirmed'] and projection(client, task)['unknownCalls'] == 1
+    results.append({'point': 'before-first-output', 'task': task, 'calls': 1})
+    task = client.submit('fixture:429:r23:backoff:' + str(uuid.uuid4()))
+    wait(lambda: int(sql("SELECT count(*) FROM pf.model_call WHERE task_id='" + task + "'")) >= 1)
+    cancel(client, task)
+    wait(lambda: status(task) in {'CANCELLED', 'BLOCKED'})
+    count = sql("SELECT count(*) FROM pf.model_call WHERE task_id='" + task + "'")
+    time.sleep(5)
+    assert count == sql("SELECT count(*) FROM pf.model_call WHERE task_id='" + task + "'")
+    assert projection(client, task)['stopConfirmed']
+    results.append({'point': 'retry-backoff', 'task': task, 'calls': int(count), 'lateRetryRejected': True})
+    record('cancel-windows', {'windows': results})
+
+def rollback(client):
+    assert sql('SELECT count(*) FROM pf.execution_slot WHERE task_id IS NOT NULL') == '0'
+    previous = json.loads((ROOT / '.cache/r22-local/artifacts/images.json').read_text(encoding='utf-8'))
+    old = next(row for row in previous if row['component'] == 'api')
+    assert json.loads(command(['docker', 'inspect', old['localId']]))[0]['Id'] == old['localId']
+    override = DATA / 'previous-image.override.json'
+    override.write_text(json.dumps({'services': {service: {'image': old['localId']} for service in ['api', 'worker', 'worker-2']}}), encoding='utf-8')
+    switched = COMPOSE + ['-f', str(override)]
+    try:
+        command(COMPOSE + ['stop', 'api', 'worker', 'worker-2'])
+        command(switched + ['up', '-d', '--no-deps', '--force-recreate', '--wait', '--wait-timeout', '120', 'api', 'worker', 'worker-2'])
+        old_client = execution.Client()
+        assert old_client.request('GET', '/api/v1/readiness')['status'] == 'READY'
+        task = old_client.submit('fixture:normal:r23:previous-v7:' + str(uuid.uuid4()))
+        wait(lambda: status(task) == 'SUCCEEDED')
+        assert sql('SELECT max(version::int) FROM pf.flyway_schema_history WHERE success') == '8'
+        assert sql('SELECT schema_version FROM pf.baseline_version WHERE id=1') == '1'
+        result = {'previousSource': old['source'], 'previousImage': old['localId'], 'schema': 8,
+                  'runtimeBaseline': 1, 'task': task, 'noDownMigration': True}
+    finally:
+        command(COMPOSE + ['stop', 'api', 'worker', 'worker-2'])
+        command(COMPOSE + ['up', '-d', '--no-deps', '--force-recreate', '--wait', '--wait-timeout', '120', 'api', 'worker', 'worker-2'])
+    assert execution.Client().request('GET', '/api/v1/readiness')['status'] == 'READY'
+    record('previous-image-compatibility', result)
+
 def observe(client):
     execution.workers()
     command(COMPOSE + ['up', '-d', '--no-deps', 'worker-2'])
@@ -166,8 +229,8 @@ def observe(client):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=['protocol', 'accounting', 'stuck', 'observe'])
+    parser.add_argument('mode', choices=['protocol', 'accounting', 'stuck', 'windows', 'rollback', 'observe'])
     mode = parser.parse_args().mode
     pin_exported(ENV, DATA, required=True)
     OUT.mkdir(parents=True, exist_ok=True)
-    globals()[{'protocol': 'protocol', 'accounting': 'accounting', 'stuck': 'stuck', 'observe': 'observe'}[mode]](execution.Client())
+    globals()[mode](execution.Client())
