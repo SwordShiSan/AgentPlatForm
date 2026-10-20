@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 test.skip(process.env.R22_BROWSER_ACCEPTANCE !== '1', 'Requires isolated R2.2 actual API/PG/MQ and deterministic provider');
 test.use({ trace: 'off', screenshot: 'off' });
@@ -59,4 +60,41 @@ test('expired cursor repairs from a real snapshot once and route switching keeps
   await page.goto(`/app/chat/${first}`);
   await expect(page.locator('.chat-message.assistant')).toHaveCount(1);
   await expect(page.getByLabel('消息', { exact: true })).not.toHaveValue('isolated draft');
+});
+
+test('a new conversation subscription waits for its own delayed snapshot', async ({ page, baseURL }) => {
+  await login(page);
+  await submit(page);
+  await expect(page.getByRole('status').first()).toContainText('已完成');
+  const model=await page.getByLabel('模型', {exact:true}).inputValue();
+  const csrf=await (await page.request.get('/api/v1/auth/csrf')).json();
+  const title='Delayed snapshot '+Date.now();
+  const accepted=await page.request.post('/api/v1/conversations',{
+    headers:{Origin:baseURL!,'X-CSRF-Token':csrf.csrfToken,'Idempotency-Key':randomUUID()},
+    data:{title,initialTask:{options:{modelId:model,credentialSource:'PLATFORM'},input:{text:'fixture:slow'}}},
+  });
+  expect(accepted.status()).toBe(201);
+  const id=(await accepted.json()).id;
+  await page.reload();
+  await expect(page.getByRole('status').first()).toContainText('已完成');
+  let released=false, pending=false, early=false, requests=0;
+  let release!: ()=>void;
+  const gate=new Promise<void>(done=>{release=done;});
+  await page.route(`**/api/v1/conversations/${id}/snapshot`,async route=>{
+    const response=await route.fetch(); pending=true;
+    await gate; await route.fulfill({response});
+  });
+  page.on('request',request=>{
+    if(request.url().includes(`/api/v1/conversations/${id}/events?`)) {requests++;if(!released)early=true;}
+  });
+  try {
+    await page.getByRole('link',{name:title,exact:true}).click();
+    await expect.poll(()=>pending).toBe(true);
+    expect(early).toBe(false);expect(requests).toBe(0);
+  } finally {released=true;release();}
+  await expect.poll(()=>requests).toBeGreaterThan(0);
+  expect(early).toBe(false);
+  await expect(page.locator('.chat-message.user .chat-text').first()).toHaveText('fixture:slow');
+  const cancel=page.getByRole('button',{name:'取消回复',exact:true});
+  if(await cancel.isVisible()){await cancel.click();await expect(page.getByRole('status').first()).toContainText('已取消');}
 });

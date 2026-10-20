@@ -8,7 +8,7 @@ import { ApiError } from '../../shared/api/request';
 import { api } from '../../shared/api/client';
 import { newRequestId } from '../../shared/api/request-id';
 import { setCsrf } from '../../shared/api/session';
-import { applyChatEvent, type ChatSnapshot } from './stream-state';
+import { applyChatEvent, SnapshotRequired, type ChatSnapshot } from './stream-state';
 import { subscribeReplay, type StreamStatus } from './event-stream';
 
 const route = useRoute(); const router = useRouter(); const cache = useQueryClient();
@@ -78,7 +78,7 @@ async function csrf() {
 }
 function stopStream() { generation++; stream?.(); stream = undefined; }
 function connect() {
-  if (!mounted || stream || !actor.value || !space.value || !selected.value || !snapshot.data.value) return;
+  if (!mounted || stream || !actor.value || !space.value || !selected.value || !cache.getQueryData<ChatSnapshot>(snapshotKey.value)) return;
   const conversation = selected.value; const key = [...snapshotKey.value];
   const current = ++generation; const user = actor.value; const selectedSpace = space.value;
   const valid = () => mounted && generation === current && conversation === selected.value && user === actor.value && selectedSpace === space.value;
@@ -87,7 +87,10 @@ function connect() {
     cursor: () => cache.getQueryData<ChatSnapshot>(key)?.cursor ?? 0,
     apply: body => {
       if (!valid()) return;
-      cache.setQueryData<ChatSnapshot>(key, previous => previous ? applyChatEvent(previous, body) : previous);
+      cache.setQueryData<ChatSnapshot>(key, previous => {
+        if (!previous) throw new SnapshotRequired('Canonical projection is missing');
+        return applyChatEvent(previous, body);
+      });
       if (body.type === 'usage.updated') void cache.invalidateQueries({ queryKey: ['chat', user, 'usage'] });
     },
     rebase: async signal => {
