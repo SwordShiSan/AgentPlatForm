@@ -1,3 +1,15 @@
+# Current measured acceptance conclusion (2026-10-20)
+
+All mandatory functional gates PASS on candidate fe367e575a6f6cbee3b443f08015a40151e8f124: Maven176 (zero skipped), Vue34/type/build/contracts, non-root Linux64, real API browser20/20, actual PG/MQ/two workers, cancellation/ACK/checkpoint races, blocked provider and checkpoint callbacks, signed host stop proof, protected operator accounting/CAS/idempotency/rejections, old V7 image on additiveV8 and restored exact candidate. Runtime baseline1 and V1–V7 remain unchanged.
+
+Observation1801.82seconds/68samples/67tasks included actual in-window broker and active-DB interruptions. Actual Docker VM is about8GiB. Limits≤2887MiB and sampled host reserve≥768MiB; no claim about minimum physical host, absolute peaks or dual-execution capacity. Real supplier calls0; cloudR1 unchanged. UNKNOWN fixture calls and holds are intentionally retained, not silently replayed or zero-filled. Known stopped BLOCKED cancellation requires latest matching receipt; historical missing proof is never inferred.
+
+Evidence/commands/artifact hashes are in deploy/r2.3-acceptance.json and protected local records. Initial stale probe dependency, malformed test request and pre-freeze assumptions remain historical failures/NOT_RUN; explicit final reruns supersede them. The earlier1651second observation stopped at the correctly enforced default fixture budget and is not credited: a finite isolated account limit2000000micros (prior1000000) preserved every usage/UNKNOWN hold and the full1800second gate was restarted. Production defaults remain unchanged. Raw logs, browser forms, SQL, credentials and proof signatures are excluded from public Git.
+
+Protected two-level promotion, archive and delivery remain pending. R2.3 is not yet VERIFIED.
+
+## Historical process records
+
 # Verification
 Observation environment correction: the first final run stopped before1800seconds with actual429/QUOTA_EXCEEDED. A separate request verified the exact code and unchanged budget row after rejection. The protected isolated test account limit is configured from1000000 to2000000micros with all prior usage/UNKNOWN holds unchanged; production defaults and application admission remain unchanged. Preserve that failed run and restart the full1800second gate. No partial duration is credited as a completed observation.
 

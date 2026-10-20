@@ -10,6 +10,6 @@
 ## 4. UI
 - [x] 4.1 Read-only stop/unknown/accounting feedback and independent-new-message behavior.
 ## 5. Verification and closure
-- [ ] 5.1 Engineering, migrations, SDK fixtures/Jackson, PG/MQ/two-worker faults and cancellation races.
-- [ ] 5.2 Browser, secrets/privileges and30minute bounded cancellation/failure observation.
+- [x] 5.1 Engineering, migrations, SDK fixtures/Jackson, PG/MQ/two-worker faults and cancellation races.
+- [x] 5.2 Browser, secrets/privileges and30minute bounded cancellation/failure observation.
 - [ ] 5.3 Exact source/artifacts/evidence, protected two-level PRs, archive and local/global hashed delivery.

@@ -1,0 +1,484 @@
+{
+  "stage": "R2.3",
+  "status": "FUNCTIONAL_GATES_PASS_PROMOTION_PENDING",
+  "recordedAt": 1792494035.1796455,
+  "baseline": "75981636a6daa4eba41bb9d325e2a75c2ee4806e",
+  "receiptSource": "7faa48d6ab8f9d42465712a2e1251050607e61d8",
+  "candidateSource": "fe367e575a6f6cbee3b443f08015a40151e8f124",
+  "backendTree": "3083fa851f65ac70152916fbd2972437de3f1dc7",
+  "frontendTree": "c7ed219a00519378c8f9cd01b2abd1da88fd4f92",
+  "jarSha256": "3a9c3cf46c31762a9535e126532dc081d56802d887ee41707e826137aa4bedaa",
+  "images": [
+    {
+      "component": "api",
+      "tag": "agentplatform-api:r23-local",
+      "source": "fe367e575a6f6cbee3b443f08015a40151e8f124",
+      "localId": "sha256:2dee6dc528b41da8a67840be9788f91b5b0a62ebe15073434525ef849095ff5c",
+      "indexDigest": "sha256:2dee6dc528b41da8a67840be9788f91b5b0a62ebe15073434525ef849095ff5c",
+      "manifestDigest": "sha256:0aa32b384b70dc10dd0b5341090e5a7cd987756c73e028d927dfd57ec8879e18",
+      "configId": "sha256:cf1e184697c897779c8eae5a2830a5b0a716b031c39019df2f3d4700baf562d5",
+      "platform": "linux/amd64",
+      "archiveBytes": 172057605,
+      "archiveSha256": "710ddf54510b9d0830370f97ae4516b258c0c6a3326c278746e67e331e9b56e2",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/cf1e184697c897779c8eae5a2830a5b0a716b031c39019df2f3d4700baf562d5",
+          "RepoTags": [
+            "agentplatform-api:r23-local"
+          ],
+          "Layers": [
+            "blobs/sha256/a60ef8ec184edb5ed91f5983f00261359fb2fe20f603e8d488b9477d32fcad70",
+            "blobs/sha256/49b14164d4d96e593cb68db980906b691931cdcde6f60b918280317c89e55462",
+            "blobs/sha256/7c48d168a51b541814c6814256cd298e11114f5f088e4511cffb4f6b3622d1b6",
+            "blobs/sha256/5165dac19553999758e23bf9247e5bac05f0d26ee503d13bf70c1e8873eb8d37",
+            "blobs/sha256/02e0e048361058af7411fe47569c4d90b68a917dba037514c3831b7bf7029c7b",
+            "blobs/sha256/412e0e29481a7beb80ad1ff4a3d8b9e96ab550d543ca4bc6f517f1e3d0760a0a",
+            "blobs/sha256/f88f403ff7b68ccf06f4de102c77ad59acddf8a89290e4c5b11f9ff9077490b3",
+            "blobs/sha256/1753498b7729ded96d332cdf7d017645dc1cf437b6b83e471a86b6e258109b1e"
+          ]
+        }
+      ],
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    },
+    {
+      "component": "gateway",
+      "tag": "agentplatform-gateway:r23-local",
+      "source": "fe367e575a6f6cbee3b443f08015a40151e8f124",
+      "localId": "sha256:6bf975d2910907836a3eec33dbfbb5b6ea9117870c0df588395cbcc4da169b6f",
+      "indexDigest": "sha256:6bf975d2910907836a3eec33dbfbb5b6ea9117870c0df588395cbcc4da169b6f",
+      "manifestDigest": "sha256:3811d5c1ca271a6ddc74aa3f49a52261e70837aa0a1311b1d8159f2579e1c3b7",
+      "configId": "sha256:0ac16e2c8f4981673cd4170b4693db9de39df1eeea9d69239b6a0e09fdce5b2a",
+      "platform": "linux/amd64",
+      "archiveBytes": 25606236,
+      "archiveSha256": "14a70ba713f1ae9d15fd8ff219ded368bacd57c662a7c318c37396b1fb86ae31",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/0ac16e2c8f4981673cd4170b4693db9de39df1eeea9d69239b6a0e09fdce5b2a",
+          "RepoTags": [
+            "agentplatform-gateway:r23-local"
+          ],
+          "Layers": [
+            "blobs/sha256/e2de96513ba9eb53b431787ec8a65cdde380ac4772a3e4c4b714dcfde2a102b5",
+            "blobs/sha256/655cdf110ce6cc8b81dc0bf0d471a4fb200eac950a7a108ed5335b91ed3ef07b",
+            "blobs/sha256/cb3dcaeaef3012c03cc5ba44f04289e06247ee28b0396073f0c1aa4667e08cd6",
+            "blobs/sha256/c792e3f2c3b45eb2b0ab9ca191eb1c881394ef80dc9b03a728d4241709cfd309",
+            "blobs/sha256/dfd17a001b4375f4b03069aa2c6c03e965543d91589d9f7399dae7c3798037bd",
+            "blobs/sha256/69146b4a52cfd86bdd87919b33fc3c6afd168c7911c27d3805d48212887b2e4f",
+            "blobs/sha256/1f9e9a0fcad78d32ce75d315476a02e8c85818e0db3191e375796df6d1594dda",
+            "blobs/sha256/db0e3cd9a4f71fb319f83c2b8da0c7ba756419e6d8a8671e117dcba315656b39",
+            "blobs/sha256/ab0d6d0b8f06a2555ffb7e2777729ed4c2c656d62a2869414c9df71b527c4b41",
+            "blobs/sha256/cf8c88d8fddf207bd2f653252d43bb0d56a11c34ba1e2ebb382de0fd4f3276ee",
+            "blobs/sha256/cd69fcf96c4ec97fcd6354aa7c707e81a02a5c7cac284c2b57ebe8b930614480"
+          ]
+        }
+      ],
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    },
+    {
+      "component": "provider-fixture",
+      "tag": "agentplatform-provider-fixture:r23-local",
+      "source": "fe367e575a6f6cbee3b443f08015a40151e8f124",
+      "localId": "sha256:0f6423762bcb6dcb0bd070c76dd497d3a79b46237508b44f8fceff5bdc1885eb",
+      "indexDigest": "sha256:0f6423762bcb6dcb0bd070c76dd497d3a79b46237508b44f8fceff5bdc1885eb",
+      "manifestDigest": "sha256:126e1283707f320dde6d2d65fb91c362738de09fb43267d56801d264c83f591c",
+      "configId": "sha256:917aef89f8dcc041f953c1c421f6e5a5e6e36201670b71ded1ca963f8b891ecc",
+      "platform": "linux/amd64",
+      "archiveBytes": 42953185,
+      "archiveSha256": "d6e752aabc1b4de389b487b3aa459bfb090589fb1c5933d678a26b936e9d6dce",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/917aef89f8dcc041f953c1c421f6e5a5e6e36201670b71ded1ca963f8b891ecc",
+          "RepoTags": [
+            "agentplatform-provider-fixture:r23-local"
+          ],
+          "Layers": [
+            "blobs/sha256/ecc510c1e359bdc007b39802570bb7e4dec7d6ebccf357c3201a74299113e05e",
+            "blobs/sha256/75b6a36c64a1cf3520fc4b4aae4739d5caa8a6a05c27835a920a61784c9c32f8",
+            "blobs/sha256/6912e23eb44595b44dc6d9882b34f305ad6f6e9667cec70b13e5dbc4f8cd97f4",
+            "blobs/sha256/bbc5a12237474ec0b23b5051260d56d6436a24d70d9cad961adebe7a037ed813",
+            "blobs/sha256/eb3d6976bef3166b7b0b09edd5b2a013c9e575d1bb8cc6569372a03cb4511f75"
+          ]
+        }
+      ],
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    },
+    {
+      "component": "framework-probe",
+      "tag": "agentplatform-framework-probe:r23-local",
+      "source": "fe367e575a6f6cbee3b443f08015a40151e8f124",
+      "localId": "sha256:d1aa02c76b795b1f2f93011104cfd0a2ca1d49f328a6844420c82eeb4288048b",
+      "indexDigest": "sha256:d1aa02c76b795b1f2f93011104cfd0a2ca1d49f328a6844420c82eeb4288048b",
+      "manifestDigest": "sha256:07e01fc3e68198b89716eab44263ab2d9f265d156ec35e56220318a2ee05b441",
+      "configId": "sha256:8a574fba0c5bc2939f76261d7fabedd4462777bbbf7714db7fcf88ad25534299",
+      "platform": "linux/amd64",
+      "archiveBytes": 303065214,
+      "archiveSha256": "5409e6c324c47db9e228b1b53ea25f263418a639fcb3824896f52ffbc1cb9aa5",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/8a574fba0c5bc2939f76261d7fabedd4462777bbbf7714db7fcf88ad25534299",
+          "RepoTags": [
+            "agentplatform-framework-probe:r23-local"
+          ],
+          "Layers": [
+            "blobs/sha256/a60ef8ec184edb5ed91f5983f00261359fb2fe20f603e8d488b9477d32fcad70",
+            "blobs/sha256/8b068c321b37c6e50e8ca50209806303ebbb676b492a08070ba9d79a0f7df6f8",
+            "blobs/sha256/61d5a0d738f6fd8344abcdcf7c1b734d9adbf8d5161b30b80fbf9533b8ab0bb2",
+            "blobs/sha256/dc6abd946a0778c24a3d28c86aa3ecec2fbb7f1f681a12f2411c7664d5652812",
+            "blobs/sha256/ab0753bfa4f1a7af00cc2acca04a6ef15ab39b5b5f182052d379bb3980dfc1d2",
+            "blobs/sha256/ba8298971da319dc1d90f8792c3c7a2fde9957949c8e1e0be6a2f86b5fd529e6",
+            "blobs/sha256/c19a129963cf1229f988833be322899fffebd4a9d340b61ccb070f93af1423ac",
+            "blobs/sha256/9b00d2bf4519986ef2a21b733d188900f3ebfbb401f0daf3116e5de68962ea94",
+            "blobs/sha256/8f057482e1b07eddc042c026aea0fc078b7994e790e981a55026156512d2535d",
+            "blobs/sha256/7ca25a082ed91ec13dd0a3bb9e763bee9c1f5cb5bc9fcd4a73d65fa7182ff618",
+            "blobs/sha256/f15a05cd6dd40aeb657722bf300bdedb2390f5df494dfaf82ca4e91352bc2cf0",
+            "blobs/sha256/26167fc97067a8cfdf91730ac20ff97cc4fbc02d43d44eb111142ae445a79345"
+          ]
+        }
+      ],
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    }
+  ],
+  "schema": 8,
+  "runtimeBaseline": 1,
+  "migrationsV1ThroughV7Unchanged": true,
+  "environment": {
+    "project": "agentplatform-r23-local",
+    "engine": "Docker Desktop Linux",
+    "actualEngineMemoryBytes": 8256708608,
+    "containerLimitBytes": 2650800128,
+    "maxCombinedMiB": 2887,
+    "hostReserveMiB": 768,
+    "executionSlots": 1,
+    "swapCapacityExtension": false,
+    "minimumPhysicalHostCapacityClaim": false,
+    "dualExecutionCapacityClaim": false,
+    "realSupplierCalls": 0,
+    "cloudR1Changed": false
+  },
+  "engineering": {
+    "maven": {
+      "tests": 176,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "vueUnit": 34,
+    "linuxNonRootTests": 64,
+    "browserTests": 20,
+    "strictItems": 15
+  },
+  "cancellation": {
+    "protocol": "PASS",
+    "operatorAccounting": "PASS",
+    "unconfirmedKeepsSlotUntilHostProof": "PASS",
+    "windows": [
+      {
+        "point": "claim-before-ack",
+        "calls": 0
+      },
+      {
+        "point": "ack-before-model",
+        "calls": 0
+      },
+      {
+        "point": "round-before-checkpoint",
+        "calls": 1
+      },
+      {
+        "point": "checkpoint-before-seal",
+        "calls": 1
+      },
+      {
+        "point": "checkpoint-after-seal",
+        "calls": 1
+      },
+      {
+        "point": "before-first-output",
+        "calls": 1
+      },
+      {
+        "point": "retry-backoff",
+        "calls": 2
+      }
+    ],
+    "independentNewMessageExcludesUnknownRound": true,
+    "unknownUsageNeverZero": true,
+    "noUnknownReplay": true,
+    "latestStopReceiptRequiredForKnownBlockedCancel": true,
+    "historicalMissingStopNotInferred": true
+  },
+  "crashWindows": [
+    {
+      "point": "claim-before-ack",
+      "status": "PASS",
+      "result": "SUCCEEDED",
+      "calls": 1,
+      "realProviderCalls": 0
+    },
+    {
+      "point": "ack-before-model",
+      "status": "PASS",
+      "result": "SUCCEEDED",
+      "calls": 1,
+      "realProviderCalls": 0
+    },
+    {
+      "point": "response-before-round",
+      "status": "PASS",
+      "result": "BLOCKED",
+      "calls": 1,
+      "realProviderCalls": 0
+    },
+    {
+      "point": "round-before-checkpoint",
+      "status": "PASS",
+      "result": "SUCCEEDED",
+      "calls": 1,
+      "realProviderCalls": 0
+    },
+    {
+      "point": "checkpoint-before-seal",
+      "status": "PASS",
+      "result": "SUCCEEDED",
+      "calls": 1,
+      "realProviderCalls": 0
+    },
+    {
+      "point": "checkpoint-after-seal",
+      "status": "PASS",
+      "result": "SUCCEEDED",
+      "calls": 1,
+      "realProviderCalls": 0
+    }
+  ],
+  "runtimeAudit": {
+    "status": "PASS",
+    "realProviderCalls": 0,
+    "schema": 8,
+    "credentialsEncrypted": true,
+    "apiCiphertextReadDenied": true,
+    "workerStopProofReadDenied": true,
+    "sentinelLeaks": 0,
+    "threadSamples": {
+      "api": 36,
+      "worker": 30,
+      "worker-2": 29
+    },
+    "ledger": {
+      "calls": 205,
+      "unknownCalls": 62,
+      "reconcilingReservations": 62,
+      "attempts": 209,
+      "turns": 203
+    },
+    "containerLimitsMiB": 2528.0,
+    "maxLocalCancellationSeconds": 0.577607
+  },
+  "observation": {
+    "status": "PASS",
+    "durationSeconds": 1801.8246833000449,
+    "sampleCount": 68,
+    "tasks": 67,
+    "availableMemoryMinBytes": 6023831552,
+    "swapUsedFirstBytes": 0,
+    "swapUsedLastBytes": 0,
+    "databaseGrowthBytes": 1581056,
+    "inWindowDependencyFailure": "PASS",
+    "absolutePeakClaim": false
+  },
+  "previousImageCompatibility": {
+    "status": "PASS",
+    "realProviderCalls": 0,
+    "previousSource": "2973cfc287b5177411a09fcccd0de0492c614d7c",
+    "previousImage": "sha256:021db7dd99f30f626cba6f3c36cde644bb70a91f2feb70a2e1f871a9a60e04cb",
+    "schema": 8,
+    "runtimeBaseline": 1,
+    "noDownMigration": true
+  },
+  "evidenceIndex": [
+    {
+      "name": "engineering.json",
+      "sha256": "34d0230d511d3531247a48e75b8ab4436f1e78d9d8877b782abc77a680df6781",
+      "bytes": 2150
+    },
+    {
+      "name": "images.json",
+      "sha256": "0fe3a93d77e9e585f6cbc3949e41e9defb734058e01c12bcf6c08aa0853210e2",
+      "bytes": 7677
+    },
+    {
+      "name": "gates-progress.json",
+      "sha256": "1bcdb8ecdcd11f5e161c2e244ef1ba653ac32df753c6a3f3b49d45a47ac796a5",
+      "bytes": 10801
+    },
+    {
+      "name": "runtime-audit.json",
+      "sha256": "b1a3d2e1263981312595a1d3b2a705c1442750dce6b088faf5e0d6ff4fd488d8",
+      "bytes": 3191
+    },
+    {
+      "name": "outages.json",
+      "sha256": "d41b78e36827a4e8ac9d73ee7f8e6b1d087b82079cd1002bf13e639201ea2da2",
+      "bytes": 5465
+    },
+    {
+      "name": "observation-test-budget.json",
+      "sha256": "c01e41e80eb0966ddf267955c7b39dc8cd17f149f1f5d7033fa3384aaf750927",
+      "bytes": 885
+    },
+    {
+      "name": "cancel-windows.json",
+      "sha256": "c026367cb9d1ab03cd376b49cf3762235d9f2a3bda2ed3d529d07c50c8730c63",
+      "bytes": 2792
+    },
+    {
+      "name": "observation-progress.json",
+      "sha256": "9a12cd03fd28fb1cac30595975067b71c540d9b935b017fb62f6ea3225b84036",
+      "bytes": 413922
+    },
+    {
+      "name": "observation.json",
+      "sha256": "7cdc22a8cf60bdc71d4bd4a4231200c8f8071c9b119a1b3938c234f1ccc2d51d",
+      "bytes": 414093
+    },
+    {
+      "name": "operator-accounting.json",
+      "sha256": "68650215f79c788efa5d171321b3247df5ad896e1bf19a03c0e99d095ade26c2",
+      "bytes": 170
+    },
+    {
+      "name": "previous-image-compatibility.json",
+      "sha256": "f4fb19cd79c7cb01431f5e8efa439eebb0e6f131c93373ca6bacbabb2dcde833",
+      "bytes": 331
+    },
+    {
+      "name": "protocol.json",
+      "sha256": "ca283e46c5510e79f3b5dc2447057dc0740cc3a9d0b4659b70cc2dcec44666cb",
+      "bytes": 5754
+    },
+    {
+      "name": "unconfirmed-host-proof.json",
+      "sha256": "bd5d7816d1f33ea18c5eeb0626f1e769bb6beb32a8f1126635f223381ae3acc9",
+      "bytes": 1224
+    },
+    {
+      "name": "claim-before-ack.json",
+      "sha256": "c571002759d753536fb06294dcfd2b525e6a508ccbd513f73cac947f9285dc75",
+      "bytes": 5433
+    },
+    {
+      "name": "ack-before-model.json",
+      "sha256": "c21fcba4f52460a8113bad0d0c326fac31db84f43f74d5af7461bce3f696d0cc",
+      "bytes": 5435
+    },
+    {
+      "name": "response-before-round.json",
+      "sha256": "90445c80fc70d0aa10106f6c54d59e8eeab0ad0ea34aa5e620d6074453830de0",
+      "bytes": 5440
+    },
+    {
+      "name": "round-before-checkpoint.json",
+      "sha256": "364de741f1dcb67cb176ed01dabfa84c324d3f88d8d4f5ec479738bf64207237",
+      "bytes": 5443
+    },
+    {
+      "name": "checkpoint-before-seal.json",
+      "sha256": "4b80f0b1dcf06e22bcf9b90ffa2d484575c2f907ddc24b13605ff9669e4be796",
+      "bytes": 5441
+    },
+    {
+      "name": "checkpoint-after-seal.json",
+      "sha256": "c0404cef3217610686f21a1619b04fc02aec1680d9999671b39d4fcc4383aafa",
+      "bytes": 5438
+    },
+    {
+      "name": "r23-maven-verify.log",
+      "sha256": "aeb8a63b33811d686f5a086b843dee48a43ccec8f43ab6852da73c10ae8871cd",
+      "bytes": 130896
+    },
+    {
+      "name": "r23-typecheck.log",
+      "sha256": "32b41c21d6960872188dd6527d9af1d550cf9a31fa518ac39cfc6bafacf61064",
+      "bytes": 102
+    },
+    {
+      "name": "r23-test.log",
+      "sha256": "8b13dbf8f9038c2a00705da64baf6cf1dcf33ad5123b1f8438b14b1b3da12b03",
+      "bytes": 317
+    },
+    {
+      "name": "r23-strict.log",
+      "sha256": "b8abb40f1b7214e63e393bf2f7959a5c0488fdfbf2eab5013dcafd9a579f0010",
+      "bytes": 513
+    },
+    {
+      "name": "r23-browser.log",
+      "sha256": "827d6145a6780b2bf9492cbb2c723bb59edcff5d7e186c3567db8d119c0126fc",
+      "bytes": 3716
+    },
+    {
+      "name": "r23-linux-sdk.log",
+      "sha256": "2a06412e0bb7fba815a7ea215498eb917789ddfeb83d6ca1235a7aaeaa97502f",
+      "bytes": 39026
+    },
+    {
+      "name": "r23-probe-fresh-dependencies.log",
+      "sha256": "d7dac52b069678450c4b7fe97d331408d918efb16df585f88f1d87cf1af11447",
+      "bytes": 13355
+    }
+  ],
+  "historicalFailures": "Protected intermediate logs retained: stale probe dependencies (0 started, fixed via fresh reactor hash checks), invalid test request options, initial history/mock/type assumptions. Preliminary dc812ca runtime/window evidence is not final candidate evidence. Browser precondition rejected changed backend as NOT_RUN and all20 final browser tests then passed. First final replay protocol attempt saw a transient idle-in-transaction sample;20 subsequent diagnostic samples had no idle transaction and at most4 connections. The unchanged full protocol rerun passed; no production fix or universal no-leak claim is inferred. Original failure and diagnostic samples retained.",
+  "harnessCorrection": {
+    "runtimeSourceUnchanged": true,
+    "testSource": "fde794dd9cd212fc092cdf8c522ed75555a0b3a1",
+    "initialPressureAttempt": "NOT_RUN_WRONG_R22_PORT",
+    "correctedStagePort": 18091,
+    "unknownCancellationRequiresConfirmedStopAndHeldReservation": true
+  },
+  "observationBudget": {
+    "status": "PASS",
+    "project": "agentplatform-r23-local",
+    "time": 1792492072.9514298,
+    "change": "Finite isolated deterministic acceptance account limit only",
+    "beforeLimitMicros": 1000000,
+    "afterLimitMicros": 2000000,
+    "budgetRefusalCode": "QUOTA_EXCEEDED",
+    "refusalRollsBack": true,
+    "existingUsageAndUnknownHoldsUnchanged": true,
+    "productionDefaultsChanged": false,
+    "realSupplierCalls": 0,
+    "before": {
+      "token_limit": 1000000,
+      "cost_limit_micros": 1000000,
+      "reserved_tokens": 331776,
+      "consumed_tokens": 10560,
+      "reserved_micros": 884736,
+      "consumed_micros": 31680,
+      "version": 483
+    },
+    "after": {
+      "token_limit": 1000000,
+      "cost_limit_micros": 2000000,
+      "reserved_tokens": 331776,
+      "consumed_tokens": 10560,
+      "reserved_micros": 884736,
+      "consumed_micros": 31680,
+      "version": 484
+    }
+  },
+  "earlierObservation": {
+    "status": "FAIL_BEFORE_1800S",
+    "lastSampleSeconds": 1651,
+    "reason": "Expected business QUOTA_EXCEEDED from accumulated historical UNKNOWN holds",
+    "evidenceRetained": true,
+    "creditedTowardFinalDuration": false,
+    "fullObservationRerun": true
+  },
+  "boundaries": [
+    "No cloud deployment/tag; cloud remains R1",
+    "No real supplier requests",
+    "No R2.4 checkpoint continuation or production tools/shell",
+    "Fixture UNKNOWN holds deliberately retained; no fake settlement",
+    "Two protected local body/evidence copies, not cloud body synchronization"
+  ]
+}
