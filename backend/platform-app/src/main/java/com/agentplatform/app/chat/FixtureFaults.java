@@ -7,7 +7,7 @@ import java.util.Set;
 /** Host-driven crash windows, accepted only for the explicit deterministic-provider fixture. */
 final class FixtureFaults {
     private FixtureFaults() {}
-    private static final Set<String> POINTS=Set.of("claim-before-ack","ack-before-model","input-checkpoint-after-seal","response-before-round","round-before-checkpoint","checkpoint-before-seal","checkpoint-after-seal","tool-after-start","tool-before-result","tool-after-result");
+    private static final Set<String> POINTS=Set.of("claim-before-ack","ack-before-model","input-checkpoint-after-seal","model-checkpoint-after-seal","tool-checkpoint-after-seal","terminal-checkpoint-after-seal","response-before-round","round-before-checkpoint","checkpoint-before-seal","checkpoint-after-seal","tool-after-start","tool-before-result","tool-after-result");
     static void pause(String point) {
         if(!"true".equals(System.getenv("PLATFORM_CHAT_FIXTURE_PROVIDER"))||!point.equals(System.getenv("PLATFORM_CHAT_FIXTURE_FAULT")))return;
         if(!POINTS.contains(point))throw new IllegalArgumentException("Unknown fixture fault");

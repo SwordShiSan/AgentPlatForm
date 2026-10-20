@@ -72,6 +72,12 @@ public final class ChatExecution implements AutoCloseable {
                 public void commitCheckpoint(Scope s,Bundle b,CheckpointDraft draft){control.during(()->{
                     if(draft.phase()!=CheckpointPhase.INPUT_READY)FixtureFaults.pause("checkpoint-before-seal");
                     repository.commitCheckpoint(lease,b,draft);
+                    FixtureFaults.pause(switch(draft.phase()) {
+                        case INPUT_READY -> "input-checkpoint-after-seal";
+                        case MODEL_COMMITTED -> "model-checkpoint-after-seal";
+                        case TOOL_COMMITTED -> "tool-checkpoint-after-seal";
+                        case TERMINAL -> "terminal-checkpoint-after-seal";
+                    });
                     FixtureFaults.pause(draft.phase()==CheckpointPhase.INPUT_READY?"input-checkpoint-after-seal":"checkpoint-after-seal");
                 });}
             };
