@@ -1,5 +1,7 @@
 # Verification
 Status IMPLEMENTING, not VERIFIED. All new runtime assertions NOT_RUN until measured. Baseline7598163, real supplier calls0, cloudR1 unchanged.
+
+2026-10-20 intermediate evidence: Maven verify174/174, skipped0; Vue34unit/typecheck/frozen install/both builds/contracts+invalid fixtures/links PASS; persistence boundary PASS; strict15/15 PASS. Real SDK/HTTP/PG pipeline cancellation and actual blocked teardown tests PASS on host JVM. Container, browser, 30minute and closure gates remain NOT_RUN. Initial Mockito prerequisite, history-count and Vue inference failures were corrected and their logs retained locally. This is not stage completion.
 | Gate | Normal/boundary/failure/recovery assertions | Status |
 |---|---|---|
 | Feasibility | real SDK HTTP stream; cancellation drains callbacks/writes/timers/transport; stuck teardown keeps slot; late callback rejected | NOT_RUN |

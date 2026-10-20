@@ -22,6 +22,9 @@ import org.springframework.stereotype.Component;
 @Component
 @Profile("chat-ops")
 public final class ChatOperator implements ApplicationRunner {
+    private record ReconciliationEvidence(UUID callId,UUID commandId,Long expectedRevision,
+            com.agentplatform.domain.chat.CancellationLedger.Decision decision,UUID evidenceReference,
+            String evidenceKind,String operator,String providerRequestId,Long inputTokens,Long outputTokens) {}
     private final ChatRepository repository;
     private final CredentialCipher cipher;
 
@@ -80,6 +83,26 @@ public final class ChatOperator implements ApplicationRunner {
             case "revoke-credential" -> {
                 repository.revokeCredential(UUID.fromString(option(args, "credential-id")));
                 System.out.println("Credential revoked; no fallback credential selected.");
+            }
+            case "inspect-reconciliation" -> {
+                var projection=new ReconciliationService(repository).inspect(UUID.fromString(option(args,"task-id")));
+                System.out.println(tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(projection));
+            }
+            case "reconcile-call" -> {
+                byte[] bytes=privateFile(Path.of(option(args,"evidence-file")));
+                try {
+                    ReconciliationEvidence evidence;
+                    try { evidence=tools.jackson.databind.json.JsonMapper.builder()
+                            .enable(tools.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).build()
+                            .readValue(bytes,ReconciliationEvidence.class); }
+                    catch(RuntimeException invalid){throw new ChatFailure(422,"RECONCILIATION_EVIDENCE_INVALID");}
+                    if(evidence.expectedRevision()==null)throw new ChatFailure(422,"RECONCILIATION_EVIDENCE_INVALID");
+                    String digest=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes));
+                    new ReconciliationService(repository).resolve(new com.agentplatform.domain.chat.CancellationLedger.Command(
+                            evidence.callId(),evidence.commandId(),evidence.expectedRevision(),evidence.decision(),evidence.evidenceReference(),
+                            digest,evidence.evidenceKind(),evidence.operator(),evidence.providerRequestId(),evidence.inputTokens(),evidence.outputTokens()));
+                    System.out.println("Call reconciliation recorded; no model request was dispatched.");
+                } finally {Arrays.fill(bytes,(byte)0);}
             }
             case "reconcile-stopped-owner" -> {
                 if (!args.containsOption("proof-file") || args.containsOption("stopped-owner-confirmed")) throw new ChatFailure(409, "STOPPED_OWNER_PROOF_REQUIRED");

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.chat.ControlMapper">
+    <resultMap id="ControlCallRow" type="com.agentplatform.infrastructure.dao.po.ControlRows$ControlCallRow"><constructor>
+        <arg name="id" column="id" javaType="java.util.UUID"/>
+        <arg name="spaceId" column="space_id" javaType="java.util.UUID"/>
+        <arg name="taskId" column="task_id" javaType="java.util.UUID"/>
+        <arg name="attemptId" column="attempt_id" javaType="java.util.UUID"/>
+        <arg name="userId" column="user_id" javaType="java.util.UUID"/>
+        <arg name="conversationId" column="conversation_id" javaType="java.util.UUID"/>
+        <arg name="ownerId" column="owner_id" javaType="java.util.UUID"/>
+        <arg name="fence" column="fence" javaType="_long"/>
+        <arg name="status" column="status" javaType="java.lang.String"/>
+        <arg name="reservationState" column="reservation_state" javaType="java.lang.String"/>
+        <arg name="allowance" column="allowance" javaType="_long"/>
+        <arg name="revision" column="revision" javaType="_long"/>
+        <arg name="priceVersion" column="price_version" javaType="java.lang.String"/>
+        <arg name="providerRequestId" column="provider_request_id" javaType="java.lang.String"/>
+        <arg name="providerKind" column="provider_kind" javaType="java.lang.String"/>
+        <arg name="configJson" column="config_json" javaType="java.lang.String"/>
+        <arg name="inputTokens" column="input_tokens" javaType="java.lang.Long"/>
+        <arg name="outputTokens" column="output_tokens" javaType="java.lang.Long"/>
+        <arg name="costMicros" column="cost_micros" javaType="java.lang.Long"/>
+    </constructor></resultMap>
+    <resultMap id="ControlTaskRow" type="com.agentplatform.infrastructure.dao.po.ControlRows$ControlTaskRow"><constructor>
+        <arg name="spaceId" column="space_id" javaType="java.util.UUID"/>
+        <arg name="userId" column="user_id" javaType="java.util.UUID"/>
+        <arg name="conversationId" column="conversation_id" javaType="java.util.UUID"/>
+        <arg name="live" column="live" javaType="_boolean"/>
+        <arg name="stopRequested" column="stop_requested" javaType="_boolean"/>
+        <arg name="overdue" column="overdue" javaType="_boolean"/>
+    </constructor></resultMap>
+    <select id="taskState" resultMap="ControlTaskRow"><![CDATA[SELECT t.space_id,t.creator_id AS user_id,t.conversation_id,EXISTS(SELECT 1 FROM pf.execution_slot z WHERE z.task_id=t.id) OR EXISTS(SELECT 1 FROM pf.attempt a WHERE a.task_id=t.id AND a.status='RUNNING') AS live,t.cancel_requested AS stop_requested,coalesce(clock_timestamp()-c.requested_at>interval '5 seconds',false) AS overdue FROM pf.task t LEFT JOIN pf.task_cancellation c ON c.task_id=t.id WHERE t.id=#{task,jdbcType=OTHER}]]></select>
+    <select id="call" resultMap="ControlCallRow"><![CDATA[SELECT m.id,m.space_id,m.task_id,m.attempt_id,t.creator_id AS user_id,t.conversation_id,a.owner_id,a.fencing_token AS fence,m.status,r.state AS reservation_state,r.amount_micros AS allowance,m.reconciliation_revision AS revision,m.price_version,m.provider_request_id,m.provider_kind,s.config_json::text AS config_json,m.input_tokens,m.output_tokens,m.cost_micros FROM pf.model_call m JOIN pf.task t ON t.id=m.task_id JOIN pf.attempt a ON a.id=m.attempt_id JOIN pf.budget_reservation r ON r.call_id=m.id JOIN pf.chat_config_snapshot s ON s.id=t.config_snapshot_id WHERE m.id=#{id,jdbcType=OTHER}]]></select>
+    <select id="lockedCall" resultMap="ControlCallRow"><![CDATA[SELECT m.id,m.space_id,m.task_id,m.attempt_id,t.creator_id AS user_id,t.conversation_id,a.owner_id,a.fencing_token AS fence,m.status,r.state AS reservation_state,r.amount_micros AS allowance,m.reconciliation_revision AS revision,m.price_version,m.provider_request_id,m.provider_kind,s.config_json::text AS config_json,m.input_tokens,m.output_tokens,m.cost_micros FROM pf.model_call m JOIN pf.task t ON t.id=m.task_id JOIN pf.attempt a ON a.id=m.attempt_id JOIN pf.budget_reservation r ON r.call_id=m.id JOIN pf.chat_config_snapshot s ON s.id=t.config_snapshot_id WHERE m.id=#{id,jdbcType=OTHER} FOR UPDATE OF m,r]]></select>
+    <select id="calls" resultMap="ControlCallRow"><![CDATA[SELECT m.id,m.space_id,m.task_id,m.attempt_id,t.creator_id AS user_id,t.conversation_id,a.owner_id,a.fencing_token AS fence,m.status,r.state AS reservation_state,r.amount_micros AS allowance,m.reconciliation_revision AS revision,m.price_version,m.provider_request_id,m.provider_kind,s.config_json::text AS config_json,m.input_tokens,m.output_tokens,m.cost_micros FROM pf.model_call m JOIN pf.task t ON t.id=m.task_id JOIN pf.attempt a ON a.id=m.attempt_id JOIN pf.budget_reservation r ON r.call_id=m.id JOIN pf.chat_config_snapshot s ON s.id=t.config_snapshot_id WHERE m.task_id=#{task,jdbcType=OTHER} AND m.space_id=#{space,jdbcType=OTHER} ORDER BY m.ordinal]]></select>
+    <select id="commandHash" resultType="java.lang.String"><![CDATA[SELECT request_hash FROM pf.model_call_reconciliation WHERE command_id=#{id,jdbcType=OTHER}]]></select>
+    <select id="stopCount" resultType="int"><![CDATA[SELECT count(*) FROM pf.execution_stop_receipt WHERE attempt_id=#{lease.attemptId,jdbcType=OTHER} AND task_id=#{lease.taskId,jdbcType=OTHER} AND space_id=#{lease.spaceId,jdbcType=OTHER} AND owner_id=#{lease.ownerId,jdbcType=OTHER} AND fencing_token=#{lease.fence}]]></select>
+    <select id="unresolved" resultType="int"><![CDATA[SELECT count(*) FROM pf.model_call m JOIN pf.budget_reservation r ON r.call_id=m.id WHERE m.task_id=#{task,jdbcType=OTHER} AND (m.status IN ('STARTED','UNKNOWN') OR r.state='RECONCILING')]]></select>
+    <insert id="recordCancel"><![CDATA[INSERT INTO pf.task_cancellation(task_id,space_id,command_id,actor_id,attempt_id,owner_id,generation,fencing_token) SELECT t.id,t.space_id,#{command,jdbcType=OTHER},#{actor.userId,jdbcType=OTHER},a.id,a.owner_id,a.dispatch_generation,a.fencing_token FROM pf.task t LEFT JOIN pf.attempt a ON a.task_id=t.id AND a.status='RUNNING' WHERE t.id=#{task,jdbcType=OTHER} AND t.space_id=#{actor.spaceId,jdbcType=OTHER} ON CONFLICT(task_id) DO NOTHING]]></insert>
+    <insert id="recordStop"><![CDATA[INSERT INTO pf.execution_stop_receipt(attempt_id,space_id,task_id,owner_id,fencing_token,source,evidence_hash) VALUES(#{lease.attemptId,jdbcType=OTHER},#{lease.spaceId,jdbcType=OTHER},#{lease.taskId,jdbcType=OTHER},#{lease.ownerId,jdbcType=OTHER},#{lease.fence},'LOCAL_QUIESCENCE',#{hash}) ON CONFLICT(attempt_id) DO NOTHING]]></insert>
+    <insert id="recordHostStop"><![CDATA[INSERT INTO pf.execution_stop_receipt(attempt_id,space_id,task_id,owner_id,fencing_token,source,evidence_hash) VALUES(#{proof.attemptId,jdbcType=OTHER},#{space,jdbcType=OTHER},#{proof.taskId,jdbcType=OTHER},#{proof.ownerId,jdbcType=OTHER},#{proof.fence},'HOST_STOP_PROOF',#{proof.evidenceHash}) ON CONFLICT(attempt_id) DO NOTHING]]></insert>
+    <update id="providerKind"><![CDATA[UPDATE pf.model_call SET provider_kind=#{kind} WHERE id=#{call,jdbcType=OTHER} AND status='STARTED']]></update>
+    <update id="markUnconfirmed"><![CDATA[UPDATE pf.task SET reason_code='EXECUTION_STOP_UNCONFIRMED',version=version+1 WHERE id=#{task,jdbcType=OTHER} AND reason_code IS DISTINCT FROM 'EXECUTION_STOP_UNCONFIRMED']]></update>
+    <update id="revision"><![CDATA[UPDATE pf.model_call SET reconciliation_revision=reconciliation_revision+1 WHERE id=#{call,jdbcType=OTHER} AND reconciliation_revision=#{expected}]]></update>
+    <update id="release"><![CDATA[WITH released AS (UPDATE pf.budget_reservation SET state='RELEASED' WHERE call_id=#{call,jdbcType=OTHER} AND state IN ('RESERVED','RECONCILING') RETURNING tokens,amount_micros) UPDATE pf.budget_account SET reserved_tokens=reserved_tokens-(SELECT coalesce(sum(tokens),0) FROM released),reserved_micros=reserved_micros-(SELECT coalesce(sum(amount_micros),0) FROM released),version=version+1 WHERE space_id=#{space,jdbcType=OTHER} AND user_id=#{user,jdbcType=OTHER}]]></update>
+    <update id="notExecuted"><![CDATA[UPDATE pf.model_call SET status='FAILED',error_code='CONFIRMED_NOT_EXECUTED',ended_at=now() WHERE id=#{call,jdbcType=OTHER}]]></update>
+    <update id="settledCall"><![CDATA[UPDATE pf.model_call SET status='COMPLETED',input_tokens=#{input},output_tokens=#{output},cost_micros=#{cost},estimated=true,provider_request_id=coalesce(provider_request_id,#{request,jdbcType=VARCHAR}),error_code=NULL,ended_at=now() WHERE id=#{call,jdbcType=OTHER}]]></update>
+    <update id="settledBudget"><![CDATA[UPDATE pf.budget_reservation SET state='SETTLED' WHERE call_id=#{call,jdbcType=OTHER} AND state IN ('RESERVED','RECONCILING')]]></update>
+    <update id="settledAccount"><![CDATA[UPDATE pf.budget_account SET reserved_tokens=reserved_tokens-9216,reserved_micros=reserved_micros-#{allowance},consumed_tokens=consumed_tokens+#{tokens},consumed_micros=consumed_micros+#{cost},version=version+1 WHERE space_id=#{space,jdbcType=OTHER} AND user_id=#{user,jdbcType=OTHER}]]></update>
+    <insert id="audit"><![CDATA[INSERT INTO pf.model_call_reconciliation(command_id,space_id,task_id,call_id,expected_revision,decision,evidence_ref,evidence_hash,evidence_kind,operator_id,request_hash,before_state,after_state) VALUES(#{command.commandId,jdbcType=OTHER},#{space,jdbcType=OTHER},#{task,jdbcType=OTHER},#{command.callId,jdbcType=OTHER},#{command.expectedRevision},#{command.decision},#{command.evidenceReference,jdbcType=OTHER},#{command.evidenceHash},#{command.evidenceKind},#{command.operator},#{requestHash},#{before}::jsonb,#{after}::jsonb)]]></insert>
+</mapper>

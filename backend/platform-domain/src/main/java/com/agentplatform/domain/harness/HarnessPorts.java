@@ -42,6 +42,9 @@ public final class HarnessPorts {
     public interface ToolCatalogPort { List<Call> definitions(); }
     public interface PreparedRun extends AutoCloseable {
         CompletionStage<Outcome> start();
+        default CompletionStage<Void> terminated() {
+            return java.util.concurrent.CompletableFuture.failedFuture(new IllegalStateException("TERMINATION_NOT_CONFIRMED"));
+        }
         boolean cancel();
         boolean interrupt();
         @Override void close();

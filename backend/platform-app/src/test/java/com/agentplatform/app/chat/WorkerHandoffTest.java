@@ -16,6 +16,7 @@ class WorkerHandoffTest {
 
     @Test void reconnectCallbackCannotClaimWhilePriorCallbackStillCleansUp()throws Exception{
         ChatRepository repository=mock(ChatRepository.class);ChatExecution execution=mock(ChatExecution.class);UUID owner=UUID.randomUUID();
+        when(execution.accepting()).thenReturn(true);
         Lease first=lease(owner,1),second=lease(owner,2);Delivery one=delivery(first),two=delivery(second);
         CountDownLatch entered=new CountDownLatch(1),finish=new CountDownLatch(1),secondDispatched=new CountDownLatch(1),secondClaimed=new CountDownLatch(1);
         when(repository.claim(one.envelope(),owner)).thenReturn(first);
@@ -29,5 +30,11 @@ class WorkerHandoffTest {
             a.get(5,TimeUnit.SECONDS);b.get(5,TimeUnit.SECONDS);
         }
         assertEquals(0,secondClaimed.getCount());verify(one).ack();verify(two).ack();verify(execution).run(first);verify(execution).run(second);
+    }
+    @Test void unconfirmedStopRejectsNewDeliveryWithoutClaimOrAck(){
+        ChatRepository repository=mock(ChatRepository.class);ChatExecution execution=mock(ChatExecution.class);UUID owner=UUID.randomUUID();
+        var pending=delivery(lease(owner,1));when(execution.accepting()).thenReturn(false);
+        ChatConfiguration.handoff(repository,execution,owner,pending);
+        verify(pending).retryAfterDisconnect();verify(pending,never()).ack();verifyNoInteractions(repository);
     }
 }

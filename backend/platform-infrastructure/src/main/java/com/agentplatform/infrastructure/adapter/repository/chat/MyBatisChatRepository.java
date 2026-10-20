@@ -15,12 +15,14 @@ import tools.jackson.databind.json.JsonMapper;
 /** Facade preserving the public domain port; responsibilities live in focused adapters. */
 public final class MyBatisChatRepository implements ChatRepository {
     public static final UUID BUNDLE = ChatPersistenceSupport.BUNDLE;
+    private final ControlPersistence controls;
     private final ConversationPersistence conversations;
     private final ConfigurationPersistence configurations;
     private final DispatchPersistence dispatches;
     private final ExecutionPersistence executions;
     private final CheckpointPersistence checkpoints;
     public MyBatisChatRepository(ChatMappers mappers) {
+        controls = new ControlPersistence(mappers);
         conversations = new ConversationPersistence(mappers);
         configurations = new ConfigurationPersistence(mappers);
         dispatches = new DispatchPersistence(mappers);
@@ -79,5 +81,10 @@ public final class MyBatisChatRepository implements ChatRepository {
     @Override public Map<String,Object> replaceUserCredential(Actor a,long expected,Credential encrypted) { return configurations.replaceUserCredential(a, expected, encrypted); }
     @Override public String modelName(Lease l) { return configurations.modelName(l); }
     @Override public Map<String,Object> diagnostics(Actor a,UUID id) { return conversations.diagnostics(a, id); }
+    @Override public Reconciliation reconciliation(Actor actor,UUID task) { return controls.reconciliation(actor,task); }
+    @Override public Reconciliation reconciliationForOperator(UUID task) { return controls.reconciliationForOperator(task); }
+    @Override public void reconcile(Command command) { controls.reconcile(command); }
+    @Override public void stopped(Lease lease,String status,String reason,KnownUsage known,String receiptHash) { controls.stopped(lease,status,reason,known,receiptHash); }
+    @Override public void stopUnconfirmed(Lease lease) { controls.stopUnconfirmed(lease); }
     @Override public boolean ready() { return conversations.ready(); }
 }

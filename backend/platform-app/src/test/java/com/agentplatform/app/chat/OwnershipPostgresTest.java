@@ -35,7 +35,7 @@ class OwnershipPostgresTest {
 
     @BeforeAll static void migrate()throws Exception {
         url=System.getenv("R21_TEST_JDBC_URL");Assumptions.assumeTrue(url!=null,"R2.1 real PG not configured: NOT_RUN");
-        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15443/ownership_test?") || ("1".equals(System.getenv("R2C_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15444/ownership_test?")) || ("1".equals(System.getenv("R22_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15445/ownership_test?")), "Refusing a database outside the explicitly named isolated fixture");
+        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15443/ownership_test?") || ("1".equals(System.getenv("R2C_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15444/ownership_test?")) || ("1".equals(System.getenv("R22_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15445/ownership_test?")) || ("1".equals(System.getenv("R23_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15446/ownership_test?")), "Refusing a database outside the explicitly named isolated fixture");
         password=Files.readString(Path.of(System.getenv("R21_TEST_PASSWORD_FILE"))).strip();
         var old=Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").cleanDisabled(false).target("5").load();
         old.clean();old.migrate();
@@ -43,7 +43,7 @@ class OwnershipPostgresTest {
         Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").load().migrate();
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
         assertEquals(1,count("SELECT count(*) FROM pf.dispatch_quarantine WHERE reason_code='V5_SURVIVES'"));
-        assertEquals(7,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
+        assertEquals(8,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
     }
     @BeforeEach void setup()throws Exception {
         sql("TRUNCATE pf.app_user CASCADE; TRUNCATE pf_runtime.state_slot; UPDATE pf.execution_slot SET task_id=NULL,owner_id=NULL,lease_until=NULL; INSERT INTO pf.execution_slot(id) VALUES(1) ON CONFLICT DO NOTHING");
@@ -102,6 +102,8 @@ class OwnershipPostgresTest {
                 ()->repository.finish(l,"SUCCEEDED",null),()->repository.stateCas(l,"sdk",1,"{}".getBytes(StandardCharsets.UTF_8)),
                 ()->repository.stateDelete(l,"sdk"),()->repository.sealCheckpoint(l,ChatRuntime.bundle()));
         for(Runnable write:writes)denied("EXECUTION_FENCE_LOST",write);
+        denied("EXECUTION_FENCE_LOST",()->repository.stopped(l,"FAILED","fixture",null,"0".repeat(64)));
+        denied("EXECUTION_FENCE_LOST",()->repository.stopUnconfirmed(l));
         assertEquals(1,count("SELECT version FROM pf_runtime.state_slot WHERE state_key LIKE '%/sdk'"));
         assertEquals(1,count("SELECT count(*) FROM pf.model_call WHERE status='STARTED'"));
         assertEquals(1,count("SELECT count(*) FROM pf.execution_slot WHERE task_id IS NOT NULL"));

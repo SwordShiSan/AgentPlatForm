@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-test.skip(process.env.R21_BROWSER_ACCEPTANCE !== '1' && process.env.R2C_BROWSER_ACCEPTANCE !== '1' && process.env.R22_BROWSER_ACCEPTANCE !== '1', 'Requires isolated API, two workers, PG/MQ and deterministic provider');
+test.skip(process.env.R21_BROWSER_ACCEPTANCE !== '1' && process.env.R2C_BROWSER_ACCEPTANCE !== '1' && process.env.R22_BROWSER_ACCEPTANCE !== '1' && process.env.R23_BROWSER_ACCEPTANCE !== '1', 'Requires isolated API, two workers, PG/MQ and deterministic provider');
 test.use({ trace: 'off', screenshot: 'off' });
 const root = process.env.IDENTITY_SECRET_ROOT ?? resolve(import.meta.dirname, '../../../.cache/r21-local');
 
@@ -50,7 +50,7 @@ test('partial failure remains readable and diagnostic is denied to another user'
   const other = await browser.newContext();
   try {
     await login(await other.newPage(), 'alice');
-    for (const path of [`/api/v1/conversations/${id}`, `/api/v1/conversations/${id}/snapshot`, `/api/v1/conversations/${id}/events?after=0`, `/api/v1/tasks/${task}`, `/api/v1/tasks/${task}/diagnostics`]) {
+    for (const path of [`/api/v1/conversations/${id}`, `/api/v1/conversations/${id}/snapshot`, `/api/v1/conversations/${id}/events?after=0`, `/api/v1/tasks/${task}`, `/api/v1/tasks/${task}/diagnostics`, `/api/v1/tasks/${task}/reconciliation`]) {
       const response = await other.request.get(path); expect(response.status()).toBe(404);
     }
   } finally { await other.close(); }
@@ -67,6 +67,6 @@ test('explicit cancellation preserves partial output and releases the execution 
   await expect(page.getByRole('button', { name: '取消回复', exact: true })).toBeVisible();
   await expect(page.locator('.chat-message.assistant')).toHaveCount(1);
   await page.getByRole('button', { name: '取消回复', exact: true }).click();
-  await expect(page.getByRole('status').first()).toContainText('已取消');
+  await expect(page.getByRole('status').first()).toContainText(process.env.R23_BROWSER_ACCEPTANCE === '1' ? '需要处理' : '已取消');
   await page.reload(); await expect(page.locator('.chat-message.assistant .chat-text').last()).toContainText('慢速');
 });

@@ -78,7 +78,7 @@ public class ChatSchedulingConfiguration {
         @Scheduled(fixedDelay = 2000)
         public void supervise() {
             try {
-                if (!repository.ready() || !transport.connected()) throw new ChatFailure(503, "CHAT_STORAGE_UNAVAILABLE");
+                if (!execution.accepting() || !repository.ready() || !transport.connected()) throw new ChatFailure(503, "CHAT_STORAGE_UNAVAILABLE");
                 transport.consume(delivery -> ChatConfiguration.handoff(repository, execution, owner, delivery));
                 Files.writeString(MARKER, owner.toString());
             } catch (Exception unavailable) { withdraw(); }

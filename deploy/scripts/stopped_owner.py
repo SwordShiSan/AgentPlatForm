@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 
 def reconcile(root, data, env, compose, service='worker', force=False):
     project = compose[compose.index('-p') + 1]
-    assert project in {'agentplatform-r12-local', 'agentplatform-r21-local', 'agentplatform-r2c-local', 'agentplatform-r22-local'}
+    assert project in {'agentplatform-r12-local', 'agentplatform-r21-local', 'agentplatform-r2c-local', 'agentplatform-r22-local', 'agentplatform-r23-local'}
     assert data.resolve() == (root / '.cache' / project.removeprefix('agentplatform-')).resolve(), 'Stop proof data must belong to this exact local project'
 
     def output(command, **kwargs):

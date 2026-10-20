@@ -36,12 +36,12 @@ class ChatPostgresTest {
     @BeforeAll static void migrate() throws Exception {
         url = System.getenv("R12_TEST_JDBC_URL");
         Assumptions.assumeTrue(url != null, "Real R1.2 PostgreSQL not configured; not acceptance evidence");
-        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15442/chat_test?") || ("1".equals(System.getenv("R21_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15443/chat_test?")) || ("1".equals(System.getenv("R2C_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15444/chat_test?")) || ("1".equals(System.getenv("R22_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15445/chat_test?")), "Refusing a database outside the explicitly named isolated fixture");
+        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15442/chat_test?") || ("1".equals(System.getenv("R21_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15443/chat_test?")) || ("1".equals(System.getenv("R2C_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15444/chat_test?")) || ("1".equals(System.getenv("R22_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15445/chat_test?")) || ("1".equals(System.getenv("R23_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15446/chat_test?")), "Refusing a database outside the explicitly named isolated fixture");
         password = Files.readString(Path.of(System.getenv("R12_TEST_PASSWORD_FILE"))).strip();
         // Destructive reset is restricted above to this explicitly named, isolated test database.
         Flyway.configure().dataSource(url, "postgres", password).defaultSchema("pf").schemas("pf", "pf_runtime")
                 .cleanDisabled(false).load().clean();
-        for (String target : List.of("1", "2", "3", "4", "5", "6", "7")) {
+        for (String target : List.of("1", "2", "3", "4", "5", "6", "7", "8")) {
             if (target.equals("7")) {
                 sql("INSERT INTO pf.app_user(id,username_norm,password_hash,status) VALUES('00000000-0000-4000-8000-000000000001','upgrade-fixture','unused','ACTIVE');"
                         +"INSERT INTO pf.space(id,type,owner_user_id) VALUES('00000000-0000-4000-8000-000000000002','PERSONAL','00000000-0000-4000-8000-000000000001');"
@@ -96,6 +96,10 @@ class ChatPostgresTest {
     private static long count(String value) throws Exception {
         try(var c = DriverManager.getConnection(url, "postgres", password); var s = c.createStatement(); var r = s.executeQuery(value)) { r.next(); return r.getLong(1); }
     }
+    private void fixtureStopped(Lease lease,String status,String reason) {
+        // This fixture has no SDK/transport threads; it is not production termination evidence.
+        repository.stopped(lease,status,reason,null,"0".repeat(64));
+    }
     private static void denied(String code, Runnable work) {
         assertEquals(code, assertThrows(ChatFailure.class, work::run).code());
     }
@@ -139,7 +143,7 @@ class ChatPostgresTest {
         assertEquals(1, count("SELECT revision FROM pf.credential WHERE id='" + platform + "'"));
         assertEquals(2, count("SELECT revision FROM pf.credential WHERE id='" + user + "'"));
         repository.settle(lease, call, null, null, "CALL_NOT_SENT", false);
-        repository.finish(lease, "FAILED", "CREDENTIAL_REVOKED");
+        fixtureStopped(lease, "FAILED", "CREDENTIAL_REVOKED");
     }
 
     @Test void ciphertextIsNotPlaintextAndApiDatabaseRoleCannotReadIt() throws Exception {
@@ -194,7 +198,7 @@ class ChatPostgresTest {
         var second = repository.beginCall(lease, false);
         repository.startCall(lease, second, false);
         repository.settle(lease, second, null, null, "PROVIDER_USAGE_MISSING", false);
-        repository.finish(lease, "FAILED", "PROVIDER_REQUEST_FAILED");
+        fixtureStopped(lease, "FAILED", "PROVIDER_REQUEST_FAILED");
         assertEquals(110, count("SELECT consumed_tokens FROM pf.budget_account"));
         assertEquals(9216, count("SELECT reserved_tokens FROM pf.budget_account"));
         assertEquals(2, count("SELECT count(*) FROM pf.model_call WHERE status='COMPLETED'"));
@@ -219,7 +223,7 @@ class ChatPostgresTest {
         repository.bind(MODEL, alice, key("PLATFORM", null), "PLATFORM");
         var lease = claim(submit(alice));
         repository.beginCall(lease, false);
-        repository.finish(lease, "FAILED", "CREDENTIAL_REVOKED");
+        fixtureStopped(lease, "FAILED", "CREDENTIAL_REVOKED");
         assertEquals(0, count("SELECT reserved_tokens FROM pf.budget_account"));
         assertEquals(1, count("SELECT count(*) FROM pf.model_call WHERE status='FAILED' AND error_code='CALL_NOT_SENT'"));
         assertEquals(0, count("SELECT count(*) FROM pf.budget_reservation WHERE state='RECONCILING'"));
@@ -315,7 +319,7 @@ class ChatPostgresTest {
         String file = System.getenv("R12_TEST_MQ_PASSWORD_FILE");
         Assumptions.assumeTrue(file != null, "Real isolated RabbitMQ fixture not configured");
         var factory = new com.rabbitmq.client.ConnectionFactory();
-        factory.setHost("127.0.0.1"); factory.setPort("1".equals(System.getenv("R22_ACCEPTANCE")) ? 15695 : "1".equals(System.getenv("R2C_ACCEPTANCE")) ? 15694 : "1".equals(System.getenv("R21_ACCEPTANCE")) ? 15693 : 15692);
+        factory.setHost("127.0.0.1"); factory.setPort("1".equals(System.getenv("R23_ACCEPTANCE")) ? 15696 : "1".equals(System.getenv("R22_ACCEPTANCE")) ? 15695 : "1".equals(System.getenv("R2C_ACCEPTANCE")) ? 15694 : "1".equals(System.getenv("R21_ACCEPTANCE")) ? 15693 : 15692);
         factory.setVirtualHost("/agentplatform-r12-test"); factory.setUsername("ap_operator");
         factory.setPassword(Files.readString(Path.of(file)).strip());
         factory.setAutomaticRecoveryEnabled(false); factory.setConnectionTimeout(2000);
@@ -356,7 +360,7 @@ class ChatPostgresTest {
                 second.basicAck(redelivery.getEnvelope().getDeliveryTag(), false);
                 assertEquals(1, count("SELECT count(*) FROM pf.attempt"));
                 assertEquals(1, count("SELECT count(*) FROM pf.consumer_inbox WHERE disposition='CLAIMED'"));
-                repository.finish(lease, "FAILED", "FIXTURE_FINISHED");
+                fixtureStopped(lease, "FAILED", "FIXTURE_FINISHED");
             }
         }
     }
@@ -385,7 +389,7 @@ class ChatPostgresTest {
             receiver.basicAck(duplicate.getEnvelope().getDeliveryTag(), true);
             assertEquals(1, count("SELECT count(*) FROM pf.attempt"));
             assertEquals(1, count("SELECT count(*) FROM pf.event_outbox WHERE status='PUBLISHED'"));
-            repository.finish(lease, "FAILED", "FIXTURE_FINISHED");
+            fixtureStopped(lease, "FAILED", "FIXTURE_FINISHED");
         }
     }
 
@@ -413,7 +417,7 @@ class ChatPostgresTest {
         var newer = items.stream().filter(i -> i.envelope().aggregateId().equals(second.id())).findFirst().orElseThrow().envelope();
         assertNull(repository.claim(newer, UUID.randomUUID()));
         var lease = repository.claim(older, UUID.randomUUID()); assertNotNull(lease);
-        repository.finish(lease, "FAILED", "FIXTURE_FINISHED");
+        fixtureStopped(lease, "FAILED", "FIXTURE_FINISHED");
         sql("UPDATE pf.execution_dispatch SET available_at=now() WHERE status='DEFERRED'"); repository.wakeDeferred();
         var wake = repository.publications(UUID.randomUUID()).getFirst().envelope();
         assertEquals(2, wake.generation()); assertEquals(second.id(), wake.aggregateId());
@@ -430,7 +434,7 @@ class ChatPostgresTest {
             repository.settle(lease, call, null, null, "PROVIDER_RATE_LIMITED", false);
         }
         denied("MODEL_CALL_LIMIT", () -> repository.beginCall(lease, false));
-        repository.finish(lease, "FAILED", "FIXTURE_FINISHED");
+        fixtureStopped(lease, "FAILED", "FIXTURE_FINISHED");
         var next = claim(submit(alice)); var call = repository.beginCall(next, true);
         sql("UPDATE pf.acceptance_model_meter SET physical_calls=20,reserved_micros=990000,consumed_micros=100000");
         var recreated = com.agentplatform.app.chat.ChatPersistenceFixture.create(pool);
@@ -449,7 +453,7 @@ class ChatPostgresTest {
         var task = repository.submit(alice, conversation.id(), UUID.randomUUID(), MODEL, "中".repeat(2200));
         var lease = claim(task);
         denied("CONTEXT_REQUIRED_TOO_LARGE", () -> repository.history(lease));
-        repository.finish(lease, "BLOCKED", "CONTEXT_REQUIRED_TOO_LARGE");
+        fixtureStopped(lease, "BLOCKED", "CONTEXT_REQUIRED_TOO_LARGE");
         assertEquals(0, count("SELECT count(*) FROM pf.model_call"));
         assertEquals(0, count("SELECT reserved_tokens FROM pf.budget_account"));
         assertEquals("BLOCKED", repository.task(alice, task.id()).status());
@@ -546,7 +550,7 @@ class ChatPostgresTest {
         var lease=claim(first.task());assertEquals("deepseek-v4-pro",repository.modelName(lease));var call=repository.beginCall(lease,true);repository.startCall(lease,call,true);
         repository.settle(lease,call,new Round("ok",List.of(),"stop",100,10),"safe-id",null,true);
         assertEquals(1170,count("SELECT cost_micros FROM pf.model_call WHERE id='"+call.id()+"'"));assertEquals(1170,count("SELECT consumed_micros FROM pf.acceptance_model_meter"));
-        repository.finish(lease,"SUCCEEDED",null);
+        fixtureStopped(lease,"SUCCEEDED",null);
     }
     @Test void requestTraceReachesOutboxAttemptCallAndPrivateFailureDiagnostics() throws Exception {
         repository.bind(MODEL,alice,key("PLATFORM",null),"PLATFORM");
@@ -556,7 +560,7 @@ class ChatPostgresTest {
         var lease=claim(task);var call=repository.beginCall(lease,false);repository.startCall(lease,call,false);
         repository.delta(lease,"部分回复😀");
         repository.settle(lease,call,null,null,"PROVIDER_REQUEST_FAILED",false);
-        repository.finish(lease,"FAILED","PROVIDER_REQUEST_FAILED");
+        fixtureStopped(lease,"FAILED","PROVIDER_REQUEST_FAILED");
         for(String table:List.of("task","event_outbox","attempt","model_call","failure_record"))
             assertEquals(1,count("SELECT count(*) FROM pf."+table+" WHERE trace_id='"+trace+"'"),table);
         var value=repository.diagnostics(alice,task.id());assertEquals(trace.toString(),value.get("traceId"));
@@ -568,9 +572,145 @@ class ChatPostgresTest {
         repository.bind(MODEL,alice,key("PLATFORM",null),"PLATFORM");
         var lease=claim(submit(alice));repository.delta(lease,"partial");
         sql("UPDATE pf.membership SET status='REVOKED' WHERE user_id='"+alice.userId()+"'");
-        denied("RESOURCE_NOT_FOUND",()->repository.finish(lease,"SUCCEEDED",null));
-        repository.finish(lease,"FAILED","RESOURCE_NOT_FOUND");
+        denied("RESOURCE_NOT_FOUND",()->fixtureStopped(lease,"SUCCEEDED",null));
+        fixtureStopped(lease,"FAILED","RESOURCE_NOT_FOUND");
         assertEquals(0,count("SELECT count(*) FROM pf.task WHERE status='SUCCEEDED'"));
+    }
+
+    private com.agentplatform.domain.chat.CancellationLedger.Command reconciliationCommand(UUID call,UUID command,long revision,
+            com.agentplatform.domain.chat.CancellationLedger.Decision decision,Long input,Long output) {
+        return new com.agentplatform.domain.chat.CancellationLedger.Command(call,command,revision,decision,UUID.randomUUID(),
+                "1".repeat(64),"PROVIDER_RECORD","fixture-operator","fixture-request",input,output);
+    }
+
+    @Test void queuedCancelIsOneIntentAndTerminalSuccessDoesNotRegress() throws Exception {
+        repository.bind(MODEL,alice,key("PLATFORM",null),"PLATFORM");
+        var queued=submit(alice);long before=repository.snapshot(alice,queued.conversationId()).cursor();
+        UUID command=UUID.randomUUID();assertEquals("CANCELLED",repository.cancel(alice,queued.id(),command).status());
+        long after=repository.snapshot(alice,queued.conversationId()).cursor();assertTrue(after>before);
+        repository.cancel(alice,queued.id(),command);repository.cancel(alice,queued.id(),UUID.randomUUID());
+        assertEquals(after,repository.snapshot(alice,queued.conversationId()).cursor());
+        assertEquals(1,count("SELECT count(*) FROM pf.task_cancellation"));assertNull(claim(queued));
+        denied("RESOURCE_NOT_FOUND",()->repository.reconciliation(bob,queued.id()));
+        repository.bind(MODEL,bob,key("PLATFORM",null),"PLATFORM");var foreign=submit(bob);
+        denied("RESOURCE_NOT_FOUND",()->repository.reconciliation(alice,foreign.id()));
+        denied("RESOURCE_NOT_FOUND",()->repository.cancel(alice,foreign.id(),UUID.randomUUID()));
+        repository.cancel(bob,foreign.id(),UUID.randomUUID());
+        var completed=submit(alice);var lease=claim(completed);fixtureStopped(lease,"SUCCEEDED",null);
+        long version=repository.task(alice,completed.id()).version();repository.cancel(alice,completed.id(),UUID.randomUUID());
+        assertEquals("SUCCEEDED",repository.task(alice,completed.id()).status());assertEquals(version,repository.task(alice,completed.id()).version());
+    }
+
+    @Test void cancellationRequiresRealStopReceiptAndUnknownCallsRemainReserved() throws Exception {
+        repository.bind(MODEL,alice,key("PLATFORM",null),"PLATFORM");var task=submit(alice);var lease=claim(task);
+        denied("EXECUTION_STOP_NOT_CONFIRMED",()->repository.finish(lease,"FAILED","fixture"));
+        var call=repository.beginCall(lease,false);repository.startCall(lease,call,false);repository.delta(lease,"partial😀");
+        var command=reconciliationCommand(call.id(),UUID.randomUUID(),0,com.agentplatform.domain.chat.CancellationLedger.Decision.KEEP_UNKNOWN,null,null);
+        denied("EXECUTION_NOT_STOPPED",()->repository.reconcile(command));
+        repository.cancel(alice,task.id(),UUID.randomUUID());denied("TASK_CANCEL_REQUESTED",()->repository.delta(lease,"late"));
+        assertFalse(repository.reconciliation(alice,task.id()).stopConfirmed());
+        fixtureStopped(lease,"CANCELLED","TASK_CANCEL_REQUESTED");var state=repository.reconciliation(alice,task.id());
+        assertTrue(state.stopConfirmed());assertEquals(1,state.unknownCalls());assertNull(state.calls().getFirst().inputTokens());
+        assertEquals("BLOCKED",repository.task(alice,task.id()).status());assertTrue(count("SELECT reserved_micros FROM pf.budget_account WHERE user_id='"+alice.userId()+"'")>0);
+        var next=repository.submit(alice,task.conversationId(),UUID.randomUUID(),MODEL,"independent new message");var nextLease=claim(next);
+        var nextHistory=repository.history(nextLease);
+        assertEquals(2,nextHistory.size(),"Only the existing SYSTEM instruction and new USER message are included");
+        assertEquals("independent new message",nextHistory.getLast().text());
+        assertFalse(nextHistory.toString().contains("partial😀"));fixtureStopped(nextLease,"FAILED","fixture");
+        long held=count("SELECT reserved_micros FROM pf.budget_account WHERE user_id='"+alice.userId()+"'");
+        repository.reconcile(command);repository.reconcile(command);
+        assertEquals(1,count("SELECT reconciliation_revision FROM pf.model_call WHERE id='"+call.id()+"'"));
+        assertEquals(held,count("SELECT reserved_micros FROM pf.budget_account WHERE user_id='"+alice.userId()+"'"));
+        var usage=reconciliationCommand(call.id(),UUID.randomUUID(),1,com.agentplatform.domain.chat.CancellationLedger.Decision.CONFIRMED_USAGE,3L,4L);
+        repository.reconcile(usage);long consumed=count("SELECT consumed_micros FROM pf.budget_account WHERE user_id='"+alice.userId()+"'");
+        assertTrue(consumed>0);repository.reconcile(usage);assertEquals(consumed,count("SELECT consumed_micros FROM pf.budget_account WHERE user_id='"+alice.userId()+"'"));
+        assertEquals("CANCELLED",repository.task(alice,task.id()).status());assertEquals(0,repository.reconciliation(alice,task.id()).unknownCalls());
+        denied("CALL_ALREADY_RESOLVED",()->repository.reconcile(reconciliationCommand(call.id(),UUID.randomUUID(),2,com.agentplatform.domain.chat.CancellationLedger.Decision.CONFIRMED_NOT_EXECUTED,null,null)));
+        assertThrows(java.sql.SQLException.class,()->sql("DELETE FROM pf.model_call_reconciliation"));
+        assertEquals(1,count("SELECT count(*) FROM pf.model_call"));
+    }
+
+    @Test void reconciliationRejectsMissingOversizedAndStaleUsageWithoutChangingHolds() throws Exception {
+        repository.bind(MODEL,alice,key("PLATFORM",null),"PLATFORM");var task=submit(alice);var lease=claim(task);var call=repository.beginCall(lease,false);repository.startCall(lease,call,false);
+        fixtureStopped(lease,"FAILED","PROVIDER_REQUEST_FAILED");
+        denied("KNOWN_USAGE_REQUIRED",()->repository.reconcile(reconciliationCommand(call.id(),UUID.randomUUID(),0,com.agentplatform.domain.chat.CancellationLedger.Decision.CONFIRMED_USAGE,null,null)));
+        denied("PROVIDER_USAGE_EXCEEDS_RESERVATION",()->repository.reconcile(reconciliationCommand(call.id(),UUID.randomUUID(),0,com.agentplatform.domain.chat.CancellationLedger.Decision.CONFIRMED_USAGE,8193L,1L)));
+        denied("RECONCILIATION_VERSION_CONFLICT",()->repository.reconcile(reconciliationCommand(call.id(),UUID.randomUUID(),1,com.agentplatform.domain.chat.CancellationLedger.Decision.KEEP_UNKNOWN,null,null)));
+        assertEquals(0,count("SELECT count(*) FROM pf.model_call_reconciliation"));assertEquals(1,repository.reconciliation(alice,task.id()).unknownCalls());
+        var proof=reconciliationCommand(call.id(),UUID.randomUUID(),0,com.agentplatform.domain.chat.CancellationLedger.Decision.CONFIRMED_NOT_EXECUTED,null,null);
+        repository.reconcile(proof);repository.reconcile(proof);assertEquals("FAILED",repository.task(alice,task.id()).status());
+        assertEquals(0,count("SELECT reserved_micros FROM pf.budget_account WHERE user_id='"+alice.userId()+"'"));
+        assertEquals(0,count("SELECT consumed_micros FROM pf.budget_account WHERE user_id='"+alice.userId()+"'"));
+    }
+
+    @Test void unconfirmedLocalStopKeepsTheOwnerAndBlocksReconciliation() throws Exception {
+        repository.bind(MODEL,alice,key("PLATFORM",null),"PLATFORM");var task=submit(alice);var lease=claim(task);var call=repository.beginCall(lease,false);repository.startCall(lease,call,false);
+        repository.cancel(alice,task.id(),UUID.randomUUID());repository.stopUnconfirmed(lease);
+        assertEquals(1,count("SELECT count(*) FROM pf.execution_slot WHERE task_id='"+task.id()+"'"));
+        assertEquals(0,count("SELECT count(*) FROM pf.execution_stop_receipt"));
+        var state=repository.reconciliation(alice,task.id());assertEquals("UNCONFIRMED",state.stopStage());assertFalse(state.stopConfirmed());
+        denied("EXECUTION_NOT_STOPPED",()->repository.reconcile(reconciliationCommand(call.id(),UUID.randomUUID(),0,com.agentplatform.domain.chat.CancellationLedger.Decision.KEEP_UNKNOWN,null,null)));
+        fixtureStopped(lease,"CANCELLED","TASK_CANCEL_REQUESTED");assertEquals("INTERRUPTED",readText("SELECT status FROM pf.attempt WHERE id='"+lease.attemptId()+"'"));
+    }
+
+    private static String readText(String query) throws Exception {
+        try(var c=DriverManager.getConnection(url,"postgres",password);var s=c.createStatement();var r=s.executeQuery(query)){r.next();return r.getString(1);}
+    }
+
+    @Test void concurrentReconciliationRevisionAcceptsOnlyOneImmutableDecision() throws Exception {
+        repository.bind(MODEL,alice,key("PLATFORM",null),"PLATFORM");var task=submit(alice);var lease=claim(task);var call=repository.beginCall(lease,false);repository.startCall(lease,call,false);
+        fixtureStopped(lease,"FAILED","PROVIDER_REQUEST_FAILED");
+        var gate=new CountDownLatch(1);var decisions=new java.util.ArrayList<java.util.concurrent.Future<Boolean>>();
+        try(var executor=Executors.newFixedThreadPool(2)) {
+            for(int i=0;i<2;i++)decisions.add(executor.submit(()->{gate.await();try{repository.reconcile(reconciliationCommand(call.id(),UUID.randomUUID(),0,com.agentplatform.domain.chat.CancellationLedger.Decision.KEEP_UNKNOWN,null,null));return true;}catch(ChatFailure conflict){assertEquals("RECONCILIATION_VERSION_CONFLICT",conflict.code());return false;}}));
+            gate.countDown();int accepted=0;for(var decision:decisions)if(decision.get())accepted++;assertEquals(1,accepted);
+        }
+        assertEquals(1,count("SELECT count(*) FROM pf.model_call_reconciliation"));assertEquals(1,count("SELECT reconciliation_revision FROM pf.model_call WHERE id='"+call.id()+"'"));
+        assertEquals(1,repository.reconciliation(alice,task.id()).unknownCalls());
+    }
+
+    @Test void cancelledKnownUsageSettlesWithoutPublishingTheLateModelRound() throws Exception {
+        repository.bind(MODEL,alice,key("PLATFORM",null),"PLATFORM");var task=submit(alice);var lease=claim(task);var call=repository.beginCall(lease,false);repository.startCall(lease,call,false);
+        repository.delta(lease,"visible before cancel");repository.cancel(alice,task.id(),UUID.randomUUID());
+        repository.stopped(lease,"CANCELLED","TASK_CANCEL_REQUESTED",new com.agentplatform.domain.chat.CancellationLedger.KnownUsage(call,new Round("must not publish",List.of(),"stop",3,4),"fixture-request",false),"0".repeat(64));
+        assertEquals("CANCELLED",repository.task(alice,task.id()).status());assertEquals(0,repository.reconciliation(alice,task.id()).unknownCalls());
+        assertEquals(0,count("SELECT count(*) FROM pf.model_turn WHERE status='COMMITTED'"));
+        assertFalse(repository.snapshot(alice,task.conversationId()).messages().toString().contains("must not publish"));
+        assertEquals(0,count("SELECT reserved_micros FROM pf.budget_account WHERE user_id='"+alice.userId()+"'"));
+    }
+
+    @Test void actualSdkHttpCancellationStopsBeforeReleasingSlotAndAllowsIndependentNextTask() throws Exception {
+        repository.bind(MODEL,alice,key("PLATFORM",null),"PLATFORM");
+        var server=com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1",0),0);
+        var threads=Executors.newVirtualThreadPerTaskExecutor();server.setExecutor(threads);
+        var requests=new java.util.concurrent.atomic.AtomicInteger();var disconnected=new CountDownLatch(1);
+        var secondBody=new java.util.concurrent.atomic.AtomicReference<String>();
+        server.createContext("/chat/completions",exchange->{
+            int ordinal=requests.incrementAndGet();
+            try {
+                String body=new String(exchange.getRequestBody().readAllBytes(),StandardCharsets.UTF_8);if(ordinal>1)secondBody.set(body);
+                exchange.getResponseHeaders().set("Content-Type","text/event-stream");exchange.sendResponseHeaders(200,0);
+                String text=ordinal==1?"partial":"new answer";
+                String frame="data: {\"id\":\"fixture-http\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\""+text+"\"},\"finish_reason\":null}]}\n\n";
+                for(int i=0;i<(ordinal==1?1000:1);i++){exchange.getResponseBody().write(frame.getBytes(StandardCharsets.UTF_8));exchange.getResponseBody().flush();Thread.sleep(10);}
+                exchange.getResponseBody().write(("data: {\"id\":\"fixture-http\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":4,\"total_tokens\":7}}\n\ndata: [DONE]\n\n").getBytes(StandardCharsets.UTF_8));exchange.getResponseBody().flush();
+            }catch(Exception expectedDisconnect){if(ordinal==1)disconnected.countDown();}finally{exchange.close();}
+        });server.start();
+        try(var provider=new com.agentplatform.infrastructure.chat.DeepSeekChatProvider("http://127.0.0.1:"+server.getAddress().getPort(),true);
+            var execution=new ChatExecution(repository,provider,cipher,workspace);var worker=Executors.newSingleThreadExecutor()) {
+            var task=submit(alice);var lease=claim(task);var future=worker.submit(()->execution.run(lease));
+            long deadline=System.nanoTime()+java.util.concurrent.TimeUnit.SECONDS.toNanos(5);
+            while(count("SELECT count(*) FROM pf.message WHERE task_id='"+task.id()+"' AND role='ASSISTANT' AND length(blocks_json->0->>'text')>0")==0){assertTrue(System.nanoTime()<deadline);Thread.sleep(20);}
+            repository.cancel(alice,task.id(),UUID.randomUUID());future.get(8,java.util.concurrent.TimeUnit.SECONDS);
+            assertTrue(execution.accepting(),"Actual SDK/HTTP cancellation should confirm local quiescence");
+            assertEquals("BLOCKED",repository.task(alice,task.id()).status());assertTrue(repository.reconciliation(alice,task.id()).stopConfirmed());
+            assertEquals(1,repository.reconciliation(alice,task.id()).unknownCalls());assertTrue(disconnected.await(5,java.util.concurrent.TimeUnit.SECONDS));
+            var next=repository.submit(alice,task.conversationId(),UUID.randomUUID(),MODEL,"independent fresh");var nextLease=claim(next);
+            worker.submit(()->execution.run(nextLease)).get(10,java.util.concurrent.TimeUnit.SECONDS);
+            assertEquals("SUCCEEDED",repository.task(alice,next.id()).status());assertEquals(2,requests.get());
+            assertTrue(secondBody.get().contains("independent fresh"));assertFalse(secondBody.get().contains("partial"));
+            assertEquals(0,count("SELECT count(*) FROM pf.execution_slot WHERE task_id IS NOT NULL"));
+        } finally{server.stop(0);threads.close();}
     }
 
     private UUID replayFixture(int events) throws Exception {

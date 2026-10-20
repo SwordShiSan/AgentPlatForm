@@ -4,9 +4,10 @@ package com.agentplatform.types;
 public final class FailureRecorder {
     private FailureRecorder() {}
     public static String classification(String code, boolean unknown) {
-        if (unknown) return "UNKNOWN_SIDE_EFFECT";
+        if (unknown || "EXTERNAL_RESULT_UNKNOWN".equals(code) || "EXECUTION_STOP_UNCONFIRMED".equals(code)) return "UNKNOWN_SIDE_EFFECT";
         if (code==null) return "NONE";
         if (code.equals("TASK_CANCEL_REQUESTED")) return "CANCELLED";
+        if (code.equals("EXECUTION_INTERRUPTED_RECONCILED")) return "NONE";
         if (code.contains("CREDENTIAL") || code.contains("AUTH") || code.contains("ORIGIN") || code.contains("CSRF") || code.contains("FENCE") || code.equals("RESOURCE_NOT_FOUND")) return "POLICY_DENIED";
         if (code.contains("QUOTA") || code.contains("BALANCE") || code.contains("CONTEXT") || code.contains("CAPABILITY")) return "USER_ACTION";
         if (code.equals("PROVIDER_RATE_LIMITED") || code.equals("PROVIDER_SERVER_REJECTED") || code.contains("STORAGE_UNAVAILABLE") || code.contains("PUBLISH")) return "TRANSIENT_SAFE_RETRY";

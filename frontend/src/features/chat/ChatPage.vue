@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { ApiError } from '../../shared/api/request';
 import { api } from '../../shared/api/client';
+import type { components } from '../../shared/api/generated/http';
 import { newRequestId } from '../../shared/api/request-id';
 import { setCsrf } from '../../shared/api/session';
 import { applyChatEvent, SnapshotRequired, type ChatSnapshot } from './stream-state';
@@ -27,8 +28,30 @@ const snapshotKey = computed(() => ['chat', actor.value, space.value, 'snapshot'
 const models = useQuery({ queryKey: computed(() => ['chat', actor.value, 'models']), enabled: computed(() => !!actor.value), queryFn: async () => (await api.GET('/api/v1/models')).data! });
 const modelAvailable = computed(() => models.data.value?.items.some(item => item.id === selectedModel.value) ?? false);
 const conversations = useQuery({ queryKey: listKey, enabled: computed(() => !!actor.value), queryFn: async () => (await api.GET('/api/v1/conversations', { params: { query: { limit: 100 } } })).data! });
-const snapshot = useQuery({ queryKey: snapshotKey, enabled: computed(() => !!actor.value && !!space.value && !!selected.value), queryFn: async ({ queryKey, signal }) => (await api.GET('/api/v1/conversations/{id}/snapshot', { signal, params: { path: { id: queryKey[4]! }, header: { 'X-Space-Id': queryKey[2]! } } })).data! });
+const snapshot = useQuery({ queryKey: snapshotKey, enabled: computed(() => !!actor.value && !!space.value && !!selected.value), queryFn: async ({ queryKey, signal }) => (await api.GET('/api/v1/conversations/{id}/snapshot', { signal, params: { path: { id: String(queryKey[4]) }, header: { 'X-Space-Id': String(queryKey[2]) } } })).data! });
 const lastTask = computed(() => snapshot.data.value?.tasks.at(-1));
+const unknownTasks = computed(() => snapshot.data.value?.tasks.filter(task => task.status === 'BLOCKED' && ['EXTERNAL_RESULT_UNKNOWN', 'WORKER_INTERRUPTED', 'AUTHORIZATION_REVOKED'].includes(task.reasonCode ?? '')) ?? []);
+const reconciliationTask = computed(() => lastTask.value?.cancelRequested && lastTask.value.status === 'RUNNING' ? lastTask.value : unknownTasks.value.at(-1) ?? lastTask.value);
+const reconciliationKey = computed(() => ['chat', actor.value, space.value, 'reconciliation', reconciliationTask.value?.taskId, reconciliationTask.value?.version]);
+const reconciliation = useQuery({
+  queryKey: reconciliationKey,
+  enabled: computed(() => !!actor.value && !!space.value && !!reconciliationTask.value),
+  refetchInterval: query => {
+    const failure = query.state.error;
+    if (failure instanceof ApiError && [401, 403, 404].includes(failure.problem.status)) return false;
+    return reconciliationTask.value?.cancelRequested && reconciliationTask.value.status === 'RUNNING' ? 2000 : false;
+  },
+  queryFn: async ({ queryKey, signal }) => (await api.GET('/api/v1/tasks/{id}/reconciliation', {
+    signal, params: { path: { id: String(queryKey[4]) }, header: { 'X-Space-Id': String(queryKey[2]) } },
+  })).data!,
+});
+const reconciliationState = computed(() => reconciliation.data.value
+  ? cache.getQueryData<components['schemas']['TaskReconciliation']>(reconciliationKey.value) : undefined);
+const stopLabel = computed(() => {
+  if (reconciliationState.value?.stopStage === 'UNCONFIRMED') return '停止待确认，请提供诊断编号联系运维；执行槽仍保留。';
+  if (reconciliationState.value?.stopStage === 'STOPPING') return '正在停止，请等待执行者及连接退出。';
+  return '';
+});
 const config = useQuery({ queryKey: computed(() => ['chat', actor.value, 'configuration', lastTask.value?.taskId]), enabled: computed(() => !!lastTask.value), queryFn: async () => (await api.GET('/api/v1/tasks/{id}/configuration', { params: { path: { id: lastTask.value!.taskId } } })).data! });
 const running = computed(() => snapshot.data.value?.tasks.some(item => ['QUEUED', 'RUNNING'].includes(item.status)) ?? false);
 const diagnostics = useQuery({ queryKey: computed(() => ['chat', actor.value, space.value, 'diagnostics', lastTask.value?.taskId, lastTask.value?.version]), enabled: computed(() => !!lastTask.value && !running.value), queryFn: async () => (await api.GET('/api/v1/tasks/{id}/diagnostics', { params: { path: { id: lastTask.value!.taskId } } })).data! });
@@ -200,6 +223,12 @@ async function cancel() {
         </article>
       </div>
       <p v-if="lastTask" role="status">{{ labels[lastTask.status] }}{{ lastTask.cancelRequested && running ? ' · 正在取消' : '' }}<span v-if="reason"> · {{ reason }}</span></p>
+      <p v-if="stopLabel" role="status" data-testid="stop-stage">{{ stopLabel }}</p>
+      <aside v-if="(reconciliationState?.unknownCalls ?? 0) > 0" aria-label="结果待核对" class="intro" data-testid="reconciliation-notice">
+        <p>调用结果或费用待运维核对，预留额度仍保留；此任务不会自动重放。</p>
+        <p v-if="reconciliationState?.excludedFromContext">该未完成轮次未进入后续模型上下文；页面保留的部分回复不代表成功结果。</p>
+        <p v-if="reconciliationState?.stopConfirmed">执行者已停止；可在剩余额度内发送独立新消息。</p>
+      </aside>
       <section v-if="lastTask?.reasonCode && diagnostics.data.value" aria-label="任务诊断" class="task-diagnostics">
         <p>{{ diagnosticAction }}</p><p v-if="diagnostics.data.value.hasPartialOutput">已保留部分回复。</p>
         <p class="chat-text">诊断编号：{{ diagnostics.data.value.traceId }}</p>

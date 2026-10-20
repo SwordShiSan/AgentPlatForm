@@ -40,6 +40,8 @@ def main():
         assert all(int(config['services'][s]['mem_limit']) > 0 for s in services)
         assert 0 < total <= 2887*1024*1024, 'Module limits may change; the combined maximum must remain bounded'
         fixture.run(fixture.COMPOSE + ['--profile', 'fixture', 'up', '-d', '--wait', '--wait-timeout', '180', *services])
+    elif mode == 'stop':
+        fixture.run(fixture.COMPOSE + ['--profile', 'fixture', 'stop'])
     else:
         fixture.main()
     if mode == 'grant':
@@ -47,12 +49,18 @@ def main():
                     'GRANT SELECT,INSERT,UPDATE ON pf.model_turn,pf.tool_operation TO ap_chat_worker; '
                     'GRANT SELECT,INSERT ON pf.checkpoint TO ap_chat_worker; '
                     'REVOKE ALL ON pf.stopped_owner_proof FROM ap_chat_api,ap_chat_worker;')
-        if STAGE == 'r22':
+        if STAGE in {'r22','r23'}:
             fixture.sql('REVOKE DELETE ON pf.platform_event FROM ap_chat_api,ap_chat_worker; '
                         'REVOKE UPDATE ON pf.conversation FROM ap_chat_api,ap_chat_worker; '
                         'GRANT UPDATE(title,next_seq,version,updated_at) ON pf.conversation TO ap_chat_api,ap_chat_worker; '
                         'REVOKE ALL ON FUNCTION pf.collect_expired_replay(uuid) FROM ap_chat_worker; '
                         'GRANT EXECUTE ON FUNCTION pf.collect_expired_replay(uuid) TO ap_chat_api;')
+        if STAGE == 'r23':
+            fixture.sql('GRANT SELECT,INSERT ON pf.task_cancellation TO ap_chat_api; '
+                        'GRANT SELECT ON pf.task_cancellation TO ap_chat_worker; '
+                        'GRANT SELECT,INSERT ON pf.execution_stop_receipt TO ap_chat_worker; '
+                        'REVOKE ALL ON pf.model_call_reconciliation FROM ap_chat_api,ap_chat_worker; '
+                        'REVOKE INSERT,UPDATE,DELETE ON pf.execution_stop_receipt FROM ap_chat_api;')
 
 
 if __name__ == '__main__':

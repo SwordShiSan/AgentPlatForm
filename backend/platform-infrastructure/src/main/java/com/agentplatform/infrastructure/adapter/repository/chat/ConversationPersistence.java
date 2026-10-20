@@ -40,8 +40,10 @@ final class ConversationPersistence extends ChatPersistenceSupport {
     public Task cancel(Actor a,UUID id,UUID key){return tx(c->{
         auth(c,a);Task t=task(c,a,id,false);c.dispatch().updateExecutionSlot87();conversation(c,a,t.conversationId(),true);t=task(c,a,id,true);
         String path="/tasks/"+id+"/cancel";UUID existing=idempotency(c,a,key,path,hash("cancel"));if(existing!=null)return t;
+        if(t.cancelRequested()||!Set.of("QUEUED","RUNNING","BLOCKED").contains(t.status())){remember(c,a,key,path,hash("cancel"),id);return t;}
+        c.control().recordCancel(a,id,key);
         if("QUEUED".equals(t.status())){c.conversation().updateTask88(id);c.dispatch().updateExecutionDispatch89(id);releaseRemaining(c,a,id);c.conversation().updateMessage90(id);assistantTerminalEvent(c,a,t.conversationId(),id);}
-        else if("RUNNING".equals(t.status()))c.conversation().updateTask91(id);
+        else if(Set.of("RUNNING","BLOCKED").contains(t.status()))c.conversation().updateTask91(id);
         remember(c,a,key,path,hash("cancel"),id);Task now=task(c,a,id,false);event(c,a,t.conversationId(),id,"task.state_changed",now.version(),Map.of("taskId",id.toString(),"status",now.status(),"cancelRequested",now.cancelRequested()));return now;
     });}
     public List<Event> events(Actor a,UUID id,long after){return tx(c->{
