@@ -55,7 +55,8 @@ test('expired cursor repairs from a real snapshot once and route switching keeps
   await expect.poll(() => repaired).toBeGreaterThanOrEqual(2);
   await expect(page.locator('.chat-message.assistant .chat-text').last()).toHaveText('你好😀，这是流式回复。');
   await page.getByRole('button', { name: '新建对话', exact: true }).click();
-  expect(await page.locator('.chat-message').count()).toBe(0);
+  await expect(page).toHaveURL(/\/app\/chat$/);
+  await expect(page.locator('.chat-message')).toHaveCount(0);
   await page.getByLabel('消息', { exact: true }).fill('isolated draft');
   await page.goto(`/app/chat/${first}`);
   await expect(page.locator('.chat-message.assistant')).toHaveCount(1);
