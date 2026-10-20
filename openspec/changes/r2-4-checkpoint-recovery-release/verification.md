@@ -1,5 +1,19 @@
 # Current local conclusion (2026-10-21)
 
+R2.4 VERIFIED; R2 4/4 VERIFIED, NOT RELEASED. Application source `6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19`; Maven196, Vue34, non-root Linux69, real API browser20 plus4 recovery states, eight exact-container windows, ten V2 integrity cases, actual PG/MQ/ACK/dependency/cancel/accounting suites and actual released-R1 backend on V9 all PASS. Additive V9, runtime baseline1 and unchanged V1–V8. Later test/doc/evidence commits retain the original image source identities.
+
+Observation1807.69seconds/67samples/66tasks included broker/active-DB interruption and recovery. One real metered DeepSeek request verified frozen-input restart and committed-final stop/convergence without replay. Known usage cost uses the frozen-price estimate. UNKNOWN histories and holds remain intact; no quota/counter reset. Actual Docker VM7.69GiB and sampled values are not proof of minimum physical host or absolute peaks.
+
+Local fixture including its provider is stopped, volumes/images retained; explicit private-value scan of public worktree passes. Secrets, raw SQL, logs and host-proof signatures are outside public Git. The final body/evidence packages are separate protected local handoff artifacts, not Git delivery or cloud synchronization.
+
+PASS protected implementation PRs 64,65. Metadata promotion and final main/phase hashes are recorded in the separate protected handoff.
+
+Cloud SSH closes before authentication, so cloud deployment/observation/serial restore/R1 rollback are NOT_RUN. No R2 production tag or R3. The same OpenSpec change remains active with release/archival tasks incomplete; R2 is not RELEASED. Historical failures below are retained, not reclassified as passing.
+
+## Historical process records
+
+# Current local conclusion (2026-10-21)
+
 All mandatory local functional gates PASS; protected promotion pending, not yet VERIFIED. Application source `6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19`; Maven196, Vue34, non-root Linux69, real API browser20 plus4 recovery states, eight exact-container windows, ten V2 integrity cases, actual PG/MQ/ACK/dependency/cancel/accounting suites and actual released-R1 backend on V9 all PASS. Additive V9, runtime baseline1 and unchanged V1–V8. Later test/doc/evidence commits retain the original image source identities.
 
 Observation1807.69seconds/67samples/66tasks included broker/active-DB interruption and recovery. One real metered DeepSeek request verified frozen-input restart and committed-final stop/convergence without replay. Known usage cost uses the frozen-price estimate. UNKNOWN histories and holds remain intact; no quota/counter reset. Actual Docker VM7.69GiB and sampled values are not proof of minimum physical host or absolute peaks.
@@ -14,7 +28,7 @@ Cloud SSH closes before authentication, so cloud deployment/observation/serial r
 
 # R2.4 verification ledger
 
-Status IMPLEMENTING, not VERIFIED or RELEASED. Approved Plan in conversation; formal body is outside Git. Baseline23f68812c8a8438684653d2ec89fbbef9293fb07. No new supplier call, cloud mutation or capability is claimed by the governance files.
+Status R2.4 locally VERIFIED; R2 is not RELEASED. Cloud release tasks remain pending. Approved Plan in conversation; formal body is outside Git. Baseline23f68812c8a8438684653d2ec89fbbef9293fb07. No new supplier call, cloud mutation or capability is claimed by the governance files.
 
 | Gate | Required evidence | Current result |
 |---|---|---|
@@ -28,7 +42,7 @@ Status IMPLEMENTING, not VERIFIED or RELEASED. Approved Plan in conversation; fo
 | UI | live API, dual user/admin isolation, read-only recovery stages, partial/refresh/SSE, widths/zoom/keyboard/themes | PASS: inherited20/20 and four recovery-stage real-API/strict-SSE cases on6af7aa50; test correction453c115; UNKNOWN screenshot visually reviewed |
 | Real model | minimal frozen-input restart and committed-final no-replay; meter existing holds, stop at provider quota | PASS: one real metered request; frozen-input restart and committed-final no-replay, known usage, no plaintext key leak; historical UNKNOWN holds preserved |
 | Resources | final frozen candidate>=1800seconds with dependencies failing/restoring, transient resource limits included, no swap extension | PASS: frozen candidate1807.69s, dependency faults, memory/swap/thread/connection/actual disk samples; no minimum-host/absolute-peak claim |
-| Local promotion | exact source/config/image/export/evidence hashes; protected two-level PRs; Actions disabled | Pending protected step→phase→main PRs; not yet VERIFIED. |
+| Local promotion | exact source/config/image/export/evidence hashes; protected two-level PRs; Actions disabled | PASS protected implementation PRs 64,65. Metadata promotion and final main/phase hashes are recorded in the separate protected handoff. |
 | Cloud | verified R1 identity/capacity, immutable deploy/migrations/permissions, HTTP/smoke/observation, serial consistent restore and R1 rollback | NOT_RUN |
 | Delivery | local and cloud protected evidence; separate body copies/SHA256/retention>=30days; local stack explicitly stopped | NOT_COMPLETE: cloud delivery/archive pending; final local package/main/hash receipts are maintained separately outside Git |
 
