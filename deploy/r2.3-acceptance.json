@@ -1,6 +1,6 @@
 {
   "stage": "R2.3",
-  "status": "FUNCTIONAL_GATES_PASS_PROMOTION_PENDING",
+  "status": "VERIFIED",
   "recordedAt": 1792494035.1796455,
   "baseline": "75981636a6daa4eba41bb9d325e2a75c2ee4806e",
   "receiptSource": "7faa48d6ab8f9d42465712a2e1251050607e61d8",
@@ -480,5 +480,30 @@
     "No R2.4 checkpoint continuation or production tools/shell",
     "Fixture UNKNOWN holds deliberately retained; no fake settlement",
     "Two protected local body/evidence copies, not cloud body synchronization"
-  ]
+  ],
+  "promotion": [
+    {
+      "number": 60,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/60",
+      "base": "phase/r2-task-recovery",
+      "head": "step/r2.3-cancellation-reconciliation",
+      "headSha": "cb400c7aaaddd853cfe054006ee79a37645cf5da",
+      "merged": true,
+      "mergeSha": "9d87f7f097c049829432c609850f1aba6981a8b1"
+    },
+    {
+      "number": 61,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/61",
+      "base": "main",
+      "head": "phase/r2-task-recovery",
+      "headSha": "9d87f7f097c049829432c609850f1aba6981a8b1",
+      "merged": true,
+      "mergeSha": "0dc1ab4d2a1177dc08c38ad9613ae385a15ff5cb"
+    }
+  ],
+  "releaseState": {
+    "R2": "3/4 VERIFIED, NOT RELEASED",
+    "cloud": "R1 unchanged",
+    "nextStage": "R2.4 requires separate Plan/OpenSpec"
+  }
 }

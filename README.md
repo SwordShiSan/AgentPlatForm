@@ -1,6 +1,6 @@
 # AgentPlatForm
 
-当前开发：**R2.3 IMPLEMENTING**，取消收敛、停止确认与只读对账投影；[本地说明](deploy/R2.3-LOCAL.md)。工程回归已通过，容器故障、浏览器及30分钟观察尚待完成；未标 VERIFIED。云端仍为 R1，真实供应商调用0。以下保留历史记录。
+当前开发：**R2.3 VERIFIED，R2完成3/4、未 RELEASED**。取消收敛、停止回执、未知调用只读投影及受保护运维对账已通过本地强制门禁和两级PR；[本地说明](deploy/R2.3-LOCAL.md)、[脱敏证据](deploy/r2.3-acceptance.json)。云端R1未改，真实供应商调用0；R2.4另行Plan/OpenSpec。
 
 当前开发：**R2.2 VERIFIED，R2完成2/4、未 RELEASED**。一致快照、可靠事件续读及30天受控前缀清理已通过本地验收和两级PR；[本地说明](deploy/R2.2-LOCAL.md)、[脱敏证据](deploy/r2.2-acceptance.json)。云端继续已发行R1，真实供应商调用0；R2.3另行Plan/OpenSpec。
 
