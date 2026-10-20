@@ -22,11 +22,13 @@ final class ControlPersistence extends ChatPersistenceSupport implements Cancell
         var t=task(mappers,actor,taskId,false);var state=mappers.control().taskState(taskId);
         var calls=mappers.control().calls(taskId,actor.spaceId());
         int unknown=(int)calls.stream().filter(row -> "UNKNOWN".equals(row.status())||"RECONCILING".equals(row.reservationState())).count();
-        boolean confirmed=!state.live()&&!"RUNNING".equals(t.status())&&!"QUEUED".equals(t.status());
-        String stage=confirmed?"STOPPED":!t.cancelRequested()&&t.reasonCode()==null?"NOT_REQUESTED":
+        boolean terminal=!"RUNNING".equals(t.status())&&!"QUEUED".equals(t.status());
+        boolean hasStop=mappers.control().attemptCount(taskId)==0||mappers.control().latestStopCount(taskId)==1;
+        boolean confirmed=!state.live()&&terminal&&hasStop;
+        String stage=confirmed?"STOPPED":terminal&&!hasStop?"UNCONFIRMED":!t.cancelRequested()&&t.reasonCode()==null?"NOT_REQUESTED":
                 state.overdue()||"EXECUTION_STOP_UNCONFIRMED".equals(t.reasonCode())?"UNCONFIRMED":"STOPPING";
         return new Reconciliation(taskId,stage,confirmed,unknown,calls.stream().map(row -> new CallState(row.id(),row.status(),row.reservationState(),row.inputTokens(),row.outputTokens(),row.costMicros(),row.revision())).toList(),
-                !confirmed&&t.cancelRequested()?"WAIT_FOR_STOP":unknown>0?"CONTACT_OPERATOR_FOR_RECONCILIATION":"NONE",
+                !confirmed&&(t.cancelRequested()||"UNCONFIRMED".equals(stage))?"WAIT_FOR_STOP":unknown>0?"CONTACT_OPERATOR_FOR_RECONCILIATION":"NONE",
                 !"SUCCEEDED".equals(t.status()),t.version());
     }
     @Override public void stopped(Lease lease,String status,String reason,KnownUsage known,String receiptHash) {

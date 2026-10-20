@@ -630,6 +630,23 @@ class ChatPostgresTest {
         assertEquals(1,count("SELECT count(*) FROM pf.model_call"));
     }
 
+    @Test void laterCancelOfKnownBlockedTaskRequiresLatestStopProofAndConvergesOnce() throws Exception {
+        repository.bind(MODEL,alice,key("PLATFORM",null),"PLATFORM");
+        var task=submit(alice);var lease=claim(task);fixtureStopped(lease,"BLOCKED","CONTEXT_REQUIRED_TOO_LARGE");
+        assertEquals("CANCELLED",repository.cancel(alice,task.id(),UUID.randomUUID()).status());
+        long cursor=repository.snapshot(alice,task.conversationId()).cursor();
+        repository.cancel(alice,task.id(),UUID.randomUUID());
+        assertEquals(cursor,repository.snapshot(alice,task.conversationId()).cursor());
+        assertEquals(0,count("SELECT count(*) FROM pf.model_call WHERE task_id='"+task.id()+"'"));
+        var historical=submit(alice);var previous=claim(historical);fixtureStopped(previous,"BLOCKED","CONTEXT_REQUIRED_TOO_LARGE");
+        // Explicit legacy fixture: recreate evidence absence without mutating an immutable receipt.
+        sql("ALTER TABLE pf.execution_stop_receipt DISABLE TRIGGER stop_receipt_immutable; DELETE FROM pf.execution_stop_receipt WHERE task_id='"+historical.id()+"'; ALTER TABLE pf.execution_stop_receipt ENABLE TRIGGER stop_receipt_immutable;");
+        assertEquals("BLOCKED",repository.cancel(alice,historical.id(),UUID.randomUUID()).status());
+        assertFalse(repository.reconciliation(alice,historical.id()).stopConfirmed());
+        assertEquals("UNCONFIRMED",repository.reconciliation(alice,historical.id()).stopStage());
+        assertFalse(repository.reconciliation(alice,historical.id()).calls().stream().anyMatch(call->"UNKNOWN".equals(call.status())));
+    }
+
     @Test void reconciliationRejectsMissingOversizedAndStaleUsageWithoutChangingHolds() throws Exception {
         repository.bind(MODEL,alice,key("PLATFORM",null),"PLATFORM");var task=submit(alice);var lease=claim(task);var call=repository.beginCall(lease,false);repository.startCall(lease,call,false);
         fixtureStopped(lease,"FAILED","PROVIDER_REQUEST_FAILED");

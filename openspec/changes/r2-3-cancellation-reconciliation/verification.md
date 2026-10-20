@@ -1,4 +1,6 @@
 # Verification
+Current implementation update (2026-10-20): the corrected backend passes176 Maven tests, zero failures/errors/skips, including known BLOCKED cancellation, historical missing-proof rejection and the actual SDK/HTTP/PG cancellation pipeline. SDK state, model commit and checkpoint callbacks now enter the same tracked stop barrier as transport/writer/timer work. Final immutable-candidate Linux/container/browser/30minute gates are pending; preliminary dc812ca results below are not final-candidate acceptance. Stage remains IMPLEMENTING.
+
 Status IMPLEMENTING, not VERIFIED. All new runtime assertions NOT_RUN until measured. Baseline7598163, real supplier calls0, cloudR1 unchanged.
 
 2026-10-20 intermediate evidence: Maven verify174/174, skipped0; Vue34unit/typecheck/frozen install/both builds/contracts+invalid fixtures/links PASS; persistence boundary PASS; strict15/15 PASS. Real SDK/HTTP/PG pipeline cancellation and actual blocked teardown tests PASS on host JVM. Container, browser, 30minute and closure gates remain NOT_RUN. Initial Mockito prerequisite, history-count and Vue inference failures were corrected and their logs retained locally. This is not stage completion.

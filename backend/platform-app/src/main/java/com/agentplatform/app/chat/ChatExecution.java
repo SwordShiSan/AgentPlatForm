@@ -55,18 +55,18 @@ public final class ChatExecution implements AutoCloseable {
                     return result;
                 }
             };
-            RuntimeStatePort manifests=new RuntimeStatePort(){public void verifyRestore(Scope s,Bundle b){throw new ChatFailure(409,"CHECKPOINT_RECOVERY_NOT_AVAILABLE");}public void seal(Scope s,Bundle b){FixtureFaults.pause("checkpoint-before-seal");repository.sealCheckpoint(lease,b);FixtureFaults.pause("checkpoint-after-seal");}public List<Message> checkpointHistory(Scope s){return repository.checkpointHistory(lease);}};
+            RuntimeStatePort manifests=new RuntimeStatePort(){public void verifyRestore(Scope s,Bundle b){throw new ChatFailure(409,"CHECKPOINT_RECOVERY_NOT_AVAILABLE");}public void seal(Scope s,Bundle b){control.during(()->{FixtureFaults.pause("checkpoint-before-seal");repository.sealCheckpoint(lease,b);FixtureFaults.pause("checkpoint-after-seal");});}public List<Message> checkpointHistory(Scope s){return control.during(()->repository.checkpointHistory(lease));}};
             StateStorage attemptState=new StateStorage(){
                 private void scope(Scope s){if(!scope.equals(s))throw new ChatFailure(403,"STATE_SCOPE_MISMATCH");}
-                public StateSlot load(Scope s,String key){scope(s);return repository.state(lease,key);}
-                public long compareAndSwap(Scope s,String key,long version,byte[] body){scope(s);return repository.stateCas(lease,key,version,body);}
-                public Set<String> keys(Scope s){scope(s);return repository.stateKeys(lease);}
-                public void delete(Scope s,String key){scope(s);repository.stateDelete(lease,key);}
+                public StateSlot load(Scope s,String key){scope(s);return control.during(()->repository.state(lease,key));}
+                public long compareAndSwap(Scope s,String key,long version,byte[] body){scope(s);return control.during(()->repository.stateCas(lease,key,version,body));}
+                public Set<String> keys(Scope s){scope(s);return control.during(()->repository.stateKeys(lease));}
+                public void delete(Scope s,String key){scope(s);control.during(()->repository.stateDelete(lease,key));}
             };
             var factory=new AgentScopeRuntimeFactory(metered,(s,c)->Decision.DENY,(s,c)->CompletableFuture.failedFuture(new ChatFailure(422,"TOOLS_NOT_AVAILABLE")),attemptState,manifests,List.of(),work);
             LoopBoundary boundary=new LoopBoundary(){
-                public CompletionStage<List<Message>> beforeModel(Scope s,List<Message> ignored){turnId.set(repository.beginTurn(lease));return CompletableFuture.completedFuture(history);}
-                public CompletionStage<Void> afterModelCommitted(Scope s,Turn t){var call=accepted.get();if(call==null)throw new ChatFailure(409,"ACCEPTED_CALL_MISSING");repository.commitRound(lease,turnId.get(),t,call);FixtureFaults.pause("round-before-checkpoint");return CompletableFuture.completedFuture(null);}
+                public CompletionStage<List<Message>> beforeModel(Scope s,List<Message> ignored){return control.during(()->{turnId.set(repository.beginTurn(lease));return CompletableFuture.completedFuture(history);});}
+                public CompletionStage<Void> afterModelCommitted(Scope s,Turn t){return control.during(()->{var call=accepted.get();if(call==null)throw new ChatFailure(409,"ACCEPTED_CALL_MISSING");repository.commitRound(lease,turnId.get(),t,call);FixtureFaults.pause("round-before-checkpoint");return CompletableFuture.completedFuture(null);});}
                 public CompletionStage<Void> beforeTool(Scope s,com.agentplatform.types.harness.HarnessData.Call c){return CompletableFuture.failedFuture(new ChatFailure(422,"TOOLS_NOT_AVAILABLE"));}
                 public CompletionStage<Void> afterToolCommitted(Scope s,com.agentplatform.types.harness.HarnessData.Call c,Observation o){return CompletableFuture.failedFuture(new ChatFailure(422,"TOOLS_NOT_AVAILABLE"));}
                 public CompletionStage<Completion> beforeStop(Scope s,Message message){return CompletableFuture.completedFuture(message.text().isBlank()?Completion.INCOMPLETE:Completion.PASS);}

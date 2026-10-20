@@ -7,6 +7,9 @@ The platform SHALL separate cancel acceptance from actual local quiescence and r
 #### Scenario: Stop cannot be confirmed
 - **WHEN** SDK/provider/callback teardown does not finish within5seconds or DB is unavailable
 - **THEN** the execution slot is retained, no new call or stale write is allowed, and only valid local quiescence or trusted expired-owner host proof can release ownership
+#### Scenario: Cancellation arrives after a known blocked outcome
+- **WHEN** a BLOCKED task has a stop receipt matching its latest attempt, no live owner and no unresolved calls
+- **THEN** cancel converges once to CANCELLED without calling a provider, replaying a task or waiting for a nonexistent reconciliation item; absent stop proof it preserves BLOCKED
 ### Requirement: Evidence based unknown accounting
 The platform SHALL preserve unknown outcomes and reservations until stopped-only immutable, idempotent and revision-checked reconciliation establishes supported facts.
 #### Scenario: Evidence resolves a call

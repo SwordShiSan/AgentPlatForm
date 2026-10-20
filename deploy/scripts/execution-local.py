@@ -58,6 +58,7 @@ def main():
         if STAGE == 'r23':
             fixture.sql('GRANT SELECT,INSERT ON pf.task_cancellation TO ap_chat_api; '
                         'GRANT SELECT ON pf.task_cancellation TO ap_chat_worker; '
+                        'GRANT SELECT ON pf.execution_stop_receipt TO ap_chat_api; '
                         'GRANT SELECT,INSERT ON pf.execution_stop_receipt TO ap_chat_worker; '
                         'REVOKE ALL ON pf.model_call_reconciliation FROM ap_chat_api,ap_chat_worker; '
                         'REVOKE INSERT,UPDATE,DELETE ON pf.execution_stop_receipt FROM ap_chat_api;')

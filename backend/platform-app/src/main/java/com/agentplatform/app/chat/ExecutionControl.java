@@ -32,6 +32,12 @@ public final class ExecutionControl {
         if(closing.get()){work.arriveAndDeregister();throw new ChatFailure(409,"TASK_CANCEL_REQUESTED");}
         return work::arriveAndDeregister;
     }
+    public <T> T during(java.util.function.Supplier<T> operation) {
+        try(var ticket=enter()){return operation.get();}
+        catch(RuntimeException|Error failure){throw failure;}
+        catch(Exception impossible){throw new IllegalStateException(impossible);}
+    }
+    public void during(Runnable operation) { during(()->{operation.run();return null;}); }
     private void dispatch(Runnable action) {
         var done=new CompletableFuture<Void>();shutdownActions.add(done);
         try { cancellationExecutor.execute(()->{try{action.run();done.complete(null);}catch(Throwable failure){done.completeExceptionally(failure);}}); }

@@ -14,6 +14,8 @@ public interface ControlMapper {
     List<ControlCallRow> calls(@Param("task") UUID task, @Param("space") UUID space);
     String commandHash(@Param("id") UUID id);
     int stopCount(@Param("lease") Lease lease);
+    int latestStopCount(@Param("task") UUID task);
+    int attemptCount(@Param("task") UUID task);
     int unresolved(@Param("task") UUID task);
     int recordCancel(@Param("actor") Actor actor, @Param("task") UUID task, @Param("command") UUID command);
     int recordStop(@Param("lease") Lease lease, @Param("hash") String hash);

@@ -61,7 +61,9 @@ def protocol(client):
     command(COMPOSE + ['up', '-d', '--no-deps', 'worker-2'])
     task = cancelled(client, 'partial-repeat')
     conversation = sql("SELECT conversation_id FROM pf.task WHERE id='" + task + "'")
-    result = client.request('POST', '/api/v1/conversations/' + conversation + '/tasks', {'input': {'text': 'fixture:history:r23:' + str(uuid.uuid4())}})
+    result = client.request('POST', '/api/v1/conversations/' + conversation + '/tasks', {
+        'options': {'modelId': '0199e000-0000-7000-8000-000000000002', 'credentialSource': 'PLATFORM'},
+        'input': {'text': 'fixture:history:r23:' + str(uuid.uuid4())}})
     followup = result['taskId']
     wait(lambda: status(followup) == 'SUCCEEDED')
     assert sql("SELECT blocks_json->0->>'text' FROM pf.message WHERE task_id='" + followup + "' AND role='ASSISTANT'") == 'history-messages=2'
@@ -108,27 +110,32 @@ def accounting(client):
     record('operator-accounting', {'task': task, 'revision': 2, 'idempotencyAndInvalidEvidenceRejected': True})
 
 def stuck(client):
-    args = execution.workers('response-before-round')
-    task = client.submit('fixture:normal:r23:stuck:' + str(uuid.uuid4()))
-    def marker():
-        r = subprocess.run(['docker', 'exec', PROJECT + '-worker-1', 'cat', '/tmp/chat-fault-ready'], capture_output=True, text=True)
-        return r.returncode == 0 and r.stdout.strip() == 'response-before-round'
-    wait(marker)
-    cancel(client, task)
-    wait(lambda: projection(client, task)['stopStage'] == 'UNCONFIRMED', 15)
-    assert status(task) == 'RUNNING'
-    assert sql("SELECT count(*) FROM pf.execution_slot WHERE task_id='" + task + "'") == '1'
-    assert sql("SELECT count(*) FROM pf.execution_stop_receipt WHERE task_id='" + task + "'") == '0'
-    command(COMPOSE + ['up', '-d', '--no-deps', 'worker-2'])
-    followup = client.submit('fixture:normal:r23:waiting:' + str(uuid.uuid4()))
-    time.sleep(3)
-    assert status(followup) == 'QUEUED'
-    proof = execution.reconcile(ROOT, DATA, ENV, args, force=True)
-    wait(lambda: status(task) == 'BLOCKED')
-    wait(lambda: status(followup) == 'SUCCEEDED', 90)
-    assert projection(client, task)['stopConfirmed']
-    assert sql("SELECT count(*) FROM pf.model_call WHERE task_id='" + task + "'") == '1'
-    record('unconfirmed-host-proof', {'task': task, 'waitingTask': followup, 'proof': proof, 'keptSlotUntilProof': True})
+    cases = []
+    for point in ['response-before-round', 'checkpoint-before-seal']:
+        args = execution.workers(point)
+        task = client.submit('fixture:normal:r23:stuck:' + point + ':' + str(uuid.uuid4()))
+        def marker():
+            r = subprocess.run(['docker', 'exec', PROJECT + '-worker-1', 'cat', '/tmp/chat-fault-ready'], capture_output=True, text=True)
+            return r.returncode == 0 and r.stdout.strip() == point
+        wait(marker)
+        cancel(client, task)
+        wait(lambda: projection(client, task)['stopStage'] == 'UNCONFIRMED', 15)
+        assert status(task) == 'RUNNING'
+        assert sql("SELECT count(*) FROM pf.execution_slot WHERE task_id='" + task + "'") == '1'
+        assert sql("SELECT count(*) FROM pf.execution_stop_receipt WHERE task_id='" + task + "'") == '0'
+        command(COMPOSE + ['up', '-d', '--no-deps', 'worker-2'])
+        followup = client.submit('fixture:normal:r23:waiting:' + str(uuid.uuid4()))
+        time.sleep(3)
+        assert status(followup) == 'QUEUED'
+        proof = execution.reconcile(ROOT, DATA, ENV, args, force=True)
+        expected = 'BLOCKED' if point == 'response-before-round' else 'CANCELLED'
+        wait(lambda: status(task) == expected)
+        wait(lambda: status(followup) == 'SUCCEEDED', 90)
+        assert projection(client, task)['stopConfirmed']
+        assert sql("SELECT count(*) FROM pf.model_call WHERE task_id='" + task + "'") == '1'
+        cases.append({'point': point, 'task': task, 'waitingTask': followup, 'proof': proof, 'result': expected})
+        print('Blocked callback keeps slot: ' + point + ' PASS', flush=True)
+    record('unconfirmed-host-proof', {'cases': cases, 'keptSlotUntilProof': True})
 
 def windows(client):
     results = []
@@ -194,6 +201,9 @@ def rollback(client):
     record('previous-image-compatibility', result)
 
 def observe(client):
+    candidate=json.loads((DATA/'final-candidate.json').read_text(encoding='utf-8'))
+    assert subprocess.check_output(['git','rev-parse','HEAD:backend'],cwd=ROOT,text=True).strip()==candidate['backendTree']
+    assert not subprocess.check_output(['git','diff','--name-only','HEAD','--','backend'],cwd=ROOT,text=True).strip(), 'Freeze/rebuild changed backend before observation'
     execution.workers()
     command(COMPOSE + ['up', '-d', '--no-deps', 'worker-2'])
     start = time.monotonic()
