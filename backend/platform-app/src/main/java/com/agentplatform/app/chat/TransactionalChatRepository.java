@@ -26,11 +26,13 @@ public final class TransactionalChatRepository implements ChatRepository {
     private final ChatRepository delegate;
     private final TransactionTemplate transactions;
     private final TransactionTemplate snapshots;
+    private final SnapshotQueryService replay;
     public TransactionalChatRepository(ChatRepository delegate, TransactionTemplate transactions) {
         this.delegate = delegate;
         this.transactions = transactions;
         snapshots = new TransactionTemplate(transactions.getTransactionManager());
         snapshots.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
+        replay = new SnapshotQueryService(delegate, transactions.getTransactionManager());
     }
     private <T> T tx(TransactionTemplate template, Supplier<T> action) {
         try { return template.execute(status -> action.get()); }
@@ -46,11 +48,11 @@ public final class TransactionalChatRepository implements ChatRepository {
     @Override public Conversation create(Actor actor, UUID key, String title) { return tx(transactions, () -> delegate.create(actor, key, title)); }
     @Override public Conversation conversation(Actor actor, UUID id) { return tx(transactions, () -> delegate.conversation(actor, id)); }
     @Override public List<Conversation> conversations(Actor actor, UUID before, int limit) { return tx(transactions, () -> delegate.conversations(actor, before, limit)); }
-    @Override public Snapshot snapshot(Actor actor, UUID conversation) { return tx(snapshots, () -> delegate.snapshot(actor, conversation)); }
+    @Override public Snapshot snapshot(Actor actor, UUID conversation) { return replay.snapshot(actor, conversation); }
     @Override public Task submit(Actor actor, UUID conversation, UUID key, UUID model, String text) { return tx(transactions, () -> delegate.submit(actor, conversation, key, model, text)); }
     @Override public Task task(Actor actor, UUID task) { return tx(transactions, () -> delegate.task(actor, task)); }
     @Override public Task cancel(Actor actor, UUID task, UUID key) { return tx(transactions, () -> delegate.cancel(actor, task, key)); }
-    @Override public List<Event> events(Actor actor, UUID conversation, long after) { return tx(transactions, () -> delegate.events(actor, conversation, after)); }
+    @Override public List<Event> events(Actor actor, UUID conversation, long after) { return replay.events(actor, conversation, after); }
     @Override public List<Usage> usage(Actor actor, UUID task) { return tx(transactions, () -> delegate.usage(actor, task)); }
     @Override public List<Publish> publications(UUID relay) { return tx(transactions, () -> delegate.publications(relay)); }
     @Override public void published(UUID relay, Publish item, boolean success) { tx(transactions, () -> { delegate.published(relay, item, success); return null; }); }

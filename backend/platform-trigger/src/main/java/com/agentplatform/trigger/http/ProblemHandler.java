@@ -8,12 +8,18 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public final class ProblemHandler extends ResponseEntityExceptionHandler {
+    private boolean responseCommitted() {
+        var attributes = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+        return attributes instanceof org.springframework.web.context.request.ServletRequestAttributes servlet
+                && servlet.getResponse() != null && servlet.getResponse().isCommitted();
+    }
     @org.springframework.web.bind.annotation.ExceptionHandler(org.springframework.core.task.TaskRejectedException.class)
     org.springframework.http.ResponseEntity<ProblemDetail> streamCapacity(org.springframework.core.task.TaskRejectedException failure) {
         return chatFailure(new com.agentplatform.domain.chat.ChatFailure(503,"STREAM_CAPACITY_EXCEEDED"));
     }
     @org.springframework.web.bind.annotation.ExceptionHandler(com.agentplatform.domain.chat.ChatFailure.class)
     org.springframework.http.ResponseEntity<ProblemDetail> chatFailure(com.agentplatform.domain.chat.ChatFailure failure) {
+        if (responseCommitted()) return null;
         var problem=ProblemDetail.forStatusAndDetail(org.springframework.http.HttpStatusCode.valueOf(failure.status()),"The chat request could not be completed.");
         problem.setType(URI.create("urn:agentplatform:error:"+failure.code().toLowerCase(java.util.Locale.ROOT).replace('_','-')));
         com.agentplatform.types.FailureRecorder.request(failure.code(),com.agentplatform.types.RequestTrace.current());problem.setProperty("code",failure.code());problem.setProperty("traceId",com.agentplatform.types.RequestTrace.current().toString());problem.setProperty("retryable",failure.status()==503||failure.status()==429);
@@ -21,6 +27,7 @@ public final class ProblemHandler extends ResponseEntityExceptionHandler {
     }
     @org.springframework.web.bind.annotation.ExceptionHandler(com.agentplatform.domain.identity.IdentityFailure.class)
     org.springframework.http.ResponseEntity<ProblemDetail> identityFailure(com.agentplatform.domain.identity.IdentityFailure failure) {
+        if (responseCommitted()) return null;
         var problem = ProblemDetail.forStatusAndDetail(org.springframework.http.HttpStatusCode.valueOf(failure.status()), "The identity request could not be completed.");
         problem.setType(URI.create("urn:agentplatform:error:" + failure.code().toLowerCase(java.util.Locale.ROOT).replace('_', '-')));
         com.agentplatform.types.FailureRecorder.request(failure.code(),com.agentplatform.types.RequestTrace.current());
@@ -34,6 +41,7 @@ public final class ProblemHandler extends ResponseEntityExceptionHandler {
             Exception exception, Object body, org.springframework.http.HttpHeaders headers,
             org.springframework.http.HttpStatusCode status,
             org.springframework.web.context.request.WebRequest request) {
+        if (responseCommitted()) return null;
         if (status.value() == 400 && (exception instanceof org.springframework.http.converter.HttpMessageNotReadableException
                 || exception instanceof org.springframework.web.bind.MethodArgumentNotValidException)) {
             var servlet = ((org.springframework.web.context.request.ServletWebRequest) request).getRequest();

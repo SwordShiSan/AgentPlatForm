@@ -23,7 +23,7 @@ def sha(path):
 
 
 def export(component):
-    tag = 'agentplatform-' + component + (':r2.1-local' if STAGE == 'r21' else ':r2c-local')
+    tag = 'agentplatform-' + component + (':r2.1-local' if STAGE == 'r21' else ':' + STAGE + '-local')
     archive, compressed = OUT / (component + '.tar'), OUT / (component + '.tar.gz')
     subprocess.run(['docker', 'image', 'save', '--output', str(archive), tag], check=True)
     actual = json.loads(subprocess.check_output(['docker', 'image', 'inspect', tag]))[0]

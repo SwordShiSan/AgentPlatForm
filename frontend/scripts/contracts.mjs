@@ -8,16 +8,26 @@ import openapiTS, { astToString } from 'openapi-typescript';
 import { compile } from 'json-schema-to-typescript';
 import Ajv from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
+import standaloneCode from 'ajv/dist/standalone/index.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const api = YAML.parse(await readFile(resolve(root, 'contracts/openapi.yaml'), 'utf8'));
 await SwaggerParser.validate(structuredClone(api));
 const event = JSON.parse(await readFile(resolve(root, 'contracts/events/platform-event.schema.json'), 'utf8'));
-const ajv = new Ajv({ strict: true });
+const ajv = new Ajv({ strict: true, code: { source: true, esm: true } });
 addFormats(ajv);
 const validateEvent = ajv.compile(event);
 const banner = '/* Generated from contracts. Do not edit manually. */\n';
+// Ajv's standalone runtime references are CommonJS even in ESM output. Convert only
+// static, generated module references to imports so the browser never needs eval/require.
+const imports = new Map();
+const validator = standaloneCode(ajv, validateEvent).replace(/require\("([^"]+)"\)/g, (_, module) => {
+  if (!imports.has(module)) imports.set(module, `runtime${imports.size}`);
+  return imports.get(module);
+});
 const outputs = {
+  'validate-event.js': banner + [...imports].map(([module, name]) => `import * as ${name} from '${module}.js';\n`).join('') + validator,
+  'validate-event.d.ts': banner + "import type { PlatformEvent } from './events';\nexport default function validateEvent(value: unknown): value is PlatformEvent;\n",
   'http.ts': banner + astToString(await openapiTS(api)),
   'events.ts': await compile(event, 'PlatformEvent', { bannerComment: banner.trim(), additionalProperties: false }),
   'client.ts': `${banner}import createClient from 'openapi-fetch';\nimport type { ClientOptions } from 'openapi-fetch';\nimport type { paths } from './http';\n\nexport function createPlatformClient(options: ClientOptions) {\n  return createClient<paths>(options);\n}\n`,

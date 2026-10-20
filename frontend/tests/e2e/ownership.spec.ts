@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-test.skip(process.env.R21_BROWSER_ACCEPTANCE !== '1' && process.env.R2C_BROWSER_ACCEPTANCE !== '1', 'Requires isolated R2.1 API, two workers, PG/MQ and deterministic provider');
+test.skip(process.env.R21_BROWSER_ACCEPTANCE !== '1' && process.env.R2C_BROWSER_ACCEPTANCE !== '1' && process.env.R22_BROWSER_ACCEPTANCE !== '1', 'Requires isolated API, two workers, PG/MQ and deterministic provider');
 test.use({ trace: 'off', screenshot: 'off' });
 const root = process.env.IDENTITY_SECRET_ROOT ?? resolve(import.meta.dirname, '../../../.cache/r21-local');
 
@@ -50,7 +50,7 @@ test('partial failure remains readable and diagnostic is denied to another user'
   const other = await browser.newContext();
   try {
     await login(await other.newPage(), 'alice');
-    for (const path of [`/api/v1/conversations/${id}`, `/api/v1/conversations/${id}/snapshot`, `/api/v1/tasks/${task}`, `/api/v1/tasks/${task}/diagnostics`]) {
+    for (const path of [`/api/v1/conversations/${id}`, `/api/v1/conversations/${id}/snapshot`, `/api/v1/conversations/${id}/events?after=0`, `/api/v1/tasks/${task}`, `/api/v1/tasks/${task}/diagnostics`]) {
       const response = await other.request.get(path); expect(response.status()).toBe(404);
     }
   } finally { await other.close(); }

@@ -990,7 +990,7 @@ export interface operations {
     getConversationEvents: {
         parameters: {
             query?: {
-                /** @description Committed cursor; wins over Last-Event-ID. Expired cursor returns410 and requires a fresh snapshot. */
+                /** @description Committed cursor, default0; wins over Last-Event-ID. Malformed/unsafe integer400; negative/ahead409; below persisted pruned-through watermark410. Equality with watermark is valid. Rebase from snapshot on409/410. */
                 after?: number;
             };
             header?: {
@@ -1005,7 +1005,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description SSE event platform_event; id is seq. Only committed events, Unicode codepoint offsets. Disconnect does not cancel. Bounded connections reconnect from cursor. */
+            /** @description SSE event platform_event; id is seq. Only committed events, Unicode codepoint offsets. Disconnect never cancels. Eight streams maximum; excess503 STREAM_CAPACITY_EXCEEDED. Lifetime25s, heartbeat2s; reconnect from applied cursor. Each page at most256 events/1MiB, oversized503 EVENT_STREAM_OVERSIZED requires snapshot. Preflight failures use Problem; after headers commit close the stream on failure, never emit a business failure or Problem as an event. */
             200: {
                 headers: {
                     [name: string]: unknown;

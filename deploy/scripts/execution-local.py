@@ -47,6 +47,12 @@ def main():
                     'GRANT SELECT,INSERT,UPDATE ON pf.model_turn,pf.tool_operation TO ap_chat_worker; '
                     'GRANT SELECT,INSERT ON pf.checkpoint TO ap_chat_worker; '
                     'REVOKE ALL ON pf.stopped_owner_proof FROM ap_chat_api,ap_chat_worker;')
+        if STAGE == 'r22':
+            fixture.sql('REVOKE DELETE ON pf.platform_event FROM ap_chat_api,ap_chat_worker; '
+                        'REVOKE UPDATE ON pf.conversation FROM ap_chat_api,ap_chat_worker; '
+                        'GRANT UPDATE(title,next_seq,version,updated_at) ON pf.conversation TO ap_chat_api,ap_chat_worker; '
+                        'REVOKE ALL ON FUNCTION pf.collect_expired_replay(uuid) FROM ap_chat_worker; '
+                        'GRANT EXECUTE ON FUNCTION pf.collect_expired_replay(uuid) TO ap_chat_api;')
 
 
 if __name__ == '__main__':

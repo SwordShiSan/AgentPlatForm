@@ -46,11 +46,10 @@ final class ConversationPersistence extends ChatPersistenceSupport {
     });}
     public List<Event> events(Actor a,UUID id,long after){return tx(c->{
         auth(c,a);conversation(c,a,id,false);
-        long current;{ var rows53 = c.conversation().selectConversation53(id); var row53 = rows53.isEmpty() ? null : rows53.getFirst(); current=row53.value1();if(after<0||after>current)throw new ChatFailure(409,"INVALID_CURSOR"); }
-        { var rows52 = c.conversation().selectPlatformEvent52(id); var row52 = rows52.isEmpty() ? null : rows52.getFirst();
-            Long first=row52==null?null:row52.value1();if(after<current&&(first==null||after<first-1))throw new ChatFailure(410,"CURSOR_EXPIRED");
-         }
-        List<Event> result=new ArrayList<>();{ var rows51 = c.conversation().selectPlatformEvent51(a.spaceId(), id, after);
+        var bounds=c.event().bounds(a.spaceId(),id);
+        if(after<0||after>bounds.current())throw new ChatFailure(409,"INVALID_CURSOR");
+        if(after<bounds.prunedThrough())throw new ChatFailure(410,"CURSOR_EXPIRED");
+        List<Event> result=new ArrayList<>();{ var rows51 = c.event().page(a.spaceId(), id, after);
             for (var row51 : rows51)result.add(new Event(row51.id(),a.spaceId(),id,row51.taskId(),row51.seq(),row51.type(),row51.entityVersion(),row51.createdAt(),object(row51.payloadJson())));
          }return List.copyOf(result);
     });}

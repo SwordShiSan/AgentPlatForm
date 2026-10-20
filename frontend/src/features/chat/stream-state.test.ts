@@ -14,6 +14,9 @@ describe('committed chat cursor reducer', () => {
     const before = snapshot(); const next = applyChatEvent(before, event());
     expect(next.messages[0]?.blocks[0]?.text).toBe('a😀好');
     expect(before.messages[0]?.blocks[0]?.text).toBe('a😀');
+    expect(next.tasks).toBe(before.tasks);
+    expect(next.pending).toBe(before.pending);
+    expect(next.messages[0]).not.toBe(before.messages[0]);
     expect(applyChatEvent(next, event())).toBe(next);
   });
   it('requires canonical snapshot on missing sequence or UTF16 offset', () => {

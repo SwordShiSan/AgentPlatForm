@@ -12,7 +12,7 @@ def pin_exported(env, data, required=False):
     by_component = {row['component']: row for row in records}
     assert len(by_component) == len(records), 'Duplicate image identity'
     prefix = env.get('EXECUTION_IMAGE_PREFIX', 'R21')
-    assert prefix in {'R21', 'R2C'}, 'Unsupported acceptance image namespace'
+    assert prefix in {'R21', 'R2C', 'R22'}, 'Unsupported acceptance image namespace'
     names = {'api': prefix + '_API_IMAGE', 'gateway': prefix + '_GATEWAY_IMAGE', 'provider-fixture': prefix + '_FIXTURE_IMAGE'}
     assert not required or set(names).issubset(by_component), 'Candidate export is incomplete'
     for name, variable in names.items():
