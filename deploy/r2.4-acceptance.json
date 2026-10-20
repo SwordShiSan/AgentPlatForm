@@ -1,6 +1,6 @@
 {
   "stage": "R2.4",
-  "status": "LOCAL_FUNCTIONAL_GATES_PASS_PROMOTION_PENDING",
+  "status": "VERIFIED",
   "recordedAt": 1792521747.223278,
   "baseline": "23f68812c8a8438684653d2ec89fbbef9293fb07",
   "receiptSource": "b09768eba469f098c87e517472b220ae342566fe",
@@ -523,5 +523,30 @@
     "files": 567,
     "privateValuesFound": 0,
     "universalDlpClaim": false
+  },
+  "promotion": [
+    {
+      "number": 64,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/64",
+      "base": "phase/r2-task-recovery",
+      "head": "step/r2.4-checkpoint-recovery-release",
+      "headSha": "668e8cbb20a0a4d1d0fa081671f3977db7e4a54a",
+      "merged": true,
+      "mergeSha": "065cca173865c49f783a124b9d3578c7723e3d43"
+    },
+    {
+      "number": 65,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/65",
+      "base": "main",
+      "head": "phase/r2-task-recovery",
+      "headSha": "065cca173865c49f783a124b9d3578c7723e3d43",
+      "merged": true,
+      "mergeSha": "92e0852ee00d3e3df4296d0bd28cb88893550b8d"
+    }
+  ],
+  "releaseState": {
+    "R2": "4/4 VERIFIED, NOT RELEASED",
+    "cloud": "No mutation by this run; last recorded R1, live health unverified",
+    "next": "Resolve cloud connectivity and finish the same release gates; no R3"
   }
 }
