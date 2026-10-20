@@ -97,5 +97,24 @@ test('a new conversation subscription waits for its own delayed snapshot', async
   expect(early).toBe(false);
   await expect(page.locator('.chat-message.user .chat-text').first()).toHaveText('fixture:slow');
   const cancel=page.getByRole('button',{name:'取消回复',exact:true});
-  if(await cancel.isVisible()){await cancel.click();await expect(page.getByRole('status').first()).toContainText(process.env.R23_BROWSER_ACCEPTANCE === '1' ? '需要处理' : '已取消');}
+  if(await cancel.isVisible()) {
+    const snapshot=await (await page.request.get(`/api/v1/conversations/${id}/snapshot`)).json();
+    const task=snapshot.tasks.at(-1).taskId;
+    await cancel.click();
+    if(process.env.R23_BROWSER_ACCEPTANCE === '1') {
+      // This test gates the snapshot, not the provider. Cancellation can win before
+      // the first physical request; require the corresponding persisted facts.
+      await expect.poll(async()=> (await (await page.request.get(`/api/v1/tasks/${task}/reconciliation`)).json()).stopConfirmed).toBe(true);
+      const reconciliation=await (await page.request.get(`/api/v1/tasks/${task}/reconciliation`)).json();
+      const detail=await (await page.request.get(`/api/v1/tasks/${task}`)).json();
+      if(reconciliation.unknownCalls>0) {
+        expect(detail.status).toBe('BLOCKED');
+        await expect(page.getByRole('status').first()).toContainText('需要处理');
+        await expect(page.getByTestId('reconciliation-notice')).toContainText('不会自动重放');
+      } else {
+        expect(detail.status).toBe('CANCELLED');
+        await expect(page.getByRole('status').first()).toContainText('已取消');
+      }
+    } else await expect(page.getByRole('status').first()).toContainText('已取消');
+  }
 });
