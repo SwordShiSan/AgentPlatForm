@@ -54,10 +54,10 @@ def protocol():
         assert status(client, conversation, value) == expected, (value, expected)
     with stream(client, conversation, cursor, 'bad') as response:
         assert response.status == 200 and response.readline().startswith(b':')
-    # Let previously closed sockets leave admission before the exact eight/ninth test.
-    time.sleep(3)
+    # A socket close is observed asynchronously (or by the servlet deadline).
+    # Isolate capacity assertions using the specified35second cleanup bound.
+    time.sleep(35)
     opened = []
-    started = time.monotonic()
     try:
         for _ in range(8):
             response = stream(client, conversation, cursor)
@@ -91,7 +91,7 @@ def protocol():
     assert version == sql("SELECT version::text||'/'||updated_at::text FROM pf.conversation WHERE id='"+conversation+"'")
     assert int(sql("SELECT replay_pruned_through FROM pf.conversation WHERE id='"+conversation+"'")) == cursor
     assert sql('SELECT physical_calls FROM pf.acceptance_model_meter WHERE id=1') == '0'
-    return {'status':'PASS','cursor':cursor,'eightConnections':True,'eightConnectionHoldSeconds':14,'ninthStatus':503,'idleTransactions':0,
+    return {'status':'PASS','cursor':cursor,'preflightCleanupWaitSeconds':35,'eightConnections':True,'eightConnectionHoldSeconds':14,'ninthStatus':503,'idleTransactions':0,
             'disconnectAdmissionReturnedWithinSeconds':returned,
             'prunedCursorStatus':410,'watermarkCursorStatus':200,'canonicalSnapshotUnchanged':True,'leastPrivilege':True,
             'sample':execution.sample(),'realProviderCalls':0}
@@ -191,6 +191,7 @@ def pressure():
     opened=[]
     sock=socket.socket()
     sock.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1024)
+    time.sleep(35)  # Do not include previous gates' asynchronous socket cleanup.
     started=time.monotonic()
     try:
         sock.connect(('127.0.0.1',18090))
