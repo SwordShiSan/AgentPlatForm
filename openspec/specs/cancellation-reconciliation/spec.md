@@ -32,4 +32,3 @@ The platform SHALL expose read-only stop and reconciliation state under live spa
 #### Scenario: Unauthorized reader or delayed stream
 - **WHEN** another user or administrator selects foreign resources, or identity changes
 - **THEN** reads/cancels are denied and late projections cannot cross actor/space/conversation generations
-
