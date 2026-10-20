@@ -239,6 +239,33 @@
       }
     },
     {
+      "coordinate": "io.projectreactor:reactor-core:jar:3.8.7",
+      "sha256": "9a5f1bfc5ad0416a410ff63beaa279cc30c2da3ae9b111a678c83c99298a1551",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.reactivestreams:reactive-streams:jar:1.0.4",
+      "sha256": "f75ca597789b3dac58f61857b9ac2e1034a68fa672db35055a8fb4509e325f28",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "org.jspecify:jspecify:jar:1.0.1",
+      "sha256": "070d75f261fe4c5b8202508366715f7f2d4660f88c8ef7e6d3575e48c9683b66",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile",
+        "platform-trigger": "compile"
+      }
+    },
+    {
       "coordinate": "org.mybatis.spring.boot:mybatis-spring-boot-starter:jar:4.0.0",
       "sha256": "497cb441e453b46ce7dbc13891a62008b89fd1708aa4b59d0cc2de3cc5b0f45b",
       "modules": {
@@ -828,22 +855,6 @@
       }
     },
     {
-      "coordinate": "io.projectreactor:reactor-core:jar:3.8.7",
-      "sha256": "9a5f1bfc5ad0416a410ff63beaa279cc30c2da3ae9b111a678c83c99298a1551",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
-      "coordinate": "org.reactivestreams:reactive-streams:jar:1.0.4",
-      "sha256": "f75ca597789b3dac58f61857b9ac2e1034a68fa672db35055a8fb4509e325f28",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
       "coordinate": "org.flywaydb:flyway-core:jar:11.14.1",
       "sha256": "45148edbcb55016418ff1ef7ecca3331b55f5216b3af4bd2db40063904db3715",
       "modules": {
@@ -1026,15 +1037,6 @@
     {
       "coordinate": "io.micrometer:micrometer-observation:jar:1.16.7",
       "sha256": "74f9e4d51ef30c141de8a2409879282e572eef98665e033e8922c2fbee16862d",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile",
-        "platform-trigger": "compile"
-      }
-    },
-    {
-      "coordinate": "org.jspecify:jspecify:jar:1.0.1",
-      "sha256": "070d75f261fe4c5b8202508366715f7f2d4660f88c8ef7e6d3575e48c9683b66",
       "modules": {
         "platform-app": "compile",
         "platform-infrastructure": "compile",

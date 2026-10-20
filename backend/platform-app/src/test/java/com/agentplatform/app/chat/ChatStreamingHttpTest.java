@@ -1,8 +1,6 @@
 package com.agentplatform.app.chat;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 import com.agentplatform.api.chat.ChatApi;
 import com.agentplatform.api.identity.IdentityApi;
@@ -12,6 +10,9 @@ import java.net.http.*;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.LongFunction;
 import java.util.concurrent.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -23,7 +24,10 @@ import org.springframework.context.annotation.*;
         properties = {"spring.profiles.active=identity-local,chat-local,chat-stream-test", "server.shutdown=immediate"})
 class ChatStreamingHttpTest {
     @LocalServerPort int port;
-    @org.springframework.beans.factory.annotation.Autowired org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor executor;
+    @org.springframework.beans.factory.annotation.Autowired @org.springframework.beans.factory.annotation.Qualifier("sseExecutor") org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor executor;
+    @org.springframework.beans.factory.annotation.Autowired com.agentplatform.api.chat.ChatEventStream streams;
+    private static volatile LongFunction<List<ChatApi.EventView>> page = after -> List.of();
+    private static final AtomicBoolean revoked = new AtomicBoolean();
     @Configuration(proxyBeanMethods = false)
     @Profile("chat-stream-test")
     @EnableAutoConfiguration
@@ -31,17 +35,56 @@ class ChatStreamingHttpTest {
             com.agentplatform.trigger.http.HttpSecurityConfiguration.class, com.agentplatform.trigger.http.RequestTraceFilter.class})
     static class Config {
         @Bean ChatApi chat() {
-            var chat = mock(ChatApi.class);
-            when(chat.events(any(), anyString(), anyLong())).thenReturn(List.of());
-            return chat;
+            return (ChatApi) java.lang.reflect.Proxy.newProxyInstance(ChatApi.class.getClassLoader(), new Class<?>[]{ChatApi.class},
+                    (proxy, method, args) -> {
+                        if (method.getName().equals("events")) return page.apply((long) args[2]);
+                        throw new UnsupportedOperationException(method.getName());
+                    });
         }
         @Bean IdentityApi identity() {
-            var identity = mock(IdentityApi.class);
-            when(identity.me(any(), any())).thenReturn(new IdentityApi.MeResponse(
+            var me = new IdentityApi.MeResponse(
                     "0199e000-0000-7000-8000-000000000001", "fixture", false,
-                    List.of(new IdentityApi.SpaceResponse("0199e000-0000-7000-8000-000000000002", "PERSONAL", "OWNER", 0))));
-            return identity;
+                    List.of(new IdentityApi.SpaceResponse("0199e000-0000-7000-8000-000000000002", "PERSONAL", "OWNER", 0)));
+            return (IdentityApi) java.lang.reflect.Proxy.newProxyInstance(IdentityApi.class.getClassLoader(), new Class<?>[]{IdentityApi.class},
+                    (proxy, method, args) -> {
+                        if (revoked.get()) throw new com.agentplatform.domain.identity.IdentityFailure(401, "AUTHENTICATION_REQUIRED");
+                        if (method.getName().equals("me")) return me;
+                        throw new UnsupportedOperationException(method.getName());
+                    });
         }
+    }
+
+    @Test void stoppedReaderReleasesAdmissionWithinThirtyFiveSeconds() throws Exception {
+        awaitDisconnectedStreams();
+        page = after -> java.util.stream.LongStream.rangeClosed(after + 1, after + 128)
+                .mapToObj(seq -> new ChatApi.EventView(1, "event-" + seq, "space", "conversation", "task", seq,
+                        "message.delta", "2026-10-20T00:00:00Z", seq, Map.of("text", "x".repeat(6000)))).toList();
+        long started = System.nanoTime();
+        try (var socket = new java.net.Socket()) {
+            socket.setReceiveBufferSize(1024);
+            socket.connect(new java.net.InetSocketAddress("127.0.0.1", port), 2000);
+            socket.getOutputStream().write(("GET /api/v1/conversations/0199e000-0000-7000-8000-000000000003/events?after=0 HTTP/1.1\r\n"
+                    + "Host: localhost\r\nAccept: text/event-stream\r\n\r\n").getBytes(StandardCharsets.US_ASCII));
+            long admissionDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+            while (streams.activeStreams() == 0 && System.nanoTime() < admissionDeadline) Thread.sleep(10);
+            assertEquals(1, streams.activeStreams());
+            long deadline = started + TimeUnit.SECONDS.toNanos(35);
+            while ((streams.activeStreams() != 0 || executor.getActiveCount() != 0) && System.nanoTime() < deadline) Thread.sleep(50);
+            assertEquals(0, streams.activeStreams(), "A client that never reads must not retain admission");
+            assertEquals(0, executor.getActiveCount(), "Blocked writes must terminate within the transport deadline");
+        } finally { page = after -> List.of(); }
+    }
+
+    @Test void authorizationRevocationClosesLiveStreamWithoutClientDemand() throws Exception {
+        awaitDisconnectedStreams();
+        try (var client = HttpClient.newHttpClient()) {
+            var request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port
+                    + "/api/v1/conversations/0199e000-0000-7000-8000-000000000003/events?after=0")).build();
+            var response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            assertEquals(200, response.statusCode());
+            revoked.set(true);
+            try (var body = response.body()) { awaitDisconnectedStreams(); }
+        } finally { revoked.set(false); }
     }
 
     @Test void sendsEventStreamHeadersAndFirstFrameBeforeLongPollCompletes() throws Exception {
@@ -63,8 +106,8 @@ class ChatStreamingHttpTest {
 
     private void awaitDisconnectedStreams() throws Exception {
         long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(9);
-        while(executor.getActiveCount()!=0&&System.nanoTime()<deadline)Thread.sleep(50);
-        assertEquals(0,executor.getActiveCount(),"Disconnected sockets must release the bounded workers promptly");
+        while(streams.activeStreams()!=0&&System.nanoTime()<deadline)Thread.sleep(50);
+        assertEquals(0,streams.activeStreams(),"Disconnected sockets must release the bounded workers promptly");
     }
 
     @Test void eightStreamsStartWithoutQueueingAndExcessCapacityFailsExplicitly() throws Exception {
@@ -82,5 +125,26 @@ class ChatStreamingHttpTest {
             } finally { for(var response:responses)response.body().close(); }
         }
         awaitDisconnectedStreams();
+    }
+
+    @Test void malformedCursorsAndOversizedPagesFailBeforeStreamingHeaders() throws Exception {
+        awaitDisconnectedStreams();
+        try (var client=HttpClient.newHttpClient()) {
+            String path="http://127.0.0.1:"+port+"/api/v1/conversations/0199e000-0000-7000-8000-000000000003/events";
+            for(String cursor:List.of("bad","1.5","9007199254740992","9223372036854775808")) {
+                var response=client.send(HttpRequest.newBuilder(URI.create(path+"?after="+cursor)).build(),HttpResponse.BodyHandlers.ofString());
+                assertEquals(400,response.statusCode()); assertTrue(response.body().contains("INVALID_CURSOR"));
+            }
+            var preferred=client.send(HttpRequest.newBuilder(URI.create(path+"?after=0")).header("Last-Event-ID","invalid").build(),HttpResponse.BodyHandlers.ofInputStream());
+            assertEquals(200,preferred.statusCode()); preferred.body().close(); awaitDisconnectedStreams();
+            page=after->java.util.Collections.nCopies(257,new ChatApi.EventView(1,"event","space","conversation",null,1,
+                    "message.delta","2026-10-20T00:00:00Z",1,Map.of()));
+            try {
+                var response=client.send(HttpRequest.newBuilder(URI.create(path)).build(),HttpResponse.BodyHandlers.ofString());
+                assertEquals(503,response.statusCode());assertTrue(response.body().contains("EVENT_STREAM_OVERSIZED"));
+                assertFalse(response.headers().firstValue("Content-Type").orElse("").contains("text/event-stream"));
+                assertEquals(0,streams.activeStreams());
+            } finally {page=after->List.of();}
+        }
     }
 }

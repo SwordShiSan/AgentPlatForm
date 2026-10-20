@@ -11,6 +11,9 @@ importers:
       '@tanstack/vue-query':
         specifier: 5.104.2
         version: 5.104.2(vue@3.5.43(typescript@5.9.3))
+      eventsource-parser:
+        specifier: 4.1.2
+        version: 4.1.2
       naive-ui:
         specifier: 2.45.3
         version: 2.45.3(vue@3.5.43(typescript@5.9.3))
@@ -724,6 +727,10 @@ packages:
 
   estree-walker@3.0.3:
     resolution: {integrity: sha512-7RUKfXgSMMkzt6ZuXmqapOurLGPPfgj6l9uRZ7lRGolvk0y2yocc35LdcxKC5PQZdn2DMqioAQ2NoWcrTKmm6g==}
+
+  eventsource-parser@4.1.2:
+    resolution: {integrity: sha512-N9b0EvATDJfZj+Szg3m8WwqseQhei/mtTd6V0rCciGbI/yG24o3yBk0YVyfOZZsLVMZHWs++Zk3Aqd2y2EztnQ==}
+    engines: {node: '>=22.12'}
 
   evtd@0.2.4:
     resolution: {integrity: sha512-qaeGN5bx63s/AXgQo8gj6fBkxge+OoLddLniox5qtLAEY5HSnuSlISXVPxnSae1dWblvTh4/HoMIB+mbMsvZzw==}
@@ -1729,6 +1736,8 @@ snapshots:
   estree-walker@3.0.3:
     dependencies:
       '@types/estree': 1.0.9
+
+  eventsource-parser@4.1.2: {}
 
   evtd@0.2.4: {}
 

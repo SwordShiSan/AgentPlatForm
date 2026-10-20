@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.chat.EventMapper">
+    <resultMap id="bounds" type="com.agentplatform.infrastructure.dao.po.ReplayBounds">
+        <constructor>
+            <arg name="current" column="next_seq" javaType="_long"/>
+            <arg name="prunedThrough" column="replay_pruned_through" javaType="_long"/>
+        </constructor>
+    </resultMap>
+    <resultMap id="event" type="com.agentplatform.infrastructure.dao.po.ConversationRows$PlatformEventRow51">
+        <constructor>
+            <arg name="id" column="id" javaType="java.util.UUID"/>
+            <arg name="taskId" column="task_id" javaType="java.util.UUID"/>
+            <arg name="seq" column="seq" javaType="java.lang.Long"/>
+            <arg name="type" column="type" javaType="java.lang.String"/>
+            <arg name="entityVersion" column="entity_version" javaType="java.lang.Long"/>
+            <arg name="createdAt" column="created_at" javaType="java.time.Instant"/>
+            <arg name="payloadJson" column="payload_json" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="bounds" resultMap="bounds">
+        SELECT next_seq,replay_pruned_through FROM pf.conversation
+        WHERE space_id=#{spaceId,jdbcType=OTHER} AND id=#{conversationId,jdbcType=OTHER}
+    </select>
+    <select id="page" resultMap="event">
+        SELECT id,task_id,seq,type,entity_version,created_at,payload_json FROM pf.platform_event
+        WHERE space_id=#{spaceId,jdbcType=OTHER} AND conversation_id=#{conversationId,jdbcType=OTHER}
+          AND seq &gt; #{after} ORDER BY seq LIMIT 256
+    </select>
+    <select id="retentionCandidates" resultType="java.util.UUID">
+        SELECT c.id FROM pf.conversation c JOIN pf.platform_event e
+          ON e.conversation_id=c.id AND e.seq=c.replay_pruned_through+1
+        WHERE e.created_at &lt; transaction_timestamp()-interval '30 days'
+        ORDER BY e.created_at,c.id LIMIT 20
+    </select>
+    <select id="collectExpiredPrefix" resultType="int" flushCache="true" useCache="false" affectData="true">
+        SELECT pf.collect_expired_replay(#{conversationId,jdbcType=OTHER})
+    </select>
+</mapper>

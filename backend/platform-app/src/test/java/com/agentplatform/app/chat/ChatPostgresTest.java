@@ -36,15 +36,25 @@ class ChatPostgresTest {
     @BeforeAll static void migrate() throws Exception {
         url = System.getenv("R12_TEST_JDBC_URL");
         Assumptions.assumeTrue(url != null, "Real R1.2 PostgreSQL not configured; not acceptance evidence");
-        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15442/chat_test?") || ("1".equals(System.getenv("R21_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15443/chat_test?")) || ("1".equals(System.getenv("R2C_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15444/chat_test?")), "Refusing a database outside the explicitly named isolated fixture");
+        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15442/chat_test?") || ("1".equals(System.getenv("R21_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15443/chat_test?")) || ("1".equals(System.getenv("R2C_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15444/chat_test?")) || ("1".equals(System.getenv("R22_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15445/chat_test?")), "Refusing a database outside the explicitly named isolated fixture");
         password = Files.readString(Path.of(System.getenv("R12_TEST_PASSWORD_FILE"))).strip();
         // Destructive reset is restricted above to this explicitly named, isolated test database.
         Flyway.configure().dataSource(url, "postgres", password).defaultSchema("pf").schemas("pf", "pf_runtime")
                 .cleanDisabled(false).load().clean();
-        for (String target : List.of("1", "2", "3", "4", "5", "6")) {
+        for (String target : List.of("1", "2", "3", "4", "5", "6", "7")) {
+            if (target.equals("7")) {
+                sql("INSERT INTO pf.app_user(id,username_norm,password_hash,status) VALUES('00000000-0000-4000-8000-000000000001','upgrade-fixture','unused','ACTIVE');"
+                        +"INSERT INTO pf.space(id,type,owner_user_id) VALUES('00000000-0000-4000-8000-000000000002','PERSONAL','00000000-0000-4000-8000-000000000001');"
+                        +"INSERT INTO pf.membership(space_id,user_id,role,status) VALUES('00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000001','OWNER','ACTIVE');"
+                        +"INSERT INTO pf.conversation(id,space_id,creator_id,title,next_seq) SELECT id,'00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000001','Upgrade',5 FROM unnest(ARRAY['00000000-0000-4000-8000-000000000003'::uuid,'00000000-0000-4000-8000-000000000004'::uuid]) id;"
+                        +"INSERT INTO pf.platform_event(id,space_id,conversation_id,seq,type,schema_version,entity_version,payload_json) SELECT gen_random_uuid(),'00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000003',n,'message.delta',1,1,'{}' FROM generate_series(3,5) n;");
+            }
             Flyway.configure().dataSource(url, "postgres", password).defaultSchema("pf")
                     .schemas("pf", "pf_runtime").target(target).load().migrate();
         }
+        assertEquals(2,count("SELECT replay_pruned_through FROM pf.conversation WHERE id='00000000-0000-4000-8000-000000000003'"));
+        assertEquals(5,count("SELECT replay_pruned_through FROM pf.conversation WHERE id='00000000-0000-4000-8000-000000000004'"));
+        assertEquals(3,count("SELECT count(*) FROM pf.platform_event"),"Migration must not invent or remove historical events");
     }
 
     @BeforeEach void provision() throws Exception {
@@ -218,9 +228,13 @@ class ChatPostgresTest {
     @Test void expiredEventsRequireSnapshotAndNewSnapshotCursorRemainsValid() throws Exception {
         repository.bind(MODEL, alice, key("PLATFORM", null), "PLATFORM");
         var task = submit(alice); long cursor = repository.snapshot(alice, task.conversationId()).cursor();
+        var before=repository.snapshot(alice,task.conversationId());
         sql("UPDATE pf.platform_event SET created_at=now()-interval '31 days'");
+        assertFalse(repository.events(alice, task.conversationId(), 0).isEmpty(), "Age alone cannot create a replay hole");
+        count("SELECT pf.collect_expired_replay('"+task.conversationId()+"')");
         denied("CURSOR_EXPIRED", () -> repository.events(alice, task.conversationId(), 0));
         assertTrue(repository.events(alice, task.conversationId(), cursor).isEmpty());
+        assertEquals(before,repository.snapshot(alice,task.conversationId()),"Replay cleanup preserves canonical messages, tasks and cursor");
     }
 
     @Test void harnessEmptyOutputRepairsOnceWithoutHiddenSdkModelReplay() throws Exception {
@@ -301,7 +315,7 @@ class ChatPostgresTest {
         String file = System.getenv("R12_TEST_MQ_PASSWORD_FILE");
         Assumptions.assumeTrue(file != null, "Real isolated RabbitMQ fixture not configured");
         var factory = new com.rabbitmq.client.ConnectionFactory();
-        factory.setHost("127.0.0.1"); factory.setPort("1".equals(System.getenv("R2C_ACCEPTANCE")) ? 15694 : "1".equals(System.getenv("R21_ACCEPTANCE")) ? 15693 : 15692);
+        factory.setHost("127.0.0.1"); factory.setPort("1".equals(System.getenv("R22_ACCEPTANCE")) ? 15695 : "1".equals(System.getenv("R2C_ACCEPTANCE")) ? 15694 : "1".equals(System.getenv("R21_ACCEPTANCE")) ? 15693 : 15692);
         factory.setVirtualHost("/agentplatform-r12-test"); factory.setUsername("ap_operator");
         factory.setPassword(Files.readString(Path.of(file)).strip());
         factory.setAutomaticRecoveryEnabled(false); factory.setConnectionTimeout(2000);
@@ -557,6 +571,79 @@ class ChatPostgresTest {
         denied("RESOURCE_NOT_FOUND",()->repository.finish(lease,"SUCCEEDED",null));
         repository.finish(lease,"FAILED","RESOURCE_NOT_FOUND");
         assertEquals(0,count("SELECT count(*) FROM pf.task WHERE status='SUCCEEDED'"));
+    }
+
+    private UUID replayFixture(int events) throws Exception {
+        UUID conversation=repository.create(alice,UUID.randomUUID(),"Replay").id();
+        sql("INSERT INTO pf.platform_event(id,space_id,conversation_id,seq,type,schema_version,entity_version,payload_json,created_at) "
+                +"SELECT gen_random_uuid(),'"+alice.spaceId()+"','"+conversation+"',n,'message.delta',1,1,'{}',now()-interval '31 days' "
+                +"FROM generate_series(1,"+events+") n; UPDATE pf.conversation SET next_seq="+events+" WHERE id='"+conversation+"'");
+        return conversation;
+    }
+
+    @Test void replayCollectionDeletesOnlyContinuousOldPrefixAndPreservesBusinessVersion() throws Exception {
+        UUID id=replayFixture(3);
+        sql("UPDATE pf.platform_event SET created_at=now() WHERE conversation_id='"+id+"' AND seq=2");
+        long version=count("SELECT version FROM pf.conversation WHERE id='"+id+"'");
+        assertEquals(1,count("SELECT pf.collect_expired_replay('"+id+"')"));
+        assertEquals(1,count("SELECT replay_pruned_through FROM pf.conversation WHERE id='"+id+"'"));
+        assertEquals(version,count("SELECT version FROM pf.conversation WHERE id='"+id+"'"));
+        assertEquals(List.of(2L,3L),repository.events(alice,id,1).stream().map(Event::seq).toList());
+        denied("CURSOR_EXPIRED",()->repository.events(alice,id,0));
+        denied("INVALID_CURSOR",()->repository.events(alice,id,-1));
+        denied("INVALID_CURSOR",()->repository.events(alice,id,4));
+        denied("RESOURCE_NOT_FOUND",()->repository.events(bob,id,1));
+        assertEquals(0,count("SELECT pf.collect_expired_replay('"+id+"')"));
+        assertEquals(3,repository.snapshot(alice,id).cursor());
+    }
+
+    @Test void replayCollectionIsBoundedAtomicAndSkipsConcurrentConversationLocks() throws Exception {
+        UUID id=replayFixture(1002);
+        try(var connection=DriverManager.getConnection(url,"postgres",password)) {
+            connection.setAutoCommit(false);
+            try(var statement=connection.createStatement()) {
+                statement.execute("SELECT 1 FROM pf.conversation WHERE id='"+id+"' FOR UPDATE");
+                assertEquals(0,count("SELECT pf.collect_expired_replay('"+id+"')"));
+                statement.execute("SELECT pf.collect_expired_replay('"+id+"')");
+                connection.rollback();
+            }
+        }
+        assertEquals(1002,count("SELECT count(*) FROM pf.platform_event WHERE conversation_id='"+id+"'"));
+        assertEquals(0,count("SELECT replay_pruned_through FROM pf.conversation WHERE id='"+id+"'"));
+        assertEquals(1000,count("SELECT pf.collect_expired_replay('"+id+"')"));
+        assertEquals(2,repository.events(alice,id,1000).size());
+        assertEquals(2,count("SELECT pf.collect_expired_replay('"+id+"')"));
+        assertTrue(repository.events(alice,id,1002).isEmpty());
+        denied("CURSOR_EXPIRED",()->repository.events(alice,id,1001));
+    }
+
+    @Test void replayThirtyDayBoundaryUsesDatabaseTransactionTime() throws Exception {
+        UUID id=replayFixture(1);
+        try(var connection=DriverManager.getConnection(url,"postgres",password)) {
+            connection.setAutoCommit(false);
+            try(var statement=connection.createStatement()) {
+                statement.execute("UPDATE pf.platform_event SET created_at=transaction_timestamp()-interval '30 days' WHERE conversation_id='"+id+"'");
+                try(var result=statement.executeQuery("SELECT pf.collect_expired_replay('"+id+"')")) { result.next(); assertEquals(0,result.getInt(1)); }
+                statement.execute("UPDATE pf.platform_event SET created_at=created_at-interval '1 microsecond' WHERE conversation_id='"+id+"'");
+                try(var result=statement.executeQuery("SELECT pf.collect_expired_replay('"+id+"')")) { result.next(); assertEquals(1,result.getInt(1)); }
+                connection.commit();
+            }
+        }
+    }
+
+    @Test void repeatableReadCannotObserveNewWatermarkWithOldOrMissingRows() throws Exception {
+        UUID id=replayFixture(3);
+        try(var connection=DriverManager.getConnection(url,"postgres",password)) {
+            connection.setTransactionIsolation(java.sql.Connection.TRANSACTION_REPEATABLE_READ);
+            connection.setAutoCommit(false);
+            try(var statement=connection.createStatement()) {
+                try(var result=statement.executeQuery("SELECT replay_pruned_through FROM pf.conversation WHERE id='"+id+"'")) {result.next();assertEquals(0,result.getLong(1));}
+                assertEquals(3,count("SELECT pf.collect_expired_replay('"+id+"')"));
+                try(var result=statement.executeQuery("SELECT count(*) FROM pf.platform_event WHERE conversation_id='"+id+"'")) {result.next();assertEquals(3,result.getLong(1));}
+                connection.commit();
+            }
+        }
+        assertEquals(3,count("SELECT replay_pruned_through FROM pf.conversation WHERE id='"+id+"'"));
     }
 
 }

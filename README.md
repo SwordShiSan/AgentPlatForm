@@ -1,5 +1,7 @@
 # AgentPlatForm
 
+当前开发：**R2.2 IMPLEMENTING，尚未 VERIFIED**，独立本地快照/事件回放与受控前缀回收；[本地环境说明](deploy/R2.2-LOCAL.md)。R2仍1/4，云端继续已发行R1，供应商调用为0。下述R1生产身份保持有效。
+
 当前：**R1.4 VERIFIED，R1 4/4 VERIFIED，R1 RELEASED**。云端HTTP已开放身份、个人空间、普通聊天、配置及密钥管理；[访问平台](http://124.222.55.140)。生产tag `production-r1-24b3c6558d17`。当前及后续HTTP、HTTPS保留暂不实现，不检查/修改DNS。R2.1 VERIFIED（本地执行所有权与账本，R2完成1/4、未RELEASED）；详见[R1发行与恢复记录](deploy/R1-RELEASE.md)及[脱敏验收摘要](deploy/r1.4-acceptance.json)。以下为历史阶段记录。
 
 **R0 已正式 RELEASED，R1.1 已本地 VERIFIED，R1.2 已本地 VERIFIED，R1 完成2/4、未 RELEASED**。HTTP入口：[公网IP](http://124.222.55.140)，域名Host `agentplatform.lailihao.cloud` 已配置；按用户决定不配置HTTPS、不检查或修改DNS。云端仍运行R0，生产tag `production-r0-c46a73ae4d00`，旧栈保留停机；本次不部署身份或聊天。R1.1通过本地Docker/真实PG/浏览器及PR22/23；R1.2已通过PR26/27晋级，默认关闭；云端不部署本阶段功能。详见[R1.2独立本地环境](deploy/R1.2-LOCAL.md)、[R1.1本地验收](deploy/R1.1-IDENTITY.md)及[R0发行记录](deploy/R0-RELEASE.md)。以下阶段记录保留历史。

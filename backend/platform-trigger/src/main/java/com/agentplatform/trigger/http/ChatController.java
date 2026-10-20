@@ -4,19 +4,15 @@ import com.agentplatform.api.chat.ChatApi;
 import com.agentplatform.api.identity.IdentityApi;
 import com.agentplatform.domain.chat.ChatFailure;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-import tools.jackson.databind.json.JsonMapper;
 
 @RestController @Profile("chat-local") @RequestMapping("/api/v1")
 public final class ChatController {
-    private final ChatApi chat;private final IdentityApi identity;private static final JsonMapper JSON=JsonMapper.builder().build();
-    public ChatController(ChatApi chat,IdentityApi identity){this.chat=chat;this.identity=identity;}
+    private final ChatApi chat;private final IdentityApi identity;private final com.agentplatform.api.chat.ChatEventStream streams;
+    public ChatController(ChatApi chat,IdentityApi identity,com.agentplatform.api.chat.ChatEventStream streams){this.chat=chat;this.identity=identity;this.streams=streams;}
     private ChatApi.Caller caller(HttpServletRequest request,boolean write) { return RequestIdentity.caller(request); }
     private static String key(HttpServletRequest request){String value=request.getHeader("Idempotency-Key");if(value==null)throw new ChatFailure(428,"IDEMPOTENCY_KEY_REQUIRED");return value;}
     @GetMapping("/models") Object models(HttpServletRequest request){return chat.models(caller(request,false));}
@@ -49,19 +45,26 @@ public final class ChatController {
     @GetMapping("/tasks/{id}/diagnostics") Object diagnostics(HttpServletRequest request,@PathVariable("id")String id){return chat.diagnostics(caller(request,false),id);}
     @GetMapping("/tasks/{id}/usage") Object usage(HttpServletRequest request,@PathVariable("id")String id){return Map.of("items",chat.usage(caller(request,false),id));}
     @PostMapping("/tasks/{id}/cancel") ResponseEntity<ChatApi.TaskView> cancel(HttpServletRequest request,@PathVariable("id")String id,@RequestBody(required=false)ChatRequests.Empty body){var who=caller(request,true);return ResponseEntity.accepted().body(chat.cancel(who,id,key(request)));}
-    @GetMapping(value="/conversations/{id}/events",produces="text/event-stream")
-    ResponseEntity<StreamingResponseBody> events(HttpServletRequest request,HttpServletResponse response,@PathVariable("id")String id,@RequestParam(name="after",required=false)Long after){
-        var who=caller(request,false);String cookie=RequestIdentity.token(request),selected=request.getHeader("X-Space-Id");long initial;
-        try{initial=after!=null?after:request.getHeader("Last-Event-ID")==null?0:Long.parseLong(request.getHeader("Last-Event-ID"));}catch(NumberFormatException e){throw new ChatFailure(400,"INVALID_CURSOR");}
-        chat.events(who,id,initial); // reject before starting a 200 stream
-        StreamingResponseBody body=output->{
-            long cursor=initial,end=System.nanoTime()+25_000_000_000L,heartbeat=System.nanoTime();
-            output.write(": connected\n\n".getBytes(StandardCharsets.UTF_8));output.flush();response.flushBuffer();
-            try{while(System.nanoTime()<end){identity.me(cookie,selected);var events=chat.events(who,id,cursor);int bytes=0;
-                for(var event:events){byte[] wire=("id: "+event.seq()+"\nevent: platform_event\ndata: "+JSON.writeValueAsString(event)+"\n\n").getBytes(StandardCharsets.UTF_8);bytes+=wire.length;if(bytes>1048576)return;output.write(wire);cursor=event.seq();}if(!events.isEmpty()){output.flush();response.flushBuffer();}
-                if(System.nanoTime()-heartbeat>2_000_000_000L){output.write(": heartbeat\n\n".getBytes(StandardCharsets.UTF_8));output.flush();response.flushBuffer();heartbeat=System.nanoTime();}Thread.sleep(250);
-            }}catch(InterruptedException interrupted){Thread.currentThread().interrupt();}catch(com.agentplatform.domain.identity.IdentityFailure|ChatFailure revoked){/* Close without leaking internal error text; reconnect reauthorizes. */}
-        };
-        return ResponseEntity.ok().contentType(org.springframework.http.MediaType.TEXT_EVENT_STREAM).header("Cache-Control","no-store").header("X-Accel-Buffering","no").body(body);
+    @GetMapping(value="/conversations/{id}/events", produces="text/event-stream")
+    ResponseEntity<reactor.core.publisher.Flux<org.springframework.http.codec.ServerSentEvent<ChatApi.EventView>>> events(
+            HttpServletRequest request, @PathVariable("id") String id, @RequestParam(name="after",required=false) String after) {
+        long cursor;
+        try {
+            String raw = after != null ? after : request.getHeader("Last-Event-ID");
+            if (raw != null && !raw.matches("-?[0-9]+")) throw new NumberFormatException();
+            cursor = raw == null ? 0 : Long.parseLong(raw);
+            if (cursor > 9007199254740991L) throw new NumberFormatException();
+        } catch (NumberFormatException failure) { throw new ChatFailure(400, "INVALID_CURSOR"); }
+        var who = caller(request, false);
+        String cookie = RequestIdentity.token(request), selected = request.getHeader("X-Space-Id");
+        var handle = streams.open(who, id, cursor, () -> identity.me(cookie, selected));
+        request.setAttribute(com.agentplatform.api.chat.ChatEventStream.Handle.class.getName(), handle);
+        var body = reactor.adapter.JdkFlowAdapter.flowPublisherToFlux(handle.frames()).map(frame -> {
+            var event = org.springframework.http.codec.ServerSentEvent.<ChatApi.EventView>builder();
+            if (frame.event() == null) return event.comment(frame.comment()).build();
+            return event.id(Long.toString(frame.event().seq())).event("platform_event").data(frame.event()).build();
+        });
+        return ResponseEntity.ok().contentType(org.springframework.http.MediaType.TEXT_EVENT_STREAM)
+                .header("Cache-Control", "no-store").header("X-Accel-Buffering", "no").body(body);
     }
 }
