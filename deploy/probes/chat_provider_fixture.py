@@ -84,7 +84,10 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.flush()
 
         try:
-            if prompt.startswith('fixture:empty'):
+            if prompt.startswith('fixture:recovery-tool') and not any(message.get('role') == 'tool' for message in messages):
+                chunk({'tool_calls': [{'index': 0, 'id': 'recovery-operation-1', 'type': 'function',
+                       'function': {'name': 'recovery_probe', 'arguments': '{"text":"one"}'}}]}, 'tool_calls')
+            elif prompt.startswith('fixture:empty'):
                 chunk({}, 'stop')
             else:
                 chunks = ['你好', '😀', '，这是流式回复。']

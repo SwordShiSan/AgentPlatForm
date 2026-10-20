@@ -355,6 +355,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tasks/{id}/recovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTaskRecovery"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -598,6 +614,21 @@ export interface components {
             excludedFromContext: boolean;
             /** Format: int64 */
             version: number;
+        };
+        TaskRecovery: {
+            /** Format: uuid */
+            taskId: string;
+            /** @description Metadata-only candidate requiring trusted operator integrity validation; not permission to execute */
+            eligible: boolean;
+            /** @enum {string} */
+            stage: "AVAILABLE" | "QUEUED" | "RESTORING" | "RUNNING" | "COMPLETED" | "BLOCKED";
+            reasonCode: string | null;
+            revision: number;
+            taskVersion: number;
+            /** Format: uuid */
+            checkpointId: string | null;
+            /** Format: uuid */
+            traceId: string;
         };
     };
     responses: {
@@ -1353,6 +1384,31 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+        };
+    };
+    getTaskRecovery: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Read-only metadata candidate; trusted operator and claim must verify full state integrity before restoration */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRecovery"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
         };
     };
 }

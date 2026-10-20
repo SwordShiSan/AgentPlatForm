@@ -36,12 +36,12 @@ class ChatPostgresTest {
     @BeforeAll static void migrate() throws Exception {
         url = System.getenv("R12_TEST_JDBC_URL");
         Assumptions.assumeTrue(url != null, "Real R1.2 PostgreSQL not configured; not acceptance evidence");
-        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15442/chat_test?") || ("1".equals(System.getenv("R21_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15443/chat_test?")) || ("1".equals(System.getenv("R2C_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15444/chat_test?")) || ("1".equals(System.getenv("R22_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15445/chat_test?")) || ("1".equals(System.getenv("R23_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15446/chat_test?")), "Refusing a database outside the explicitly named isolated fixture");
+        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15442/chat_test?") || ("1".equals(System.getenv("R21_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15443/chat_test?")) || ("1".equals(System.getenv("R2C_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15444/chat_test?")) || ("1".equals(System.getenv("R22_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15445/chat_test?")) || ("1".equals(System.getenv("R23_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15446/chat_test?")) || ("1".equals(System.getenv("R24_ACCEPTANCE")) && url.startsWith("jdbc:postgresql://127.0.0.1:15447/chat_test?")), "Refusing a database outside the explicitly named isolated fixture");
         password = Files.readString(Path.of(System.getenv("R12_TEST_PASSWORD_FILE"))).strip();
         // Destructive reset is restricted above to this explicitly named, isolated test database.
         Flyway.configure().dataSource(url, "postgres", password).defaultSchema("pf").schemas("pf", "pf_runtime")
                 .cleanDisabled(false).load().clean();
-        for (String target : List.of("1", "2", "3", "4", "5", "6", "7", "8")) {
+        for (String target : List.of("1", "2", "3", "4", "5", "6", "7", "8", "9")) {
             if (target.equals("7")) {
                 sql("INSERT INTO pf.app_user(id,username_norm,password_hash,status) VALUES('00000000-0000-4000-8000-000000000001','upgrade-fixture','unused','ACTIVE');"
                         +"INSERT INTO pf.space(id,type,owner_user_id) VALUES('00000000-0000-4000-8000-000000000002','PERSONAL','00000000-0000-4000-8000-000000000001');"
@@ -319,7 +319,7 @@ class ChatPostgresTest {
         String file = System.getenv("R12_TEST_MQ_PASSWORD_FILE");
         Assumptions.assumeTrue(file != null, "Real isolated RabbitMQ fixture not configured");
         var factory = new com.rabbitmq.client.ConnectionFactory();
-        factory.setHost("127.0.0.1"); factory.setPort("1".equals(System.getenv("R23_ACCEPTANCE")) ? 15696 : "1".equals(System.getenv("R22_ACCEPTANCE")) ? 15695 : "1".equals(System.getenv("R2C_ACCEPTANCE")) ? 15694 : "1".equals(System.getenv("R21_ACCEPTANCE")) ? 15693 : 15692);
+        factory.setHost("127.0.0.1"); factory.setPort("1".equals(System.getenv("R24_ACCEPTANCE")) ? 15697 : "1".equals(System.getenv("R23_ACCEPTANCE")) ? 15696 : "1".equals(System.getenv("R22_ACCEPTANCE")) ? 15695 : "1".equals(System.getenv("R2C_ACCEPTANCE")) ? 15694 : "1".equals(System.getenv("R21_ACCEPTANCE")) ? 15693 : 15692);
         factory.setVirtualHost("/agentplatform-r12-test"); factory.setUsername("ap_operator");
         factory.setPassword(Files.readString(Path.of(file)).strip());
         factory.setAutomaticRecoveryEnabled(false); factory.setConnectionTimeout(2000);

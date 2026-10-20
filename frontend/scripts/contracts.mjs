@@ -118,3 +118,15 @@ assert(reconciliation(unresolved));
 for (const patch of [{ stopStage: 'GUESS_STOPPED' }, { unknownCalls: -1 }, { evidencePath: '/internal' }, { apiKey: 'forbidden' }]) assert(!reconciliation({ ...unresolved, ...patch }));
 assert(!reconciliation({ ...unresolved, calls: [{ ...unresolved.calls[0], inputTokens: -1 }] }));
 assert(!reconciliation({ ...unresolved, calls: [{ ...unresolved.calls[0], evidence: 'private' }] }));
+
+// Recovery is a metadata-only projection, never a state export or execution command.
+const recovery = ajv.compile(api.components.schemas.TaskRecovery);
+const candidate = {taskId: fixture.payload.taskId, eligible: true, stage: 'AVAILABLE',
+  reasonCode: 'OPERATOR_VALIDATION_REQUIRED', revision: 0, taskVersion: 1,
+  checkpointId: fixture.eventId, traceId: fixture.eventId};
+assert(recovery(candidate));
+assert(recovery({...candidate, eligible: false, checkpointId: null, reasonCode: null}));
+for (const patch of [{stage: 'AUTO_REPLAY'}, {revision: -1}, {taskVersion: 0},
+  {checkpointId: 'bad-id'}, {state: 'private'}, {manifest: {}}, {apiKey: 'forbidden'}]) {
+  assert(!recovery({...candidate, ...patch}));
+}

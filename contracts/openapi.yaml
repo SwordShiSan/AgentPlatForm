@@ -604,6 +604,29 @@ paths:
           schema:
             type: string
             format: uuid
+  /api/v1/tasks/{id}/recovery:
+    get:
+      operationId: getTaskRecovery
+      tags: [chat]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+        - name: X-Space-Id
+          in: header
+          required: false
+          schema: {type: string, format: uuid}
+      responses:
+        "200":
+          description: Read-only metadata candidate; trusted operator and claim must verify full state integrity before restoration
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/TaskRecovery"}
+        default:
+          $ref: "#/components/responses/IdentityProblem"
 components:
   securitySchemes:
     session:
@@ -1277,3 +1300,20 @@ components:
         excludedFromContext:
           type: boolean
         version: *a14
+    TaskRecovery:
+      type: object
+      additionalProperties: false
+      required: [taskId, eligible, stage, reasonCode, revision, taskVersion, checkpointId, traceId]
+      properties:
+        taskId: {type: string, format: uuid}
+        eligible:
+          type: boolean
+          description: Metadata-only candidate requiring trusted operator integrity validation; not permission to execute
+        stage:
+          type: string
+          enum: [AVAILABLE, QUEUED, RESTORING, RUNNING, COMPLETED, BLOCKED]
+        reasonCode: {type: [string, "null"]}
+        revision: {type: integer, minimum: 0, maximum: 9007199254740991}
+        taskVersion: {type: integer, minimum: 1, maximum: 9007199254740991}
+        checkpointId: {type: [string, "null"], format: uuid}
+        traceId: {type: string, format: uuid}

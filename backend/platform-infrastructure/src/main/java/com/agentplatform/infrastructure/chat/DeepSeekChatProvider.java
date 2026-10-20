@@ -17,10 +17,16 @@ import java.util.function.Consumer;
 public final class DeepSeekChatProvider implements ChatProvider, AutoCloseable {
     private final String endpoint;
     private final boolean real;
+    private final boolean fixtureTools;
     private final ThreadPoolExecutor cleanup = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS,
             new ArrayBlockingQueue<>(16), task -> { var thread = new Thread(task, "provider-teardown"); thread.setDaemon(true); return thread; },
             new ThreadPoolExecutor.AbortPolicy());
     public DeepSeekChatProvider(String endpoint,boolean fixture){
+        this(endpoint,fixture,false);
+    }
+    public DeepSeekChatProvider(String endpoint,boolean fixture,boolean fixtureTools){
+        if(fixtureTools&&!fixture)throw new IllegalArgumentException("FIXTURE_TOOLS_REQUIRE_DETERMINISTIC_PROVIDER");
+        this.fixtureTools=fixtureTools;
         URI uri=URI.create(endpoint);this.real=!fixture;
         if((!fixture&&!"https://api.deepseek.com".equals(endpoint))||(fixture&&(!"http".equals(uri.getScheme())||!List.of("fixture","127.0.0.1","localhost").contains(uri.getHost()))))throw new IllegalArgumentException("Provider endpoint is not allowlisted");
         this.endpoint=endpoint;
@@ -46,12 +52,14 @@ public final class DeepSeekChatProvider implements ChatProvider, AutoCloseable {
                 .httpTransport(transport).stream(true).generateOptions(options).build();
         StringBuilder text=new StringBuilder();AtomicReference<String> finish=new AtomicReference<>(),id=new AtomicReference<>();
         AtomicLong in=new AtomicLong(),out=new AtomicLong();AtomicBoolean usage=new AtomicBoolean();
+        var accumulatedTools=new io.agentscope.core.agent.accumulator.ToolCallsAccumulator();
+        var messageCodec=new com.agentplatform.infrastructure.harness.agentscope.PlatformMessageCodec();
         var result=new CompletableFuture<Result>();
         var terminated=new CompletableFuture<Void>();
         var subscriptionRef=new AtomicReference<reactor.core.Disposable>();
         var cancellation=new AtomicBoolean();
         var callbacks=new Phaser(1);
-        var subscription=model.stream(input.stream().map(m->Msg.builder().role(MsgRole.valueOf(m.role().name())).textContent(m.text()).build()).toList(),List.of(),options)
+        var subscription=model.stream(input.stream().map(messageCodec::encode).toList(),List.of(),options)
                 .timeout(Duration.ofSeconds(120)).doFinally(signal->{
                     // Future completion is earlier than transport teardown. Never block an HTTP callback in close().
                     http.shutdownNow();
@@ -73,7 +81,7 @@ public final class DeepSeekChatProvider implements ChatProvider, AutoCloseable {
                     if(response.getId()!=null)id.set(response.getId());if(response.getFinishReason()!=null)finish.set(response.getFinishReason());
                     for(var block:response.getContent()){
                         if(block instanceof TextBlock b&&!b.getText().isEmpty()){if(text.length()+b.getText().length()>65536)throw new ChatFailure(422,"MODEL_OUTPUT_LIMIT");text.append(b.getText());onText.accept(b.getText());}
-                        else if(block instanceof ToolUseBlock)throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");
+                        else if(block instanceof ToolUseBlock tool){if(!fixtureTools)throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");accumulatedTools.add(tool);}
                         // Thinking blocks are deliberately not copied into any platform buffer.
                     }
                     if(response.getUsage()!=null){usage.set(true);in.set(response.getUsage().getInputTokens());out.set(response.getUsage().getOutputTokens());}
@@ -83,7 +91,11 @@ public final class DeepSeekChatProvider implements ChatProvider, AutoCloseable {
                     try { result.completeExceptionally(classify(error)); } finally { callbacks.arriveAndDeregister(); }
                 },()->{
                     if(callbacks.register()<0)return;
-                    try { result.complete(new Result(new Round(text.toString(),List.of(),finish.get()==null?"unknown":finish.get(),in.get(),out.get()),usage.get(),id.get())); }
+                    try {
+                        var definitions=java.util.Map.of("recovery_probe",RecoveryFixtureTool.DEFINITIONS.getFirst());
+                        var calls=accumulatedTools.buildAllToolCalls().stream().map(tool->messageCodec.decodeCall(tool,definitions)).toList();
+                        result.complete(new Result(new Round(text.toString(),calls,finish.get()==null?"unknown":finish.get(),in.get(),out.get()),usage.get(),id.get()));
+                    } catch(RuntimeException invalid) {result.completeExceptionally(classify(invalid));}
                     finally { callbacks.arriveAndDeregister(); }
                 });
         subscriptionRef.set(subscription);

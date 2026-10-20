@@ -6,6 +6,7 @@ import com.agentplatform.domain.chat.ChatData;
 import com.agentplatform.domain.harness.HarnessPorts.*;
 import com.agentplatform.types.harness.HarnessData.*;
 import com.agentplatform.infrastructure.chat.CredentialCipher;
+import com.agentplatform.infrastructure.chat.RecoveryFixtureTool;
 import com.agentplatform.infrastructure.harness.agentscope.AgentScopeRuntimeFactory;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -22,6 +23,7 @@ public final class ChatExecution implements AutoCloseable {
     private final Path work;
     private final ScheduledExecutorService timers;
     private final boolean ownsTimers;
+    private final ToolExecutionPort fixtureTools;
     private volatile PreparedRun active;
     private volatile ExecutionControl currentControl;
     private final AtomicBoolean unavailable=new AtomicBoolean();
@@ -31,7 +33,12 @@ public final class ChatExecution implements AutoCloseable {
     private volatile Lease current;
     public ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,Path work){this(repository,provider,cipher,work,Executors.newScheduledThreadPool(2),true);}
     public ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,Path work,ScheduledExecutorService timers){this(repository,provider,cipher,work,timers,false);}
-    private ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,Path work,ScheduledExecutorService timers,boolean ownsTimers){this.repository=repository;this.provider=provider;this.cipher=cipher;this.work=work;this.timers=timers;this.ownsTimers=ownsTimers;}
+    private ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,Path work,ScheduledExecutorService timers,boolean ownsTimers){this(repository,provider,cipher,work,timers,ownsTimers,null);}
+    public ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,Path work,ScheduledExecutorService timers,ToolExecutionPort fixtureTools){this(repository,provider,cipher,work,timers,false,fixtureTools);}
+    private ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,Path work,ScheduledExecutorService timers,boolean ownsTimers,ToolExecutionPort fixtureTools){
+        if(fixtureTools!=null&&provider.real())throw new IllegalArgumentException("FIXTURE_TOOLS_REQUIRE_DETERMINISTIC_PROVIDER");
+        this.repository=repository;this.provider=provider;this.cipher=cipher;this.work=work;this.timers=timers;this.ownsTimers=ownsTimers;this.fixtureTools=fixtureTools;
+    }
     /** Compatibility for existing probes; private state always uses the fenced repository. */
     public ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,StateStorage ignored,Path work){this(repository,provider,cipher,work);}
     public void run(Lease lease){
@@ -41,21 +48,33 @@ public final class ChatExecution implements AutoCloseable {
         AtomicReference<ExecutionLedger.CallResult> accepted=new AtomicReference<>();AtomicReference<Round> acceptedRound=new AtomicReference<>();
         var batch=new Batch(lease);String terminal="FAILED",reason="MODEL_EXECUTION_FAILED";boolean completed=false;
         try{
-            List<Message> history=repository.history(lease);
+            var startup=repository.executionStartup(lease);deadline=startup.deadline();
+            List<Message> history=startup.history();
             Scope scope=new Scope(lease.spaceId().toString(),lease.userId().toString(),lease.conversationId().toString(),lease.taskId().toString(),lease.attemptId().toString(),lease.fence(),false);
-            AtomicReference<UUID> turnId=new AtomicReference<>();String frozenModelName=repository.modelName(lease);
+            AtomicReference<UUID> turnId=new AtomicReference<>();String frozenModelName=repository.modelName(lease);final Instant executionDeadline=deadline;
             ModelGateway metered=new ModelGateway(){
                 @Override public String modelName(Scope ignored){return frozenModelName;}
                 public CompletionStage<Round> complete(Scope s,List<Message> messages,List<com.agentplatform.types.harness.HarnessData.Call> tools){return stream(s,messages,tools,text->{});}
                 public CompletionStage<Round> stream(Scope s,List<Message> messages,List<com.agentplatform.types.harness.HarnessData.Call> tools,Consumer<String> onText){
-                    if(!tools.isEmpty())return CompletableFuture.failedFuture(new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH"));
+                    if(!tools.isEmpty()&&fixtureTools==null)return CompletableFuture.failedFuture(new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH"));
                     var result=new CompletableFuture<Round>();AtomicReference<CompletableFuture<?>> pending=new AtomicReference<>();
                     result.whenComplete((v,e)->{if(result.isCancelled()&&pending.get()!=null)pending.get().cancel(true);});
-                    physical(lease,messages,text->{if(control.closing())throw new ChatFailure(409,"TASK_CANCEL_REQUESTED");batch.append(text);onText.accept(text);},result,pending,deadline,0,false,accepted,acceptedRound,control);
+                    physical(lease,messages,text->{if(control.closing())throw new ChatFailure(409,"TASK_CANCEL_REQUESTED");batch.append(text);onText.accept(text);},result,pending,executionDeadline,0,false,accepted,acceptedRound,control);
                     return result;
                 }
             };
-            RuntimeStatePort manifests=new RuntimeStatePort(){public void verifyRestore(Scope s,Bundle b){throw new ChatFailure(409,"CHECKPOINT_RECOVERY_NOT_AVAILABLE");}public void seal(Scope s,Bundle b){control.during(()->{FixtureFaults.pause("checkpoint-before-seal");repository.sealCheckpoint(lease,b);FixtureFaults.pause("checkpoint-after-seal");});}public List<Message> checkpointHistory(Scope s){return control.during(()->repository.checkpointHistory(lease));}};
+            RuntimeStatePort manifests=new RuntimeStatePort(){
+                public void verifyRestore(Scope s,Bundle b){control.during(()->repository.validateCheckpoint(lease,startup.checkpointId(),b));}
+                public boolean atomicCheckpoints(Scope s){return true;}
+                public void seal(Scope s,Bundle b){throw new ChatFailure(409,"ATOMIC_CHECKPOINT_REQUIRED");}
+                public List<Message> recoveryHistory(Scope s){return control.during(()->repository.checkpointHistory(lease));}
+                public List<Message> checkpointHistory(Scope s){return control.during(()->repository.checkpointHistory(lease));}
+                public void commitCheckpoint(Scope s,Bundle b,CheckpointDraft draft){control.during(()->{
+                    if(draft.phase()!=CheckpointPhase.INPUT_READY)FixtureFaults.pause("checkpoint-before-seal");
+                    repository.commitCheckpoint(lease,b,draft);
+                    FixtureFaults.pause(draft.phase()==CheckpointPhase.INPUT_READY?"input-checkpoint-after-seal":"checkpoint-after-seal");
+                });}
+            };
             StateStorage attemptState=new StateStorage(){
                 private void scope(Scope s){if(!scope.equals(s))throw new ChatFailure(403,"STATE_SCOPE_MISMATCH");}
                 public StateSlot load(Scope s,String key){scope(s);return control.during(()->repository.state(lease,key));}
@@ -63,15 +82,23 @@ public final class ChatExecution implements AutoCloseable {
                 public Set<String> keys(Scope s){scope(s);return control.during(()->repository.stateKeys(lease));}
                 public void delete(Scope s,String key){scope(s);control.during(()->repository.stateDelete(lease,key));}
             };
-            var factory=new AgentScopeRuntimeFactory(metered,(s,c)->Decision.DENY,(s,c)->CompletableFuture.failedFuture(new ChatFailure(422,"TOOLS_NOT_AVAILABLE")),attemptState,manifests,List.of(),work);
+            var factory=new AgentScopeRuntimeFactory(metered,(s,c)->fixtureTools==null?Decision.DENY:Decision.ALLOW,
+                    fixtureTools==null?(s,c)->CompletableFuture.failedFuture(new ChatFailure(422,"TOOLS_NOT_AVAILABLE")):fixtureTools,
+                    attemptState,manifests,fixtureTools==null?List.of():RecoveryFixtureTool.DEFINITIONS,work);
             LoopBoundary boundary=new LoopBoundary(){
-                public CompletionStage<List<Message>> beforeModel(Scope s,List<Message> ignored){return control.during(()->{turnId.set(repository.beginTurn(lease));return CompletableFuture.completedFuture(history);});}
+                public CompletionStage<List<Message>> beforeModel(Scope s,List<Message> ignored){return control.during(()->{turnId.set(repository.beginTurn(lease));return CompletableFuture.completedFuture(repository.checkpointHistory(lease));});}
                 public CompletionStage<Void> afterModelCommitted(Scope s,Turn t){return control.during(()->{var call=accepted.get();if(call==null)throw new ChatFailure(409,"ACCEPTED_CALL_MISSING");repository.commitRound(lease,turnId.get(),t,call);FixtureFaults.pause("round-before-checkpoint");return CompletableFuture.completedFuture(null);});}
-                public CompletionStage<Void> beforeTool(Scope s,com.agentplatform.types.harness.HarnessData.Call c){return CompletableFuture.failedFuture(new ChatFailure(422,"TOOLS_NOT_AVAILABLE"));}
-                public CompletionStage<Void> afterToolCommitted(Scope s,com.agentplatform.types.harness.HarnessData.Call c,Observation o){return CompletableFuture.failedFuture(new ChatFailure(422,"TOOLS_NOT_AVAILABLE"));}
+                public CompletionStage<Void> beforeTool(Scope s,com.agentplatform.types.harness.HarnessData.Call c){return control.during(()->{
+                    if(fixtureTools==null)throw new ChatFailure(422,"TOOLS_NOT_AVAILABLE");
+                    repository.startTool(lease,c);FixtureFaults.pause("tool-after-start");return CompletableFuture.completedFuture(null);
+                });}
+                public CompletionStage<Void> afterToolCommitted(Scope s,com.agentplatform.types.harness.HarnessData.Call c,Observation o){return control.during(()->{
+                    if(fixtureTools==null)throw new ChatFailure(422,"TOOLS_NOT_AVAILABLE");
+                    FixtureFaults.pause("tool-before-result");repository.commitTool(lease,c,o);FixtureFaults.pause("tool-after-result");return CompletableFuture.completedFuture(null);
+                });}
                 public CompletionStage<Completion> beforeStop(Scope s,Message message){return CompletableFuture.completedFuture(message.text().isBlank()?Completion.INCOMPLETE:Completion.PASS);}
             };
-            PreparedRun prepared=factory.prepare(new Request(scope,ChatRuntime.bundle(),List.of(history.getLast()),false,List.of(),1),boundary);active=prepared;control.run(prepared);
+            PreparedRun prepared=factory.prepare(new Request(scope,ChatRuntime.bundle(),startup.restoring()?List.of():List.of(history.getLast()),startup.restoring(),List.of(),startup.nextTurn()),boundary);active=prepared;control.run(prepared);
             control.timer(timers.scheduleAtFixedRate(()->{
                 try(var ticket=control.enter()){batch.flush();repository.check(lease);}
                 catch(Throwable error){if(!control.closing()){asynchronousFailure.compareAndSet(null,error);control.cancel();}}
@@ -132,7 +159,8 @@ public final class ChatExecution implements AutoCloseable {
                     }
                     boolean incompleteTransport="unknown".equals(value.round().finishReason());
                     boolean empty=value.round().text().isBlank()&&value.round().calls().isEmpty()&&!emitted.get();
-                    if(!"stop".equals(value.round().finishReason())||empty){
+                    boolean supported="stop".equals(value.round().finishReason())||(fixtureTools!=null&&"tool_calls".equals(value.round().finishReason()));
+                    if(!supported||empty){
                         repository.settle(l,call,value.usageKnown()?value.round():null,value.requestId(),value.usageKnown()?null:incompleteTransport?"PROVIDER_REQUEST_FAILED":"PROVIDER_USAGE_MISSING",provider.real());
                         if(!"stop".equals(value.round().finishReason())){result.completeExceptionally(new ChatFailure(503,"PROVIDER_TRUNCATED"));return;}
                         if(!repaired){physical(l,messages,text,result,pending,deadline,retries,true,accepted,acceptedRound,control);return;}
