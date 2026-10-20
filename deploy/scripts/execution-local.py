@@ -31,6 +31,8 @@ def main():
                 with socket.socket() as check:
                     check.bind(('127.0.0.1', port))
         DATA.mkdir(parents=True, exist_ok=True)
+        if STAGE == 'r24':
+            (DATA / 'fixture-effects').mkdir(exist_ok=True)
         if not fixture.MQ_IDENTITY.exists():
             fixture.MQ_IDENTITY.write_text('agentplatform-' + STAGE + '-mq', encoding='utf-8')
     if mode == 'start':
@@ -49,19 +51,26 @@ def main():
                     'GRANT SELECT,INSERT,UPDATE ON pf.model_turn,pf.tool_operation TO ap_chat_worker; '
                     'GRANT SELECT,INSERT ON pf.checkpoint TO ap_chat_worker; '
                     'REVOKE ALL ON pf.stopped_owner_proof FROM ap_chat_api,ap_chat_worker;')
-        if STAGE in {'r22','r23'}:
+        if STAGE in {'r22','r23','r24'}:
             fixture.sql('REVOKE DELETE ON pf.platform_event FROM ap_chat_api,ap_chat_worker; '
                         'REVOKE UPDATE ON pf.conversation FROM ap_chat_api,ap_chat_worker; '
                         'GRANT UPDATE(title,next_seq,version,updated_at) ON pf.conversation TO ap_chat_api,ap_chat_worker; '
                         'REVOKE ALL ON FUNCTION pf.collect_expired_replay(uuid) FROM ap_chat_worker; '
                         'GRANT EXECUTE ON FUNCTION pf.collect_expired_replay(uuid) TO ap_chat_api;')
-        if STAGE == 'r23':
+        if STAGE in {'r23','r24'}:
             fixture.sql('GRANT SELECT,INSERT ON pf.task_cancellation TO ap_chat_api; '
                         'GRANT SELECT ON pf.task_cancellation TO ap_chat_worker; '
                         'GRANT SELECT ON pf.execution_stop_receipt TO ap_chat_api; '
                         'GRANT SELECT,INSERT ON pf.execution_stop_receipt TO ap_chat_worker; '
                         'REVOKE ALL ON pf.model_call_reconciliation FROM ap_chat_api,ap_chat_worker; '
                         'REVOKE INSERT,UPDATE,DELETE ON pf.execution_stop_receipt FROM ap_chat_api;')
+        if STAGE == 'r24':
+            fixture.sql('GRANT SELECT,INSERT,UPDATE ON pf.checkpoint_recovery TO ap_chat_worker; '
+                        'GRANT SELECT,INSERT,UPDATE ON pf.turn_execution_binding,pf.operation_execution_binding TO ap_chat_worker; '
+                        'GRANT SELECT ON pf.checkpoint_recovery TO ap_chat_api; '
+                        'GRANT SELECT(id,task_id,attempt_id,bundle_hash,phase,manifest_version,created_at) ON pf.checkpoint TO ap_chat_api; '
+                        'GRANT SELECT(task_id,status) ON pf.tool_operation TO ap_chat_api; '
+                        'GRANT EXECUTE ON FUNCTION pf.authorize_chat_credential(uuid,bigint,uuid,uuid) TO ap_chat_api;')
 
 
 if __name__ == '__main__':

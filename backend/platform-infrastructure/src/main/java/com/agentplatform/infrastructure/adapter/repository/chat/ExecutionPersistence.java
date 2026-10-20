@@ -32,7 +32,7 @@ final class ExecutionPersistence extends ChatPersistenceSupport {
         event(c,new Actor(l.userId(),l.spaceId()),l.conversationId(),l.taskId(),"message.delta",version,Map.of("messageId",l.assistantId().toString(),"blockId",l.assistantId().toString(),"offset",prior.codePointCount(0,prior.length()),"text",text));return null;
     });}
     public Call beginCall(Lease l,boolean real){return tx(c->{
-        owned(c,l,false);authorizeCredential(c,l);activeModel(c,l);UUID turn=MyBatisExecutionLedger.beginTurn(c,l);int ordinal;
+        owned(c,l,false);authorizeCredential(c,l);activeModel(c,l);RecoveryPersistence.requireTime(c,l);UUID turn=MyBatisExecutionLedger.beginTurn(c,l);int ordinal;
         { var rows35 = c.accounting().selectModelCall35(l.taskId()); var row35 = rows35.isEmpty() ? null : rows35.getFirst(); ordinal=row35.value1()+1;if(ordinal>4||(row35.value2()!=null&&row35.value2().isBefore(Instant.now().minusSeconds(120))))throw new ChatFailure(429,"MODEL_CALL_LIMIT"); }
         long allowance=callAllowance(c,l);
         if(c.conversation().updateTask115(allowance, l.taskId(), allowance)!=1)throw new ChatFailure(429,"QUOTA_EXCEEDED");
@@ -41,7 +41,7 @@ final class ExecutionPersistence extends ChatPersistenceSupport {
         c.accounting().insertBudgetReservation117(id, l.taskId(), allowance);return new Call(id,ordinal,price);
     });}
     public void startCall(Lease l,Call call,boolean real){tx(c->{owned(c,l,false);
-        authorizeCredential(c,l);activeModel(c,l);
+        authorizeCredential(c,l);activeModel(c,l);RecoveryPersistence.requireTime(c,l);
         long allowance=callAllowance(c,l);
         if(real&&c.accounting().updateAcceptanceModelMeter118(allowance)!=1)throw new ChatFailure(503,"ACCEPTANCE_METER_UNAVAILABLE");
         if(c.accounting().updateModelCall119(call.id(), l.taskId())!=1)throw new ChatFailure(409,"CALL_ALREADY_STARTED");c.control().providerKind(call.id(),real?"REAL":"DETERMINISTIC");return null;
@@ -72,7 +72,7 @@ final class ExecutionPersistence extends ChatPersistenceSupport {
         c.conversation().updateMessage136(messageStatus, messageVersion, l.assistantId());
         c.dispatch().updateAttempt137("BLOCKED".equals(status)?"INTERRUPTED":status, reason, l.attemptId());c.dispatch().updateExecutionDispatch138(l.taskId());
         c.dispatch().deleteConversationLease139(l.attemptId());
-        c.dispatch().updateExecutionSlot140();
+        c.dispatch().updateExecutionSlot140();c.recovery().finishRequest(l.attemptId(),"SUCCEEDED".equals(status));
         Actor a=new Actor(l.userId(),l.spaceId());event(c,a,l.conversationId(),l.taskId(),"message.completed",messageVersion,Map.of("messageId",l.assistantId().toString(),"status",messageStatus));Task task=task(c,a,l.taskId(),false);
         var payload=new LinkedHashMap<String,Object>();payload.put("taskId",l.taskId().toString());payload.put("status",status);payload.put("reasonCode",reason);event(c,a,l.conversationId(),l.taskId(),"task.state_changed",task.version(),payload);return null;
     });}

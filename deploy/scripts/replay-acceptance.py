@@ -16,7 +16,7 @@ from pathlib import Path
 from execution_fixture import ROOT, DATA, ENV, COMPOSE, BASE, PROJECT, STAGE
 from execution_images import pin_exported
 
-assert STAGE in {'r22', 'r23'} and PROJECT == 'agentplatform-' + STAGE + '-local', 'Only explicit isolated R2.2/R2.3 fixtures are authorized'
+assert STAGE in {'r22', 'r23', 'r24'} and PROJECT == 'agentplatform-' + STAGE + '-local', 'Only explicit isolated R2.2/R2.3/R2.4 fixtures are authorized'
 spec = importlib.util.spec_from_file_location('execution_acceptance', Path(__file__).with_name('execution-acceptance.py'))
 execution = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(execution)
@@ -127,9 +127,9 @@ def collection():
         assert int(sql("SELECT replay_pruned_through FROM pf.conversation WHERE id='"+conversation+"'"))==floor
     finally:
         client.request('POST','/api/v1/tasks/'+task+'/cancel',{})
-        terminal = {'CANCELLED','SUCCEEDED','BLOCKED'} if STAGE == 'r23' else {'CANCELLED','SUCCEEDED'}
+        terminal = {'CANCELLED','SUCCEEDED','BLOCKED'} if STAGE in {'r23','r24'} else {'CANCELLED','SUCCEEDED'}
         wait(lambda: execution.status(task) in terminal,90)
-        if STAGE == 'r23':
+        if STAGE in {'r23','r24'}:
             stopped = client.request('GET','/api/v1/tasks/'+task+'/reconciliation')
             assert stopped['stopConfirmed'] and stopped['stopStage']=='STOPPED'
             assert sql('SELECT count(*) FROM pf.execution_slot WHERE task_id IS NOT NULL')=='0'

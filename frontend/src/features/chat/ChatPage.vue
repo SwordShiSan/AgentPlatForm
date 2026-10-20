@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ModelSettings from './ModelSettings.vue';
+import RecoveryNotice from './RecoveryNotice.vue';
 import { useChatDrafts, type PendingSubmission } from './drafts';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -229,6 +230,7 @@ async function cancel() {
         <p v-if="reconciliationState?.excludedFromContext">该未完成轮次未进入后续模型上下文；页面保留的部分回复不代表成功结果。</p>
         <p v-if="reconciliationState?.stopConfirmed">执行者已停止；可在剩余额度内发送独立新消息。</p>
       </aside>
+      <RecoveryNotice v-if="lastTask" :actor="actor" :space="space" :task-id="lastTask.taskId" :version="lastTask.version" :interrupted="lastTask.status === 'BLOCKED' || lastTask.status === 'FAILED'" />
       <section v-if="lastTask?.reasonCode && diagnostics.data.value" aria-label="任务诊断" class="task-diagnostics">
         <p>{{ diagnosticAction }}</p><p v-if="diagnostics.data.value.hasPartialOutput">已保留部分回复。</p>
         <p class="chat-text">诊断编号：{{ diagnostics.data.value.traceId }}</p>

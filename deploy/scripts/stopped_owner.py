@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 
 def reconcile(root, data, env, compose, service='worker', force=False):
     project = compose[compose.index('-p') + 1]
-    assert project in {'agentplatform-r12-local', 'agentplatform-r21-local', 'agentplatform-r2c-local', 'agentplatform-r22-local', 'agentplatform-r23-local'}
+    assert project in {'agentplatform-r12-local', 'agentplatform-r21-local', 'agentplatform-r2c-local', 'agentplatform-r22-local', 'agentplatform-r23-local', 'agentplatform-r24-local'}
     assert data.resolve() == (root / '.cache' / project.removeprefix('agentplatform-')).resolve(), 'Stop proof data must belong to this exact local project'
 
     def output(command, **kwargs):
@@ -31,7 +31,7 @@ def reconcile(root, data, env, compose, service='worker', force=False):
     # R2.3 retains a separate process identity when readiness is withdrawn.
     # It still requires matching active database ownership, exact live container
     # identity, observed stop and expired lease below; this file alone proves no stop.
-    marker_path = '/tmp/chat-worker-instance' if project == 'agentplatform-r23-local' else '/tmp/chat-worker-ready'
+    marker_path = '/tmp/chat-worker-instance' if project in {'agentplatform-r23-local','agentplatform-r24-local'} else '/tmp/chat-worker-ready'
     # Docker's last healthy result may precede a DB outage. The live marker is
     # withdrawn while authorization storage is unavailable; wait for its actual
     # return, never infer an owner from a stale health result or caller input.

@@ -16,19 +16,14 @@ import static com.agentplatform.infrastructure.adapter.repository.chat.ChatPersi
 final class MyBatisExecutionLedger {
     private MyBatisExecutionLedger() {}
 
-    static UUID beginTurn(ChatMappers c, Lease l)  {
+    static UUID beginTurn(ChatMappers c, Lease l) {
         guard(c,l);
-        { var rows187 = c.ledger().selectModelTurn187(l.attemptId()); var row187 = rows187.isEmpty() ? null : rows187.getFirst();
-            if(row187 != null)return row187.value1();
-         }
-        UUID id=Uuid7.next();
-        List<Message> history=new ArrayList<>();history.add(Message.text(Role.SYSTEM,"You are a helpful assistant. Answer ordinary text questions. No tools or filesystem access are available."));
-        { var rows186 = c.conversation().selectMessage186(l.spaceId(), l.conversationId(), l.taskId());
-            for (var row186 : rows186)history.add(Message.text(Role.valueOf(row186.value1()),row186.value2()));
-         }
-        String input=canonicalJson(history);
-        c.ledger().insertModelTurn188(id, l.spaceId(), l.taskId(), l.attemptId(), l.fence(), input, hash(input), l.attemptId());
-        return id;
+        var open=c.recovery().turns(l.taskId()).stream().filter(t->"OPEN".equals(t.status())).toList();
+        if(open.size()>1)throw new ChatFailure(409,"LOGICAL_TURN_CONFLICT");
+        if(!open.isEmpty()){c.recovery().bindTurn(l,open.getFirst().id());return open.getFirst().id();}
+        UUID id=Uuid7.next();String input=canonicalJson(RecoveryPersistence.history(c,l));
+        c.ledger().insertModelTurn188(id,l.spaceId(),l.taskId(),l.attemptId(),l.fence(),input,hash(input),l.taskId());
+        c.recovery().bindTurn(l,id);return id;
     }
 
     static void guard(ChatMappers c,Lease l) {
@@ -52,7 +47,8 @@ final class MyBatisExecutionLedger {
         Set<String> ids=new HashSet<>();
         for(var call:turn.round().calls()) {
             if(!ids.add(call.id()))throw new ChatFailure(409,"DUPLICATE_TOOL_CALL");
-            c.ledger().insertToolOperation189(Uuid7.next(), l.spaceId(), l.taskId(), l.attemptId(), id, l.fence(), call.id(), canonicalJson(call), hash(canonicalJson(call)));
+            UUID operation=Uuid7.next();c.ledger().insertToolOperation189(operation, l.spaceId(), l.taskId(), l.attemptId(), id, l.fence(), call.id(), canonicalJson(call), hash(canonicalJson(call)));
+            c.recovery().bindOperation(l,operation);
         }
         c.ledger().updateModelTurn190(UUID.fromString(turn.id()), body, fingerprint, accepted.call().id(), id);
         settleCall(c,l,accepted.call(),accepted.usageKnown()?turn.round():null,accepted.requestId(),accepted.usageKnown()?null:"PROVIDER_USAGE_MISSING",accepted.real());

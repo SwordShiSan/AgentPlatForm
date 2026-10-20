@@ -16,6 +16,7 @@ import tools.jackson.databind.json.JsonMapper;
 public final class MyBatisChatRepository implements ChatRepository {
     public static final UUID BUNDLE = ChatPersistenceSupport.BUNDLE;
     private final ControlPersistence controls;
+    private final RecoveryPersistence recovery;
     private final ConversationPersistence conversations;
     private final ConfigurationPersistence configurations;
     private final DispatchPersistence dispatches;
@@ -23,6 +24,7 @@ public final class MyBatisChatRepository implements ChatRepository {
     private final CheckpointPersistence checkpoints;
     public MyBatisChatRepository(ChatMappers mappers) {
         controls = new ControlPersistence(mappers);
+        recovery = new RecoveryPersistence(mappers);
         conversations = new ConversationPersistence(mappers);
         configurations = new ConfigurationPersistence(mappers);
         dispatches = new DispatchPersistence(mappers);
@@ -86,5 +88,10 @@ public final class MyBatisChatRepository implements ChatRepository {
     @Override public void reconcile(Command command) { controls.reconcile(command); }
     @Override public void stopped(Lease lease,String status,String reason,KnownUsage known,String receiptHash) { controls.stopped(lease,status,reason,known,receiptHash); }
     @Override public void stopUnconfirmed(Lease lease) { controls.stopUnconfirmed(lease); }
+    @Override public RecoveryLedger.Startup executionStartup(Lease l) { return recovery.executionStartup(l); }
+    @Override public UUID commitCheckpoint(Lease l,HarnessData.Bundle b,HarnessData.CheckpointDraft d) { return recovery.commitCheckpoint(l,b,d); }
+    @Override public RecoveryLedger.Recovery recovery(Actor a,UUID id) { return recovery.recovery(a,id); }
+    @Override public RecoveryLedger.Recovery recoveryForOperator(UUID id) { return recovery.recoveryForOperator(id); }
+    @Override public RecoveryLedger.Recovery restore(RecoveryLedger.RestoreCommand command) { return recovery.restore(command); }
     @Override public boolean ready() { return conversations.ready(); }
 }

@@ -1,0 +1,22 @@
+-- Apply as the existing migration/table owner after V9. No credentials or data copies.
+BEGIN;
+GRANT SELECT,INSERT,UPDATE,DELETE ON pf.conversation_lease TO ap_worker;
+GRANT SELECT,INSERT,UPDATE ON pf.model_turn,pf.tool_operation TO ap_worker;
+GRANT SELECT,INSERT ON pf.checkpoint TO ap_worker;
+GRANT SELECT,INSERT,UPDATE ON pf.turn_execution_binding,pf.operation_execution_binding,pf.checkpoint_recovery TO ap_worker;
+GRANT SELECT,INSERT ON pf.task_cancellation TO ap_api;
+GRANT SELECT ON pf.task_cancellation TO ap_worker;
+GRANT SELECT ON pf.execution_stop_receipt TO ap_api;
+GRANT SELECT,INSERT ON pf.execution_stop_receipt TO ap_worker;
+REVOKE ALL ON pf.stopped_owner_proof,pf.model_call_reconciliation FROM ap_api,ap_worker;
+REVOKE INSERT,UPDATE,DELETE ON pf.execution_stop_receipt FROM ap_api;
+GRANT SELECT ON pf.attempt,pf.budget_reservation,pf.checkpoint_recovery TO ap_api;
+GRANT SELECT(id,task_id,attempt_id,bundle_hash,phase,manifest_version,created_at) ON pf.checkpoint TO ap_api;
+GRANT SELECT(task_id,status) ON pf.tool_operation TO ap_api;
+GRANT EXECUTE ON FUNCTION pf.authorize_chat_credential(uuid,bigint,uuid,uuid) TO ap_api;
+REVOKE DELETE ON pf.platform_event FROM ap_api,ap_worker;
+REVOKE UPDATE ON pf.conversation FROM ap_api,ap_worker;
+GRANT UPDATE(title,next_seq,version,updated_at) ON pf.conversation TO ap_api,ap_worker;
+REVOKE ALL ON FUNCTION pf.collect_expired_replay(uuid) FROM ap_worker;
+GRANT EXECUTE ON FUNCTION pf.collect_expired_replay(uuid) TO ap_api;
+COMMIT;

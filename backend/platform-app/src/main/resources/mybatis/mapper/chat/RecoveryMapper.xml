@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.chat.RecoveryMapper">
+    <resultMap id="CheckpointMeta" type="com.agentplatform.infrastructure.dao.po.RecoveryRows$CheckpointMeta"><constructor>
+        <arg name="id" column="id" javaType="java.util.UUID"/>
+        <arg name="attemptId" column="attempt_id" javaType="java.util.UUID"/>
+        <arg name="bundleHash" column="bundle_hash" javaType="java.lang.String"/>
+        <arg name="phase" column="phase" javaType="java.lang.String"/>
+    </constructor></resultMap>
+    <select id="latestMetadata" resultMap="CheckpointMeta"><![CDATA[SELECT id,attempt_id,bundle_hash,phase FROM pf.checkpoint WHERE task_id=#{task,jdbcType=OTHER} AND manifest_version=2 ORDER BY created_at DESC,id DESC LIMIT 1]]></select>
+    <resultMap id="TaskRow" type="com.agentplatform.infrastructure.dao.po.RecoveryRows$TaskRow"><constructor>
+        <arg name="id" column="id" javaType="java.util.UUID"/>
+        <arg name="spaceId" column="space_id" javaType="java.util.UUID"/>
+        <arg name="userId" column="user_id" javaType="java.util.UUID"/>
+        <arg name="conversationId" column="conversation_id" javaType="java.util.UUID"/>
+        <arg name="status" column="status" javaType="java.lang.String"/>
+        <arg name="reasonCode" column="reason_code" javaType="java.lang.String"/>
+        <arg name="cancelRequested" column="cancel_requested" javaType="_boolean"/>
+        <arg name="version" column="version" javaType="_long"/>
+        <arg name="revision" column="revision" javaType="_long"/>
+        <arg name="deadline" column="deadline" javaType="java.time.Instant"/>
+        <arg name="traceId" column="trace_id" javaType="java.util.UUID"/>
+    </constructor></resultMap>
+    <resultMap id="CheckpointRow" type="com.agentplatform.infrastructure.dao.po.RecoveryRows$CheckpointRow"><constructor>
+        <arg name="id" column="id" javaType="java.util.UUID"/>
+        <arg name="attemptId" column="attempt_id" javaType="java.util.UUID"/>
+        <arg name="bundleHash" column="bundle_hash" javaType="java.lang.String"/>
+        <arg name="phase" column="phase" javaType="java.lang.String"/>
+        <arg name="manifestJson" column="manifest_json" javaType="java.lang.String"/>
+        <arg name="manifestHash" column="manifest_hash" javaType="java.lang.String"/>
+        <arg name="canonicalJson" column="canonical_json" javaType="java.lang.String"/>
+        <arg name="canonicalHash" column="canonical_hash" javaType="java.lang.String"/>
+        <arg name="stateJson" column="state_json" javaType="java.lang.String"/>
+        <arg name="stateHash" column="state_hash" javaType="java.lang.String"/>
+        <arg name="watermark" column="watermark" javaType="_long"/>
+    </constructor></resultMap>
+    <resultMap id="RequestRow" type="com.agentplatform.infrastructure.dao.po.RecoveryRows$RequestRow"><constructor>
+        <arg name="commandId" column="command_id" javaType="java.util.UUID"/>
+        <arg name="checkpointId" column="checkpoint_id" javaType="java.util.UUID"/>
+        <arg name="sourceAttemptId" column="source_attempt_id" javaType="java.util.UUID"/>
+        <arg name="revision" column="revision" javaType="_long"/>
+        <arg name="requestHash" column="request_hash" javaType="java.lang.String"/>
+        <arg name="status" column="status" javaType="java.lang.String"/>
+        <arg name="targetAttemptId" column="target_attempt_id" javaType="java.util.UUID"/>
+    </constructor></resultMap>
+    <resultMap id="TurnRow" type="com.agentplatform.infrastructure.dao.po.RecoveryRows$TurnRow"><constructor>
+        <arg name="id" column="id" javaType="java.util.UUID"/>
+        <arg name="ordinal" column="ordinal" javaType="_long"/>
+        <arg name="status" column="status" javaType="java.lang.String"/>
+        <arg name="inputJson" column="input_json" javaType="java.lang.String"/>
+        <arg name="roundJson" column="round_json" javaType="java.lang.String"/>
+    </constructor></resultMap>
+    <resultMap id="OperationRow" type="com.agentplatform.infrastructure.dao.po.RecoveryRows$OperationRow"><constructor>
+        <arg name="id" column="id" javaType="java.util.UUID"/>
+        <arg name="turnId" column="turn_id" javaType="java.util.UUID"/>
+        <arg name="callJson" column="call_json" javaType="java.lang.String"/>
+        <arg name="status" column="status" javaType="java.lang.String"/>
+        <arg name="resultJson" column="result_json" javaType="java.lang.String"/>
+    </constructor></resultMap>
+    <select id="task" resultMap="TaskRow"><![CDATA[SELECT id,space_id,creator_id user_id,conversation_id,status,reason_code,cancel_requested,version,recovery_revision revision,execution_deadline_at deadline,trace_id FROM pf.task WHERE id=#{id,jdbcType=OTHER}]]></select>
+    <select id="latest" resultMap="CheckpointRow"><![CDATA[SELECT * FROM pf.checkpoint WHERE task_id=#{task,jdbcType=OTHER} AND manifest_version=2 ORDER BY created_at DESC,id DESC LIMIT 1]]></select>
+    <select id="checkpoint" resultMap="CheckpointRow"><![CDATA[SELECT * FROM pf.checkpoint WHERE task_id=#{task,jdbcType=OTHER} AND id=#{id,jdbcType=OTHER} AND manifest_version=2 AND status='COMMITTED']]></select>
+    <select id="request" resultMap="RequestRow"><![CDATA[SELECT * FROM pf.checkpoint_recovery WHERE command_id=#{command,jdbcType=OTHER}]]></select>
+    <select id="latestRequest" resultMap="RequestRow"><![CDATA[SELECT * FROM pf.checkpoint_recovery WHERE task_id=#{task,jdbcType=OTHER} ORDER BY revision DESC LIMIT 1]]></select>
+    <select id="attemptRequest" resultMap="RequestRow"><![CDATA[SELECT * FROM pf.checkpoint_recovery WHERE target_attempt_id=#{attempt,jdbcType=OTHER}]]></select>
+    <select id="latestAttempt" resultType="java.util.UUID"><![CDATA[SELECT id FROM pf.attempt WHERE task_id=#{task,jdbcType=OTHER} ORDER BY started_at DESC,id DESC LIMIT 1]]></select>
+    <select id="hasStop" resultType="java.lang.Integer"><![CDATA[SELECT count(*) FROM pf.execution_stop_receipt s JOIN pf.attempt a ON a.id=s.attempt_id AND a.owner_id=s.owner_id AND a.fencing_token=s.fencing_token WHERE s.task_id=#{task,jdbcType=OTHER} AND s.attempt_id=#{attempt,jdbcType=OTHER}]]></select>
+    <select id="live" resultType="java.lang.Integer"><![CDATA[SELECT count(*) FROM pf.execution_slot WHERE task_id=#{task,jdbcType=OTHER}]]></select>
+    <select id="newerTasks" resultType="java.lang.Integer"><![CDATA[SELECT count(*) FROM pf.task n JOIN pf.task t ON n.conversation_id=t.conversation_id WHERE t.id=#{task,jdbcType=OTHER} AND (n.created_at,n.id)>(t.created_at,t.id)]]></select>
+    <select id="unknown" resultType="java.lang.Integer"><![CDATA[SELECT (SELECT count(*) FROM pf.model_call WHERE task_id=#{task,jdbcType=OTHER} AND status IN ('STARTED','UNKNOWN'))+(SELECT count(*) FROM pf.budget_reservation WHERE task_id=#{task,jdbcType=OTHER} AND state='RECONCILING')+(SELECT count(*) FROM pf.tool_operation WHERE task_id=#{task,jdbcType=OTHER} AND status IN ('RUNNING','UNKNOWN'))]]></select>
+    <select id="calls" resultType="java.lang.Integer"><![CDATA[SELECT count(*) FROM pf.model_call WHERE task_id=#{task,jdbcType=OTHER}]]></select>
+    <select id="now" resultType="java.time.Instant"><![CDATA[SELECT clock_timestamp()]]></select>
+    <update id="initializeDeadline"><![CDATA[UPDATE pf.task SET execution_deadline_at=clock_timestamp()+interval '120 seconds' WHERE id=#{task,jdbcType=OTHER} AND execution_deadline_at IS NULL]]></update>
+    <select id="turns" resultMap="TurnRow"><![CDATA[SELECT id,coalesce(task_ordinal,ordinal) ordinal,status,input_json,round_json FROM pf.model_turn WHERE task_id=#{task,jdbcType=OTHER} ORDER BY coalesce(task_ordinal,ordinal),created_at,id]]></select>
+    <select id="operations" resultMap="OperationRow"><![CDATA[SELECT id,turn_id,call_json,status,result_json FROM pf.tool_operation WHERE task_id=#{task,jdbcType=OTHER} ORDER BY created_at,id]]></select>
+    <select id="facts" resultType="java.lang.String"><![CDATA[SELECT jsonb_build_object(
+ 'turns',coalesce((SELECT jsonb_agg(jsonb_build_object('id',id,'ordinal',coalesce(task_ordinal,ordinal),'status',status,'input',input_json,'inputHash',input_hash,'round',round_json,'hash',content_hash,'callId',accepted_call_id) ORDER BY coalesce(task_ordinal,ordinal),created_at,id) FROM pf.model_turn WHERE task_id=#{task,jdbcType=OTHER}),'[]'::jsonb),
+ 'operations',coalesce((SELECT jsonb_agg(jsonb_build_object('id',id,'turnId',turn_id,'call',call_json,'hash',call_hash,'status',status,'result',result_json,'resultHash',result_hash) ORDER BY created_at,id) FROM pf.tool_operation WHERE task_id=#{task,jdbcType=OTHER}),'[]'::jsonb),
+ 'calls',coalesce((SELECT jsonb_agg(jsonb_build_object('id',id,'turnId',turn_id,'ordinal',ordinal,'status',status,'input',input_tokens,'output',output_tokens,'cost',cost_micros,'provider',provider_kind) ORDER BY ordinal,id) FROM pf.model_call WHERE task_id=#{task,jdbcType=OTHER}),'[]'::jsonb))::text]]></select>
+    <insert id="insertCheckpoint"><![CDATA[INSERT INTO pf.checkpoint(id,space_id,task_id,attempt_id,fencing_token,bundle_id,bundle_hash,manifest_json,manifest_hash,canonical_json,canonical_hash,watermark,state_json,state_hash,manifest_version,phase)
+ VALUES(#{id,jdbcType=OTHER},#{lease.spaceId,jdbcType=OTHER},#{lease.taskId,jdbcType=OTHER},#{lease.attemptId,jdbcType=OTHER},#{lease.fence},#{bundle,jdbcType=OTHER},#{bundleHash},#{manifest}::jsonb,#{manifestHash},#{canonical}::jsonb,#{canonicalHash},#{watermark},#{states}::jsonb,#{stateHash},2,#{phase})]]></insert>
+    <update id="reserve"><![CDATA[UPDATE pf.budget_account SET reserved_tokens=reserved_tokens+#{tokens},reserved_micros=reserved_micros+#{cost},version=version+1 WHERE space_id=#{space,jdbcType=OTHER} AND user_id=#{user,jdbcType=OTHER} AND reserved_tokens+consumed_tokens+#{tokens}<=token_limit AND reserved_micros+consumed_micros+#{cost}<=cost_limit_micros]]></update>
+    <update id="queueTask"><![CDATA[UPDATE pf.task SET status='QUEUED',reason_code='CHECKPOINT_RECOVERY_QUEUED',remaining_tokens=#{tokens},remaining_micros=#{cost},recovery_revision=#{revision},version=version+1,updated_at=clock_timestamp() WHERE id=#{task,jdbcType=OTHER}]]></update>
+    <update id="queueDispatch"><![CDATA[UPDATE pf.execution_dispatch SET generation=generation+1,status='READY',lease_owner=NULL,lease_until=NULL,available_at=clock_timestamp() WHERE task_id=#{task,jdbcType=OTHER}]]></update>
+    <select id="generation" resultType="java.lang.Long"><![CDATA[SELECT generation FROM pf.execution_dispatch WHERE task_id=#{task,jdbcType=OTHER}]]></select>
+    <insert id="insertRequest"><![CDATA[INSERT INTO pf.checkpoint_recovery(command_id,space_id,task_id,source_attempt_id,checkpoint_id,expected_task_version,revision,request_hash,operator_id) VALUES(#{command.commandId,jdbcType=OTHER},#{space,jdbcType=OTHER},#{command.taskId,jdbcType=OTHER},#{command.stopAttemptId,jdbcType=OTHER},#{command.checkpointId,jdbcType=OTHER},#{command.expectedTaskVersion},#{revision},#{hash},#{command.operator})]]></insert>
+    <update id="claimRequest"><![CDATA[UPDATE pf.checkpoint_recovery SET status='CLAIMED',target_attempt_id=#{attempt,jdbcType=OTHER} WHERE command_id=#{command,jdbcType=OTHER} AND status='QUEUED']]></update>
+    <update id="finishRequest"><![CDATA[UPDATE pf.checkpoint_recovery SET status=CASE WHEN #{success} THEN 'COMPLETED' ELSE 'FAILED' END,completed_at=clock_timestamp() WHERE target_attempt_id=#{attempt,jdbcType=OTHER} AND status='CLAIMED']]></update>
+    <insert id="bindTurn"><![CDATA[INSERT INTO pf.turn_execution_binding(space_id,task_id,attempt_id,turn_id,fencing_token) VALUES(#{lease.spaceId,jdbcType=OTHER},#{lease.taskId,jdbcType=OTHER},#{lease.attemptId,jdbcType=OTHER},#{turn,jdbcType=OTHER},#{lease.fence}) ON CONFLICT DO NOTHING]]></insert>
+    <insert id="bindOperation"><![CDATA[INSERT INTO pf.operation_execution_binding(space_id,task_id,attempt_id,operation_id,fencing_token) VALUES(#{lease.spaceId,jdbcType=OTHER},#{lease.taskId,jdbcType=OTHER},#{lease.attemptId,jdbcType=OTHER},#{operation,jdbcType=OTHER},#{lease.fence}) ON CONFLICT DO NOTHING]]></insert>
+    <select id="boundTurn" resultType="java.lang.Integer"><![CDATA[SELECT count(*) FROM pf.turn_execution_binding WHERE space_id=#{lease.spaceId,jdbcType=OTHER} AND task_id=#{lease.taskId,jdbcType=OTHER} AND attempt_id=#{lease.attemptId,jdbcType=OTHER} AND turn_id=#{turn,jdbcType=OTHER} AND fencing_token=#{lease.fence}]]></select>
+    <select id="boundOperation" resultType="java.lang.Integer"><![CDATA[SELECT count(*) FROM pf.operation_execution_binding b JOIN pf.tool_operation o ON o.id=b.operation_id WHERE b.space_id=#{lease.spaceId,jdbcType=OTHER} AND b.task_id=#{lease.taskId,jdbcType=OTHER} AND b.attempt_id=#{lease.attemptId,jdbcType=OTHER} AND b.fencing_token=#{lease.fence} AND o.call_id=#{call}]]></select>
+    <update id="rejectRequest"><![CDATA[UPDATE pf.checkpoint_recovery SET status='FAILED',completed_at=clock_timestamp() WHERE command_id=#{command,jdbcType=OTHER} AND status='QUEUED']]></update>
+    <update id="rejectMessage"><![CDATA[UPDATE pf.message SET status=CASE WHEN coalesce(blocks_json->0->>'text','')='' THEN 'FAILED' ELSE 'PARTIAL' END,version=version+1 WHERE task_id=#{task,jdbcType=OTHER} AND role='ASSISTANT']]></update>
+</mapper>

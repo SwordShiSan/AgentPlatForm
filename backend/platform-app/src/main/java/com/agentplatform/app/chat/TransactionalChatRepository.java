@@ -44,6 +44,11 @@ public final class TransactionalChatRepository implements ChatRepository {
             throw failure;
         }
     }
+    @Override public com.agentplatform.domain.chat.RecoveryLedger.Startup executionStartup(Lease l) { return tx(transactions, () -> delegate.executionStartup(l)); }
+    @Override public UUID commitCheckpoint(Lease l,Bundle b,HarnessData.CheckpointDraft d) { return tx(transactions, () -> delegate.commitCheckpoint(l,b,d)); }
+    @Override public com.agentplatform.domain.chat.RecoveryLedger.Recovery recovery(Actor a,UUID id) { return tx(snapshots, () -> delegate.recovery(a,id)); }
+    @Override public com.agentplatform.domain.chat.RecoveryLedger.Recovery recoveryForOperator(UUID id) { return tx(snapshots, () -> delegate.recoveryForOperator(id)); }
+    @Override public com.agentplatform.domain.chat.RecoveryLedger.Recovery restore(com.agentplatform.domain.chat.RecoveryLedger.RestoreCommand command) { return tx(transactions, () -> delegate.restore(command)); }
     @Override public List<Model> models(Actor actor) { return tx(transactions, () -> delegate.models(actor)); }
     @Override public Conversation create(Actor actor, UUID key, String title) { return tx(transactions, () -> delegate.create(actor, key, title)); }
     @Override public Conversation conversation(Actor actor, UUID id) { return tx(transactions, () -> delegate.conversation(actor, id)); }

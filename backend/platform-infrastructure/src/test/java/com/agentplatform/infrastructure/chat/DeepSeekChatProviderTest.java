@@ -65,6 +65,34 @@ class DeepSeekChatProviderTest {
         assertThrows(IllegalArgumentException.class, () -> new DeepSeekChatProvider("http://evil.example", true));
         assertFalse(new DeepSeekChatProvider("http://localhost:12345", true).real());
         assertTrue(new DeepSeekChatProvider("https://api.deepseek.com", false).real());
+        assertThrows(IllegalArgumentException.class,()->new DeepSeekChatProvider("https://api.deepseek.com",false,true));
+    }
+
+    @Test void fixedFixtureToolsUseSdkFragmentAccumulatorAndRemainDisabledByDefault() throws Exception {
+        var server=com.sun.net.httpserver.HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
+        server.createContext("/chat/completions",exchange->{
+            exchange.getRequestBody().readAllBytes();exchange.getResponseHeaders().add("Content-Type","text/event-stream");exchange.sendResponseHeaders(200,0);
+            try(var output=exchange.getResponseBody()) {
+                String data="data: {\"id\":\"tool-fixture\",\"choices\":[{\"index\":0,\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"stable-operation\",\"type\":\"function\",\"function\":{\"name\":\"recovery_probe\",\"arguments\":\"{\\\"text\\\":\"}}]},\"finish_reason\":null}]}\n\n"
+                    +"data: {\"id\":\"tool-fixture\",\"choices\":[{\"index\":0,\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"\\\"one\\\"}\"}}]},\"finish_reason\":\"tool_calls\"}]}\n\n"
+                    +"data: {\"id\":\"tool-fixture\",\"choices\":[],\"usage\":{\"prompt_tokens\":10,\"completion_tokens\":3,\"total_tokens\":13}}\n\ndata: [DONE]\n\n";
+                output.write(data.getBytes(StandardCharsets.UTF_8));
+            }catch(java.io.IOException closed) { /* Default policy may close the rejected response. */ }
+        });server.start();
+        try {
+            String endpoint="http://127.0.0.1:"+server.getAddress().getPort();
+            try(var provider=new DeepSeekChatProvider(endpoint,true,true)) {
+                var exchange=provider.open("deepseek-flash","fixture-sentinel",List.of(Message.text(Role.USER,"fixture:recovery-tool")),text->fail("Tool round has no public text"));
+                var result=exchange.result().toCompletableFuture().get(8,TimeUnit.SECONDS);
+                assertEquals("tool_calls",result.round().finishReason());assertTrue(result.usageKnown());
+                assertEquals(1,result.round().calls().size());assertEquals("stable-operation",result.round().calls().getFirst().id());
+                assertEquals(java.util.Map.of("text","one"),result.round().calls().getFirst().arguments());
+                exchange.terminated().toCompletableFuture().get(5,TimeUnit.SECONDS);
+            }
+            try(var closed=new DeepSeekChatProvider(endpoint,true)) {
+                assertThrows(ExecutionException.class,()->closed.stream("fixture-sentinel",List.of(Message.text(Role.USER,"fixture:recovery-tool")),text->{}).toCompletableFuture().get(8,TimeUnit.SECONDS));
+            }
+        }finally {server.stop(0);}
     }
 
     @Test void retryableHttpErrorsRemainOnePhysicalRequestPerLedgerCall() throws Exception {

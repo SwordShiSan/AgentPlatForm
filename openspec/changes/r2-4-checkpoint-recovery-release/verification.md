@@ -1,0 +1,66 @@
+# Current local conclusion (2026-10-21)
+
+All mandatory local functional gates PASS; protected promotion pending, not yet VERIFIED. Application source `6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19`; Maven196, Vue34, non-root Linux69, real API browser20 plus4 recovery states, eight exact-container windows, ten V2 integrity cases, actual PG/MQ/ACK/dependency/cancel/accounting suites and actual released-R1 backend on V9 all PASS. Additive V9, runtime baseline1 and unchanged V1–V8. Later test/doc/evidence commits retain the original image source identities.
+
+Observation1807.69seconds/67samples/66tasks included broker/active-DB interruption and recovery. One real metered DeepSeek request verified frozen-input restart and committed-final stop/convergence without replay. Known usage cost uses the frozen-price estimate. UNKNOWN histories and holds remain intact; no quota/counter reset. Actual Docker VM7.69GiB and sampled values are not proof of minimum physical host or absolute peaks.
+
+Local fixture including its provider is stopped, volumes/images retained; explicit private-value scan of public worktree passes. Secrets, raw SQL, logs and host-proof signatures are outside public Git. The final body/evidence packages are separate protected local handoff artifacts, not Git delivery or cloud synchronization.
+
+Pending protected step→phase→main PRs; not yet VERIFIED.
+
+Cloud SSH closes before authentication, so cloud deployment/observation/serial restore/R1 rollback are NOT_RUN. No R2 production tag or R3. The same OpenSpec change remains active with release/archival tasks incomplete; R2 is not RELEASED. Historical failures below are retained, not reclassified as passing.
+
+## Historical process records
+
+# R2.4 verification ledger
+
+Status IMPLEMENTING, not VERIFIED or RELEASED. Approved Plan in conversation; formal body is outside Git. Baseline23f68812c8a8438684653d2ec89fbbef9293fb07. No new supplier call, cloud mutation or capability is claimed by the governance files.
+
+| Gate | Required evidence | Current result |
+|---|---|---|
+| Governance | baseline tree equivalence; formal Plan/ADR/contracts; single strict-valid change before business code | PASS: remote main23f6881/phase equivalent; scoped branch created; strict valid before business changes |
+| SDK feasibility | actual SDK initial/restore/finished-operation/CAS experiments; source signatures and exact fixture identity | PASS: actual SDK2.0.4, non-root Linux69 tests, atomic checkpoint and finished-operation restore |
+| Engineering | Maven verify/DDD/Enforcer/MyBatis resources, Vue type/unit/build, generated contracts/invalid fixtures, links, boundary guard, strict, old fixtures/Jackson | PASS on frozen application6af7aa50:196 Maven/34 Vue/69 Linux tests; exact-source LF archive and build logs retained; later frontend changes are test-only |
+| Data | fresh,V8-to-V9,old R1-generated data upgrade; no V1–V8 change; old image V9 compatibility | PASS on6af7aa50: fresh/additive tests, actual released R1 image on V9 and same R2 candidate restored; no down migration |
+| Ownership | real PG/MQ/two worker kills, ACK/confirm/duplicate/DB/broker; stop evidence and stale fences | PASS on6af7aa50: exact-process recovery, claim/ACK, DB/broker outages, replay/cancellation/accounting and unconfirmed-stop suites |
+| Recovery | INPUT_READY/model/tool/terminal checkpoints, immutable independent state, stable identities and side-effect count | PASS: all eight exact6af7aa50 image windows, stable message/deadline, independent attempt, shared tool effect1 |
+| Refusal | hash/state/bundle/codec/watermark/newer-task/UNKNOWN/cancel/revocation/deadline/budget/concurrent-command rejection | PASS on6af7aa50: repository/exact-process gates plus ten actual V2 integrity cases; local47-table fingerprint equality/mismatch tooling check also PASS, not a cloud restore |
+| UI | live API, dual user/admin isolation, read-only recovery stages, partial/refresh/SSE, widths/zoom/keyboard/themes | PASS: inherited20/20 and four recovery-stage real-API/strict-SSE cases on6af7aa50; test correction453c115; UNKNOWN screenshot visually reviewed |
+| Real model | minimal frozen-input restart and committed-final no-replay; meter existing holds, stop at provider quota | PASS: one real metered request; frozen-input restart and committed-final no-replay, known usage, no plaintext key leak; historical UNKNOWN holds preserved |
+| Resources | final frozen candidate>=1800seconds with dependencies failing/restoring, transient resource limits included, no swap extension | PASS: frozen candidate1807.69s, dependency faults, memory/swap/thread/connection/actual disk samples; no minimum-host/absolute-peak claim |
+| Local promotion | exact source/config/image/export/evidence hashes; protected two-level PRs; Actions disabled | Pending protected step→phase→main PRs; not yet VERIFIED. |
+| Cloud | verified R1 identity/capacity, immutable deploy/migrations/permissions, HTTP/smoke/observation, serial consistent restore and R1 rollback | NOT_RUN |
+| Delivery | local and cloud protected evidence; separate body copies/SHA256/retention>=30days; local stack explicitly stopped | NOT_COMPLETE: cloud delivery/archive pending; final local package/main/hash receipts are maintained separately outside Git |
+
+Tests use isolated agentplatform-r24-local,15447/15697/15687/18092, initial2528MiB/max2887MiB plus host reserve768MiB. Actual Docker VM about8GiB; no minimum-physical-host or double-execution capacity claim. Every command records source/script/artifact identity, exit code and assertions. Failure and NOT_RUN stay visible. Raw SQL, keys/passwords, host proof signatures and unsanitized browser logs are protected and excluded from Git.
+
+## Implementation evidence, 2026-10-20 (intermediate, not final acceptance)
+
+- Pinned SDK experiment:32 tests PASS before runtime wiring; explicit clone leaves active SDK state unchanged, independent attempt restore does not duplicate user input. Historical result, not final-image evidence.
+- Real PostgreSQL RecoveryPostgresTest:14 cases PASS, including actual SDK continuation, PREPARED tool execution, SUCCEEDED tool skip, independent state namespace, task/deadline identity, atomic CAS rollback, command idempotency/version refusal, advanced ledger, unknown call retention, membership isolation and restricted API role denial of SDK state/manifest/ciphertext.
+- Existing real ChatPostgresTest44 cases and ownership17 cases passed. Full Maven verify, Vue34 tests/type/build in both feature modes, frozen lockfile, generated/invalid contracts, links, persistence boundary and OpenSpec16 strict items passed on the implementation iteration. Subsequent profile-only changes are rechecked before image freeze; these results do not assert exact final candidate acceptance.
+- Failure history retained in protected logs: initial old test migration stopped at V8; recovery dispatch used the wrong owner column; an added bundle key was correctly rejected by HC-1 composition validation. Fixes preserve V1–V8 and the existing five-component bundle shape. No failing iteration is described as a release pass.
+- Current cloud prerequisite: SSH closes both directly and through the existing local proxy. No cloud mutation was attempted. Immutable-image/two-process/browser/final observation/real-supplier/PR/cloud/restore/delivery gates remain NOT_RUN.
+- Protected working evidence: `.cache/r24-*.log` and `.cache/r24-local`; source and artifact hashes will be indexed after freezing. No credentials, raw SQL or unsanitized logs are added to Git.
+- Container iteration457fe4a passed INPUT_READY, PREPARED tool and committed-tool windows. Live strict SSE replay then reproduced an undeclared recoveryRevision payload field. The producer now preserves the frozen event shape and a real-PG assertion covers this regression; previous container results are historical, not final-candidate acceptance. A later window was refused by the exact-backend-tree guard after the fix, before mutating a worker. The browser harness initially omitted an API-path-scoped Cookie; correcting the harness reproduced the actual schema failure, rather than treating401 as contract evidence.
+
+## Frozen application progress, 2026-10-21
+
+Final-candidate correction: the live delayed-snapshot/cancel browser case failed on80f0bd31. Database remained RUNNING/EXECUTION_STOP_UNCONFIRMED with the slot retained; provider logs showed a text callback exception dropped by the terminal Reactor subscriber. This is an actual cancellation race, not a browser assertion adjustment. Existing80f evidence remains historical pending a new candidate, regression and rerun. Real supplier, observation, promotion and cloud remain blocked by their own mandatory gates.
+
+The affected owner was stopped by its exact container identity and reconciled through the signed host-proof path; UNKNOWN accounting was retained. The added one-shot HTTP callback-error test also passed on the old implementation, so it is not claimed as a deterministic red reproduction. Keep the original failing browser/log/DB evidence and use the corrected candidate's live browser and repeated-cancellation observation as independent mandatory gates.
+
+R2 backup tooling preparation: the new read-only database fingerprint script passed local capture, equal comparison and deliberately mismatched comparison refusal against47 actual schema tables, with app/worker stopped and no active slot. It streams row hashes from one read-only transaction and emits no plaintext rows. This is only a local tooling check, not an independent restore, cloud verification or completed release driver.
+
+Corrected application6af7aa50 passes196 Maven tests,34 Vue tests and69 non-root Linux SDK/HTTP tests. Its repeated delayed-snapshot browser check now reaches CANCELLED with LOCAL_QUIESCENCE and no unresolved owner, rather than the old RUNNING/UNCONFIRMED failure. The legacy test assumed every cancellation must be UNKNOWN despite not waiting for a physical request. Update that test to require persisted stop confirmation and assert CANCELLED for no unknown calls, or BLOCKED plus no-replay notice when actual calls are unknown. Retain both failure records; this does not relax the real provider/SDK stop barrier.
+
+Documentation alignment: R2.4 freezes input and restores checkpoints; it does not implement CompactionProposal/context_epoch, long-term memory or business completion checklists. Effective EX08-F3 full source invalidation remains R6.4, and EX10-F1 full goal/checklist follows the existing R3.3 card. External plans/feature tracking were corrected without claiming those future capabilities passed.
+
+All deterministic final-image gates now pass, including actual old-R1/V9 compatibility, ten V2 integrity cases, read-only47-table fingerprint tooling, inherited20 and recovery4 browser cases, restricted DB privileges and explicit sentinel checks. The final1800second observation is RUNNING. Its fixture account cost limit was configured from1000000 to2000000micros with all consumed/reserved values, token limit and UNKNOWN history unchanged; production defaults stay unchanged. Real supplier calls remain0 until the observation passes. Local promotion, cloud release and final protected delivery are still pending.
+
+- Application source80f0bd31ec326320b38925fd1612e081a0c3f8bf, backend tree dee6f5c6213672742a5c80e728a2eaa98aa70611. Later acceptance-only scripts and ledger commits do not silently change the accepted application trees. Image/export/config identities are retained in the protected final-candidate and image-chain records.
+- All eight real-container windows passed: input, prepared-tool, committed-tool, terminal, unknown-model, advanced-round, unknown-tool and advanced-tool. Stops use exact identities and natural lease expiry, without extending the task-wide deadline. Unknown and advanced refusal assertions check the exact error code.
+- Inherited actual PG/MQ/process gates passed: claim/ACK boundaries, dependency outages, replay/cancellation suites, and the released R1 image on V9. The old image is resolved through its verified local OCI ID and export-chain cloud config ID, not through a mutable tag.
+- The additional non-root trusted integrity probe passes ten actual V2 cases, including hash-valid invalid codec/scope, incompatible bundle, missing state, watermark, insufficient budget, cancellation and competing recovery commands. JDBC is restricted to isolated test corruption injection; production paths use the accepted MyBatis/Spring repository. Synthetic NO_EXECUTOR_LAUNCHED fixture receipts are explicitly not container-stop evidence. Combined dependency/probe caps and host reserve are checked before launch.
+- Probe harness history: the first invocation supplied provision arguments in the wrong order and failed before creating its source task; corrected harness passed twice. This is retained as harness failure, not a product defect. No historical usage, quota counter or UNKNOWN reservation was reset.
+- Browser, final1800second observation, minimal real-supplier call, local PR promotion and cloud release remain pending until their own reports pass. No real supplier request has been made in this stage yet. Existing browser inventory contains no logged-in cloud console session; no cloud configuration was changed.

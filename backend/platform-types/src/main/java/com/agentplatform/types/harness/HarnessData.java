@@ -99,6 +99,18 @@ public final class HarnessData {
         @Override public byte[] body() { return body == null ? null : body.clone(); }
     }
 
+    public enum CheckpointPhase { INPUT_READY, MODEL_COMMITTED, TOOL_COMMITTED, TERMINAL }
+    /** Defensive copy, not a reference to mutable SDK state or a second message authority. */
+    public record CheckpointDraft(long expectedVersion, byte[] state, List<Message> history, CheckpointPhase phase) {
+        public CheckpointDraft {
+            if (expectedVersion < 0 || state == null || state.length == 0 || state.length > 1048576)
+                throw new IllegalArgumentException("Invalid checkpoint state");
+            state = state.clone(); history = List.copyOf(history); Objects.requireNonNull(phase);
+            if (history.isEmpty()) throw new IllegalArgumentException("Checkpoint input required");
+        }
+        @Override public byte[] state() { return state.clone(); }
+    }
+
     public static String sha256(String value) {
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8))); }
         catch (NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }

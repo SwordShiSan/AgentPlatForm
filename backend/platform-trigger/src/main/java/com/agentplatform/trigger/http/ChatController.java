@@ -16,6 +16,7 @@ public final class ChatController {
     private ChatApi.Caller caller(HttpServletRequest request,boolean write) { return RequestIdentity.caller(request); }
     private static String key(HttpServletRequest request){String value=request.getHeader("Idempotency-Key");if(value==null)throw new ChatFailure(428,"IDEMPOTENCY_KEY_REQUIRED");return value;}
     @GetMapping("/models") Object models(HttpServletRequest request){return chat.models(caller(request,false));}
+    @GetMapping("/tasks/{id}/recovery") Object recovery(HttpServletRequest request,@PathVariable("id")String id){return chat.recovery(caller(request,false),id);}
     @GetMapping("/conversations") Object conversations(HttpServletRequest request,@RequestParam(name="cursor",required=false)String cursor,@RequestParam(name="limit",defaultValue="20")int limit){return chat.conversations(caller(request,false),cursor,limit);}
     @PostMapping("/conversations") ResponseEntity<ChatApi.ConversationView> create(HttpServletRequest request,@jakarta.validation.Valid @RequestBody ChatRequests.Conversation body) {
         var who=caller(request,true);

@@ -1,0 +1,12 @@
+# R2 reuses the accepted HTTP identity/chat transport; all acceptance capabilities stay off.
+services:
+  worker:
+    environment:
+      SPRING_PROFILES_ACTIVE: chat-worker
+      PLATFORM_CHAT_PROVIDER_BASE: https://api.deepseek.com
+      PLATFORM_CHAT_FIXTURE_PROVIDER: "false"
+      PLATFORM_CHAT_FIXTURE_TOOLS: "false"
+      PLATFORM_CHAT_REAL_RECOVERY_ACCEPTANCE: "false"
+      PLATFORM_CHAT_FIXTURE_FAULT: ""
+  operator:
+    profiles: !override [r2-ops]

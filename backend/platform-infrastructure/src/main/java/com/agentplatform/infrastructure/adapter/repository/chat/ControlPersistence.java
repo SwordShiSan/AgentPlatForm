@@ -46,7 +46,10 @@ final class ControlPersistence extends ChatPersistenceSupport implements Cancell
             boolean cancelled=task(c,new Actor(lease.userId(),lease.spaceId()),lease.taskId(),false).cancelRequested();
             String terminal=cancelled?"CANCELLED":status;
             String code=cancelled?"TASK_CANCEL_REQUESTED":reason;
-            if(c.control().unresolved(lease.taskId())>0&&!"SUCCEEDED".equals(terminal)){terminal="BLOCKED";code="EXTERNAL_RESULT_UNKNOWN";}
+            // Stopping a transport cannot prove the outcome of an already started tool.
+            c.ledger().updateToolOperation149(lease.taskId());
+            boolean unknownTool=c.recovery().operations(lease.taskId()).stream().anyMatch(operation->Set.of("RUNNING","UNKNOWN").contains(operation.status()));
+            if(unknownTool||(c.recovery().unknown(lease.taskId())>0&&!"SUCCEEDED".equals(terminal))){terminal="BLOCKED";code="EXTERNAL_RESULT_UNKNOWN";}
             new ExecutionPersistence(c).finish(lease,terminal,code);
             return null;
         });
@@ -90,7 +93,7 @@ final class ControlPersistence extends ChatPersistenceSupport implements Cancell
             if(c.control().revision(row.id(),command.expectedRevision())!=1)throw new ChatFailure(409,"RECONCILIATION_VERSION_CONFLICT");
             c.control().audit(command,row.spaceId(),row.taskId(),fingerprint,json(row),json(c.control().call(row.id())));
             String terminal=t.status(),reason=t.reasonCode();
-            if("BLOCKED".equals(terminal)&&c.control().unresolved(t.id())==0){terminal=t.cancelRequested()?"CANCELLED":"FAILED";reason=t.cancelRequested()?"TASK_CANCEL_REQUESTED":"EXECUTION_INTERRUPTED_RECONCILED";}
+            if("BLOCKED".equals(terminal)&&c.recovery().unknown(t.id())==0){terminal=t.cancelRequested()?"CANCELLED":"FAILED";reason=t.cancelRequested()?"TASK_CANCEL_REQUESTED":"EXECUTION_INTERRUPTED_RECONCILED";}
             c.conversation().updateTask135(terminal,reason,t.id());stateEvent(actor,t.id());
             audit(c,actor,"MODEL_CALL_RECONCILED",row.id(),com.agentplatform.types.RequestTrace.current());return null;
         });

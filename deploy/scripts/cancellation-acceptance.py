@@ -8,7 +8,7 @@ import time
 import uuid
 from pathlib import Path
 
-assert os.environ.get('AGENTPLATFORM_ACCEPTANCE_STAGE') == 'r23', 'Explicit isolated R2.3 selection required'
+assert os.environ.get('AGENTPLATFORM_ACCEPTANCE_STAGE') in {'r23','r24'}, 'Explicit isolated R2.3/R2.4 selection required'
 from execution_fixture import ROOT, DATA, ENV, COMPOSE, PROJECT
 from execution_images import pin_exported
 
@@ -241,6 +241,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=['protocol', 'accounting', 'stuck', 'windows', 'rollback', 'observe'])
     mode = parser.parse_args().mode
+    assert os.environ['AGENTPLATFORM_ACCEPTANCE_STAGE'] == 'r23' or mode != 'rollback', 'R2.4 validates its own R1/V9 compatibility; do not substitute the old V7 rollback probe'
     pin_exported(ENV, DATA, required=True)
     OUT.mkdir(parents=True, exist_ok=True)
     globals()[mode](execution.Client())

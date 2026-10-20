@@ -18,6 +18,28 @@ import static org.junit.jupiter.api.Assertions.*;
 class ProviderTerminationHttpTest {
     private static final byte[] FRAME=("data: {\"id\":\"fixture-cancel\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"x\"},\"finish_reason\":null}]}\n\n").getBytes(StandardCharsets.UTF_8);
 
+    @Test void rejectedTextCallbackCompletesResultBeforeTransportTeardown() throws Exception {
+        var server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
+        var threads=Executors.newVirtualThreadPerTaskExecutor();server.setExecutor(threads);
+        var disconnected=new CountDownLatch(1);
+        server.createContext("/chat/completions",exchange->{
+            try {
+                exchange.getRequestBody().readAllBytes();exchange.getResponseHeaders().set("Content-Type","text/event-stream");exchange.sendResponseHeaders(200,0);
+                for(int i=0;i<500;i++){exchange.getResponseBody().write(FRAME);exchange.getResponseBody().flush();Thread.sleep(10);}
+            } catch(Exception expected){disconnected.countDown();} finally{exchange.close();}
+        });server.start();
+        try(var provider=new DeepSeekChatProvider("http://127.0.0.1:"+server.getAddress().getPort(),true)) {
+            var call=provider.open("deepseek-flash","fixture-not-real",List.of(Message.text(Role.USER,"hello")),text->{
+                throw new com.agentplatform.domain.chat.ChatFailure(409,"TASK_CANCEL_REQUESTED");
+            });
+            var failure=assertThrows(ExecutionException.class,()->call.result().toCompletableFuture().get(5,TimeUnit.SECONDS));
+            var rejected=assertInstanceOf(com.agentplatform.domain.chat.ChatFailure.class,failure.getCause());
+            assertEquals("TASK_CANCEL_REQUESTED",rejected.code());
+            call.terminated().toCompletableFuture().get(5,TimeUnit.SECONDS);
+            assertTrue(disconnected.await(5,TimeUnit.SECONDS));
+        } finally {server.stop(0);threads.close();}
+    }
+
     @Test void cancellationClosesRealHttpAndDoesNotTreatFutureCancellationAsProof() throws Exception {
         var server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
         var serverThreads=Executors.newVirtualThreadPerTaskExecutor();server.setExecutor(serverThreads);

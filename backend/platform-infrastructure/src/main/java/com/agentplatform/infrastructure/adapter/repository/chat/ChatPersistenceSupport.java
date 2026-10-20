@@ -15,7 +15,7 @@ import tools.jackson.databind.json.JsonMapper;
 /** Shared authorization, ownership guards and canonical conversions, without SQL plumbing. */
 abstract class ChatPersistenceSupport {
 
-    public static final UUID BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000008");
+    public static final UUID BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000009");
     static final JsonMapper JSON=JsonMapper.builder().build();
     protected final ChatMappers mappers;
     protected ChatPersistenceSupport(ChatMappers mappers) { this.mappers = mappers; }
@@ -204,7 +204,7 @@ abstract class ChatPersistenceSupport {
             if(row23 != null){var round=object(row23.value1());if("stop".equals(round.get("finishReason"))&&round.get("calls") instanceof List<?> calls&&calls.isEmpty())finalText=(String)round.get("text");}
          }
         String status,reason;
-        if(authorized&&!started&&!uncertain&&!task(c,actor,slotTask,false).cancelRequested()){
+        if(authorized&&!started&&!uncertain&&c.recovery().latest(slotTask)==null&&!task(c,actor,slotTask,false).cancelRequested()){
             // Prepared reservations move back into the task's existing admission hold, not a new budget.
             c.accounting().restorePreparedReservationAllowance(slotTask, slotTask);
             c.accounting().updateModelCall145(slotTask);
@@ -228,7 +228,7 @@ abstract class ChatPersistenceSupport {
         c.dispatch().updateAttempt153(proof.attemptId());
         c.conversation().updateTask154(status, reason, slotTask);
         c.dispatch().deleteConversationLease155(proof.attemptId());
-        c.dispatch().updateExecutionSlot156();
+        c.dispatch().updateExecutionSlot156();c.recovery().finishRequest(proof.attemptId(),"SUCCEEDED".equals(status));
         var payload=new LinkedHashMap<String,Object>();payload.put("taskId",slotTask.toString());payload.put("status",status);payload.put("reasonCode",reason);
         event(c,actor,conversation,slotTask,"task.state_changed",task(c,actor,slotTask,false).version(),payload);
     }
