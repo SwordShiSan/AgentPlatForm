@@ -73,6 +73,8 @@ def window(name):
         if refusal == 'RECOVERY_UNKNOWN_EFFECT':
             assert not projection['eligible'] and projection['reasonCode'] == refusal
         assert operator(body) != 0, 'A damaged/advanced/unknown checkpoint must not queue'
+        diagnostic=(OUT / ('operator-' + body['commandId'] + '.log')).read_text(encoding='utf-8')
+        assert refusal in diagnostic, 'A different failure (including deadline or startup failure) cannot satisfy this refusal gate'
         assert sql("SELECT count(*) FROM pf.checkpoint_recovery WHERE task_id='" + task + "'") == '0'
         assert int(sql("SELECT count(*) FROM pf.model_call WHERE task_id='" + task + "'")) == calls_before
         record(name, dict(task=task, stoppedProof=proof, refusal=refusal, calls=calls_before))
