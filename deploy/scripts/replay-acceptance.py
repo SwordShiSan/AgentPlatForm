@@ -63,6 +63,9 @@ def protocol():
             response = stream(client, conversation, cursor)
             assert response.status == 200 and response.readline().startswith(b':')
             opened.append(response)
+        # Cross multiple watchdog ticks: immediate admission alone missed the
+        # original delayed-read interval overflow seen around the sixth tick.
+        time.sleep(14)
         assert status(client, conversation, cursor) == 503
         assert sql("SELECT count(*) FROM pg_stat_activity WHERE usename='ap_chat_api' AND state='idle in transaction'") == '0'
         assert int(sql("SELECT count(*) FROM pg_stat_activity WHERE usename='ap_chat_api'")) <= 4
@@ -70,8 +73,10 @@ def protocol():
     finally:
         for response in opened:
             response.close()
+    closed_at=time.monotonic()
     wait(lambda: status(client, conversation, cursor) == 200, 35)
-    assert time.monotonic()-started < 40
+    returned=time.monotonic()-closed_at
+    assert returned < 35
     assert sql("SELECT has_function_privilege('ap_chat_api','pf.collect_expired_replay(uuid)','EXECUTE')") == 't'
     assert sql("SELECT has_function_privilege('ap_chat_worker','pf.collect_expired_replay(uuid)','EXECUTE')") == 'f'
     for role in ['ap_chat_api','ap_chat_worker']:
@@ -86,7 +91,8 @@ def protocol():
     assert version == sql("SELECT version::text||'/'||updated_at::text FROM pf.conversation WHERE id='"+conversation+"'")
     assert int(sql("SELECT replay_pruned_through FROM pf.conversation WHERE id='"+conversation+"'")) == cursor
     assert sql('SELECT physical_calls FROM pf.acceptance_model_meter WHERE id=1') == '0'
-    return {'status':'PASS','cursor':cursor,'eightConnections':True,'ninthStatus':503,'idleTransactions':0,
+    return {'status':'PASS','cursor':cursor,'eightConnections':True,'eightConnectionHoldSeconds':14,'ninthStatus':503,'idleTransactions':0,
+            'disconnectAdmissionReturnedWithinSeconds':returned,
             'prunedCursorStatus':410,'watermarkCursorStatus':200,'canonicalSnapshotUnchanged':True,'leastPrivilege':True,
             'sample':execution.sample(),'realProviderCalls':0}
 
