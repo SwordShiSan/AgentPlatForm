@@ -1,0 +1,535 @@
+{
+  "stage": "R2.2",
+  "status": "FUNCTIONAL_GATES_PASS_PROMOTION_PENDING",
+  "recordedAt": 1792472531.7589262,
+  "baseline": "9412d2c6b741791ad850ec870f359852dff52a63",
+  "receiptSource": "1ac938fcfd09e6804810ad8eb2ed65474730a761",
+  "candidateSource": "9d6bbd63b2b4338656cb3a45f81be5235503b7c6",
+  "componentSources": {
+    "api": "2973cfc287b5177411a09fcccd0de0492c614d7c",
+    "gateway": "9d6bbd63b2b4338656cb3a45f81be5235503b7c6",
+    "provider-fixture": "2973cfc287b5177411a09fcccd0de0492c614d7c",
+    "framework-probe": "2973cfc287b5177411a09fcccd0de0492c614d7c"
+  },
+  "backendTree": "7e0ed4310c61c3a8a9a687e3559d4487b3ff5b43",
+  "jarSha256": "e5db73cbe3ca5b623bcf4702e9f238ada6834f2e138e775ce5c9146569265428",
+  "runtimeInputEquivalenceVerified": true,
+  "images": [
+    {
+      "component": "api",
+      "tag": "agentplatform-api:r22-local",
+      "source": "2973cfc287b5177411a09fcccd0de0492c614d7c",
+      "localId": "sha256:021db7dd99f30f626cba6f3c36cde644bb70a91f2feb70a2e1f871a9a60e04cb",
+      "indexDigest": "sha256:021db7dd99f30f626cba6f3c36cde644bb70a91f2feb70a2e1f871a9a60e04cb",
+      "manifestDigest": "sha256:6b1530b88c2c39dd0e4a46ef05899f663c86379e611110ce6dea065db604b0e4",
+      "configId": "sha256:0fb00bfa66ce7d5d7ca732c26499cc1eb5162b9af5dc1cee0e647d77d67c5676",
+      "platform": "linux/amd64",
+      "archiveBytes": 172017111,
+      "archiveSha256": "c8d8eb9d42e93e1e3a5593867c8a026b7c997d9352c94f5b0d5751a5c22dbfdf",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/0fb00bfa66ce7d5d7ca732c26499cc1eb5162b9af5dc1cee0e647d77d67c5676",
+          "RepoTags": [
+            "agentplatform-api:r22-local"
+          ],
+          "Layers": [
+            "blobs/sha256/a60ef8ec184edb5ed91f5983f00261359fb2fe20f603e8d488b9477d32fcad70",
+            "blobs/sha256/49b14164d4d96e593cb68db980906b691931cdcde6f60b918280317c89e55462",
+            "blobs/sha256/7c48d168a51b541814c6814256cd298e11114f5f088e4511cffb4f6b3622d1b6",
+            "blobs/sha256/5165dac19553999758e23bf9247e5bac05f0d26ee503d13bf70c1e8873eb8d37",
+            "blobs/sha256/02e0e048361058af7411fe47569c4d90b68a917dba037514c3831b7bf7029c7b",
+            "blobs/sha256/412e0e29481a7beb80ad1ff4a3d8b9e96ab550d543ca4bc6f517f1e3d0760a0a",
+            "blobs/sha256/e853f8f7960b2e985bf5ed05a3af6a38a27316096ae6879300129a7f4fa4b144",
+            "blobs/sha256/9eb98206ef7245fefcbcc02a84991853ff07a7bec667121d5e8d3743205f54e1"
+          ]
+        }
+      ],
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    },
+    {
+      "component": "gateway",
+      "tag": "agentplatform-gateway:r22-local",
+      "source": "9d6bbd63b2b4338656cb3a45f81be5235503b7c6",
+      "localId": "sha256:973623bed02844490603bca07cc4cf5e24a395d0f21c6f4379e5022f60cd4510",
+      "indexDigest": "sha256:973623bed02844490603bca07cc4cf5e24a395d0f21c6f4379e5022f60cd4510",
+      "manifestDigest": "sha256:aa0989bafe5b650de987ff6d1177ed632af43f58ce5ad07b3626fbf47aa50944",
+      "configId": "sha256:de57e4b9399b74d036b9e29a67055b76604dcabbb88b011789cc4ee429527267",
+      "platform": "linux/amd64",
+      "archiveBytes": 25605783,
+      "archiveSha256": "4d728e7e6c5ac5dbcd99154af3cdc034743b22691188c08890516d4b9771412a",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/de57e4b9399b74d036b9e29a67055b76604dcabbb88b011789cc4ee429527267",
+          "RepoTags": [
+            "agentplatform-gateway:r22-local"
+          ],
+          "Layers": [
+            "blobs/sha256/e2de96513ba9eb53b431787ec8a65cdde380ac4772a3e4c4b714dcfde2a102b5",
+            "blobs/sha256/655cdf110ce6cc8b81dc0bf0d471a4fb200eac950a7a108ed5335b91ed3ef07b",
+            "blobs/sha256/cb3dcaeaef3012c03cc5ba44f04289e06247ee28b0396073f0c1aa4667e08cd6",
+            "blobs/sha256/c792e3f2c3b45eb2b0ab9ca191eb1c881394ef80dc9b03a728d4241709cfd309",
+            "blobs/sha256/dfd17a001b4375f4b03069aa2c6c03e965543d91589d9f7399dae7c3798037bd",
+            "blobs/sha256/69146b4a52cfd86bdd87919b33fc3c6afd168c7911c27d3805d48212887b2e4f",
+            "blobs/sha256/1f9e9a0fcad78d32ce75d315476a02e8c85818e0db3191e375796df6d1594dda",
+            "blobs/sha256/db0e3cd9a4f71fb319f83c2b8da0c7ba756419e6d8a8671e117dcba315656b39",
+            "blobs/sha256/ab0d6d0b8f06a2555ffb7e2777729ed4c2c656d62a2869414c9df71b527c4b41",
+            "blobs/sha256/9ca08f9bda90694d90083144d9356cc3d0731c071c7e4b577f4cda3b2a135428",
+            "blobs/sha256/59ac13a6197cb75737dfff362c49f2257d31c3c6e3abfe124029654c06c910b0"
+          ]
+        }
+      ],
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    },
+    {
+      "component": "provider-fixture",
+      "tag": "agentplatform-provider-fixture:r22-local",
+      "source": "2973cfc287b5177411a09fcccd0de0492c614d7c",
+      "localId": "sha256:c42dce48f61c216b661135b16ac49e8fdf023bb39af13272d8d66303f87ba56f",
+      "indexDigest": "sha256:c42dce48f61c216b661135b16ac49e8fdf023bb39af13272d8d66303f87ba56f",
+      "manifestDigest": "sha256:1061f50509189ae0a6b43123708f8497853afc30cc52338f065a0bfc4dda9372",
+      "configId": "sha256:f2839d3ab84979e4ae816c0428cd59ef13ac227220b952067d7281ad06d33e7a",
+      "platform": "linux/amd64",
+      "archiveBytes": 42953869,
+      "archiveSha256": "32892fcfbb9968feaa94429d95444d711161c1d3539c9c0a192ac4b527c3fc97",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/f2839d3ab84979e4ae816c0428cd59ef13ac227220b952067d7281ad06d33e7a",
+          "RepoTags": [
+            "agentplatform-provider-fixture:r22-local"
+          ],
+          "Layers": [
+            "blobs/sha256/ecc510c1e359bdc007b39802570bb7e4dec7d6ebccf357c3201a74299113e05e",
+            "blobs/sha256/75b6a36c64a1cf3520fc4b4aae4739d5caa8a6a05c27835a920a61784c9c32f8",
+            "blobs/sha256/6912e23eb44595b44dc6d9882b34f305ad6f6e9667cec70b13e5dbc4f8cd97f4",
+            "blobs/sha256/bbc5a12237474ec0b23b5051260d56d6436a24d70d9cad961adebe7a037ed813",
+            "blobs/sha256/eb3d6976bef3166b7b0b09edd5b2a013c9e575d1bb8cc6569372a03cb4511f75"
+          ]
+        }
+      ],
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    },
+    {
+      "component": "framework-probe",
+      "tag": "agentplatform-framework-probe:r22-local",
+      "source": "2973cfc287b5177411a09fcccd0de0492c614d7c",
+      "localId": "sha256:62ca3bdc14f8272d024ec5836e2e9c30ae814ecad2aa9f6db8276f888f443660",
+      "indexDigest": "sha256:62ca3bdc14f8272d024ec5836e2e9c30ae814ecad2aa9f6db8276f888f443660",
+      "manifestDigest": "sha256:f8b909253f7f110dac4cde77b9833d8f663f9ce1fb1f07dcadb836a3da032d02",
+      "configId": "sha256:ed424412e963dd59a4d3d4460ae96d3841bfc8a40d6171152f26ae8f7cc282ee",
+      "platform": "linux/amd64",
+      "archiveBytes": 303002305,
+      "archiveSha256": "7a7006737d4cacbffd3706da13f68469e0d6d241c389d0ce47003d2c7f5ffb13",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/ed424412e963dd59a4d3d4460ae96d3841bfc8a40d6171152f26ae8f7cc282ee",
+          "RepoTags": [
+            "agentplatform-framework-probe:r22-local"
+          ],
+          "Layers": [
+            "blobs/sha256/a60ef8ec184edb5ed91f5983f00261359fb2fe20f603e8d488b9477d32fcad70",
+            "blobs/sha256/8b068c321b37c6e50e8ca50209806303ebbb676b492a08070ba9d79a0f7df6f8",
+            "blobs/sha256/61d5a0d738f6fd8344abcdcf7c1b734d9adbf8d5161b30b80fbf9533b8ab0bb2",
+            "blobs/sha256/dc6abd946a0778c24a3d28c86aa3ecec2fbb7f1f681a12f2411c7664d5652812",
+            "blobs/sha256/ab0753bfa4f1a7af00cc2acca04a6ef15ab39b5b5f182052d379bb3980dfc1d2",
+            "blobs/sha256/ba8298971da319dc1d90f8792c3c7a2fde9957949c8e1e0be6a2f86b5fd529e6",
+            "blobs/sha256/20d69898eacee8f6293ca4a443664f06b6502362cecb74ef91fa98955ee93172",
+            "blobs/sha256/cc556ed787d0c682c961db60b731ae895fc1c2c402faeed61eeffe83fdef3ea1",
+            "blobs/sha256/3da0fdb200e44dccca95c13719f959c0dbf035033103530f33b1532ede49f624",
+            "blobs/sha256/3048bef0398efd2cb02b20d17796d9df39964f376634ed26996cbe6711fbe081",
+            "blobs/sha256/ac1facc324e45cfe67cb42cb0995fd3fdb7db75e4168d8ab0581ae9d759d6a81",
+            "blobs/sha256/c8af4194d5a32fda2b458d4aab08b0ed8345bfe4727d86a981b90347e90db660"
+          ]
+        }
+      ],
+      "registry": "LOCAL_ONLY_NOT_PUSHED"
+    }
+  ],
+  "schema": 7,
+  "runtimeBaseline": 1,
+  "legacyMigrationsUnchanged": [
+    {
+      "path": "backend/platform-app/src/main/resources/db/migration/V1__runtime_state_baseline.sql",
+      "gitBlob": "d5601b1546d8539f7f092146138682b453b04efc"
+    },
+    {
+      "path": "backend/platform-app/src/main/resources/db/migration/V2__identity_personal_space.sql",
+      "gitBlob": "293de193229f6a416dab70aaee4814a91453d51a"
+    },
+    {
+      "path": "backend/platform-app/src/main/resources/db/migration/V3__queued_text_chat.sql",
+      "gitBlob": "16f74f290bb9f97177cb92672d738e309d6fa305"
+    },
+    {
+      "path": "backend/platform-app/src/main/resources/db/migration/V4__chat_configuration.sql",
+      "gitBlob": "64729a863e535af52cb031930b8aa970c8a7d76e"
+    },
+    {
+      "path": "backend/platform-app/src/main/resources/db/migration/V5__trace_failure_diagnostics.sql",
+      "gitBlob": "173a53bffaf2f577f56f7d88475e71235f278747"
+    },
+    {
+      "path": "backend/platform-app/src/main/resources/db/migration/V6__execution_ownership_ledger.sql",
+      "gitBlob": "be2b767a0b9dd72f3d02849d682861d8a7c066d7"
+    }
+  ],
+  "environment": {
+    "project": "agentplatform-r22-local",
+    "engine": "Docker Desktop Linux / Engine28.5.1",
+    "actualEngineMemoryBytes": 8256708608,
+    "minimumPhysicalHostCapacityClaim": false,
+    "containerLimitBytes": 2650800128,
+    "maxCombinedMiB": 2887,
+    "hostReserveMiB": 768,
+    "executionSlots": 1,
+    "swapCapacityExtension": false,
+    "realSupplierCalls": 0,
+    "cloudR1Changed": false
+  },
+  "engineering": {
+    "maven": {
+      "tests": 160,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "frontendTests": 34,
+    "linuxNonRootTests": 58,
+    "browserTests": 18,
+    "resolvedExternalArtifacts": 171,
+    "scope": "Full backend/PG/MQ regression; frontend types/unit/build/contracts; native HTTP transport; immutable Linux probe; two browser rate-window groups"
+  },
+  "protocol": {
+    "status": "PASS",
+    "cursor": 9,
+    "preflightCleanupWaitSeconds": 35,
+    "eightConnections": true,
+    "eightConnectionHoldSeconds": 14,
+    "ninthStatus": 503,
+    "idleTransactions": 0,
+    "disconnectAdmissionReturnedWithinSeconds": 3.539301200013142,
+    "prunedCursorStatus": 410,
+    "watermarkCursorStatus": 200,
+    "canonicalSnapshotUnchanged": true,
+    "leastPrivilege": true,
+    "realProviderCalls": 0,
+    "mode": "protocol",
+    "candidateSource": "9d6bbd63b2b4338656cb3a45f81be5235503b7c6",
+    "testSource": "50ac19015373492894856fcabf86eb12197804dd",
+    "scriptSha256": "17c2a2b0b9720b79d055eba105832da9eac10eca1a7ebe9215a6dd6ed8b4bd3e"
+  },
+  "liveFailures": {
+    "status": "PASS",
+    "closureSeconds": {
+      "membership": 0.5433861999772489,
+      "session": 2.04228640004294,
+      "database": 1.2841384999919683
+    },
+    "noPostHeaderProblem": true,
+    "modelCallsUnchanged": true
+  },
+  "pressure": {
+    "status": "PASS",
+    "syntheticTransportEvents": 8192,
+    "perEventTextBytes": 2048,
+    "capacityReturnedWithinSeconds": 12.371120199968573,
+    "specificSocketLifetimeClaim": false,
+    "canonicalHistoryClaim": false,
+    "platformReady": true,
+    "postPressureTask": "SUCCEEDED"
+  },
+  "crashWindows": [
+    {
+      "point": "claim-before-ack",
+      "status": "PASS",
+      "result": "SUCCEEDED",
+      "calls": 1,
+      "realProviderCalls": 0,
+      "generation": 2
+    },
+    {
+      "point": "ack-before-model",
+      "status": "PASS",
+      "result": "SUCCEEDED",
+      "calls": 1,
+      "realProviderCalls": 0,
+      "generation": 2
+    },
+    {
+      "point": "response-before-round",
+      "status": "PASS",
+      "result": "BLOCKED",
+      "calls": 1,
+      "realProviderCalls": 0,
+      "generation": 1
+    },
+    {
+      "point": "round-before-checkpoint",
+      "status": "PASS",
+      "result": "SUCCEEDED",
+      "calls": 1,
+      "realProviderCalls": 0,
+      "generation": 1
+    },
+    {
+      "point": "checkpoint-before-seal",
+      "status": "PASS",
+      "result": "SUCCEEDED",
+      "calls": 1,
+      "realProviderCalls": 0,
+      "generation": 1
+    },
+    {
+      "point": "checkpoint-after-seal",
+      "status": "PASS",
+      "result": "SUCCEEDED",
+      "calls": 1,
+      "realProviderCalls": 0,
+      "generation": 1
+    }
+  ],
+  "continuousTasks": 12,
+  "dependencyOutages": {
+    "status": "PASS",
+    "evidenceSha256": "da8f6cfc5de3ab541fb801bfe2a6c577a5ceefacb05140fc3f0061ab63af4b98"
+  },
+  "collection": {
+    "status": "PASS",
+    "realApplicationHistory": true,
+    "simulatedAgeOnly": true,
+    "collectors": 2,
+    "oldPrefix": 9,
+    "deletedPerCall": [
+      9,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "preservedFactSha256": {
+      "task": "64e884235b11d2a6c79fbfaaa3e1620fdabe1619ad6aa83dfe3b0626e1b11a78",
+      "message": "08bb43b677fc854faa69adb633bfc7ebabcbb747204a4f393131e74bfa2faee4",
+      "attempt": "957c316c5e761e7ee0a3f79007e4674709ea7fa11ec881adf2d26d9bef8b11e6",
+      "model_call": "29402717f911be9f11905a601aebc2f1a12c03508b782f4d617827bedf6d2f1c",
+      "model_turn": "2b78644cab78075b8887815c1c52a53ea1589d8a3e22e6d42ff6a8303208bbe2",
+      "checkpoint": "a4dde958e039252786f7d4c2739ff794789af489df64dedd66bfe79de2deb766",
+      "budget_reservation": "41cbfb8cd052f4ea47ab44e7703bea8f2c70f0f40dc056d1ba1335a37fe68f1f",
+      "event_outbox": "c4605205f984684fb3d0edc091c88554e12684e282fa08c5ed585d9e86197e9b",
+      "consumer_inbox": "a19f7356f88792db4d202d29bc0c6b8ab206941a3cc9b0872c8b19630be15d44"
+    },
+    "youngTailContiguous": true,
+    "realProviderCalls": 0
+  },
+  "observation": {
+    "status": "PASS",
+    "durationSeconds": 1809.5265952000045,
+    "sampleCount": 42,
+    "tasks": 42,
+    "availableMemoryMinBytes": 6005776384,
+    "availableMemoryMaxBytes": 6142205952,
+    "swapUsedFirstBytes": 0,
+    "swapUsedLastBytes": 0,
+    "databaseFirstBytes": 19805875,
+    "databaseLastBytes": 18757299,
+    "databaseGrowthBytes": -1048576,
+    "prunedConversationsFirst": 4,
+    "prunedConversationsLast": 45,
+    "inWindowDependencyFailure": {
+      "status": "PASS",
+      "startedAtSeconds": 633.3201694000163,
+      "endedAtSeconds": 813.2198152000201,
+      "brokerAndActiveDatabaseFailure": true,
+      "unknownNotReplayed": true,
+      "evidenceSha256": "da8f6cfc5de3ab541fb801bfe2a6c577a5ceefacb05140fc3f0061ab63af4b98"
+    },
+    "absolutePeakOrHigherConcurrencyClaim": false
+  },
+  "rollback": {
+    "status": "PASS",
+    "previousSource": "cd879ff273846c47a4da483a17b4a3b50462eb93",
+    "previousImage": "sha256:67cd2f37abfcc4d7aa13230afe9a99549a11db5a2bd7228e7cef84f553ef87fc",
+    "schema": 7,
+    "runtimeBaseline": 1,
+    "snapshotReadable": true,
+    "deterministicChatRoundTrip": true,
+    "realProviderCalls": 0,
+    "mode": "rollback",
+    "recordedAt": 1792470634.309526,
+    "candidateSource": "9d6bbd63b2b4338656cb3a45f81be5235503b7c6",
+    "componentSources": {
+      "api": "2973cfc287b5177411a09fcccd0de0492c614d7c",
+      "gateway": "9d6bbd63b2b4338656cb3a45f81be5235503b7c6",
+      "provider-fixture": "2973cfc287b5177411a09fcccd0de0492c614d7c",
+      "framework-probe": "2973cfc287b5177411a09fcccd0de0492c614d7c"
+    },
+    "testSource": "1ac938fcfd09e6804810ad8eb2ed65474730a761",
+    "scriptSha256": "0ee6d5cd50670eb107aba56b2169e2edf7f442ea91b3e97f6cdd385de2c408ce"
+  },
+  "evidenceIndex": [
+    {
+      "file": ".cache/r22-local/engineering.json",
+      "sha256": "4feabc91a58be21ce9ac0d0ff20595f7d0d7ea51fb66cc729dbadf8b49e1f5e2",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-local/artifacts/images.json",
+      "sha256": "573b00eddb37c96ce8b179e1d46abcecb8cddbdfa576cdae97423226c450f7d5",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-local/acceptance/replay-protocol.json",
+      "sha256": "39c71b721742ab093093c3ffb551731b06c3d8ea7b3b80aff7f43231ae883a38",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-local/acceptance/replay-failures.json",
+      "sha256": "64cfb4d5ecf76a35bffa7de56defd7b7f3e9d0962eb9d9c995fd3558127cf4b1",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-local/acceptance/replay-pressure.json",
+      "sha256": "703ac18c194dcb2206762d436c1381bb38caba185f0a1dcb97564953547c0d81",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-local/acceptance/replay-rollback.json",
+      "sha256": "565c0eec7dc62dd7b340bb195a9f73bd76a2f7c3b2629290bee6ab1093fc9fb8",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-local/acceptance/replay-collection.json",
+      "sha256": "5157828ec996c1a768a412ef10828a12b7851a0ccccf248d1e7914116d5ec4d3",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-local/acceptance/replay-observe.json",
+      "sha256": "660f67df9c37b66623ceb90b4fae7d67e13d3dde5468f26397493930355c92de",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-local/acceptance/continuous.json",
+      "sha256": "ba73eb2a10fcbb5e416ba43dcea924d2b23d4f2a8b1f883022af2d74b37bb3f1",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-local/acceptance/outages.json",
+      "sha256": "da8f6cfc5de3ab541fb801bfe2a6c577a5ceefacb05140fc3f0061ab63af4b98",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-local/acceptance/runtime-audit.json",
+      "sha256": "51a84f4e7579b69ad5e17016862af44cd88fef0dd53d5edf80384e34eea94768",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-local/acceptance/claim-before-ack.json",
+      "sha256": "97a2cfffe43edb08880d9dd0499ebb359b1dfb0f154a6b40ede04964a3958584",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-local/acceptance/ack-before-model.json",
+      "sha256": "a894ebb4e98bc351c80000efd38c334b080cf42788e437012a2b0ca2fe2148b5",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-local/acceptance/response-before-round.json",
+      "sha256": "9dfba2b036aa62359419f35f44b3f53fd6126bd07907601f390e20ca885065d1",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-local/acceptance/round-before-checkpoint.json",
+      "sha256": "7a049eb5b98dc7f9829f05083f1002fb5ce8e9708f443338829fd13ba724e747",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-local/acceptance/checkpoint-before-seal.json",
+      "sha256": "86f00265f7af6ccbedafb7f5e5fbca144df2ac686e978c5dee686cef9f45e742",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-local/acceptance/checkpoint-after-seal.json",
+      "sha256": "87c7c6f9278668a7ce9e748dd16a3d4974fcd70a4685e5fd8de7dbdca2a80f42",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-browser.log",
+      "sha256": "dadbca73282f6bb48fe90652f29efcf1b5ff90fd936ef34f1d60400c0a032012",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-linux-sdk.log",
+      "sha256": "3474c4efcab969ecb6b0574565d99a95ef8b6f7dc2a362dbf6f992aa24da6eae",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-maven-verify.log",
+      "sha256": "acf28169e62a3f530c388665b4a44f91b3c3a1a9c7fb2f08d39e0497bb73877e",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-crashes.log",
+      "sha256": "79b0af386a9bf13d3ea7beb836a6b71ad2480f0919988ced79f19c118574b9a8",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-outages.log",
+      "sha256": "c5bc6e8e16830d68e774c6aa0a85a1bb133c3f7e75db8edad2278a8a05047daf",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-continuous.log",
+      "sha256": "b5548f4e2bb3c7720870b221761c0c66790c816cd801c42eed356327a0a8dc65",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-rollback.log",
+      "sha256": "598923edb3d4f200ed17d64bd67a0a3e4e752d2784d857bd52fd30da5a628aea",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    },
+    {
+      "file": ".cache/r22-observe.log",
+      "sha256": "7a67b2111de998b68c40d9d3c25c0e7911917dede66bf02325bfbe071d3e05d8",
+      "rawMaterial": "PROTECTED_LOCAL_ONLY"
+    }
+  ],
+  "historicalFailures": "Preserved privately: provisional watchdog overflow, cold/browser/navigation/rate-window and preflight cleanup assumptions; explicit passing reruns supersede them. Raw browser material can contain form values and is excluded.",
+  "delivery": "Sanitized receipt and canonical body are separate protected local packages; cloud body sync is not claimed.",
+  "specEvidence": {
+    "Consistent authorized snapshots and replay": [
+      "ChatPostgresTest36",
+      "ChatProjectionTest",
+      "protocol",
+      "liveFailures"
+    ],
+    "Bounded framework SSE lifecycle": [
+      "ChatStreamingHttpTest6",
+      "protocol",
+      "pressure",
+      "liveFailures"
+    ],
+    "Monotonic safe retention": [
+      "ChatPostgresTest V7 upgrade/prefix/rollback/DB-time/RR cases",
+      "collection",
+      "observation"
+    ],
+    "Generation-scoped browser recovery": [
+      "event-stream.test.ts",
+      "stream-state.test.ts",
+      "real API browser18/18 including delayed snapshot/offline/expiry cases"
+    ]
+  },
+  "boundaries": [
+    "No cloud deployment or production tag",
+    "No real supplier requests",
+    "No eight-task concurrency claim",
+    "R2.3 requires separate Plan/OpenSpec",
+    "Canonical facts survive disposable replay collection"
+  ],
+  "runtimeAudit": {
+    "status": "PASS",
+    "sentinelLeaks": 0,
+    "apiCiphertextReadDenied": true,
+    "workerStopProofReadDenied": true,
+    "schema": 7
+  }
+}
