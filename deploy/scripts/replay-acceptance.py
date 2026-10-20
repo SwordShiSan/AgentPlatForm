@@ -3,6 +3,7 @@ import argparse
 import importlib.util
 import json
 import time
+import socket
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -122,6 +123,101 @@ def observe():
             'realProviderCalls':0,'capacityClaim':'Single-slot container limits and sampled usage only; actual host identity is in samples'}
 
 
+def failures():
+    client=execution.Client()
+    conversation=completed(client)
+    cursor=client.request('GET','/api/v1/conversations/'+conversation+'/snapshot')['cursor']
+    actor=client.request('GET','/api/v1/me')['id']
+    durations={}
+    # Membership is rechecked in every replay transaction, including for administrators.
+    response=stream(client,conversation,cursor)
+    assert response.readline().startswith(b':')
+    started=time.monotonic()
+    try:
+        sql("UPDATE pf.membership SET status='REVOKED' WHERE user_id='"+actor+"'")
+        tail=response.read()
+        durations['membership']=time.monotonic()-started
+        assert durations['membership']<5 and b'problem' not in tail
+    finally:
+        response.close()
+        sql("UPDATE pf.membership SET status='ACTIVE' WHERE user_id='"+actor+"'")
+    response=stream(client,conversation,cursor)
+    assert response.readline().startswith(b':')
+    started=time.monotonic()
+    try:
+        sql("UPDATE pf.auth_session SET revoked_at=now() WHERE user_id='"+actor+"' AND revoked_at IS NULL")
+        tail=response.read()
+        durations['session']=time.monotonic()-started
+        assert durations['session']<6 and b'problem' not in tail
+    finally:
+        response.close()
+    client=execution.Client()
+    before=sql('SELECT count(*) FROM pf.model_call')
+    response=stream(client,conversation,cursor)
+    assert response.readline().startswith(b':')
+    started=time.monotonic()
+    try:
+        command(COMPOSE+['stop','postgres'])
+        tail=response.read()
+        durations['database']=time.monotonic()-started
+        assert durations['database']<12 and b'problem' not in tail
+    finally:
+        response.close()
+        command(COMPOSE+['up','-d','--wait','--wait-timeout','90','postgres'])
+    wait(lambda: execution.http_status(client,'/api/v1/me')==200,60)
+    assert before==sql('SELECT count(*) FROM pf.model_call'), 'Replay dependency recovery never initiates a model call'
+    assert status(client,conversation,cursor)==200
+    return {'status':'PASS','closureSeconds':durations,'noPostHeaderProblem':True,'modelCallsUnchanged':True,'realProviderCalls':0}
+
+
+def pressure():
+    client=execution.Client()
+    actor=client.request('GET','/api/v1/me')
+    space=next(item['id'] for item in actor['spaces'] if item['type']=='PERSONAL')
+    conversation=client.request('POST','/api/v1/conversations',{'title':'R2.2 synthetic transport fixture'})['id']
+    # Explicit transport-only fixture; these rows do not claim a canonical model/tool history.
+    sql("INSERT INTO pf.platform_event(id,space_id,conversation_id,seq,type,schema_version,entity_version,payload_json) "
+        +"SELECT gen_random_uuid(),'"+space+"','"+conversation+"',n,'message.delta',1,n,"
+        +"jsonb_build_object('messageId','00000000-0000-4000-8000-000000000001','blockId','00000000-0000-4000-8000-000000000001','offset',(n-1)*2048,'text',repeat('x',2048)) "
+        +"FROM generate_series(1,8192) n; UPDATE pf.conversation SET next_seq=8192 WHERE id='"+conversation+"'")
+    jar=next(handler.cookiejar for handler in client.opener.handlers if hasattr(handler,'cookiejar'))
+    cookie='; '.join(item.name+'='+item.value for item in jar)
+    opened=[]
+    sock=socket.socket()
+    sock.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1024)
+    started=time.monotonic()
+    try:
+        sock.connect(('127.0.0.1',18090))
+        wire=('GET /api/v1/conversations/'+conversation+'/events?after=0 HTTP/1.1\r\nHost: 127.0.0.1\r\nAccept: text/event-stream\r\nCookie: '+cookie+'\r\n\r\n').encode('ascii')
+        sock.sendall(wire)
+        # Consume headers, then deliberately stop reading the socket.
+        sock.settimeout(5)
+        header=b''
+        while b'\r\n\r\n' not in header:
+            header+=sock.recv(1)
+        assert b' 200 ' in header
+        for _ in range(7):
+            response=stream(client,conversation,8192)
+            assert response.readline().startswith(b':')
+            opened.append(response)
+        assert client.request('GET','/api/v1/readiness')['status']=='READY'
+        assert sql("SELECT count(*) FROM pg_stat_activity WHERE usename='ap_chat_api' AND state='idle in transaction'")=='0'
+        assert status(client,conversation,8192)==503
+        wait(lambda: status(client,conversation,8192)==200,35)
+        released=time.monotonic()-started
+        assert released<35
+    finally:
+        sock.close()
+        for response in opened:
+            response.close()
+    normal=completed(client)
+    assert client.request('GET','/api/v1/conversations/'+normal+'/snapshot')['tasks'][-1]['status']=='SUCCEEDED'
+    sql("UPDATE pf.platform_event SET created_at=now()-interval '31 days' WHERE conversation_id='"+conversation+"'")
+    return {'status':'PASS','syntheticTransportEvents':8192,'perEventTextBytes':2048,'capacityReturnedWithinSeconds':released,
+            'specificSocketLifetimeClaim':False,'specificSlowWriterBoundEvidence':'ChatStreamingHttpTest stopped-reader uses direct admission/writer counters',
+            'canonicalHistoryClaim':False,'platformReady':True,'postPressureTask':'SUCCEEDED','sample':execution.sample(),'realProviderCalls':0}
+
+
 def rollback():
     previous=json.loads((ROOT/'.cache/r2c-local/artifacts/images.json').read_text(encoding='utf-8'))
     old=next(item for item in previous if item['component']=='api')
@@ -151,13 +247,13 @@ def rollback():
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode',choices=['protocol','observe','rollback'])
+    parser.add_argument('mode',choices=['protocol','failures','pressure','observe','rollback'])
     args=parser.parse_args()
     pin_exported(ENV,DATA,required=True)
     OUT.mkdir(parents=True,exist_ok=True)
     result={'status':'FAIL','mode':args.mode}
     try:
-        result=globals()[{'protocol':'protocol','observe':'observe','rollback':'rollback'}[args.mode]]()
+        result=globals()[args.mode]()
     finally:
         result['mode']=args.mode
         result['recordedAt']=time.time()
