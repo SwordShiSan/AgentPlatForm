@@ -1,3 +1,24 @@
+# 2026-10-22 current conclusion: mandatory acceptance PASS, protected promotion pending
+
+Application/helper immutable source `8682c9c69b1cdcc5499097b949262e3f39322baf`; corrected test source `df33e81b246c9da8cf034a24b445f16e0c33976c`. All six modules' production class hashes match the canonical application build. No production input or V1–V9 changed after the candidate. See [sanitized acceptance](../../../deploy/r3.1-acceptance.json) and [evidence index](../../../evidence/r31/evidence-index.json).
+
+| Gate | Final evidence / scope | Result |
+|---|---|---|
+| Framework/engineering | Canonical Maven verify/DDD/Enforcer/XML,190-artifact lock, frozen frontend,typecheck,34 unit tests,build,contracts and illegal fixtures;51 non-root SDK and Engine/Jackson probes;7 Linux helper boundaries | PASS |
+| Real persistence/dispatch/signatures |17 actual PG/MQ tests,5 runner HTTP and6 signature cases;fresh/V9→V10, live membership/admin isolation, rollback/concurrent idempotency/capacity, leases/fences/commit-time checks, confirm/return/ACK/connection loss | PASS |
+| Real process windows | Claim before commit,claim after commit before ACK,ACK before runner,helper exit before receipt; two consumers, persisted handoff and one physical effect; uncertain cases retain BLOCKED/owner/fence/reservation | PASS |
+| Real browser | Three local real sessions; lost create response/stable key, explicit ERROR retry, actual BLOCKED read-only, refresh/scope/CSRF/logout,375/768/1440,light/dark,CSS200%,keyboard | PASS |
+| Old application | Released R2 immutable app on current isolated V10: readiness/login/me/personal-space; no production migration | PASS |
+| Native storage | Exact helper read-only loop with unchanged four caps;2GiB overflow and100000 inode refusal (99998 files),0700 safe drop, UUID/data/hash/quota after remount; helper SIGKILL gap recovers by GET with exactly one create/start | PASS |
+| Trusted canary | Official runsc20261005.0/systrap Python/Node/files; no network/root/socket;PID,memory,CPU/termination and gVisor XFS refusal. It is internal-only; no business sandbox/environment delivered | PASS |
+| Observation |1806.668247s,104 explicit retries,actual MQ/runner/PG restarts,106 host samples; runner384MiB,total with helper2848MiB, sampled maxRSS295556KiB; process sampler1748.292s is separate from full host observation | PASS |
+| Restore | Original ten R2 IDs/config/mounts/restart policies and production XFS UUID;production DB stillV9;legacy ten stopped/two maintenance tasks paused;all trial resources stopped/test loop detached;IP/Host checks plus real public login/history/isolation/logout without message submission | PASS |
+| Protected promotion/archive/packages | Required after self-review, Actions disabled; no R3 production tag/deploy | PENDING |
+
+The full window's original `result.json` remains FAIL because its host probe looked for runsc on PATH. XFS and observation had already passed. A separate bounded serial native-only window read the existing daemon's pinned absolute runtime path, reran native storage/gVisor and restored the same R2; `native-recheck-result.json` is PASS. No application, runtime binary or isolation setting changed, and the failed result is not rewritten. Initial256MiB OOM and prior missing-loop-node failures remain historical FAIL. Optional cloud browser credential export is NOT_RUN after automatic approval rejection; no export or indirect token workaround occurred. Required real browser acceptance is local; final production browser uses pre-existing protected local credentials and masks history screenshots.
+
+Zero real supplier calls, no R3 production deployment. Every mandatory acceptance item has an exact receipt/hash; closure and VERIFIED wait for protected promotion. The following sections are historical progress, including earlier pending/failed gates, not the current outcome.
+
 # R3.1 required gates
 
 Plan approved2026-10-21. Baseline main93a87573ee43f1105fd77b91fd0b29b171068d6a; R2 released. Each result binds source, command/exit, assertions, image/config and fixture. Keep FAIL/NOT_RUN history; no paid supplier calls. Production switch evidence is separately retained in .cache/r31-switch-browser and host operations/platform-switch.

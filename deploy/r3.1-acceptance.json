@@ -1,0 +1,304 @@
+{
+  "stage": "R3.1",
+  "status": "ACCEPTANCE_PASS_PENDING_PROTECTED_PROMOTION",
+  "applicationSource": "8682c9c69b1cdcc5499097b949262e3f39322baf",
+  "testSource": "df33e81b246c9da8cf034a24b445f16e0c33976c",
+  "baseline": "93a87573ee43f1105fd77b91fd0b29b171068d6a",
+  "backendTree": "d52e5dec7dfaf8caf8d381fa36b22130fa7cd227",
+  "frontendTree": "3bba32e9c8a5fe4cc15d7fd549f0d8445f4b28ae",
+  "sourceArchiveSha256": "5e97cc6898e5fa39a52030419fdc3b121ed92859a8c3d1cfc125c8bb56f586b9",
+  "jarSha256": "384d38d25df75150aef8751b8bf026c20a608cbcfa302abf8c14a50de406da49",
+  "productionClassEquivalence": {
+    "platform-types": {
+      "classes": 22,
+      "sha256": "4dfc226b73a7f8c0891e085776f9f90b00f17f164de379afcd3d6d2257c929d1"
+    },
+    "platform-domain": {
+      "classes": 76,
+      "sha256": "f85d021536623d7b6778ccf18f3a6ffb1fcb35aea8d40596fa4cb441fb599bfd"
+    },
+    "platform-api": {
+      "classes": 34,
+      "sha256": "a5d5b0547b7d3fa45ed32bca12ac63f0a64811aa17a1b0266a06e2fd5159f717"
+    },
+    "platform-infrastructure": {
+      "classes": 170,
+      "sha256": "523e8fb30193fcdfcba46fd9b67230331714d7438f72af8fe52254b9b3e9fec0"
+    },
+    "platform-trigger": {
+      "classes": 25,
+      "sha256": "42714a6a93e6468e7a5a2bbe3589f8e3ea336ffd49dd619251e909891422f8af"
+    },
+    "platform-app": {
+      "classes": 62,
+      "sha256": "1dedb0fa0f4f1043addd4ae13e2fc2c567cd83290610e5bf9e90f5311246bf50"
+    }
+  },
+  "schema": 10,
+  "runtimeBaseline": 1,
+  "migrationsV1ToV9Unchanged": true,
+  "images": [
+    {
+      "component": "api",
+      "tag": "agentplatform-api:r31-local",
+      "source": "8682c9c69b1cdcc5499097b949262e3f39322baf",
+      "localId": "sha256:7363bb54978599781f3defdfea7fee6c17c9e349792bce93db83d19f9c521b1f",
+      "indexDigest": "sha256:7363bb54978599781f3defdfea7fee6c17c9e349792bce93db83d19f9c521b1f",
+      "manifestDigest": "sha256:64a11697a732fa7b01e54e36268b16b3eb7cf4c2270dfe780bff0b72060f5834",
+      "configId": "sha256:26476026c8991c5dac8d7edc240eb885c0e9671fc813caa531086442c6b21d0a",
+      "platform": "linux/amd64",
+      "archiveBytes": 182432191,
+      "archiveSha256": "764677561f21af7e3ddb4c557a5374c8f9a48bd6f3643a7404b3378b2787fa62",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/26476026c8991c5dac8d7edc240eb885c0e9671fc813caa531086442c6b21d0a",
+          "RepoTags": [
+            "agentplatform-api:r31-local"
+          ],
+          "Layers": [
+            "blobs/sha256/a60ef8ec184edb5ed91f5983f00261359fb2fe20f603e8d488b9477d32fcad70",
+            "blobs/sha256/49b14164d4d96e593cb68db980906b691931cdcde6f60b918280317c89e55462",
+            "blobs/sha256/7c48d168a51b541814c6814256cd298e11114f5f088e4511cffb4f6b3622d1b6",
+            "blobs/sha256/5165dac19553999758e23bf9247e5bac05f0d26ee503d13bf70c1e8873eb8d37",
+            "blobs/sha256/02e0e048361058af7411fe47569c4d90b68a917dba037514c3831b7bf7029c7b",
+            "blobs/sha256/412e0e29481a7beb80ad1ff4a3d8b9e96ab550d543ca4bc6f517f1e3d0760a0a",
+            "blobs/sha256/40b1bc3cb17a8a19ca65399c20ae901e7d357b8730d608f319d125201f8f151f",
+            "blobs/sha256/c6b815882b70484bb45bd3a43102df423965ff36abe205bc597114efbd65754a"
+          ]
+        }
+      ],
+      "registry": "LOCAL_ONLY_NOT_PUSHED",
+      "exporterSha256": "a10a6689e39be85a0f14a5b8c98965f7c3668c9884085d72f9b04133fe2d50f4"
+    },
+    {
+      "component": "gateway",
+      "tag": "agentplatform-gateway:r31-local",
+      "source": "8682c9c69b1cdcc5499097b949262e3f39322baf",
+      "localId": "sha256:f0ed4af40f9978027d947079f89e90e43fa24b98e91e66f213e9cbf9ef25395e",
+      "indexDigest": "sha256:f0ed4af40f9978027d947079f89e90e43fa24b98e91e66f213e9cbf9ef25395e",
+      "manifestDigest": "sha256:e15bb5288068dfa2e6c96abf955cc3eb2f38cd5fb9251dbcbc2da370c46b1eae",
+      "configId": "sha256:eaf1bd763d998bb58ea5efa780c071f153f8bc6830c785e5d7241fbec3ecddab",
+      "platform": "linux/amd64",
+      "archiveBytes": 25614758,
+      "archiveSha256": "832671e56ced34e8b77276b3c5947fe36cbf13dbba38574feb9871b3b98ed3d5",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/eaf1bd763d998bb58ea5efa780c071f153f8bc6830c785e5d7241fbec3ecddab",
+          "RepoTags": [
+            "agentplatform-gateway:r31-local"
+          ],
+          "Layers": [
+            "blobs/sha256/e2de96513ba9eb53b431787ec8a65cdde380ac4772a3e4c4b714dcfde2a102b5",
+            "blobs/sha256/655cdf110ce6cc8b81dc0bf0d471a4fb200eac950a7a108ed5335b91ed3ef07b",
+            "blobs/sha256/cb3dcaeaef3012c03cc5ba44f04289e06247ee28b0396073f0c1aa4667e08cd6",
+            "blobs/sha256/c792e3f2c3b45eb2b0ab9ca191eb1c881394ef80dc9b03a728d4241709cfd309",
+            "blobs/sha256/dfd17a001b4375f4b03069aa2c6c03e965543d91589d9f7399dae7c3798037bd",
+            "blobs/sha256/69146b4a52cfd86bdd87919b33fc3c6afd168c7911c27d3805d48212887b2e4f",
+            "blobs/sha256/1f9e9a0fcad78d32ce75d315476a02e8c85818e0db3191e375796df6d1594dda",
+            "blobs/sha256/db0e3cd9a4f71fb319f83c2b8da0c7ba756419e6d8a8671e117dcba315656b39",
+            "blobs/sha256/ab0d6d0b8f06a2555ffb7e2777729ed4c2c656d62a2869414c9df71b527c4b41",
+            "blobs/sha256/4ec7807394cb6a919f683a6aedd79fdf8ecd9f857f820fe9f6a61af73323488c",
+            "blobs/sha256/c35031287af37a2c3f78b20dc0f8e2c9aaccd154e5f969050b94ccd10b5aa504"
+          ]
+        }
+      ],
+      "registry": "LOCAL_ONLY_NOT_PUSHED",
+      "exporterSha256": "a10a6689e39be85a0f14a5b8c98965f7c3668c9884085d72f9b04133fe2d50f4"
+    },
+    {
+      "component": "workspace-quota",
+      "tag": "agentplatform-workspace-quota:r31-local",
+      "source": "8682c9c69b1cdcc5499097b949262e3f39322baf",
+      "localId": "sha256:378cc193c9d0af95318bbc37719726be34a9e78ea91eb36b9290d5d6851ae57f",
+      "indexDigest": "sha256:378cc193c9d0af95318bbc37719726be34a9e78ea91eb36b9290d5d6851ae57f",
+      "manifestDigest": "sha256:be86180492dc3c168204b9624bef4712565e6a60ece77b9f2e13d0e45d46c921",
+      "configId": "sha256:c15bb2eab775ad371ecf89c0db742b55b8ed37b57454bcb943ca1289a3b6ab42",
+      "platform": "linux/amd64",
+      "archiveBytes": 73959765,
+      "archiveSha256": "93ff3a7fc85501494141bd0695bda7802f59155faa36ab7b229d62b9456d0837",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/c15bb2eab775ad371ecf89c0db742b55b8ed37b57454bcb943ca1289a3b6ab42",
+          "RepoTags": [
+            "agentplatform-workspace-quota:r31-local"
+          ],
+          "Layers": [
+            "blobs/sha256/ecc510c1e359bdc007b39802570bb7e4dec7d6ebccf357c3201a74299113e05e",
+            "blobs/sha256/75b6a36c64a1cf3520fc4b4aae4739d5caa8a6a05c27835a920a61784c9c32f8",
+            "blobs/sha256/6912e23eb44595b44dc6d9882b34f305ad6f6e9667cec70b13e5dbc4f8cd97f4",
+            "blobs/sha256/bbc5a12237474ec0b23b5051260d56d6436a24d70d9cad961adebe7a037ed813",
+            "blobs/sha256/cf0c5bca1971ef0b07205016b6f9d339b09ce30d7df1701036de46ffdee1e829",
+            "blobs/sha256/60ea05d40a25366ed7983e8744795446b6b39a56a65d2f3c308b07d111ab3d55"
+          ]
+        }
+      ],
+      "registry": "LOCAL_ONLY_NOT_PUSHED",
+      "exporterSha256": "a10a6689e39be85a0f14a5b8c98965f7c3668c9884085d72f9b04133fe2d50f4"
+    },
+    {
+      "component": "workspace-probe",
+      "tag": "agentplatform-workspace-probe:r31-local",
+      "source": "8682c9c69b1cdcc5499097b949262e3f39322baf",
+      "localId": "sha256:935fab0b44713558962d64b3acb2381bcae6f769688c7ef913d3399ce0d8ecac",
+      "indexDigest": "sha256:935fab0b44713558962d64b3acb2381bcae6f769688c7ef913d3399ce0d8ecac",
+      "manifestDigest": "sha256:7a198e43d393fb0ce3fe9a5d9842888d76ffd060923299f697ea39bb4d7a3d23",
+      "configId": "sha256:269704dde823a4036a2a95d9b86bec4fc7ac734304579f8e5dc5277823d73191",
+      "platform": "linux/amd64",
+      "archiveBytes": 375046535,
+      "archiveSha256": "ed0648cda358bb2d245ddb28a33c25313616c7a6cb0fbe5fbb690277ff8f6a1c",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/269704dde823a4036a2a95d9b86bec4fc7ac734304579f8e5dc5277823d73191",
+          "RepoTags": [
+            "agentplatform-workspace-probe:r31-local"
+          ],
+          "Layers": [
+            "blobs/sha256/a60ef8ec184edb5ed91f5983f00261359fb2fe20f603e8d488b9477d32fcad70",
+            "blobs/sha256/8b068c321b37c6e50e8ca50209806303ebbb676b492a08070ba9d79a0f7df6f8",
+            "blobs/sha256/61d5a0d738f6fd8344abcdcf7c1b734d9adbf8d5161b30b80fbf9533b8ab0bb2",
+            "blobs/sha256/dc6abd946a0778c24a3d28c86aa3ecec2fbb7f1f681a12f2411c7664d5652812",
+            "blobs/sha256/ab0753bfa4f1a7af00cc2acca04a6ef15ab39b5b5f182052d379bb3980dfc1d2",
+            "blobs/sha256/ba8298971da319dc1d90f8792c3c7a2fde9957949c8e1e0be6a2f86b5fd529e6",
+            "blobs/sha256/f11778b1fccf0ab0067000858526101ac41d56f51172f00cd8a0692db9b4bbf9",
+            "blobs/sha256/1fd345e5439ab9caf098bb2cf08f68a2633e376330bc6043956e5c5fd16b5e6c",
+            "blobs/sha256/aec7f6293a7fc413c5e94c423f7940ea0e67418e7421f607fbdc5860c534e1fc"
+          ]
+        }
+      ],
+      "registry": "LOCAL_ONLY_NOT_PUSHED",
+      "exporterSha256": "a10a6689e39be85a0f14a5b8c98965f7c3668c9884085d72f9b04133fe2d50f4"
+    },
+    {
+      "component": "framework-probe",
+      "tag": "agentplatform-framework-probe:r31-local",
+      "source": "8682c9c69b1cdcc5499097b949262e3f39322baf",
+      "localId": "sha256:8010920fdb3b3e68bc2aa9c260a3074f1bc32f43576da37151158710265ad26c",
+      "indexDigest": "sha256:8010920fdb3b3e68bc2aa9c260a3074f1bc32f43576da37151158710265ad26c",
+      "manifestDigest": "sha256:0bacd4fba4f7fe98a36e6294db6411ab4153d479260dbb777c9f09da2d843ad2",
+      "configId": "sha256:095d654de474a68601d073ae93b00d3a6d389425715f3b4c066780e60ea91e1c",
+      "platform": "linux/amd64",
+      "archiveBytes": 313493561,
+      "archiveSha256": "271e6b61d51fe263de6c1d34392b625addf3d0cb907343c1f86aa8e37e9fbee5",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/095d654de474a68601d073ae93b00d3a6d389425715f3b4c066780e60ea91e1c",
+          "RepoTags": [
+            "agentplatform-framework-probe:r31-local"
+          ],
+          "Layers": [
+            "blobs/sha256/a60ef8ec184edb5ed91f5983f00261359fb2fe20f603e8d488b9477d32fcad70",
+            "blobs/sha256/8b068c321b37c6e50e8ca50209806303ebbb676b492a08070ba9d79a0f7df6f8",
+            "blobs/sha256/61d5a0d738f6fd8344abcdcf7c1b734d9adbf8d5161b30b80fbf9533b8ab0bb2",
+            "blobs/sha256/dc6abd946a0778c24a3d28c86aa3ecec2fbb7f1f681a12f2411c7664d5652812",
+            "blobs/sha256/ab0753bfa4f1a7af00cc2acca04a6ef15ab39b5b5f182052d379bb3980dfc1d2",
+            "blobs/sha256/ba8298971da319dc1d90f8792c3c7a2fde9957949c8e1e0be6a2f86b5fd529e6",
+            "blobs/sha256/5699b89f0712c72e7f20dffc0430eb13bb001551352e546b058af0f12309b46b",
+            "blobs/sha256/96732bdaead3456606c866b13632cc0f46d4ae9709543243a0ffa48a4a8155d2",
+            "blobs/sha256/27b1539e85f61179d6db182c575a524b49d29aaaa6c8b1c58eb70d9534ce1cf0",
+            "blobs/sha256/69cc85f8a931874e361d49d25bc038e2c1e60fd25d46237f95ddf300841791ed",
+            "blobs/sha256/a2043f373fa2f9b36f133bc1b1a8bf8d0b4a556d4104732df294c6120a02dd95",
+            "blobs/sha256/d7756a1d5a6812a4a55c5dd4bbb72a37821b56d7c52bcd72aa159ed5b3daa904"
+          ]
+        }
+      ],
+      "registry": "LOCAL_ONLY_NOT_PUSHED",
+      "exporterSha256": "a10a6689e39be85a0f14a5b8c98965f7c3668c9884085d72f9b04133fe2d50f4"
+    }
+  ],
+  "gates": {
+    "canonicalMavenVerifyAndDDD": "PASS",
+    "frontendFrozenTypeUnit34BuildContracts": "PASS",
+    "SDK51EngineJackson": "PASS",
+    "helperBoundary7": "PASS",
+    "actualPg17RunnerHttp5Signatures6": "PASS",
+    "fourProcessFaultWindows": "PASS",
+    "realApiThreeUserBrowserAndBlocked": "PASS",
+    "oldReleasedR2ProgramOnV10": "PASS",
+    "nativeXfsBytesInodesRemount0700": "PASS",
+    "gvisorCompatibilityIsolationResourcesQuota": "PASS",
+    "lifecycleFaultObservation": "PASS",
+    "originalR2RestoreAndPublicReadOnlyBrowser": "PASS",
+    "protectedPromotion": "NOT_RUN"
+  },
+  "observation": {
+    "status": "PASS",
+    "seconds": 1806.6682471856475,
+    "retries": 104,
+    "faults": [
+      "rabbitmq",
+      "runner",
+      "postgres"
+    ],
+    "scope": "Single lifecycle; absent test mount; no model throughput claim"
+  },
+  "resources": {
+    "capsMiB": {
+      "api": 512,
+      "worker1": 512,
+      "worker2": 512,
+      "postgres": 320,
+      "rabbitmq": 512,
+      "runner": 384,
+      "gateway": 32,
+      "temporaryHelper": 64
+    },
+    "maximumOverlappingCapMiB": 2848,
+    "hostSampleCount": 106,
+    "minimumSampledMemAvailableMiB": 1579.921875,
+    "minimumSampledRootFreeBytes": 9181794304,
+    "swapUsedFirstLastKiB": [
+      172480,
+      170876
+    ],
+    "runnerSampledMaxRssKiB": 295556,
+    "processSamplerSeconds": 1748.2919856235385,
+    "claims": "Sample values only; no absolute peak, minimum physical host or higher concurrency claim"
+  },
+  "storageState": "READY",
+  "environmentState": "NOT_CREATED",
+  "production": {
+    "release": "R2",
+    "tag": "production-r2-9ee7aadfe242",
+    "r2Running": 10,
+    "legacyRunning": 0,
+    "schema": 9,
+    "R3Deployed": false,
+    "testResourcesStopped": true
+  },
+  "retainedFailures": [
+    {
+      "case": "runner256MiB",
+      "status": "FAIL",
+      "resolution": "384MiB within total; complete new-candidate observation passed"
+    },
+    {
+      "case": "native quota source node missing",
+      "status": "FAIL",
+      "resolution": "Only trusted helper exact read-only verified loop; no new capabilities"
+    },
+    {
+      "case": "host runsc PATH assumption",
+      "status": "FAIL",
+      "resolution": "Configured pinned absolute path; native recheck PASS; original FAIL result preserved"
+    },
+    {
+      "case": "SKIP LOCKED fixture immediate empty",
+      "status": "FAIL",
+      "resolution": "Bounded real polling; test SHA separate; all production classes equal"
+    },
+    {
+      "case": "driver child-output UTF8 assumption",
+      "status": "FAIL",
+      "resolution": "Raw bytes retained and explicit decoding; actual compile and tests PASS"
+    }
+  ],
+  "optionalCloudBrowserCredentialExport": {
+    "status": "NOT_RUN",
+    "reason": "Automatic approval rejected unapproved credential export; no credential copied; required browser gate ran locally"
+  },
+  "realSupplierCalls": 0,
+  "actionsEnabled": false,
+  "newProductionTagCreated": false,
+  "evidenceIndex": "evidence/r31/evidence-index.json",
+  "evidenceIndexSha256": "9b69c4f83db6a54f8fe5d4a7155006d2dcff3bcce576a36d99724c27b04c65d6"
+}

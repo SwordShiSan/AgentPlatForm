@@ -1,6 +1,6 @@
 # AgentPlatForm
 
-当前实施：**R3.1 IMPLEMENTING，R3 0/4 VERIFIED、未 RELEASED**。已按批准计划切回原 R2 生产版本，旧平台停机保留，生产标签不变。工作区控制面、独立签名 runner 和 Vue 入口正在独立本地验收；真实 XFS/gVisor、观察与晋级尚未全部通过，不代表 R3 已上线。[R3.1 正式计划](../项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R3.1-工作区控制面实施计划.md)。下列“R3 尚未启动”为此前历史。
+当前：**R3.1 强制验收已通过，等待受保护 PR 晋级，尚未 VERIFIED；R3 未 RELEASED**。工作区控制面及独立签名 runner 已完成本地和必要 Linux 专项；READY 只表示存储，执行环境仍为 NOT_CREATED。云端已恢复原 R2 十服务，旧平台停机保留，无 R3 生产部署、无真实供应商调用。[验收摘要](deploy/r3.1-acceptance.json)、[本地与运维边界](deploy/R3.1-LOCAL.md)。以下为历史过程。
 
 当前：**R2.4 VERIFIED，R2 4/4 VERIFIED、RELEASED**。生产标签 `production-r2-9ee7aadfe242`；[打开聊天平台](http://124.222.55.140/)、[云端发行验收](deploy/r2-release-acceptance.json)、[发行与恢复说明](deploy/R2-RELEASE.md)。云端观察、独立一致恢复、R1回滚及同一R2重启全部通过；R3尚未启动。以下早期阶段结论保留为历史记录。
 
