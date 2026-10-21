@@ -53,4 +53,3 @@ The platform SHALL expose authorized create/list/detail/explicit-retry views and
 #### Scenario: Cloud acceptance window
 - **WHEN** Linux-only gates require the cloud host
 - **THEN** independent test resources run serially with production stopped and the same released R2 is restored after cleanup
-
