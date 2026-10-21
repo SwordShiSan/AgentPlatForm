@@ -19,6 +19,7 @@
 - [x] 6.1a Live R1 identity/slot/readiness inventory, dedicated read-only resource admission, nine Linux host-safety/admission tests and immutable API/gateway transfer/import; no activation claimed.
 - [x] 6.1b Preserve first permission-gate FAIL and exact R1/V9 rollback; reproduce inherited R0/R1 ACLs in a real disposable local database, verify private denial/actual metadata queries/worker/future defaults/idempotence, and rerun11 Linux whole-host safety tests before the fresh retry window.
 - [x] 6.1c Preserve successful one-call Flash evidence and the second host-helper FAIL/R1 rollback; reproduce406 versus404 media-type behavior and pass18 Linux guard/unit tests for correct SSE requests, strict non-replaying task reuse and independent quota checks. Actual30minute observation and restore remain unchecked.
+- [x] 6.1d Actual1802.859second cloud observation/HTTP/public browser and consistent R2 backup PASS; retain private-parent quota-probe FAIL and exact R1 rollback, reproduce actual UID10001/EACCES boundary, and pass19 Linux tests for trusted cwd before privilege drop without changing0700 or quota limits.
 - [ ] 6.2 HTTP identity/chat/SSE/recovery smoke,30minute cloud observation, isolated restore and R1 rollback/redeploy.
 - [ ] 6.3 Production tag only on all PASS; archive, ledgers and separately hashed protected body/evidence delivery.
 - [x] 6.4 Explicit fixture-profile local stop with volumes/images retained.

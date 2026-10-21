@@ -22,6 +22,10 @@ Second activation PASS: inherited private permissions denied and R2 API/worker/g
 
 SSE/reuse helper fix:18 Linux unit/guard methods PASS, including actual Request Accept header, UNKNOWN/usage/source/identity drift refusal and an executed reuse branch that never calls task submission. Workspace unit checks explicitly mock host operations and are NOT real XFS evidence. Restore driver now performs persisted vector distance verification and independent byte/inode quota tests; these real restore cases remain NOT_RUN until executed. No application/contract/migration change or additional provider request.
 
+Third HTTP/SSE/isolation/public browser PASS; observation1802.859seconds/135samples PASS, both MQ/PG failure readiness503→recovered, min sampled host available1824.875MiB, swap168.1796875→167.578125MiB, disk growth30588928bytes/DB8192bytes, zero new supplier calls. R2 consistent backup and dynamic fingerprints PASS. Restore FAIL at UID10001 child traversal of0700 parent; no temporary service started, private copy unmounted, exact R1 restored. Real isolated directory regression confirms olderrno13 and corrected trusted-chdir/relative-write behavior with0700 unchanged. Preserve the restore failure; full DB/object/key restore and actual quota gates remain incomplete until retry.
+
+Trusted-cwd fix validation PASS:19 Linux methods, including executing the actual quota-child prefix under a root-owned0700 parent and UID10001 child. This verifies traversal/UID behavior, not XFS enforcement. Only the host probe changed; application/Compose/grants/backup identities and completed1802.859second observation remain unchanged. Retry from the retained immutable backup in a versioned driver directory; do not repeat provider calls or relabel the failed restore PASS.
+
 ## Historical process records
 
 # Current local conclusion (2026-10-21)

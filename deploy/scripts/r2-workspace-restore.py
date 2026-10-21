@@ -38,8 +38,9 @@ def quota(root):
         xfs('limit -p bhard=128k ihard=100000 200002')
         # The child drops host root privileges; actual writes must hit both quotas.
         script = '''import os,errno,pathlib,sys
+os.chdir(sys.argv[1])
 os.setgroups([]);os.setgid(10001);os.setuid(10001)
-p=pathlib.Path(sys.argv[1]);mode=sys.argv[2];denied=False
+p=pathlib.Path('.');mode=sys.argv[2];denied=False
 if mode=='bytes':
  try:
   with (p/'bytes').open('wb') as f:os.posix_fallocate(f.fileno(),0,256*1024)

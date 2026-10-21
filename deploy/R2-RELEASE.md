@@ -21,6 +21,8 @@ Host driver order is `r2-release-control.py import`, `backup-r1`, `activate`, th
 
 If a previous window already produced a definitive successful task, use `r2-cloud-observe.py <new-window> --reuse-task-proof <protected-prior-task-proof.json>`. The helper rechecks application/task/conversation/model identity and exact persisted known usage; UNKNOWN, missing usage or drift refuses reuse. This path sends no new task or supplier request. Keep historical and new request counts separate. Foreign SSE checks use `Accept: text/event-stream`; `application/json` can return406 before authorization and is not the intended isolation test. Resource observation reports periodic reads of the completed task honestly, without claiming continuous model execution. Restore additionally evaluates the persisted vector fixture's distance and tests byte/inode quotas under independent limits so one quota cannot mask the other.
 
+Quota probes run below a protected0700 restore root. The trusted host enters the verified workspace before dropping groups/GID/UID, then uses relative paths as UID10001. Do not make backup parents traversable to fix an EACCES. A host-probe-only correction may rerun isolated restore from the same verified immutable backup in an explicitly versioned driver directory; retain the failed driver/exit/log and the completed fixed-runtime observation separately. Stop the current R1/source stack before retrying a temporary restore and verify cleanup before returning to R1/R2.
+
 ## Manifest and driver handoff
 
 Freeze the manifest from a fresh read-only inventory after local promotion. It must bind:
