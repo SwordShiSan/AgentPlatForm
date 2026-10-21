@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { api } from '../shared/api/client';
 
 const chatEnabled = import.meta.env.VITE_CHAT_ENABLED === 'true';
+const workspaceEnabled = import.meta.env.VITE_WORKSPACE_ENABLED === 'true';
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -9,6 +10,7 @@ export const router = createRouter({
     { path: '/login', component: () => import('../features/identity/LoginPage.vue') },
     { path: '/app', redirect: chatEnabled ? '/app/chat' : '/app/settings/account' },
     { path: '/app/settings/account', component: () => import('../features/identity/AccountPage.vue'), meta: { requiresAuth: true } },
+    ...(workspaceEnabled ? [{ path: '/app/workspaces/:id?', component: () => import('../features/workspace/WorkspacePage.vue'), meta: { requiresAuth: true } }] : []),
     ...(chatEnabled ? [
       { path: '/app/chat/:id?', component: () => import('../features/chat/ChatPage.vue'), meta: { requiresAuth: true } },
       { path: '/', redirect: '/app/chat' },

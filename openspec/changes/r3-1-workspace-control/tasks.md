@@ -2,7 +2,7 @@
 - [x] 1.1 Approved Plan and exact baseline; actual R2 switch verified before branch creation.
 - [x] 1.2 Formal Plan/ADR/contracts and this unique change strict before business changes.
 ## 2. Framework feasibility
-- [ ] 2.1 Nimbus request/response signatures, exact claims, expiry, nonce and HTTP body experiment.
+- [x] 2.1 Nimbus request/response signatures, exact claims, expiry, nonce and HTTP body experiment.
 - [ ] 2.2 docker-java3.7.1 Unix socket/API/inspect/Jackson compatibility and pinned quota-helper boundary.
 ## 3. Durable control
 - [ ] 3.1 V10, typed Mapper/PO/XML and short transaction APIs, live scope, capacity and idempotency.

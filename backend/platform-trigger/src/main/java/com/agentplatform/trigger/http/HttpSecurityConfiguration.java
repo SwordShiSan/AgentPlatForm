@@ -34,7 +34,7 @@ public class HttpSecurityConfiguration {
                                 new com.agentplatform.domain.identity.IdentityFailure(401, "AUTHENTICATION_REQUIRED"))));
         return http.build();
     }
-    @Bean @Profile("!identity-local")
+    @Bean @Profile("!identity-local & !workspace-runner")
     SecurityFilterChain baselineSecurity(HttpSecurity http) throws Exception {
         stateless(http);
         http.authorizeHttpRequests(access -> access.anyRequest().permitAll());

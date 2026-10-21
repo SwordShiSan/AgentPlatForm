@@ -23,6 +23,9 @@ The platform SHALL publish only committed outbox work, ACK only committed claims
 #### Scenario: Unknown effect
 - **WHEN** the previous result or owner termination is not known
 - **THEN** the workspace is BLOCKED with reservation retained and no automatic effect replay or blind retry
+#### Scenario: Expired owner without a response
+- **WHEN** an active lifecycle lease expires before a committed control-plane result
+- **THEN** a database-time guarded sweep marks UNKNOWN/BLOCKED while retaining the original owner, fence and reservation and never starting a replacement effect
 
 ### Requirement: Real bounded storage without user execution
 The runner SHALL resolve only controlled UUID paths on verified XFS prjquota and provision at most one2GiB/100000inode workspace in the initial4GiB filesystem.
