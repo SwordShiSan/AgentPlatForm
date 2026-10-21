@@ -1,6 +1,14 @@
+# Closure delivery verified before archive
+
+Two separately hashed packages (101 canonical Markdown documents and38 sanitized evidence entries) are present in two protected local directories and `/srv/agentplatform/operations/r31-delivery-20261022`; every ZIP member/package and cloud SHA256 was checked. Protected `evidence/r31/delivery/handoff.json` records cloudHashVerified=true and retention through2026-11-23. Secrets/raw SQL/sensitive logs are excluded. Skill references were deduplicated; official validator with the already-installed YAML parser adapter passed, main Skill114 lines and18 relative links valid. Local fixture stack stopped, volumes/images retained. Archive uses normal validation and specification update; no skip/force flags.
+
+# Protected promotion completed
+
+R3.1 VERIFIED after protected PR78 step→phase (`9193b0a72eb793a6a47e7a208e8c92f9d7bfad54`) and PR79 phase→main (`5a059bc0412170bf98683b65ab7a50ace065bc30`). Exact merge tree equals accepted implementation and evidence tree; Actions disabled, PR/force-push protection retained. R3 is1/4, not RELEASED. Same R2 production tag/container identity remains online. Closure packaging/archive follows; below are acceptance and retained historical progress.
+
 # 2026-10-22 current conclusion: mandatory acceptance PASS, protected promotion pending
 
-Application/helper immutable source `8682c9c69b1cdcc5499097b949262e3f39322baf`; corrected test source `df33e81b246c9da8cf034a24b445f16e0c33976c`. All six modules' production class hashes match the canonical application build. No production input or V1–V9 changed after the candidate. See [sanitized acceptance](../../../deploy/r3.1-acceptance.json) and [evidence index](../../../evidence/r31/evidence-index.json).
+Application/helper immutable source `8682c9c69b1cdcc5499097b949262e3f39322baf`; corrected test source `df33e81b246c9da8cf034a24b445f16e0c33976c`. All six modules' production class hashes match the canonical application build. No production input or V1–V9 changed after the candidate. See [sanitized acceptance](../../../../deploy/r3.1-acceptance.json) and [evidence index](../../../../evidence/r31/evidence-index.json).
 
 | Gate | Final evidence / scope | Result |
 |---|---|---|

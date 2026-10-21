@@ -1,6 +1,6 @@
 {
   "stage": "R3.1",
-  "status": "ACCEPTANCE_PASS_PENDING_PROTECTED_PROMOTION",
+  "status": "VERIFIED",
   "applicationSource": "8682c9c69b1cdcc5499097b949262e3f39322baf",
   "testSource": "df33e81b246c9da8cf034a24b445f16e0c33976c",
   "baseline": "93a87573ee43f1105fd77b91fd0b29b171068d6a",
@@ -218,7 +218,7 @@
     "gvisorCompatibilityIsolationResourcesQuota": "PASS",
     "lifecycleFaultObservation": "PASS",
     "originalR2RestoreAndPublicReadOnlyBrowser": "PASS",
-    "protectedPromotion": "NOT_RUN"
+    "protectedPromotion": "PASS"
   },
   "observation": {
     "status": "PASS",
@@ -300,5 +300,44 @@
   "actionsEnabled": false,
   "newProductionTagCreated": false,
   "evidenceIndex": "evidence/r31/evidence-index.json",
-  "evidenceIndexSha256": "9b69c4f83db6a54f8fe5d4a7155006d2dcff3bcce576a36d99724c27b04c65d6"
+  "evidenceIndexSha256": "4c147e365dfa45d3515f3c4fb9563c0fd5eea6f4f75a970db4c6c53ac64b3f47",
+  "promotions": [
+    {
+      "number": 78,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/78",
+      "base": "phase/r3-cloud-workspace",
+      "head": "step/r3.1-workspace-control",
+      "headSha": "51ccbc5c8185ef43c11ec3016c5f1296943fa86d",
+      "merged": true,
+      "mergeSha": "9193b0a72eb793a6a47e7a208e8c92f9d7bfad54"
+    },
+    {
+      "number": 79,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/79",
+      "base": "main",
+      "head": "phase/r3-cloud-workspace",
+      "headSha": "9193b0a72eb793a6a47e7a208e8c92f9d7bfad54",
+      "merged": true,
+      "mergeSha": "5a059bc0412170bf98683b65ab7a50ace065bc30"
+    }
+  ],
+  "R3": {
+    "verifiedSmallStages": 1,
+    "totalSmallStages": 4,
+    "released": false
+  },
+  "openSpecArchive": "openspec/changes/archive/2026-10-21-r3-1-workspace-control",
+  "closure": {
+    "status": "PASS",
+    "skillUpdatedAndValidated": true,
+    "bodyDelivery": "evidence/r31/delivery/handoff.json",
+    "secondProtectedLocalDirectory": ".cache/r31-local/delivery",
+    "cloudDirectory": "/srv/agentplatform/operations/r31-delivery-20261022",
+    "cloudHashVerified": true,
+    "retentionUntilAtLeast": "2026-11-23",
+    "localFixtureStopped": true,
+    "volumesAndImagesRetained": true,
+    "strictSpecsPassed": 17,
+    "linksPassed": 48
+  }
 }
