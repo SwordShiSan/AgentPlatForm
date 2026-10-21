@@ -300,7 +300,7 @@
   "actionsEnabled": false,
   "newProductionTagCreated": false,
   "evidenceIndex": "evidence/r31/evidence-index.json",
-  "evidenceIndexSha256": "4c147e365dfa45d3515f3c4fb9563c0fd5eea6f4f75a970db4c6c53ac64b3f47",
+  "evidenceIndexSha256": "9b3c0a918933ecc823f2160cbe1e03bac55b40f429cc6d98c44f4fc5b2755796",
   "promotions": [
     {
       "number": 78,
@@ -339,5 +339,6 @@
     "volumesAndImagesRetained": true,
     "strictSpecsPassed": 17,
     "linksPassed": 48
-  }
+  },
+  "evidenceIndexHashScope": "UTF-8 LF Git blob bytes; verify after final checkout"
 }
