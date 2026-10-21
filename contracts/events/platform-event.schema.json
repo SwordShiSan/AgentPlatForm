@@ -29,7 +29,10 @@
       "format": "uuid"
     },
     "conversationId": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "uuid"
     },
     "taskId": {
@@ -347,6 +350,72 @@
                 "type": "boolean"
               }
             }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "workspace.state_changed"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "conversationId": {
+            "type": "null"
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "workspaceId",
+              "state",
+              "environmentState",
+              "operationId",
+              "errorCode"
+            ],
+            "properties": {
+              "workspaceId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "PROVISIONING",
+                  "READY",
+                  "ERROR",
+                  "BLOCKED"
+                ]
+              },
+              "environmentState": {
+                "const": "NOT_CREATED"
+              },
+              "operationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "errorCode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       }

@@ -371,6 +371,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listWorkspaces"];
+        put?: never;
+        post: operations["createWorkspace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getWorkspace"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["retryWorkspace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -629,6 +677,39 @@ export interface components {
             checkpointId: string | null;
             /** Format: uuid */
             traceId: string;
+        };
+        CreateWorkspace: {
+            name: string;
+        };
+        Workspace: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            spaceId: string;
+            name: string;
+            /** @enum {string} */
+            state: "PROVISIONING" | "READY" | "ERROR" | "BLOCKED";
+            /** @constant */
+            environmentState: "NOT_CREATED";
+            /** @constant */
+            quotaBytes: 2147483648;
+            /** @constant */
+            quotaInodes: 100000;
+            version: number;
+            /** Format: uuid */
+            operationId: string;
+            errorCode: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** @constant */
+            fileAccess: false;
+            /** @constant */
+            shellAccess: false;
+        };
+        WorkspacePage: {
+            items: components["schemas"]["Workspace"][];
+            /** Format: uuid */
+            nextCursor: string | null;
         };
     };
     responses: {
@@ -1406,6 +1487,122 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaskRecovery"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    listWorkspaces: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized workspace storage state; environment execution remains unavailable */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspacePage"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    createWorkspace: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWorkspace"];
+            };
+        };
+        responses: {
+            /** @description Authorized workspace storage state; environment execution remains unavailable */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workspace"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getWorkspace: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized workspace storage state; environment execution remains unavailable */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workspace"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    retryWorkspace: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                "If-Match": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized workspace storage state; environment execution remains unavailable */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workspace"];
                 };
             };
             default: components["responses"]["IdentityProblem"];

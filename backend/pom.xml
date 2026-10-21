@@ -17,6 +17,11 @@
     <module>platform-types</module><module>platform-domain</module><module>platform-api</module><module>platform-infrastructure</module><module>platform-trigger</module><module>platform-app</module>
   </modules>
   <dependencyManagement><dependencies>
+    <dependency><groupId>org.apache.commons</groupId><artifactId>commons-compress</artifactId><version>1.28.0</version></dependency>
+    <dependency><groupId>commons-io</groupId><artifactId>commons-io</artifactId><version>2.21.0</version></dependency>
+    <dependency><groupId>org.bouncycastle</groupId><artifactId>bcprov-jdk18on</artifactId><version>1.83</version></dependency>
+    <dependency><groupId>org.bouncycastle</groupId><artifactId>bcpkix-jdk18on</artifactId><version>1.83</version></dependency>
+    <dependency><groupId>org.bouncycastle</groupId><artifactId>bcutil-jdk18on</artifactId><version>1.83</version></dependency>
     <dependency><groupId>io.agentscope</groupId><artifactId>agentscope-harness</artifactId><version>${agentscope.version}</version></dependency>
     <dependency><groupId>io.agentscope</groupId><artifactId>agentscope-extensions-model-openai</artifactId><version>${agentscope.version}</version></dependency>
     <dependency><groupId>com.agentplatform</groupId><artifactId>platform-types</artifactId><version>${project.version}</version></dependency>

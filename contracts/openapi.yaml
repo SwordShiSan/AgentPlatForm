@@ -2,7 +2,8 @@ openapi: 3.1.0
 info:
   title: Agent PlatForm API
   version: 0.1.0
-  description: R0 health/readiness, local opt-in identity and R1.2 ordinary queued text chat. Cloud R0 does not enable identity/chat.
+  description: R0 health/readiness, local opt-in identity and R1.2 ordinary queued
+    text chat. Cloud R0 does not enable identity/chat.
 servers:
   - url: /
 paths:
@@ -115,7 +116,8 @@ paths:
         - $ref: "#/components/parameters/SpaceSelector"
       responses:
         "200":
-          description: Authorized committed platform state; no provider secrets or internal reasoning
+          description: Authorized committed platform state; no provider secrets or
+            internal reasoning
           content:
             application/json:
               schema:
@@ -142,7 +144,8 @@ paths:
             default: 20
       responses:
         "200":
-          description: Authorized committed platform state; no provider secrets or internal reasoning
+          description: Authorized committed platform state; no provider secrets or
+            internal reasoning
           content:
             application/json:
               schema:
@@ -164,7 +167,8 @@ paths:
               $ref: "#/components/schemas/CreateConversation"
       responses:
         "201":
-          description: Authorized committed platform state; no provider secrets or internal reasoning
+          description: Authorized committed platform state; no provider secrets or
+            internal reasoning
           content:
             application/json:
               schema:
@@ -186,7 +190,8 @@ paths:
             format: uuid
       responses:
         "200":
-          description: Authorized committed platform state; no provider secrets or internal reasoning
+          description: Authorized committed platform state; no provider secrets or
+            internal reasoning
           content:
             application/json:
               schema:
@@ -202,7 +207,8 @@ paths:
         - *a2
       responses:
         "200":
-          description: Authorized committed platform state; no provider secrets or internal reasoning
+          description: Authorized committed platform state; no provider secrets or
+            internal reasoning
           content:
             application/json:
               schema:
@@ -226,7 +232,8 @@ paths:
               $ref: "#/components/schemas/SubmitChatTask"
       responses:
         "202":
-          description: Authorized committed platform state; no provider secrets or internal reasoning
+          description: Authorized committed platform state; no provider secrets or
+            internal reasoning
           content:
             application/json:
               schema:
@@ -242,7 +249,8 @@ paths:
         - *a2
       responses:
         "200":
-          description: Authorized committed platform state; no provider secrets or internal reasoning
+          description: Authorized committed platform state; no provider secrets or
+            internal reasoning
           content:
             application/json:
               schema:
@@ -258,7 +266,8 @@ paths:
         - *a2
       responses:
         "200":
-          description: Authorized committed platform state; no provider secrets or internal reasoning
+          description: Authorized committed platform state; no provider secrets or
+            internal reasoning
           content:
             application/json:
               schema:
@@ -276,7 +285,10 @@ paths:
         - $ref: "#/components/parameters/IdempotencyKey"
       responses:
         "202":
-          description: Cancel intent committed; execution is not stopped until confirmed. Repeated intent is idempotent; prior terminal success remains unchanged. Unknown remote outcome retains reservations and is never replayed.
+          description: Cancel intent committed; execution is not stopped until confirmed.
+            Repeated intent is idempotent; prior terminal success remains
+            unchanged. Unknown remote outcome retains reservations and is never
+            replayed.
           content:
             application/json:
               schema:
@@ -305,7 +317,10 @@ paths:
             type: integer
             minimum: 0
             maximum: 9007199254740991
-          description: Committed cursor, default0; wins over Last-Event-ID. Malformed/unsafe integer400; negative/ahead409; below persisted pruned-through watermark410. Equality with watermark is valid. Rebase from snapshot on409/410.
+          description: Committed cursor, default0; wins over Last-Event-ID.
+            Malformed/unsafe integer400; negative/ahead409; below persisted
+            pruned-through watermark410. Equality with watermark is valid.
+            Rebase from snapshot on409/410.
         - name: Last-Event-ID
           in: header
           schema:
@@ -313,7 +328,13 @@ paths:
             pattern: ^[0-9]+$
       responses:
         "200":
-          description: SSE event platform_event; id is seq. Only committed events, Unicode codepoint offsets. Disconnect never cancels. Eight streams maximum; excess503 STREAM_CAPACITY_EXCEEDED. Lifetime25s, heartbeat2s; reconnect from applied cursor. Each page at most256 events/1MiB, oversized503 EVENT_STREAM_OVERSIZED requires snapshot. Preflight failures use Problem; after headers commit close the stream on failure, never emit a business failure or Problem as an event.
+          description: SSE event platform_event; id is seq. Only committed events, Unicode
+            codepoint offsets. Disconnect never cancels. Eight streams maximum;
+            excess503 STREAM_CAPACITY_EXCEEDED. Lifetime25s, heartbeat2s;
+            reconnect from applied cursor. Each page at most256 events/1MiB,
+            oversized503 EVENT_STREAM_OVERSIZED requires snapshot. Preflight
+            failures use Problem; after headers commit close the stream on
+            failure, never emit a business failure or Problem as an event.
           content:
             text/event-stream:
               schema:
@@ -564,7 +585,8 @@ paths:
             format: uuid
       responses:
         "200":
-          description: Authorized committed platform state; no provider secrets or internal reasoning
+          description: Authorized committed platform state; no provider secrets or
+            internal reasoning
           content:
             application/json:
               schema:
@@ -580,7 +602,8 @@ paths:
         - cookieAuth: []
       responses:
         "200":
-          description: Live-authorized read-only cancellation and reconciliation projection; no evidence content, provider secrets or internal paths
+          description: Live-authorized read-only cancellation and reconciliation
+            projection; no evidence content, provider secrets or internal paths
           content:
             application/json:
               schema:
@@ -607,24 +630,131 @@ paths:
   /api/v1/tasks/{id}/recovery:
     get:
       operationId: getTaskRecovery
-      tags: [chat]
+      tags: [ chat ]
       security:
         - cookieAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: {type: string, format: uuid}
+          schema: { type: string, format: uuid }
         - name: X-Space-Id
           in: header
           required: false
-          schema: {type: string, format: uuid}
+          schema: { type: string, format: uuid }
       responses:
         "200":
-          description: Read-only metadata candidate; trusted operator and claim must verify full state integrity before restoration
+          description: Read-only metadata candidate; trusted operator and claim must
+            verify full state integrity before restoration
           content:
             application/json:
-              schema: {$ref: "#/components/schemas/TaskRecovery"}
+              schema: { $ref: "#/components/schemas/TaskRecovery" }
+        default:
+          $ref: "#/components/responses/IdentityProblem"
+  /api/v1/workspaces:
+    get:
+      security: &a15
+        - session: []
+      parameters:
+        - &a16
+          $ref: "#/components/parameters/SpaceSelector"
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      operationId: listWorkspaces
+      responses:
+        "200":
+          description: Authorized workspace storage state; environment execution remains
+            unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspacePage"
+        default: &a17
+          $ref: "#/components/responses/IdentityProblem"
+    post:
+      security: *a15
+      parameters:
+        - *a16
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      operationId: createWorkspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWorkspace"
+      responses:
+        "202":
+          description: Authorized workspace storage state; environment execution remains
+            unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
+        default: *a17
+  /api/v1/workspaces/{id}:
+    get:
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      operationId: getWorkspace
+      responses:
+        "200":
+          description: Authorized workspace storage state; environment execution remains
+            unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
+        default:
+          $ref: "#/components/responses/IdentityProblem"
+  /api/v1/workspaces/{id}/retry:
+    post:
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: ^"[1-9][0-9]*"$
+      operationId: retryWorkspace
+      responses:
+        "202":
+          description: Authorized workspace storage state; environment execution remains
+            unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
         default:
           $ref: "#/components/responses/IdentityProblem"
 components:
@@ -648,13 +778,15 @@ components:
       in: header
       required: false
       schema: *a4
-      description: Optional selector; current membership and credential policy are always checked.
+      description: Optional selector; current membership and credential policy are
+        always checked.
     IdempotencyKey:
       name: Idempotency-Key
       in: header
       required: true
       schema: *a4
-      description: Reuse for an uncertain response. Same actor/space/path/key with another body returns409.
+      description: Reuse for an uncertain response. Same actor/space/path/key with
+        another body returns409.
   responses:
     IdentityProblem:
       description: Identity request rejected (400/401/403/404/409/429/503)
@@ -1303,17 +1435,117 @@ components:
     TaskRecovery:
       type: object
       additionalProperties: false
-      required: [taskId, eligible, stage, reasonCode, revision, taskVersion, checkpointId, traceId]
+      required:
+        [
+          taskId,
+          eligible,
+          stage,
+          reasonCode,
+          revision,
+          taskVersion,
+          checkpointId,
+          traceId
+        ]
       properties:
-        taskId: {type: string, format: uuid}
+        taskId: { type: string, format: uuid }
         eligible:
           type: boolean
-          description: Metadata-only candidate requiring trusted operator integrity validation; not permission to execute
+          description: Metadata-only candidate requiring trusted operator integrity
+            validation; not permission to execute
         stage:
           type: string
-          enum: [AVAILABLE, QUEUED, RESTORING, RUNNING, COMPLETED, BLOCKED]
-        reasonCode: {type: [string, "null"]}
-        revision: {type: integer, minimum: 0, maximum: 9007199254740991}
-        taskVersion: {type: integer, minimum: 1, maximum: 9007199254740991}
-        checkpointId: {type: [string, "null"], format: uuid}
-        traceId: {type: string, format: uuid}
+          enum: [ AVAILABLE, QUEUED, RESTORING, RUNNING, COMPLETED, BLOCKED ]
+        reasonCode: { type: [ string, "null" ] }
+        revision: { type: integer, minimum: 0, maximum: 9007199254740991 }
+        taskVersion: { type: integer, minimum: 1, maximum: 9007199254740991 }
+        checkpointId: { type: [ string, "null" ], format: uuid }
+        traceId: { type: string, format: uuid }
+    CreateWorkspace:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+    Workspace:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - spaceId
+        - name
+        - state
+        - environmentState
+        - quotaBytes
+        - quotaInodes
+        - version
+        - operationId
+        - errorCode
+        - createdAt
+        - fileAccess
+        - shellAccess
+      properties:
+        id:
+          type: string
+          format: uuid
+        spaceId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        state:
+          type: string
+          enum:
+            - PROVISIONING
+            - READY
+            - ERROR
+            - BLOCKED
+        environmentState:
+          type: string
+          const: NOT_CREATED
+        quotaBytes:
+          type: integer
+          const: 2147483648
+        quotaInodes:
+          type: integer
+          const: 100000
+        version:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        operationId:
+          type: string
+          format: uuid
+        errorCode:
+          type:
+            - string
+            - "null"
+        createdAt:
+          type: string
+          format: date-time
+        fileAccess:
+          type: boolean
+          const: false
+        shellAccess:
+          type: boolean
+          const: false
+    WorkspacePage:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+        - nextCursor
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/Workspace"
+        nextCursor:
+          type:
+            - string
+            - "null"
+          format: uuid

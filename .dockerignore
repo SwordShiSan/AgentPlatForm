@@ -4,6 +4,7 @@
 !deploy/*.Dockerfile
 !deploy/nginx.conf
 !deploy/probes/**
+!deploy/scripts/workspace-quota-helper.py
 !deploy/security/**
 !.cache/foundation/**
 !backend/platform-infrastructure/target/probe-libs/**
