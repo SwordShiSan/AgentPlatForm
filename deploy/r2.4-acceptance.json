@@ -319,11 +319,13 @@
     "reset": false
   },
   "cloud": {
-    "status": "NOT_RUN_SSH_CLOSED_BEFORE_AUTHENTICATION",
-    "mutatedByThisRun": false,
-    "lastRecordedRelease": "R1",
-    "liveHealthVerified": false,
-    "productionR2TagCreated": false
+    "status": "PASS",
+    "mutatedByThisRun": true,
+    "lastRecordedRelease": "R2",
+    "liveHealthVerified": true,
+    "productionR2TagCreated": true,
+    "productionTag": "production-r2-9ee7aadfe242",
+    "receipt": "r2-release-acceptance.json"
   },
   "boundaries": [
     "No production tools/shell/sandbox/compaction or R3",
@@ -548,5 +550,14 @@
     "R2": "4/4 VERIFIED, NOT RELEASED",
     "cloud": "No mutation by this run; last recorded R1, live health unverified",
     "next": "Resolve cloud connectivity and finish the same release gates; no R3"
-  }
+  },
+  "cloudHistory": [
+    {
+      "status": "NOT_RUN_SSH_CLOSED_BEFORE_AUTHENTICATION",
+      "mutatedByThisRun": false,
+      "lastRecordedRelease": "R1",
+      "liveHealthVerified": false,
+      "productionR2TagCreated": false
+    }
+  ]
 }

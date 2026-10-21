@@ -1,5 +1,8 @@
 # AgentPlatForm
 
+当前：**R2.4 VERIFIED，R2 4/4 VERIFIED、RELEASED**。生产标签 `production-r2-9ee7aadfe242`；[打开聊天平台](http://124.222.55.140/)、[云端发行验收](deploy/r2-release-acceptance.json)、[发行与恢复说明](deploy/R2-RELEASE.md)。云端观察、独立一致恢复、R1回滚及同一R2重启全部通过；R3尚未启动。以下早期阶段结论保留为历史记录。
+
+
 当前实施：**R2.4 VERIFIED，R2完成4/4 VERIFIED、未 RELEASED**。[checkpoint续跑本地验收](deploy/R2.4-LOCAL.md)、[脱敏证据](deploy/r2.4-acceptance.json)及[R2发行边界](deploy/R2-RELEASE.md)。本地fixture已停止、数据/镜像保留；本阶段未变更云端，SSH连接问题仍待排查，当前公网健康未核验。OpenSpec保持活动，云端门禁通过前不建R2生产tag、不进入R3。以下保留已验收基线和历史记录。
 
 当前开发：**R2.3 VERIFIED，R2完成3/4、未 RELEASED**。取消收敛、停止回执、未知调用只读投影及受保护运维对账已通过本地强制门禁和两级PR；[本地说明](deploy/R2.3-LOCAL.md)、[脱敏证据](deploy/r2.3-acceptance.json)。云端R1未改，真实供应商调用0；R2.4另行Plan/OpenSpec。
