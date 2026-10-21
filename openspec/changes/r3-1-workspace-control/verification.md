@@ -2,6 +2,8 @@
 
 Plan approved2026-10-21. Baseline main93a87573ee43f1105fd77b91fd0b29b171068d6a; R2 released. Each result binds source, command/exit, assertions, image/config and fixture. Keep FAIL/NOT_RUN history; no paid supplier calls. Production switch evidence is separately retained in .cache/r31-switch-browser and host operations/platform-switch.
 
+Current resource revision: the initial runner256MiB observation failed with exact-container `OOMKilled=true`, exit137, after roughly ten minutes. The receipt `cloud-runner-state-*` and original samples are retained; no third-party source change or swap expansion follows. Runner384MiB keeps Xmx112MiB; total with helper is2848MiB. A new full1800second run and cold/fault/native acceptance are required. Prior UNKNOWN operations and reservations remain in their original isolated datasets and are never replayed or reset. R2 restoration passed after the failure. A read-only sampler records actual container/process RSS, threads, CPU, limits and restart data in addition to host samples. The new run is pending, not yet PASS.
+
 | Gate | Required assertions | Initial status |
 |---|---|---|
 | Framework | Real Nimbus signatures/alg/claims/body/response validation; docker-java socket/version/inspect and Jackson separation | NOT_RUN |

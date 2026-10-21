@@ -95,8 +95,8 @@ services:
     <<: *app
     profiles: [application]
     group_add: ["${R31_DOCKER_GID:?Set inspected daemon socket GID}"]
-    mem_limit: 256m
-    memswap_limit: 256m
+    mem_limit: 384m
+    memswap_limit: 384m
     cpus: 1
     entrypoint: [java, -Xms32m, -Xmx112m, -jar, /app/platform.jar]
     environment:
