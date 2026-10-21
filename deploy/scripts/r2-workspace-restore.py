@@ -35,24 +35,28 @@ def quota(root):
         subprocess.run(['xfs_quota', '-x', '-c', command, str(workspace)], check=True, capture_output=True)
     try:
         xfs('project -s -p ' + str(folder) + ' 200002')
-        xfs('limit -p bhard=128k ihard=8 200002')
+        xfs('limit -p bhard=128k ihard=100000 200002')
         # The child drops host root privileges; actual writes must hit both quotas.
         script = '''import os,errno,pathlib,sys
 os.setgroups([]);os.setgid(10001);os.setuid(10001)
-p=pathlib.Path(sys.argv[1]);denied=False
-try:
- with (p/'bytes').open('wb') as f:os.posix_fallocate(f.fileno(),0,256*1024)
-except OSError as e:
- assert e.errno in (errno.ENOSPC,errno.EDQUOT);denied=True
-assert denied,'Byte quota did not refuse allocation'
-(p/'bytes').unlink(missing_ok=True);denied=False
-try:
- for i in range(24):(p/str(i)).touch()
-except OSError as e:
- assert e.errno in (errno.ENOSPC,errno.EDQUOT);denied=True
-assert denied,'Inode quota did not refuse file creation'
+p=pathlib.Path(sys.argv[1]);mode=sys.argv[2];denied=False
+if mode=='bytes':
+ try:
+  with (p/'bytes').open('wb') as f:os.posix_fallocate(f.fileno(),0,256*1024)
+ except OSError as e:
+  assert e.errno in (errno.ENOSPC,errno.EDQUOT);denied=True
+ assert denied,'Byte quota did not refuse allocation'
+ (p/'bytes').unlink(missing_ok=True)
+else:
+ try:
+  for i in range(24):(p/str(i)).touch()
+ except OSError as e:
+  assert e.errno in (errno.ENOSPC,errno.EDQUOT);denied=True
+ assert denied,'Inode quota did not refuse file creation'
 '''
-        subprocess.run(['python3', '-c', script, str(folder)], check=True, capture_output=True)
+        subprocess.run(['python3', '-c', script, str(folder), 'bytes'], check=True, capture_output=True)
+        xfs('limit -p bhard=0 ihard=8 200002')
+        subprocess.run(['python3', '-c', script, str(folder), 'inodes'], check=True, capture_output=True)
     finally:
         for path in folder.iterdir():
             assert path.is_file() and not path.is_symlink()

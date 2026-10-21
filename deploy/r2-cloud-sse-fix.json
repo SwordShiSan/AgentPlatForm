@@ -1,0 +1,49 @@
+{
+  "status": "HOST_HELPER_FIX_VALIDATED_PENDING_CLOUD_RETRY",
+  "applicationSource": "6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19",
+  "previousMain": "7dd2bb3d83a6864d56f6d687534603049e2bc819",
+  "secondActivation": "PASS",
+  "secondObservation": "FAIL_HELPER_SENT_JSON_TO_SSE",
+  "automaticR1Rollback": "PASS",
+  "priorSupplierTask": {
+    "status": "PASS",
+    "scope": "PERSISTED_R2_TASK_AND_SSE_HEADER_DIAGNOSIS",
+    "applicationSource": "6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19",
+    "taskId": "01a15c70-0367-7625-b001-b36a7147e9bc",
+    "conversationId": "01a15c70-030f-71b0-90d3-ab479f1ee244",
+    "taskStatus": "SUCCEEDED",
+    "model": "deepseek-flash",
+    "usage": [
+      {
+        "callId": "01a15c70-0aea-7f5f-865e-97da1273acbc",
+        "status": "COMPLETED",
+        "inputTokens": 30,
+        "outputTokens": 2,
+        "costMicros": 76,
+        "estimated": true
+      }
+    ],
+    "physicalCalls": 1,
+    "wrongAcceptStatus": 406,
+    "correctAcceptForeignStatus": 404,
+    "newSupplierCalls": 0,
+    "replayAllowed": false
+  },
+  "priorTaskProofSha256": "f84ed76ceaca5301f9f3783aa10eaf9c75df6d550aac0fec5e348712a9c4d8cd",
+  "linuxUnitAndGuardTests": 18,
+  "guardScope": "LINUX_UNIT_GUARDS_NOT_ACTUAL_QUOTA_OR_RESTORE",
+  "guardCodeSha256": {
+    "r2-release-control.py": "39ed5c95aa4632ad83978a3f82b030e51acb31a40a3a6d8d3e84204103c546a1",
+    "r2-release-preflight.py": "0378480916052bd92b8fddfee592710caf408bf1ab1704e37473911ac5fe5690",
+    "r2-cloud-observe.py": "3ff9c89867a00e153f480781c869327c95c48f5ddfc13aba21ea895ee2a6c210",
+    "r2-isolated-restore.py": "d21f8fa0b7d2c0ac9ddc506d40c4202bb27d73cc744f87694bd58fae5c0a4dad",
+    "r2-workspace-restore.py": "fef1b7b6d37f8ca255fa54903f36cb7de73a54f3dc2129dd8da44ee789993c65",
+    "r2-existing-task-smoke.py": "188ae728c2909a5be2473e09b0d22ee9fe9728484ba89649e36d8af3a91055cb"
+  },
+  "guardReceiptSha256": "ccbc59086543503294c97414ebc6c24f4f9929237aee25f2fbca9ed14f74202e",
+  "subsequentSupplierRequests": 0,
+  "actualCloudObservation": "NOT_RUN",
+  "actualIsolatedRestore": "NOT_RUN",
+  "actualXfsQuota": "NOT_RUN",
+  "released": false
+}
