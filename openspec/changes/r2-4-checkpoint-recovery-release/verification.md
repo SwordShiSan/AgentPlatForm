@@ -18,6 +18,10 @@ Cloud backup-r1 PASS. First activation FAIL at private-API permissions: V5→V9 
 
 Targeted fix PASS locally: actual R0/R1 ACL reproduction, API SDK CRUD/checkpoint private/ciphertext/proof denial, real metadata query, worker checkpoint/binding rights, future-default denial and two idempotent applications. Source rows were not imported/modified, temporary roles/database removed, local PG stopped. Final Linux host tests11 PASS, including unlimited foreign-container rejection and bounded foreign-container accounting. Fresh read-only R1/V9 admission in a separate window PASS; old failed window/V5 backup retained. `deploy/r2-cloud-permission-fix.json` is sanitized fix/preparation evidence, not R2 release. No application-image rebuild or migration edit.
 
+Second activation PASS: inherited private permissions denied and R2 API/worker/gateway healthy. Flash taskSUCCEEDED with one physical call,30input/2output tokens,76micros estimated; DB usage persisted. Observation FAIL at foreign SSE because helper sent application/json, confirmed406 versus404 with text/event-stream. Automatic R1 rollback PASS. Retain both failures and the completed task; fix the request and validate exact completed-task reuse before the next full1800second observation. New supplier calls are not required to repeat this already valid smoke. No R2 tag or release claimed.
+
+SSE/reuse helper fix:18 Linux unit/guard methods PASS, including actual Request Accept header, UNKNOWN/usage/source/identity drift refusal and an executed reuse branch that never calls task submission. Workspace unit checks explicitly mock host operations and are NOT real XFS evidence. Restore driver now performs persisted vector distance verification and independent byte/inode quota tests; these real restore cases remain NOT_RUN until executed. No application/contract/migration change or additional provider request.
+
 ## Historical process records
 
 # Current local conclusion (2026-10-21)

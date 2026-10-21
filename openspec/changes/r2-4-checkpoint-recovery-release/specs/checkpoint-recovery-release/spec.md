@@ -59,3 +59,6 @@ The platform SHALL distinguish local verification from cloud release and promote
 #### Scenario: Inherited production grants or external resource usage
 - **WHEN** R0/R1 defaults granted the API whole-table checkpoint/state access, or another project has an unlimited container
 - **THEN** revoke broad private access before granting only metadata, verify from inherited ACLs, and count every coexisting container or refuse resource admission
+#### Scenario: Reuse definitive supplier evidence after a host-test failure
+- **WHEN** a prior window has the same application source, a successful task and exact known persisted usage
+- **THEN** verify its identity/configuration and reuse it without submitting another task, while refusing UNKNOWN, missing usage or drift and using the declared SSE media type
