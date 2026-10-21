@@ -18,5 +18,5 @@
 - [x] 5.3 Actual API/browser widths/themes/keyboard, no supplier calls, bounded resource regression.
 - [x] 5.4 Isolated Linux XFS/quota/remount/canary and>=1800s lifecycle/fault observation, stop test stack and restore R2.
 ## 6. Closure
-- [ ] 6.1 Exact-source artifacts/evidence and protected step->phase->main promotion, Actions disabled.
-- [ ] 6.2 Archive same change, local/global/handoff/Skill updates and separately hashed protected packages.
+- [x] 6.1 Exact-source artifacts/evidence and protected step->phase->main promotion, Actions disabled.
+- [x] 6.2 Archive same change, local/global/handoff/Skill updates and separately hashed protected packages.

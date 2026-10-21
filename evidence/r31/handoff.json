@@ -1,0 +1,12 @@
+{
+  "stage": "R3.1 VERIFIED",
+  "production": "R2 remains online; no R3 production deployment",
+  "localProtectedDirectory": "evidence/r31/delivery",
+  "secondProtectedLocalDirectory": ".cache/r31-local/delivery",
+  "cloudProtectedDirectory": "/srv/agentplatform/operations/r31-delivery-20261022",
+  "manifest": "handoff.json",
+  "cloudHashVerifiedAtClosure": true,
+  "contents": "Separate canonical Markdown and sanitized evidence ZIPs; exact names/member/package SHA256 in protected manifests",
+  "retentionUntilAtLeast": "2026-11-23",
+  "secretsRawSqlSensitiveLogsIncluded": false
+}
