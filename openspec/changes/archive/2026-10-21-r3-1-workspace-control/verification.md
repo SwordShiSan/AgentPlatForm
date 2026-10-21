@@ -1,3 +1,7 @@
+# Final delivery hash scope correction
+
+Final checkout audit detected CRLF→LF normalization of the public evidence index. The public cross-reference SHA256 now binds explicit UTF-8 LF Git blob bytes, while private receipt/log hashes retain their actual original byte scope. Only metadata changed; application/test/image identities and all functional/native results remain unchanged. Preserve earlier packages, validate references after checkout, and reseal the latest delivery. This discovered driver failure is included in the deduplicated Skill.
+
 # Closure delivery verified before archive
 
 Two separately hashed packages (101 canonical Markdown documents and38 sanitized evidence entries) are present in two protected local directories and `/srv/agentplatform/operations/r31-delivery-20261022`; every ZIP member/package and cloud SHA256 was checked. Protected `evidence/r31/delivery/handoff.json` records cloudHashVerified=true and retention through2026-11-23. Secrets/raw SQL/sensitive logs are excluded. Skill references were deduplicated; official validator with the already-installed YAML parser adapter passed, main Skill114 lines and18 relative links valid. Local fixture stack stopped, volumes/images retained. Archive uses normal validation and specification update; no skip/force flags.
