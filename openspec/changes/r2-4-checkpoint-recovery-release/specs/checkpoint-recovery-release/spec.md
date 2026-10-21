@@ -53,3 +53,6 @@ The platform SHALL distinguish local verification from cloud release and promote
 #### Scenario: Cloud acceptance or failure
 - **WHEN** the cloud capacity/backup/deploy/observation/isolated-restore/R1-rollback gates run
 - **THEN** only all PASS permits a production-r2 tag; failure restores R1, retains evidence and never upgrades unrun results
+#### Scenario: Unsafe host window
+- **WHEN** a source project is still active during isolated restore, a host path overlaps the source, or another window action holds the lock
+- **THEN** refuse before restoring data or starting a temporary service, preserve the original XFS UUID and never infer release from prepared or imported files

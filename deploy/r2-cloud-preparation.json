@@ -1,0 +1,58 @@
+{
+  "status": "PREPARED_NOT_RELEASED",
+  "checkedAt": 1792550311.708386,
+  "applicationSource": "6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19",
+  "composeSource": "c7cb87b805b17513e49c897170e4c8d65c7670c4",
+  "sourceRelease": "R1",
+  "sourceMigration": 5,
+  "sourceSlotEmpty": true,
+  "sourceSuccessfulTasks": 2,
+  "sourceReadiness": "READY",
+  "sourceApplicationUnchanged": true,
+  "runtimeLimitMiB": 2336,
+  "withOperatorMiB": 2656,
+  "hostReserveMiB": 768,
+  "maximumContainerLimitsMiB": 2887,
+  "diskAdmissionRequiredBytes": 14904127556,
+  "diskAvailableAtAdmissionBytes": 15144882176,
+  "diskReserveBytes": 5368709120,
+  "artifacts": [
+    {
+      "component": "api",
+      "source": "6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19",
+      "platform": "linux/amd64",
+      "configId": "sha256:0d33cf464cc602519f2ac7ef7cc22a392dd5dd8ef7846ddb759956e8ebc43571",
+      "manifestDigest": "sha256:b1c843b205f22b7292709f0a3edca3ad99af2ec3d46c0e338c81fb95c7c9500d",
+      "archiveSha256": "50a1bd906f391589498af37eef3ac02b2a6b8323f3b296319b193ed0ec7fdbb0"
+    },
+    {
+      "component": "gateway",
+      "source": "6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19",
+      "platform": "linux/amd64",
+      "configId": "sha256:42841ce73de7791e00b182ef1b6f867193a1160e96197844ecfae0d288da53ac",
+      "manifestDigest": "sha256:bfff393adbb4228d9468e81cb5b6fd8c98237065003d92866db05e0da2229747",
+      "archiveSha256": "26c51168a493725c1eb82f586f353c8b0d2020e9c1387a7a9cac797a563ade2e"
+    }
+  ],
+  "linuxSafetyTests": 9,
+  "driverSha256": {
+    "r2-release-control.py": "2eac0a3215c780421db567bd2129abcf2a5082694cad091b7e7445225ba0f67a",
+    "r2-isolated-restore.py": "396f9d767d39a186419933be0487edb04b085bfd148ef4252af7515f428acf64",
+    "r2-workspace-restore.py": "9f301c0486a0d9e3ca20f15305be9f2f384fdeea6076bad01c8fd8ca12a3b955",
+    "r2-cloud-observe.py": "79e36e279e6fd21053e224e5240ebb4fcde43f0ad1c90565475af7f769f52f8d",
+    "r2-existing-task-smoke.py": "188ae728c2909a5be2473e09b0d22ee9fe9728484ba89649e36d8af3a91055cb"
+  },
+  "localSyntax": "PASS",
+  "openSpecStrict": "PASS",
+  "links": "PASS",
+  "deployment": "NOT_RUN",
+  "cloudObservation": "NOT_RUN",
+  "isolatedRestore": "NOT_RUN",
+  "r1Rollback": "NOT_RUN",
+  "r2TagCreated": false,
+  "receiptSha256": {
+    "admission.json": "e74ed297e1f9c55c0a83c93693f79fe71ce297ff235df7685c9a7c2a3c26bc09",
+    "driver-check-1792550273.json": "a96f2af5a19f5b7ee14102510bf477b00ceee0a7a3d563d1700195fdd071cc62",
+    "import.json": "53f774c1b36ca5414fa311aa2ea32933e22c8b29ab8882973e47653c4e2f0b1c"
+  }
+}
