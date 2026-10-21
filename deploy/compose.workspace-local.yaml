@@ -1,0 +1,161 @@
+name: agentplatform-r31-local
+x-app: &app
+  image: ${R31_API_IMAGE:-agentplatform-api:r31-local}
+  user: "10001:10001"
+  read_only: true
+  restart: "no"
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  pids_limit: 128
+  tmpfs: ["/tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001,mode=700"]
+  networks: [control]
+  logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.1-pg17-trixie@sha256:137f044b0efe3d57f39b972b9b53641b1f2045b99d879e298bbf514a25787dcf
+    restart: "no"
+    mem_limit: 320m
+    memswap_limit: 320m
+    cpus: 1
+    environment:
+      POSTGRES_DB: workspace_test
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    ports: ["127.0.0.1:15448:5432"]
+    volumes: ["workspace-data:/var/lib/postgresql/data"]
+    networks: [control, local-access]
+    healthcheck: {test: [CMD-SHELL, pg_isready -U postgres -d workspace_test], interval: 2s, timeout: 3s, retries: 30}
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+  rabbitmq:
+    image: rabbitmq:4.3.6-management@sha256:8dd6e3570ddaa2ef82a6c3a8950e79c1f73893adfbdddbc374fc1f1ac8a0f5dd
+    hostname: agentplatform-r31-mq
+    restart: "no"
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 1:1 +A 4 +sbwt none +sbwtdcpu none +sbwtdio none"
+      RABBITMQ_CTL_ERL_ARGS: "+S 1:1 +A 1 +sbwt none +sbwtdcpu none +sbwtdio none"
+    volumes:
+      - "workspace-mq:/var/lib/rabbitmq"
+      - "${R31_ROOT:?Set independent protected fixture root}/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro"
+      - "${R31_ROOT}/rabbitmq-definitions.json:/etc/rabbitmq/definitions.json:ro"
+    ports: ["127.0.0.1:15688:15672", "127.0.0.1:15698:5672"]
+    networks: [control, local-access]
+    healthcheck: {test: [CMD, rabbitmq-diagnostics, -q, ping], interval: 15s, timeout: 10s, retries: 12, start_period: 30s}
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+  api:
+    <<: *app
+    profiles: [application]
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1
+    entrypoint: [java, -Xms32m, -Xmx224m, -jar, /app/platform.jar]
+    environment:
+      SPRING_PROFILES_ACTIVE: identity-local,workspace-api
+      PLATFORM_WORKSPACE_ENABLED: "true"
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/${R31_DATABASE:-workspace_runtime}?connectTimeout=2&socketTimeout=5
+      PLATFORM_STORAGE_USER: ap_api
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/api_password
+      PLATFORM_IDENTITY_ORIGINS: http://127.0.0.1:18093,http://localhost:18093
+      PLATFORM_IDENTITY_SECURE_COOKIE: "false"
+      PLATFORM_WORKSPACE_MESSAGING_HOST: rabbitmq
+      PLATFORM_WORKSPACE_MESSAGING_PORT: "5672"
+      PLATFORM_WORKSPACE_MESSAGING_USER: r31
+      PLATFORM_WORKSPACE_MESSAGING_PASSWORD_FILE: /run/secrets/mq_password
+      SERVER_TOMCAT_THREADS_MAX: "16"
+    secrets: [api_password, mq_password]
+    healthcheck: {test: [CMD, java, -Xms8m, -Xmx16m, -cp, /app/health, HttpHealthcheck, "http://127.0.0.1:8080/api/v1/readiness"], interval: 5s, timeout: 4s, retries: 24, start_period: 20s}
+  worker: &worker
+    <<: *app
+    profiles: [application]
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1
+    entrypoint: [java, -Xms32m, -Xmx224m, -jar, /app/platform.jar]
+    environment:
+      SPRING_PROFILES_ACTIVE: workspace-worker
+      PLATFORM_WORKSPACE_ENABLED: "true"
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/${R31_DATABASE:-workspace_runtime}?connectTimeout=2&socketTimeout=5
+      PLATFORM_STORAGE_USER: ap_worker
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/worker_password
+      PLATFORM_WORKSPACE_MESSAGING_HOST: rabbitmq
+      PLATFORM_WORKSPACE_MESSAGING_PORT: "5672"
+      PLATFORM_WORKSPACE_MESSAGING_USER: r31
+      PLATFORM_WORKSPACE_MESSAGING_PASSWORD_FILE: /run/secrets/mq_password
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_BASE: http://runner:8080
+      PLATFORM_WORKSPACE_CONTROL_PRIVATE_KEY_FILE: /run/secrets/control_private_key
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_PUBLIC_KEY_FILE: /run/secrets/runner_public_key
+      PLATFORM_WORKSPACE_CONTROL_KEY_ID: r31-control-1
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_KEY_ID: r31-runner-1
+    secrets: [worker_password, mq_password, control_private_key, runner_public_key]
+  worker-2:
+    <<: *worker
+  runner:
+    <<: *app
+    profiles: [application]
+    group_add: ["${R31_DOCKER_GID:?Set inspected daemon socket GID}"]
+    mem_limit: 384m
+    memswap_limit: 384m
+    cpus: 1
+    entrypoint: [java, -Xms32m, -Xmx112m, -jar, /app/platform.jar]
+    environment:
+      SPRING_PROFILES_ACTIVE: workspace-runner
+      PLATFORM_WORKSPACE_ENABLED: "true"
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/${R31_DATABASE:-workspace_runtime}?connectTimeout=2&socketTimeout=5
+      PLATFORM_STORAGE_USER: ap_runner
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/runner_password
+      PLATFORM_WORKSPACE_RUNNER_PRIVATE_KEY_FILE: /run/secrets/runner_private_key
+      PLATFORM_WORKSPACE_RUNNER_CONTROL_PUBLIC_KEY_FILE: /run/secrets/control_public_key
+      PLATFORM_WORKSPACE_RUNNER_KEY_ID: r31-runner-1
+      PLATFORM_WORKSPACE_RUNNER_CONTROL_KEY_ID: r31-control-1
+      PLATFORM_WORKSPACE_RUNNER_HELPER_IMAGE: ${R31_HELPER_IMAGE:?Set pinned quota helper config ID}
+      PLATFORM_WORKSPACE_RUNNER_WORKSPACE_ROOT: /srv/agentplatform/acceptance/r31-local/workspaces
+      PLATFORM_WORKSPACE_RUNNER_MOUNT_UUID: ${R31_MOUNT_UUID:?Set independent fixture mount UUID}
+      PLATFORM_WORKSPACE_RUNNER_QUOTA_DEVICE: ${R31_QUOTA_DEVICE:-}
+      SERVER_TOMCAT_THREADS_MAX: "8"
+    secrets: [runner_password, runner_private_key, control_public_key]
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock:ro"]
+  gateway:
+    image: ${R31_GATEWAY_IMAGE:-agentplatform-gateway:r31-local}
+    profiles: [application]
+    user: "101:101"
+    read_only: true
+    restart: "no"
+    mem_limit: 32m
+    memswap_limit: 32m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=8m"]
+    networks: [control, local-access]
+    ports: ["127.0.0.1:18093:8080"]
+    volumes: ["./nginx.chat-local.conf:/etc/nginx/nginx.conf:ro"]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+  operator:
+    <<: *app
+    profiles: [operator]
+    mem_limit: 320m
+    memswap_limit: 320m
+    entrypoint: [java, -Xms16m, -Xmx160m, -jar, /app/platform.jar]
+    environment:
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/${R31_DATABASE:-workspace_runtime}?connectTimeout=2&socketTimeout=5
+      PLATFORM_STORAGE_USER: postgres
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+networks:
+  control: {internal: true}
+  local-access: {}
+volumes:
+  workspace-data: {}
+  workspace-mq: {}
+secrets:
+  postgres_password: {file: "${R31_ROOT}/postgres-password"}
+  api_password: {file: "${R31_ROOT}/api-password"}
+  worker_password: {file: "${R31_ROOT}/worker-password"}
+  runner_password: {file: "${R31_ROOT}/runner-password"}
+  mq_password: {file: "${R31_ROOT}/mq-password"}
+  control_private_key: {file: "${R31_ROOT}/control-private.pem"}
+  control_public_key: {file: "${R31_ROOT}/control-public.pem"}
+  runner_private_key: {file: "${R31_ROOT}/runner-private.pem"}
+  runner_public_key: {file: "${R31_ROOT}/runner-public.pem"}

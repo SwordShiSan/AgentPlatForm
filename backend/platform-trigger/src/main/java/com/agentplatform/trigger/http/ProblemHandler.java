@@ -8,6 +8,14 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public final class ProblemHandler extends ResponseEntityExceptionHandler {
+    @org.springframework.web.bind.annotation.ExceptionHandler(com.agentplatform.domain.workspace.WorkspaceFailure.class)
+    org.springframework.http.ResponseEntity<ProblemDetail> workspaceFailure(com.agentplatform.domain.workspace.WorkspaceFailure failure) {
+        var problem=ProblemDetail.forStatusAndDetail(org.springframework.http.HttpStatusCode.valueOf(failure.status()),"The workspace operation could not be completed.");
+        problem.setType(URI.create("urn:agentplatform:error:"+failure.code().toLowerCase(java.util.Locale.ROOT).replace('_','-')));
+        problem.setProperty("code",failure.code());problem.setProperty("traceId",com.agentplatform.types.RequestTrace.current().toString());
+        problem.setProperty("retryable",failure.status()==503);
+        return org.springframework.http.ResponseEntity.status(failure.status()).header("Cache-Control","no-store").body(problem);
+    }
     private boolean responseCommitted() {
         var attributes = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
         return attributes instanceof org.springframework.web.context.request.ServletRequestAttributes servlet
@@ -57,6 +65,8 @@ public final class ProblemHandler extends ResponseEntityExceptionHandler {
             org.springframework.http.ResponseEntity<ProblemDetail> response;
             if (path.equals("/api/v1/auth/login")) {
                 response = identityFailure(new com.agentplatform.domain.identity.IdentityFailure(400, "INVALID_LOGIN_REQUEST"));
+            } else if (path.startsWith("/api/v1/workspaces")) {
+                response = workspaceFailure(new com.agentplatform.domain.workspace.WorkspaceFailure(400, unknown ? "UNKNOWN_REQUEST_FIELD" : "INVALID_WORKSPACE_NAME"));
             } else {
                 String error = unknown ? "UNKNOWN_REQUEST_FIELD" : path.endsWith("/model-credentials/deepseek") ? "INVALID_CREDENTIAL"
                         : "title".equals(field) ? "INVALID_TITLE" : "INVALID_TASK_REQUEST";

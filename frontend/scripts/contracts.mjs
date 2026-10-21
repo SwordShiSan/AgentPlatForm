@@ -63,6 +63,22 @@ assert(validateEvent(delta));
 assert(!validateEvent({ ...delta, payload: { ...delta.payload, offset: -1 } }));
 assert(!validateEvent({ ...delta, payload: { ...delta.payload, reasoning: 'hidden' } }));
 
+const workspaceEvent = { ...fixture, conversationId: null, type: 'workspace.state_changed', payload: {
+  workspaceId: fixture.spaceId, operationId: fixture.eventId, state: 'READY', environmentState: 'NOT_CREATED', errorCode: null,
+} };
+assert(validateEvent(workspaceEvent), 'Storage events must not fabricate a conversation');
+assert(!validateEvent({ ...fixture, conversationId: null }), 'Chat events must retain conversation identity');
+for (const patch of [{ environmentState: 'RUNNING' }, { state: 'UNKNOWN' }, { workspaceId: 'invalid' }, { hostPath: '/private' }, { apiKey: 'forbidden' }]) {
+  assert(!validateEvent({ ...workspaceEvent, payload: { ...workspaceEvent.payload, ...patch } }), 'Unsafe workspace payload accepted');
+}
+const workspaceSchema = ajv.compile(api.components.schemas.Workspace);
+const workspaceFixture = { id: fixture.eventId, spaceId: fixture.spaceId, name: '项目 😀', state: 'READY', environmentState: 'NOT_CREATED',
+  quotaBytes: 2147483648, quotaInodes: 100000, version: 1, operationId: fixture.eventId, errorCode: null, createdAt: fixture.occurredAt, fileAccess: false, shellAccess: false };
+assert(workspaceSchema(workspaceFixture));
+for (const patch of [{ shellAccess: true }, { fileAccess: true }, { environmentState: 'READY' }, { quotaBytes: 0 }, { version: 0 }, { path: '/private' }]) {
+  assert(!workspaceSchema({ ...workspaceFixture, ...patch }), 'Invalid storage-only workspace accepted');
+}
+
 const health = ajv.compile(api.components.schemas.HealthResponse);
 const readiness = ajv.compile(api.components.schemas.ReadinessResponse);
 const problem = ajv.compile(api.components.schemas.Problem);

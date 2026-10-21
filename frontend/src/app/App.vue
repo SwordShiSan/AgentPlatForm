@@ -3,6 +3,7 @@ import { darkTheme, NConfigProvider } from 'naive-ui';
 import { useTheme } from './theme';
 const { preference, dark } = useTheme();
 const chatEnabled = import.meta.env.VITE_CHAT_ENABLED === 'true';
+const workspaceEnabled = import.meta.env.VITE_WORKSPACE_ENABLED === 'true';
 </script>
 
 <template>
@@ -14,6 +15,7 @@ const chatEnabled = import.meta.env.VITE_CHAT_ENABLED === 'true';
       </RouterLink>
       <nav class="site-nav" aria-label="主要导航">
         <RouterLink v-if="chatEnabled" to="/app/chat">聊天</RouterLink>
+        <RouterLink v-if="workspaceEnabled" to="/app/workspaces">工作区</RouterLink>
         <RouterLink v-if="chatEnabled" to="/app/settings/account">账号</RouterLink>
         <RouterLink to="/status">连接状态</RouterLink>
       </nav>

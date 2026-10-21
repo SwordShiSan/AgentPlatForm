@@ -9,7 +9,7 @@ export type PlatformEvent = {
   schemaVersion: 1;
   eventId: string;
   spaceId: string;
-  conversationId: string;
+  conversationId: string | null;
   taskId?: string | null;
   attemptId?: string | null;
   seq: number;

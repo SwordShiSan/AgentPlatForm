@@ -38,6 +38,8 @@ public class ChatConfiguration {
         @Bean(destroyMethod="destroy")
         org.springframework.amqp.rabbit.connection.CachingConnectionFactory chatConnections(ChatMessagingProperties properties) throws Exception {
             var connections = new org.springframework.amqp.rabbit.connection.CachingConnectionFactory(properties.mqHost());
+            connections.setPublisherConfirmType(org.springframework.amqp.rabbit.connection.CachingConnectionFactory.ConfirmType.CORRELATED);
+            connections.setPublisherReturns(true);
             connections.setVirtualHost("/agentplatform");
             connections.setUsername(properties.mqUser());
             connections.setPassword(Files.readString(properties.mqPasswordFile()).strip());
