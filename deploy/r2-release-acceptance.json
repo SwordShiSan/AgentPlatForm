@@ -1,0 +1,429 @@
+{
+  "status": "RELEASED",
+  "stage": "R2.4",
+  "R2": "4/4 VERIFIED, RELEASED",
+  "releaseAcceptedMain": "9ee7aadfe242e8595cdcaee5edd1ce82dbf088a5",
+  "applicationSource": "6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19",
+  "configurationSource": "bf02e2b47cc4acfd7ad90603219d589469e7169a",
+  "hostRestoreProbeSource": "43d356a227d3d18a3db5a92b570360eaf60a79fd",
+  "hostToolOverlay": {
+    "status": "PASS",
+    "runtimeConfigurationSource": "bf02e2b47cc4acfd7ad90603219d589469e7169a",
+    "hostToolSource": "43d356a227d3d18a3db5a92b570360eaf60a79fd",
+    "runtimeImagesComposeAndGrantsUnchanged": true,
+    "overrides": {
+      "scripts/r2-workspace-restore.py": {
+        "beforeSha256": "fef1b7b6d37f8ca255fa54903f36cb7de73a54f3dc2129dd8da44ee789993c65",
+        "afterSha256": "fdb97c427534d7c94e6734bddf49fd3f0a9f982575e3c1ed053dd611cf62ddf6"
+      }
+    },
+    "sourceBackupsAndFailedDriverRetained": true
+  },
+  "recordedAtUtc": "2026-10-21T04:50:27.777654+00:00",
+  "immutableArtifacts": [
+    {
+      "component": "api",
+      "source": "6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19",
+      "platform": "linux/amd64",
+      "configId": "sha256:0d33cf464cc602519f2ac7ef7cc22a392dd5dd8ef7846ddb759956e8ebc43571",
+      "manifestDigest": "sha256:b1c843b205f22b7292709f0a3edca3ad99af2ec3d46c0e338c81fb95c7c9500d",
+      "archiveSha256": "50a1bd906f391589498af37eef3ac02b2a6b8323f3b296319b193ed0ec7fdbb0"
+    },
+    {
+      "component": "gateway",
+      "source": "6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19",
+      "platform": "linux/amd64",
+      "configId": "sha256:42841ce73de7791e00b182ef1b6f867193a1160e96197844ecfae0d288da53ac",
+      "manifestDigest": "sha256:bfff393adbb4228d9468e81cb5b6fd8c98237065003d92866db05e0da2229747",
+      "archiveSha256": "26c51168a493725c1eb82f586f353c8b0d2020e9c1387a7a9cac797a563ade2e"
+    }
+  ],
+  "runtimeServices": [
+    {
+      "id": "592e5f1641f3933f6c9f131e651f3479419954f78d00bfc55c7acafce1cdf57f",
+      "name": "/agentplatform-app-gateway-1",
+      "service": "gateway",
+      "project": "agentplatform-app",
+      "image": "sha256:42841ce73de7791e00b182ef1b6f867193a1160e96197844ecfae0d288da53ac",
+      "startedAt": "2026-10-21T04:42:24.893064057Z",
+      "memory": 33554432,
+      "memorySwap": 33554432,
+      "user": "101:101",
+      "restart": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      }
+    },
+    {
+      "id": "c6f4af202a43180cf2c3b6915d8187a04735fcdd38751dde9a1935246072479f",
+      "name": "/agentplatform-app-api-1",
+      "service": "api",
+      "project": "agentplatform-app",
+      "image": "sha256:0d33cf464cc602519f2ac7ef7cc22a392dd5dd8ef7846ddb759956e8ebc43571",
+      "startedAt": "2026-10-21T04:41:54.222624644Z",
+      "memory": 536870912,
+      "memorySwap": 536870912,
+      "user": "10001:10001",
+      "restart": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      }
+    },
+    {
+      "id": "93c6ea60a7a41b3dcb7521028ba899365517f1d4d93dfded8455f22a2179da7b",
+      "name": "/agentplatform-app-worker-1",
+      "service": "worker",
+      "project": "agentplatform-app",
+      "image": "sha256:0d33cf464cc602519f2ac7ef7cc22a392dd5dd8ef7846ddb759956e8ebc43571",
+      "startedAt": "2026-10-21T04:41:54.221794232Z",
+      "memory": 536870912,
+      "memorySwap": 536870912,
+      "user": "10001:10001",
+      "restart": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      }
+    },
+    {
+      "id": "ad06dc9c5ad043ad70dda1446379efa24e08f745da79ee2e0f75b08bc8aa3d45",
+      "name": "/agentplatform-env-s3-1",
+      "service": "s3",
+      "project": "agentplatform-env",
+      "image": "sha256:7b5ca1f11aa4c91593612d2d4a9e253ec9152a4bd13a19e551290a042a4c52f5",
+      "startedAt": "2026-10-21T04:36:06.163502229Z",
+      "memory": 67108864,
+      "memorySwap": 67108864,
+      "user": "10001:10001",
+      "restart": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      }
+    },
+    {
+      "id": "7407f880d25f40b5e80c9064ba6d85e3df13266f0340d7bb6cdeaea827bb4ff7",
+      "name": "/agentplatform-env-filer-1",
+      "service": "filer",
+      "project": "agentplatform-env",
+      "image": "sha256:7b5ca1f11aa4c91593612d2d4a9e253ec9152a4bd13a19e551290a042a4c52f5",
+      "startedAt": "2026-10-21T04:36:00.531016814Z",
+      "memory": 100663296,
+      "memorySwap": 100663296,
+      "user": "10001:10001",
+      "restart": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      }
+    },
+    {
+      "id": "90b4aaba1150e9a357fa75206966d2ea1eccf755516f241f03da6b2f96c8c97e",
+      "name": "/agentplatform-env-volume-1",
+      "service": "volume",
+      "project": "agentplatform-env",
+      "image": "sha256:7b5ca1f11aa4c91593612d2d4a9e253ec9152a4bd13a19e551290a042a4c52f5",
+      "startedAt": "2026-10-21T04:35:54.906577401Z",
+      "memory": 100663296,
+      "memorySwap": 100663296,
+      "user": "10001:10001",
+      "restart": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      }
+    },
+    {
+      "id": "4561fc2dadd1d5a545ca2c15f184d57866dbd2d29acd004838e2bd43c6fa8551",
+      "name": "/agentplatform-env-postgres-1",
+      "service": "postgres",
+      "project": "agentplatform-env",
+      "image": "sha256:514d02824b061f651960912cf3f7a58b3dbebda9755fe5b70579fda90c0ad566",
+      "startedAt": "2026-10-21T04:35:34.187870421Z",
+      "memory": 335544320,
+      "memorySwap": 335544320,
+      "user": "999:999",
+      "restart": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      }
+    },
+    {
+      "id": "f4cfa5ff492330a7c0c50a24a5ac3f943607b810b8b2c1eb792b2a14becf8fd8",
+      "name": "/agentplatform-env-rabbitmq-1",
+      "service": "rabbitmq",
+      "project": "agentplatform-env",
+      "image": "sha256:30fb3e92f938ed166ba72c2bb9fe5b71c80a3b2d75e0f335f81c113eb8cee90e",
+      "startedAt": "2026-10-21T04:35:34.193788169Z",
+      "memory": 536870912,
+      "memorySwap": 536870912,
+      "user": "999:999",
+      "restart": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      }
+    },
+    {
+      "id": "8cf6666ef1b89ead296eac2e818a5fd5814754713d816447ed2ff56707d5eba2",
+      "name": "/agentplatform-env-redis-1",
+      "service": "redis",
+      "project": "agentplatform-env",
+      "image": "sha256:f84b0c4678011602b9b98c227a4dcd5468bf8b088b02fdd4165cb7758bad8058",
+      "startedAt": "2026-10-21T04:35:34.191931769Z",
+      "memory": 67108864,
+      "memorySwap": 67108864,
+      "user": "999:999",
+      "restart": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      }
+    },
+    {
+      "id": "5e0b11055a3b214e2b949e314941ea113171cc847e827e86f07f9770edd3975a",
+      "name": "/agentplatform-env-master-1",
+      "service": "master",
+      "project": "agentplatform-env",
+      "image": "sha256:7b5ca1f11aa4c91593612d2d4a9e253ec9152a4bd13a19e551290a042a4c52f5",
+      "startedAt": "2026-10-21T04:35:34.189794229Z",
+      "memory": 134217728,
+      "memorySwap": 134217728,
+      "user": "10001:10001",
+      "restart": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      }
+    }
+  ],
+  "memory": {
+    "runtimeContainerLimitMiB": 2336,
+    "withOperatorMiB": 2656,
+    "maximumContainerLimitMiB": 2887,
+    "hostReserveMiB": 768,
+    "physicalBytes": 3833044992,
+    "sampledMinimumHostAvailableKiB": 1868672,
+    "sampledPeaksBytes": {
+      "agentplatform-app-gateway-1": 8585740,
+      "agentplatform-app-api-1": 444701081,
+      "agentplatform-app-worker-1": 212336640,
+      "agentplatform-env-s3-1": 35305553,
+      "agentplatform-env-filer-1": 64728596,
+      "agentplatform-env-volume-1": 59255029,
+      "agentplatform-env-postgres-1": 70978109,
+      "agentplatform-env-rabbitmq-1": 193462272,
+      "agentplatform-env-redis-1": 13988003,
+      "agentplatform-env-master-1": 117964800
+    },
+    "swapFirstKiB": 172216,
+    "swapLastKiB": 171600,
+    "scope": "Sampled completed-task reads and idle-owner dependency failures; no absolute-peak or higher-concurrency claim"
+  },
+  "observation": {
+    "status": "PASS",
+    "durationSeconds": 1802.859,
+    "samples": 135,
+    "dependencyFaults": [
+      {
+        "dependency": "rabbitmq",
+        "failureReadiness": 503,
+        "recovered": true,
+        "elapsedSeconds": 145.393
+      },
+      {
+        "dependency": "postgres",
+        "failureReadiness": 503,
+        "recovered": true,
+        "elapsedSeconds": 322.997
+      }
+    ],
+    "sampledRootGrowthBytes": 30588928,
+    "sampledDatabaseGrowthBytes": 8192,
+    "newTaskSubmissions": 0,
+    "newSupplierCalls": 0
+  },
+  "supplierEvidence": {
+    "cloudPhysicalCallsAcrossWindows": 1,
+    "reusedTask": {
+      "proofSha256": "f84ed76ceaca5301f9f3783aa10eaf9c75df6d550aac0fec5e348712a9c4d8cd",
+      "taskId": "01a15c70-0367-7625-b001-b36a7147e9bc",
+      "historicalPhysicalCalls": 1,
+      "newSupplierCalls": 0
+    },
+    "knownUsage": [
+      {
+        "callId": "01a15c70-0aea-7f5f-865e-97da1273acbc",
+        "status": "COMPLETED",
+        "inputTokens": 30,
+        "outputTokens": 2,
+        "costMicros": 76,
+        "estimated": true
+      }
+    ],
+    "costIsFrozenPriceEstimateNotInvoice": true,
+    "unknownHoldsNotReset": true
+  },
+  "http": {
+    "status": "PASS",
+    "dualUserAndAdminIsolation": true,
+    "readOnlyRecoveryAndReconciliation": true,
+    "committedSseEventCount": 8,
+    "sseResumeNoDuplicate": true,
+    "dnsTested": false
+  },
+  "browser": {
+    "status": "PASS",
+    "taskId": "01a15c70-0367-7625-b001-b36a7147e9bc",
+    "homepageLoginChat": true,
+    "refreshHistory": true,
+    "dualContextIsolation": true,
+    "adminBypass": false,
+    "layouts": [
+      {
+        "theme": "light",
+        "width": 375,
+        "horizontalOverflow": false
+      },
+      {
+        "theme": "light",
+        "width": 768,
+        "horizontalOverflow": false
+      },
+      {
+        "theme": "light",
+        "width": 1440,
+        "horizontalOverflow": false
+      },
+      {
+        "theme": "dark",
+        "width": 375,
+        "horizontalOverflow": false
+      },
+      {
+        "theme": "dark",
+        "width": 768,
+        "horizontalOverflow": false
+      },
+      {
+        "theme": "dark",
+        "width": 1440,
+        "horizontalOverflow": false
+      }
+    ],
+    "zoom200": true,
+    "keyboard": true,
+    "logoutImmediate": true,
+    "newSupplierCalls": 0,
+    "dnsTested": false
+  },
+  "finalActualAdminIsolation": {
+    "status": "PASS",
+    "actualPlatformAdminRole": true,
+    "foreignTaskReadsDenied": true,
+    "foreignSseDenied": true,
+    "foreignCancelDenied": true,
+    "newSupplierCalls": 0
+  },
+  "database": {
+    "sourceMigration": 9,
+    "runtimeBaseline": 1,
+    "sourceTableCount": 51,
+    "restoredFingerprintComparison": "PASS",
+    "versionMetadata": {
+      "migration": 9,
+      "runtimeBaseline": 1,
+      "postgres": "17.8 (Debian 17.8-1.pgdg13+1)",
+      "vector": "0.8.1"
+    },
+    "finalPermissionChecks": {
+      "migration": 9,
+      "baseline": 1,
+      "activeSlots": 0,
+      "apiSdkCrudDenied": true,
+      "apiPrivateCheckpointDenied": true,
+      "apiCiphertextDenied": true,
+      "apiProofWriteDenied": true,
+      "workerProofWriteDenied": true,
+      "credentialKeyVersions": [
+        1
+      ]
+    }
+  },
+  "restore": {
+    "status": "PASS",
+    "databaseFingerprint": "PASS",
+    "authenticatedCredentialDecryption": "PASS",
+    "objectsAndVector": "PASS",
+    "workspaceHashes": "PASS",
+    "byteAndInodeQuota": "PASS",
+    "missingMountRefused": true,
+    "remountConsistency": true,
+    "originalUuidUnchanged": true,
+    "restoredUuid": "1fa50b4c-6069-4a8b-9d99-af8891adef81",
+    "providerRequests": 0,
+    "workerStarted": false
+  },
+  "remount": {
+    "status": "PASS",
+    "scope": "ACTUAL_PRIVATE_COPY_REMOUNT_AND_NONROOT_QUOTA_WRITES",
+    "originalUuidUnchanged": true,
+    "privateUuid": "1fa50b4c-6069-4a8b-9d99-af8891adef81",
+    "originalQuotaRowsPreserved": 2,
+    "byteAndInodeDeniedAfterRemount": true,
+    "workspaceHashesUnchanged": true,
+    "privateUnmounted": true,
+    "newProviderCalls": 0
+  },
+  "originalXfsUuid": "fe8f72e3-4958-4048-a091-b1933d4195da",
+  "restoredCopyUnmounted": true,
+  "storageRestartCases": [
+    {
+      "case": "S3-restart-persistence",
+      "status": "PASS"
+    },
+    {
+      "case": "Redis-restart-auth",
+      "status": "PASS"
+    }
+  ],
+  "r1Rollback": {
+    "status": "PASS",
+    "exactImages": {
+      "gateway": "sha256:a926aced9585adfeef570e7da06a2f088cc0ba5c22a0574215835927e3de3468",
+      "api": "sha256:6853788d51b309e45ff36200a533304431266fb3feaaf121209daa807fffe757",
+      "worker": "sha256:6853788d51b309e45ff36200a533304431266fb3feaaf121209daa807fffe757"
+    },
+    "existingTaskAndUsagePreserved": true,
+    "newProviderCalls": 0
+  },
+  "sameR2Redeploy": {
+    "status": "PASS",
+    "exactImages": {
+      "api": "sha256:0d33cf464cc602519f2ac7ef7cc22a392dd5dd8ef7846ddb759956e8ebc43571",
+      "worker": "sha256:0d33cf464cc602519f2ac7ef7cc22a392dd5dd8ef7846ddb759956e8ebc43571",
+      "gateway": "sha256:42841ce73de7791e00b182ef1b6f867193a1160e96197844ecfae0d288da53ac"
+    },
+    "identityLogoutRevocation": true,
+    "newProviderCalls": 0
+  },
+  "retiredLegacyStopped": true,
+  "productionTag": "production-r2-9ee7aadfe242",
+  "R3Started": false,
+  "history": [
+    {
+      "window": 1,
+      "result": "FAIL_INHERITED_API_ACLS",
+      "automaticR1Rollback": "PASS"
+    },
+    {
+      "window": 2,
+      "result": "FAIL_HOST_HELPER_SSE_ACCEPT",
+      "realFlashTask": "SUCCEEDED_ONE_PHYSICAL_CALL",
+      "automaticR1Rollback": "PASS"
+    },
+    {
+      "window": 3,
+      "initialRestore": "FAIL_UID_BEFORE_0700_PARENT_TRAVERSAL",
+      "automaticR1Rollback": "PASS",
+      "versionedRestoreRetry": "PASS",
+      "allFunctionalGates": "PASS",
+      "newSupplierCalls": 0
+    }
+  ],
+  "protectedRawEvidenceSha256": "ba97c6dc3ecebfdb07e5322a88d4ab26e96dc79992abb5eea699e98acb9bdb88",
+  "sourceAndSecrets": "Original production DB/users/keys retained; no local fixture data import. Raw SQL, secrets, signatures and sensitive logs excluded from public evidence."
+}

@@ -1,3 +1,13 @@
+## 2026-10-21 当前有效结论：R2.4 VERIFIED，R2 4/4 VERIFIED、RELEASED
+
+生产标签 production-r2-9ee7aadfe242，发行接受提交9ee7aadfe242e8595cdcaee5edd1ce82dbf088a5。云端现运行同一已验收R2候选，HTTP入口 http://124.222.55.140/；未检查或修改DNS/HTTPS。应用源码6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19，运行配置bf02e2b，宿主恢复探针43d356a，后续收尾提交不重新标注镜像。MyBatis/Spring事务、Spring AMQP及唯一AgentScope2.0.4 Harness继续沿用，V9加法迁移/runtime baseline1，旧迁移未改。
+
+云端容量及私有权限、真实HTTP/SSE/双用户与管理员隔离、实际浏览器、1802.859秒/135次采样观察、51张实际表一致恢复、vector查询、离线密文凭据解密、S3/Redis/MQ恢复、XFS字节/inode实际拒绝及复挂、R1精确回滚与同一R2重启全部PASS。原XFS UUID保持不变，恢复工程已停止且副本已卸载，旧业务容器仍停机。2336MiB常驻限额、临时运维共2656MiB，均低于2887MiB；最小采样可用1824.875MiB，swap首末168.1796875/167.578125MiB。观察为已完成任务周期读取及空闲owner依赖故障，不宣称连续模型执行、绝对峰值或更高并发。
+
+云端仅一次Flash物理调用，输入30/输出2、冻结价估算76micros；后续复用确定成功任务，未重复调用，历史UNKNOWN与预留保留。曾有继承ACL、SSE Accept及私有0700目录下探针EACCES三项失败，原始失败及R1回滚保留；修复后真实复验通过，未放宽隔离或quota、未修改第三方源码。宿主探针覆盖有明确前后哈希，不改变应用镜像与Compose。原SSH阻断现已解除，不再是当前风险。
+
+全局12/40小阶段VERIFIED、R0/R1/R2共3/10 RELEASED；R2.C不额外计数。R3尚未启动，必须单独Plan/OpenSpec。完整压缩仍R6.4、记忆R6、业务检查清单R3.3，生产工具/shell未开放。公开收据AgentPlatForm/deploy/r2-release-acceptance.json是当前结论；旧NOT_RUN/FAIL为历史快照，不覆写。正文和脱敏证据分开打包，两份受保护本地副本及云端受保护副本逐包核对SHA256，实际交付位置以AgentPlatForm/evidence/r2-release/handoff.json为准，至少保留至2026-11-22；秘密、原始SQL及日志不入公开仓库，Git推送不代表正文交付。以下保留历史过程。
+
 # Current local conclusion (2026-10-21)
 
 R2.4 VERIFIED; R2 4/4 VERIFIED, NOT RELEASED. Application source `6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19`; Maven196, Vue34, non-root Linux69, real API browser20 plus4 recovery states, eight exact-container windows, ten V2 integrity cases, actual PG/MQ/ACK/dependency/cancel/accounting suites and actual released-R1 backend on V9 all PASS. Additive V9, runtime baseline1 and unchanged V1–V8. Later test/doc/evidence commits retain the original image source identities.
