@@ -16,6 +16,7 @@
 - [x] 5.4 Immutable artifacts, exact-source acceptance and protected two-level PRs; local VERIFIED only.
 ## 6. Release and closure
 - [ ] 6.1 Exact cloud release manifest, permissions, capacity admission, maintenance/quiescent backup and immutable import.
+- [x] 6.1a Live R1 identity/slot/readiness inventory, dedicated read-only resource admission, nine Linux host-safety/admission tests and immutable API/gateway transfer/import; no activation claimed.
 - [ ] 6.2 HTTP identity/chat/SSE/recovery smoke,30minute cloud observation, isolated restore and R1 rollback/redeploy.
 - [ ] 6.3 Production tag only on all PASS; archive, ledgers and separately hashed protected body/evidence delivery.
 - [x] 6.4 Explicit fixture-profile local stop with volumes/images retained.
