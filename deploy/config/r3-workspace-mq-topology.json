@@ -1,0 +1,6 @@
+{
+  "vhosts": [{"name": "/agentplatform"}],
+  "exchanges": [{"name": "ap.workspace.commands.v1", "vhost": "/agentplatform", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {}}],
+  "queues": [{"name": "ap.workspace.provision.v1", "vhost": "/agentplatform", "durable": true, "auto_delete": false, "arguments": {}}],
+  "bindings": [{"source": "ap.workspace.commands.v1", "vhost": "/agentplatform", "destination": "ap.workspace.provision.v1", "destination_type": "queue", "routing_key": "workspace.provision", "arguments": {}}]
+}
