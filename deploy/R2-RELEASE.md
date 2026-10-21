@@ -1,3 +1,7 @@
+# 当前发行结果
+
+R2已RELEASED，生产标签 `production-r2-9ee7aadfe242`，准确云端结果见[r2-release-acceptance.json](r2-release-acceptance.json)。应用源码6af7aa50、配置bf02e2b、宿主探针43d356a分别记录；后续归档提交不重新标注产物。独立恢复、30分钟观察、R1回滚和R2最终重启PASS，R3未启动。原准备/修复收据和以下待办语态为历史过程。正文与脱敏证据交付以保护目录 `evidence/r2-release/handoff.json` 实际哈希收据为准。
+
 # R2 release boundary
 
 R2 is not released by this file. First finish the exact-candidate local gates and protected step→phase→main promotion. Keep GitHub Actions disabled. The cloud continues to use the recorded R1 production identities until the authorized release window succeeds.
