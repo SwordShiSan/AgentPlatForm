@@ -8,7 +8,11 @@ Local fixture including its provider is stopped, volumes/images retained; explic
 
 PASS protected implementation PRs 64,65. Metadata promotion and final main/phase hashes are recorded in the separate protected handoff.
 
-Cloud SSH closes before authentication, so cloud deployment/observation/serial restore/R1 rollback are NOT_RUN. No R2 production tag or R3. The same OpenSpec change remains active with release/archival tasks incomplete; R2 is not RELEASED. Historical failures below are retained, not reclassified as passing.
+Cloud SSH recovered on2026-10-21. Read-only inventory confirms recorded R1 API/gateway identities, migration5, two successful tasks, empty execution slot and public readiness READY. Deployment/observation/serial restore/R1 rollback remain NOT_RUN until their actual execution. No R2 production tag or R3. The same OpenSpec change remains active with release/archival tasks incomplete; R2 is not RELEASED. Historical SSH failures below are retained, not reclassified as passing.
+
+Read-only R2 admission PASS:2336MiB runtime,2656MiB including temporary operator; original XFS UUID retained. API/gateway archives were transferred, SHA256 verified, imported and their config IDs/source labels verified without changing R1. Eight Linux-only/pure admission and host-safety tests PASS (disk exact/short boundary, independent memory guards, immutable receipts, outside-root refusal, active-source restore refusal, failed-backup R1 rollback, import-failure noninterference, completed-action refusal; grouped as8 test methods). These are preparation evidence only, not cloud deployment or recovery PASS.
+
+Final host-driver regression has9 passing test methods, adding explicit admission-failure-before-mutation noninterference. `deploy/r2-cloud-preparation.json` records exact imported identities, disk/memory admission and driver hashes; historical8-test receipts remain protected. Python syntax,38-link check and OpenSpec strict PASS. Backend/frontend runtime and contracts remain at the accepted immutable application source; this preparation does not change VERIFIED into RELEASED.
 
 ## Historical process records
 
