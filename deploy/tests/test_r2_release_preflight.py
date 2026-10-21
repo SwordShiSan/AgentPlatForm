@@ -46,6 +46,17 @@ class ReleaseAdmissionTest(unittest.TestCase):
                 module.private_new(path, {'status': 'FAIL'})
             self.assertEqual(path.read_bytes(), original)
 
+    def test_other_project_unlimited_container_is_not_ignored(self):
+        row = {'HostConfig': {'Memory': 0, 'MemorySwap': 0}}
+        with self.assertRaisesRegex(AssertionError, 'UNBOUNDED_EXTERNAL'):
+            module.validate_external_limits([row], 2336 * module.MIB, 3655 * module.MIB)
+
+    def test_finite_other_project_counts_against_total_budget(self):
+        row = {'HostConfig': {'Memory': 512 * module.MIB, 'MemorySwap': 512 * module.MIB}}
+        self.assertEqual(module.validate_external_limits([row], 2336 * module.MIB, 3655 * module.MIB), 512 * module.MIB)
+        with self.assertRaisesRegex(AssertionError, 'COEXISTING_CONTAINER_LIMIT'):
+            module.validate_external_limits([row, row], 2336 * module.MIB, 3655 * module.MIB)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,0 +1,39 @@
+{
+  "status": "VALIDATED_FIX_PENDING_CLOUD_RETRY",
+  "scope": "FIRST_CLOUD_FAILURE_AND_TARGETED_CONFIG_FIX",
+  "previousMain": "c968e615548e312458bfbf103a1b00355669aea8",
+  "applicationSourceUnchanged": "6af7aa50d0a4c0d35acfef38e12f8f6e76d34a19",
+  "firstMigration": "PASS_V5_TO_V9",
+  "firstActivation": "FAIL_API_INHERITED_PRIVATE_GRANTS",
+  "automaticR1Rollback": "PASS_EXACT_IMAGES_READY",
+  "r1OnV9IdentityHistoryLogout": "PASS",
+  "cloudSupplierCalls": 0,
+  "linuxSafetyTests": 11,
+  "wholeHostExternalContainerAdmission": "PASS",
+  "retiredLegacyApp": "PAUSED_EXACT_CONTAINER_DATA_AND_POLICY_RETAINED",
+  "localInheritedAclRegression": {
+    "status": "PASS",
+    "scope": "REAL_LOCAL_POSTGRES_INHERITED_R0_R1_ACLS",
+    "sourceContainer": "5fe34432e0d351296bc5db22b0c20cf64146784a4bb0bd3ff473e7c5a804dd76",
+    "schemaOnly": true,
+    "sourceRowsModified": false,
+    "broadLegacyAclReproduced": true,
+    "idempotentApplications": 2,
+    "grantSha256": "1f70e1b5e36e394cd56f7c9ba18bb7109be395c0f92db62a33763288b8a62aa6",
+    "checks": {
+      "apiSdkCrudDenied": true,
+      "apiCheckpointPrivateDenied": true,
+      "apiCheckpointMetadataAllowed": true,
+      "apiCiphertextDenied": true,
+      "apiProofDenied": true,
+      "workerStateAndCheckpointAllowed": true,
+      "workerBindingAllowed": true,
+      "actualMetadataQueryAllowed": true,
+      "futurePrivateDefaultsDenied": true
+    }
+  },
+  "grantSha256": "1f70e1b5e36e394cd56f7c9ba18bb7109be395c0f92db62a33763288b8a62aa6",
+  "cloudObservation": "NOT_RUN",
+  "isolatedRestore": "NOT_RUN",
+  "r2Released": false
+}

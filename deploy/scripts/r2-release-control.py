@@ -80,6 +80,12 @@ class Window:
         assert shutil.disk_usage(ROOT).free >= 5 * 1024**3 + extra, 'DISK_RESERVE'
         mem = {line.split(':')[0]: int(line.split()[1]) * 1024 for line in Path('/proc/meminfo').read_text().splitlines() if len(line.split()) >= 2}
         assert mem['MemAvailable'] >= 768 * 1024**2, 'AVAILABLE_MEMORY_RESERVE'
+        ids = output(['docker', 'ps', '-q']).split()
+        values = json.loads(output(['docker', 'inspect', *ids])) if ids else []
+        limits = [value['HostConfig']['Memory'] for value in values]
+        assert all(limit > 0 for limit in limits), 'UNBOUNDED_COEXISTING_CONTAINER'
+        assert all(value['HostConfig']['Memory'] == value['HostConfig']['MemorySwap'] for value in values), 'COEXISTING_SWAP_EXTENSION'
+        assert sum(limits) <= 2887 * 1024**2 and mem['MemTotal'] - sum(limits) >= 768 * 1024**2, 'COEXISTING_LIMIT_RESERVE'
 
     def readiness(self):
         result = json.loads(output(['curl', '--noproxy', '*', '--max-time', '15', '-fsS', '-H', 'Host: agentplatform.lailihao.cloud', 'http://127.0.0.1/api/v1/readiness']))
@@ -127,7 +133,7 @@ class Window:
         assert self.sql('SELECT count(*) FROM pf.execution_slot WHERE task_id IS NOT NULL;') == '0', 'Unresolved owner: no quiescent backup'
         assert self.sql("SELECT count(*) FROM pf.task WHERE status IN ('QUEUED','RUNNING');") == '0', 'Drain existing work before changing runtime bundles'
         assert not output(['docker', 'ps', '-q', '--filter', 'label=com.docker.compose.project=agentplatform-app'])
-        expected = '9' if generation == 'r2' else '5'
+        expected = '9' if generation == 'r2' else str(self.admission.get('sourceMigration', 5))
         assert self.sql('SELECT max(version::int) FROM pf.flyway_schema_history WHERE success;') == expected
         if generation == 'r2':
             run(['python3', str(ROOT / 'deploy/scripts/r2-database-evidence.py'), self.pg(), '--output', str(backup / 'database.json')])

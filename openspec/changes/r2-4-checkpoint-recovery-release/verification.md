@@ -14,6 +14,10 @@ Read-only R2 admission PASS:2336MiB runtime,2656MiB including temporary operator
 
 Final host-driver regression has9 passing test methods, adding explicit admission-failure-before-mutation noninterference. `deploy/r2-cloud-preparation.json` records exact imported identities, disk/memory admission and driver hashes; historical8-test receipts remain protected. Python syntax,38-link check and OpenSpec strict PASS. Backend/frontend runtime and contracts remain at the accepted immutable application source; this preparation does not change VERIFIED into RELEASED.
 
+Cloud backup-r1 PASS. First activation FAIL at private-API permissions: V5→V9 completed, but inherited R0 defaults left API SDK state CRUD and whole-table checkpoint SELECT. Automatic exact-R1 rollback and public readiness PASS; zero new supplier calls. Earlier local grant validation used new roles without production defaults and does not cover this failure. Preserve the failed job/log and add a disposable-DB regression with R0 default ACLs plus R1 grants before retrying. The retired unlimited ai-agent-app was separately paused under existing user authorization; its container/data/restart:no were retained. Initial admission checked only the platform services; the revised whole-host check must reject unbounded external services and count bounded ones.
+
+Targeted fix PASS locally: actual R0/R1 ACL reproduction, API SDK CRUD/checkpoint private/ciphertext/proof denial, real metadata query, worker checkpoint/binding rights, future-default denial and two idempotent applications. Source rows were not imported/modified, temporary roles/database removed, local PG stopped. Final Linux host tests11 PASS, including unlimited foreign-container rejection and bounded foreign-container accounting. Fresh read-only R1/V9 admission in a separate window PASS; old failed window/V5 backup retained. `deploy/r2-cloud-permission-fix.json` is sanitized fix/preparation evidence, not R2 release. No application-image rebuild or migration edit.
+
 ## Historical process records
 
 # Current local conclusion (2026-10-21)
