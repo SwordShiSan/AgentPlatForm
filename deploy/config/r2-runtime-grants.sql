@@ -1,5 +1,12 @@
 -- Apply as the existing migration/table owner after V9. No credentials or data copies.
 BEGIN;
+-- R0 granted broad defaults. Column GRANT does not narrow an existing table GRANT.
+-- Keep private SDK/checkpoint facts out of API, including future migrated tables.
+ALTER DEFAULT PRIVILEGES FOR ROLE ap_migration IN SCHEMA pf_runtime
+    REVOKE SELECT,INSERT,UPDATE,DELETE ON TABLES FROM ap_api;
+ALTER DEFAULT PRIVILEGES FOR ROLE ap_migration IN SCHEMA pf
+    REVOKE SELECT ON TABLES FROM ap_api;
+REVOKE ALL ON pf_runtime.state_slot,pf.checkpoint,pf.model_turn,pf.tool_operation FROM ap_api;
 GRANT SELECT,INSERT,UPDATE,DELETE ON pf.conversation_lease TO ap_worker;
 GRANT SELECT,INSERT,UPDATE ON pf.model_turn,pf.tool_operation TO ap_worker;
 GRANT SELECT,INSERT ON pf.checkpoint TO ap_worker;

@@ -51,6 +51,18 @@ def validate_capacity(free, incoming, expanded, cold_data, physical, limits, ava
     return required
 
 
+def validate_external_limits(rows, platform_limit, physical):
+    limits = []
+    for row in rows:
+        limit, swap = row['HostConfig']['Memory'], row['HostConfig']['MemorySwap']
+        assert limit > 0 and swap == limit, 'UNBOUNDED_EXTERNAL_CONTAINER'
+        limits.append(limit)
+    total = platform_limit + sum(limits)
+    assert total <= 2887 * MIB, 'COEXISTING_CONTAINER_LIMIT'
+    assert physical - total >= 768 * MIB, 'COEXISTING_HOST_RESERVE'
+    return sum(limits)
+
+
 def compose(folder, project, kind):
     files = ['compose.' + kind + '.yaml', 'compose.production.' + kind + '.yaml',
              'compose.r1-http.' + kind + '.yaml']
@@ -124,17 +136,36 @@ def main():
     pg = next(v['id'] for v in live if v['service'] == 'postgres')
     sql = "SELECT count(*) FROM pf.execution_slot WHERE task_id IS NOT NULL;"
     assert output('docker', 'exec', pg, 'psql', '-XqAt', '-v', 'ON_ERROR_STOP=1', '-U', 'ap_admin', '-d', 'agentplatform', '-c', sql).strip() == '0'
+    migration = int(output('docker', 'exec', pg, 'psql', '-XqAt', '-v', 'ON_ERROR_STOP=1', '-U', 'ap_admin', '-d', 'agentplatform', '-c', 'SELECT max(version::int) FROM pf.flyway_schema_history WHERE success;').strip())
+    assert migration in (5, 9), 'Unexpected source migration; inspect before proceeding'
     mem = {line.split(':')[0]: int(line.split()[1]) * 1024 for line in Path('/proc/meminfo').read_text().splitlines() if ':' in line and len(line.split()) >= 2}
     cold = int(output('du', '-sb', str(ROOT / 'data')).split()[0])
     # Frozen local archives are not uploaded yet. Conservative uncompressed image allowance.
-    incoming = sum(a['archiveBytes'] for a in artifacts)
+    incoming = 0
+    for artifact in artifacts:
+        archive = folder.parent / (artifact['component'] + '.tar.gz')
+        if archive.exists():
+            assert archive.stat().st_size == artifact['archiveBytes'] and sha(archive) == artifact['archiveSha256']
+        else:
+            incoming += artifact['archiveBytes']
     # Accepted images report 199594843 aggregate bytes; allow >2.5x for import.
     expanded = 512 * MIB
+    inspected = [subprocess.run(['docker', 'image', 'inspect', a['configId']], capture_output=True, text=True) for a in artifacts]
+    if all(value.returncode == 0 for value in inspected):
+        for artifact, value in zip(artifacts, inspected):
+            image = json.loads(value.stdout)[0]
+            assert image['Id'] == artifact['configId'] and image['Config']['Labels']['org.opencontainers.image.revision'] == artifact['source']
+        expanded = 0  # Already imported bytes are already included in current filesystem usage.
     limits = sum(int(v['mem_limit']) for v in selected.values())
+    all_ids = output('docker', 'ps', '-q', '--no-trunc').split()
+    source_ids = {row['id'] for row in live}
+    extra_ids = [cid for cid in all_ids if cid not in source_ids]
+    extras = json.loads(output('docker', 'inspect', *extra_ids)) if extra_ids else []
+    other_limits = validate_external_limits(extras, limits, mem['MemTotal'])
     required = validate_capacity(shutil.disk_usage(ROOT).free, incoming, expanded, cold,
-                                 mem['MemTotal'], limits, mem['MemAvailable'])
+                                 mem['MemTotal'], limits + other_limits, mem['MemAvailable'])
     operator = int(configs['app']['services']['operator']['mem_limit'])
-    assert limits + operator <= 2887 * MIB
+    assert limits + other_limits + operator <= 2887 * MIB
     for name in ('chat_master', 'chat_cursor'):
         key = ROOT / 'secrets' / name
         assert key.stat().st_size == 32 and key.stat().st_mode & 0o077 == 0
@@ -144,8 +175,10 @@ def main():
     assert uuid == (ROOT / 'quota/filesystem.uuid').read_text().strip()
     receipt = dict(status='PASS', purpose='READ_ONLY_ADMISSION_NOT_RELEASE', createdAt=time.time(),
                    applicationSource=args.source, configurationSource=args.configuration_source,
+                   sourceMigration=migration, incomingArchiveReservation=incoming, imageExpansionReservation=expanded,
                    sourceContainers=live, artifacts=artifacts, selectedServices=selected,
                    effectiveLimitMiB=limits // MIB, withOperatorMiB=(limits + operator) // MIB,
+                   externalContainerLimitMiB=other_limits // MIB,
                    rootAvailable=shutil.disk_usage(ROOT).free, requiredDisk=required,
                    physicalMemory=mem['MemTotal'], availableMemory=mem['MemAvailable'],
                    originalXfsUuid=uuid, xfsMount=mount,
