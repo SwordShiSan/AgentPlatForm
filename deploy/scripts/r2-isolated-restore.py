@@ -114,6 +114,8 @@ def restore_window(window):
         pg = output(commands['env'] + ['ps', '-q', 'postgres'], env=environment)
         pg = json.loads(output(['docker', 'inspect', pg]))[0]['Id']
         run(['python3', str(ROOT / 'deploy/scripts/r2-database-evidence.py'), pg, '--output', str(restore / 'reports/database.json'), '--compare', str(backup / 'database.json')])
+        vector = output(['docker', 'exec', pg, 'psql', '-XqAt', '-v', 'ON_ERROR_STOP=1', '-U', 'ap_admin', '-d', 'agentplatform', '-c', "SELECT count(*)=1 AND bool_and((value <-> '[1,2,3]'::vector)=0) FROM pf.r04_restore_vector WHERE id='r04-functional-restore';"])
+        assert vector == 't', 'Restored persisted vector distance mismatch'
         # Authenticated AES-GCM verification through the existing protected operator.
         result = subprocess.run(commands['app'] + ['--profile', 'r2-ops', 'run', '--rm', '-T', '--interactive=false', 'operator', '--chat-action=verify-restored-credentials'], env=environment, capture_output=True, text=True, timeout=180)
         (restore / 'reports/credential-operator.private.log').write_text(result.stdout + result.stderr)
