@@ -56,3 +56,6 @@ The platform SHALL distinguish local verification from cloud release and promote
 #### Scenario: Unsafe host window
 - **WHEN** a source project is still active during isolated restore, a host path overlaps the source, or another window action holds the lock
 - **THEN** refuse before restoring data or starting a temporary service, preserve the original XFS UUID and never infer release from prepared or imported files
+#### Scenario: Inherited production grants or external resource usage
+- **WHEN** R0/R1 defaults granted the API whole-table checkpoint/state access, or another project has an unlimited container
+- **THEN** revoke broad private access before granting only metadata, verify from inherited ACLs, and count every coexisting container or refuse resource admission
