@@ -22,17 +22,26 @@ public final class DockerWorkspaceAllocator implements WorkspaceAllocator, AutoC
     private final String image;
     private final String root;
     private final UUID mountUuid;
+    private final Device quotaDevice;
     private static final JsonMapper JSON=JsonMapper.builder().build();
 
     public DockerWorkspaceAllocator(String image,String root,UUID mountUuid) {
+        this(image,root,mountUuid,null);
+    }
+    public DockerWorkspaceAllocator(String image,String root,UUID mountUuid,String quotaDevice) {
         if(image==null||!image.matches("sha256:[a-f0-9]{64}")||root==null
                 ||!(root.equals("/srv/agentplatform/workspaces")||root.matches("/srv/agentplatform/acceptance/r31-[a-z0-9-]+/workspaces")))
             throw new IllegalArgumentException("Pinned helper and fixed trusted mount required");
-        this.image=image;this.root=root;this.mountUuid=Objects.requireNonNull(mountUuid);
+        this.image=image;this.root=root;this.mountUuid=Objects.requireNonNull(mountUuid);this.quotaDevice=fixedQuotaDevice(quotaDevice);
         var config=DefaultDockerClientConfig.createDefaultConfigBuilder().withDockerHost("unix:///var/run/docker.sock").withApiVersion("1.45").build();
         var transport=new ApacheDockerHttpClient.Builder().dockerHost(config.getDockerHost()).connectionTimeout(Duration.ofSeconds(2))
                 .responseTimeout(Duration.ofSeconds(10)).maxConnections(4).build();
         docker=DockerClientImpl.getInstance(config,transport);
+    }
+    static Device fixedQuotaDevice(String path) {
+        if(path==null||path.isEmpty())return null; // Desktop negative profile cannot allocate real XFS.
+        if(!path.matches("/dev/loop[0-9]{1,5}"))throw new IllegalArgumentException("Only an operator-pinned loop device is allowed");
+        return Device.parse(path+":"+path+":r");
     }
     private String name(Command c){return "ap-workspace-quota-"+c.commandId();}
     private Map<String,String> labels(Command c) {
@@ -49,6 +58,9 @@ public final class DockerWorkspaceAllocator implements WorkspaceAllocator, AutoC
             var binds=actual.getHostConfig().getBinds();
             if(binds==null||binds.length!=1||!root.equals(binds[0].getPath())||!"/quota".equals(binds[0].getVolume().getPath()))
                 throw new IllegalStateException("Helper mount conflict");
+            var devices=actual.getHostConfig().getDevices();
+            if(quotaDevice==null?(devices!=null&&devices.length!=0):(devices==null||devices.length!=1||!quotaDevice.equals(devices[0])))
+                throw new IllegalStateException("Helper quota device conflict");
             return true;
         }catch(NotFoundException absent){return false;}
     }
@@ -60,6 +72,7 @@ public final class DockerWorkspaceAllocator implements WorkspaceAllocator, AutoC
                 .withCapAdd(Capability.SYS_ADMIN,Capability.CHOWN,Capability.SETUID,Capability.SETGID)
                 .withSecurityOpts(List.of("no-new-privileges:true")).withTmpFs(Map.of("/tmp","rw,noexec,nosuid,size=8m"))
                 .withLogConfig(new LogConfig(LogConfig.LoggingType.JSON_FILE,Map.of("max-size","10m","max-file","1")));
+        if(quotaDevice!=null)host.withDevices(quotaDevice);
         String id=docker.createContainerCmd(image).withName(name(c)).withLabels(labels(c)).withHostConfig(host)
                 .withUser("0:0").withCmd(arguments(c)).exec().getId();
         docker.startContainerCmd(id).exec();

@@ -4,6 +4,7 @@
 ## 2. Framework feasibility
 - [x] 2.1 Nimbus request/response signatures, exact claims, expiry, nonce and HTTP body experiment.
 - [ ] 2.2 docker-java3.7.1 Unix socket/API/inspect/Jackson compatibility and pinned quota-helper boundary.
+- [ ] 2.3 Native exact-loop read-only device mapping, missing/wrong-device refusal and unchanged helper capability allowlist; freeze a new candidate and rerun affected acceptance.
 ## 3. Durable control
 - [ ] 3.1 V10, typed Mapper/PO/XML and short transaction APIs, live scope, capacity and idempotency.
 - [ ] 3.2 Reliable outbox/confirm/inbox/ACK, lifecycle leases/fences, lost-response query and UNKNOWN retention.

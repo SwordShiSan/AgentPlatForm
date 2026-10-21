@@ -17,7 +17,7 @@ public class WorkspaceRunnerConfiguration {
     }
     @Bean JwtDecoder runnerJwtDecoder(RunnerSignatures signatures) {return signatures.resourceServerDecoder();}
     @Bean(destroyMethod="close") DockerWorkspaceAllocator workspaceAllocator(WorkspaceRunnerProperties properties) {
-        return new DockerWorkspaceAllocator(properties.helperImage(),properties.workspaceRoot(),properties.mountUuid());
+        return new DockerWorkspaceAllocator(properties.helperImage(),properties.workspaceRoot(),properties.mountUuid(),properties.quotaDevice());
     }
     @Bean RunnerControlApi runnerControlApi(WorkspaceRepository repository,RunnerSignatures signatures,WorkspaceAllocator allocator,WorkspaceFixtureBarrier barrier) {
         return new RunnerControlService(repository,signatures,allocator,barrier);

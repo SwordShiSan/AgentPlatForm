@@ -19,6 +19,13 @@ def unsafe(path):
 def hard_limit(report,project,expected):
  rows=[line.split() for line in report.splitlines() if line.split() and line.split()[0] in (str(project),'#'+str(project))]
  if len(rows)!=1 or len(rows[0])<4 or not rows[0][3].isdigit() or int(rows[0][3])!=expected:raise RuntimeError('WORKSPACE_QUOTA_NOT_VERIFIED')
+
+def quota_device(source):
+ if not isinstance(source,str) or not re.fullmatch(r'/dev/loop[0-9]{1,5}',source):raise ValueError('WORKSPACE_QUOTA_DEVICE_UNAVAILABLE')
+ try:
+  device=pathlib.Path(source);metadata=device.stat(follow_symlinks=False)
+  if not stat.S_ISBLK(metadata.st_mode) or metadata.st_rdev!=ROOT.stat().st_dev:raise ValueError('WORKSPACE_QUOTA_DEVICE_UNAVAILABLE')
+ except OSError as unavailable:raise ValueError('WORKSPACE_QUOTA_DEVICE_UNAVAILABLE') from unavailable
 def main():
  os.umask(0o077)
  p=argparse.ArgumentParser();p.add_argument('--space',required=True,type=identity);p.add_argument('--workspace',required=True,type=identity)
@@ -31,6 +38,7 @@ def main():
   if mount['target']!=str(ROOT) or mount['fstype']!='xfs' or not ({'prjquota','pquota'}&set(mount['options'].split(','))):raise ValueError('WORKSPACE_MOUNT_UNAVAILABLE')
   actual=run(['xfs_io','-r','-c','fsuuid',str(ROOT)])
   if re.findall(r'[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}',actual.lower())!=[args.mount_uuid]:raise ValueError('WORKSPACE_MOUNT_UNAVAILABLE')
+  quota_device(mount.get('source'))
   quota_state=run(['xfs_quota','-x','-c','state -p',str(ROOT)])
   if not re.search(r'Accounting:\s+ON\b',quota_state) or not re.search(r'Enforcement:\s+ON\b',quota_state):raise ValueError('WORKSPACE_QUOTA_UNAVAILABLE')
   path=ROOT/args.space/args.workspace/'work'

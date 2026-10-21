@@ -35,6 +35,9 @@ The runner SHALL resolve only controlled UUID paths on verified XFS prjquota and
 #### Scenario: Ready storage
 - **WHEN** actual directory/project/quota identity is verified
 - **THEN** workspace storage is READY but environment remains NOT_CREATED and shell/file capabilities remain unavailable
+#### Scenario: Native quota device identity
+- **WHEN** the helper validates a real XFS mount
+- **THEN** its source must be the operator-pinned non-symlink loop block node matching filesystem device identity, exposed to this trusted helper only with read device permission, or provisioning refuses before effects without widening capabilities or sandbox access
 #### Scenario: Repeated or interrupted allocation
 - **WHEN** a matching allocation exists or a previous allocation was interrupted
 - **THEN** durable facts are reconciled without deleting unknown or foreign resources

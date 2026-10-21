@@ -112,6 +112,7 @@ services:
       PLATFORM_WORKSPACE_RUNNER_HELPER_IMAGE: ${R31_HELPER_IMAGE:?Set pinned quota helper config ID}
       PLATFORM_WORKSPACE_RUNNER_WORKSPACE_ROOT: /srv/agentplatform/acceptance/r31-local/workspaces
       PLATFORM_WORKSPACE_RUNNER_MOUNT_UUID: ${R31_MOUNT_UUID:?Set independent fixture mount UUID}
+      PLATFORM_WORKSPACE_RUNNER_QUOTA_DEVICE: ${R31_QUOTA_DEVICE:-}
       SERVER_TOMCAT_THREADS_MAX: "8"
     secrets: [runner_password, runner_private_key, control_public_key]
     volumes: ["/var/run/docker.sock:/var/run/docker.sock:ro"]
