@@ -227,7 +227,12 @@ class WorkspacePostgresTest {
             first.start(handoff);second.start(handoff);
             first.publish(item);
             repository.published(item,false); // Simulate publisher losing the confirmation after broker acceptance.
-            var repeated=repository.publications(UUID.randomUUID()).getFirst();first.publish(repeated);first.publish(repeated);
+            // SKIP LOCKED permits an empty relay batch while a concurrent claim is committing.
+            // Poll the real outbox without clearing its lease or changing the ownership assertions.
+            var relay=UUID.randomUUID();Publication repeated=null;long until=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);
+            while(repeated==null&&System.nanoTime()<until){var batch=repository.publications(relay);if(!batch.isEmpty())repeated=batch.getFirst();else Thread.sleep(20);}
+            assertNotNull(repeated,"Confirmed-loss replay must become eligible in the real outbox");
+            first.publish(repeated);first.publish(repeated);
             assertTrue(delivered.await(15,TimeUnit.SECONDS));assertTrue(executed.await(5,TimeUnit.SECONDS));
             assertEquals(3,claims.get());assertEquals(1,effects.get());
             assertEquals(1,count("SELECT count(*) FROM pf.workspace_inbox"));
