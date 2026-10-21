@@ -62,3 +62,6 @@ The platform SHALL distinguish local verification from cloud release and promote
 #### Scenario: Reuse definitive supplier evidence after a host-test failure
 - **WHEN** a prior window has the same application source, a successful task and exact known persisted usage
 - **THEN** verify its identity/configuration and reuse it without submitting another task, while refusing UNKNOWN, missing usage or drift and using the declared SSE media type
+#### Scenario: Non-root restore probe under a protected parent
+- **WHEN** the trusted host runs a quota child inside a0700 restore root
+- **THEN** enter the verified workspace before dropping privileges, operate relatively as UID10001, retain0700 protection and independently verify both quota limits
