@@ -93,10 +93,12 @@ services:
         source: /var/run/docker.sock
         target: /var/run/docker.sock
         read_only: true
+        bind: {create_host_path: false}
       - type: bind
         source: ${R32_ROOT}/runtime-attestation.json
         target: /run/fixture/runtime.json
         read_only: true
+        bind: {create_host_path: false}
   gateway:
     image: ${R32_GATEWAY_IMAGE:?Use frozen feature-enabled gateway config ID}
     profiles: [application]
