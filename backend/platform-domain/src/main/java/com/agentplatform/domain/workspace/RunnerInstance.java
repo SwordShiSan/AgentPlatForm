@@ -9,6 +9,6 @@ public record RunnerInstance(UUID id,String containerId,String imageId,String st
         java.util.Objects.requireNonNull(id);java.util.Objects.requireNonNull(startedAt);
         if(containerId==null||!containerId.matches("[0-9a-f]{64}")||imageId==null||!imageId.matches("sha256:[0-9a-f]{64}"))
             throw new IllegalArgumentException("Exact runner container identity required");
-        Instant.parse(startedAt);
+        startedAt=Instant.parse(startedAt).toString(); // Preserve nanoseconds, normalize equivalent UTC spellings.
     }
 }

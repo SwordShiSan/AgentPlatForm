@@ -28,6 +28,7 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
     private final SandboxPolicy policy;
     private final UUID instanceId=UUID.randomUUID();
     private final ConcurrentMap<UUID, Capture> active = new ConcurrentHashMap<>();
+    private final Semaphore helperSlot=new Semaphore(1);
 
     public DockerSandboxRuntime(SandboxPolicy policy) {
         this.policy = policy;
@@ -160,13 +161,21 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
 
     @Override public Container prepare(Identity identity, Authority authority) {
         authority.check();
-        runtime();
-        verifyStorage(identity);
         try {
             exact(identity);
             throw unavailable("SANDBOX_EXISTING_INTENT_REQUIRES_QUERY");
         } catch (NotFoundException absent) { /* Only the durable first intent may enter here. */ }
-        authority.check();
+        try {
+            runtime();
+            verifyStorage(identity);
+            authority.check();
+        } catch (WorkspaceFailure rejected) {
+            // No create request has been sent by this invocation. Recheck absence;
+            // unavailable inspect or an existing object cannot become a safe retry.
+            try {docker.inspectContainerCmd(name(identity)).exec();}
+            catch(NotFoundException absent) {throw new RejectedBeforeEffect(rejected.code());}
+            throw rejected;
+        }
         var host = HostConfig.newHostConfig().withRuntime("runsc").withNetworkMode("none")
                 .withReadonlyRootfs(true).withMemory(SandboxPolicy.MEMORY).withMemorySwap(SandboxPolicy.MEMORY)
                 .withNanoCPUs(1_000_000_000L).withPidsLimit(128L).withCapDrop(Capability.ALL)
@@ -196,7 +205,18 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
     private void verifyStorage(Identity identity) { verifyStorage(identity, false); }
 
     private void verifyStorage(Identity identity, boolean checkCanary) {
+        if(!helperSlot.tryAcquire())throw unavailable("WORKSPACE_VERIFIER_BUSY");
+        var stopped=new java.util.concurrent.atomic.AtomicBoolean(true);
+        try {verifyStorageWithSlot(identity,checkCanary,stopped);}
+        finally {if(stopped.get())helperSlot.release();} // Unknown running helper retains its resource slot.
+    }
+
+    private void verifyStorageWithSlot(Identity identity, boolean checkCanary,java.util.concurrent.atomic.AtomicBoolean stopped) {
         String verifier = "ap-env-verify-" + UUID.randomUUID();
+        String rootHash=RunnerSignatures.sha256(policy.workspaceRoot().getBytes(StandardCharsets.UTF_8));
+        if(!docker.listContainersCmd().withShowAll(false).withLabelFilter(Map.of("ap.role","environment-verifier","ap.workspaceRoot",rootHash)).exec().isEmpty()) {
+            throw unavailable("WORKSPACE_VERIFIER_UNRESOLVED");
+        }
         var host = HostConfig.newHostConfig().withNetworkMode("none").withReadonlyRootfs(true)
                 .withMemory(64L * 1024 * 1024).withMemorySwap(64L * 1024 * 1024).withPidsLimit(32L)
                 .withCapDrop(Capability.ALL).withCapAdd(Capability.SYS_ADMIN, Capability.CHOWN, Capability.SETUID, Capability.SETGID)
@@ -208,17 +228,17 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
                 "--project", Integer.toString(identity.projectId()), "--mount-uuid", policy.mountUuid().toString()));
         if (checkCanary) arguments.addAll(List.of("--canary-command", identity.commandId().toString(), "--canary-hash", canaryHash(identity)));
         var created = docker.createContainerCmd(policy.helperImage()).withName(verifier).withUser("0:0")
-                .withLabels(Map.of("ap.role", "environment-verifier", "ap.command", identity.commandId().toString()))
+                .withLabels(Map.of("ap.role", "environment-verifier", "ap.command", identity.commandId().toString(),"ap.workspaceRoot",rootHash,"ap.runnerInstance",instanceId.toString()))
                 .withHostConfig(host).withEntrypoint("python3", "/opt/workspace-quota-verifier.py")
                 .withCmd(arguments.toArray(String[]::new)).exec();
-        boolean stopped = false;
         try {
+            stopped.set(false);
             docker.startContainerCmd(created.getId()).exec();
             long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
             while (System.nanoTime() < until) {
                 var found = docker.inspectContainerCmd(created.getId()).exec();
                 if (!Boolean.TRUE.equals(found.getState().getRunning())) {
-                    stopped = true;
+                    stopped.set(true);
                     var capture = new Capture();
                     docker.logContainerCmd(created.getId()).withStdOut(true).withTail(1).exec(capture);
                     if (!capture.finished.await(5, TimeUnit.SECONDS) || capture.truncated
@@ -235,7 +255,7 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
             Thread.currentThread().interrupt();
             throw unavailable("WORKSPACE_VERIFICATION_UNAVAILABLE");
         } finally {
-            if (stopped) docker.removeContainerCmd(created.getId()).withForce(false).exec();
+            if (stopped.get()) docker.removeContainerCmd(created.getId()).withForce(false).exec();
             // A still-running helper is retained for precise host cleanup; never auto-remove uncertain state.
         }
     }

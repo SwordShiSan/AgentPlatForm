@@ -144,4 +144,37 @@ class RunnerHttpTest {
         }
         verifyNoInteractions(environmentRepository,sandbox);
     }
+    @Test void uncertainPreparationCanOnlyQueryOriginalCanaryAndNeverCreatesAgain() {
+        var command=environmentCommand();when(environmentRepository.lookup(command.operationId())).thenReturn(command);
+        when(sandbox.prepare(eq(command.physicalIdentity()),any())).thenThrow(new WorkspaceFailure(503,"WORKSPACE_VERIFIER_BUSY"));
+        var ready=new SandboxRuntime.Container("c".repeat(64),command.imageId(),"2026-10-22T00:00:00Z",true,command.policyHash(),"d".repeat(64));
+        try(var client=new com.agentplatform.infrastructure.workspace.SignedRunnerHttpClient(URI.create("http://127.0.0.1:"+port),control)) {
+            var pending=client.prepareEnvironment(command);assertEquals("RUNNING",pending.state());assertEquals(0,pending.revision());
+            verify(environmentRepository,never()).commitReceipt(any(),any(),any());
+            when(environmentRepository.receipt(command)).thenReturn(pending);
+            when(sandbox.verifyReady(eq(command.physicalIdentity()),any())).thenReturn(ready);
+            assertEquals("COMMITTED",client.queryEnvironment(command).state());
+            verify(sandbox,times(1)).prepare(eq(command.physicalIdentity()),any());
+            verify(sandbox,times(1)).verifyReady(eq(command.physicalIdentity()),any());
+            verify(sandbox,never()).removeStopped(any(),any());
+        }
+    }
+    @Test void authorityLossAttemptsPreciseStopWithoutFabricatingTerminalReceipt() {
+        var command=environmentCommand();when(environmentRepository.lookup(command.operationId())).thenReturn(command);
+        when(sandbox.prepare(eq(command.physicalIdentity()),any())).thenThrow(new WorkspaceFailure(403,"ENVIRONMENT_AUTHORIZATION_REVOKED"));
+        try(var client=new com.agentplatform.infrastructure.workspace.SignedRunnerHttpClient(URI.create("http://127.0.0.1:"+port),control)) {
+            assertEquals("RUNNING",client.prepareEnvironment(command).state());
+            verify(sandbox).stop(command.physicalIdentity());verify(environmentRepository,never()).commitReceipt(any(),any(),any());
+            verify(sandbox,never()).removeStopped(any(),any());
+        }
+    }
+    @Test void onlyProvenPreCreateRefusalCanReturnDefiniteFailure() {
+        var command=environmentCommand();when(environmentRepository.lookup(command.operationId())).thenReturn(command);
+        when(sandbox.prepare(eq(command.physicalIdentity()),any())).thenThrow(new SandboxRuntime.RejectedBeforeEffect("WORKSPACE_MOUNT_UNAVAILABLE"));
+        try(var client=new com.agentplatform.infrastructure.workspace.SignedRunnerHttpClient(URI.create("http://127.0.0.1:"+port),control)) {
+            var rejected=client.prepareEnvironment(command);assertEquals("FAILED",rejected.state());assertEquals("NOT_STARTED",rejected.effectState());
+            verify(environmentRepository).commitReceipt(eq(command),eq(rejected),any(UUID.class));
+            verify(sandbox,never()).stop(any());verify(sandbox,never()).removeStopped(any(),any());
+        }
+    }
 }

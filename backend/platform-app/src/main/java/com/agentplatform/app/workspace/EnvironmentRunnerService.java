@@ -70,8 +70,17 @@ public final class EnvironmentRunnerService implements EnvironmentRunnerApi {
                 var stopped=runtime.stop(command.physicalIdentity());
                 receipt=result(command,"COMMITTED","STOPPED",null,null,stopped);
             }
+        } catch(SandboxRuntime.RejectedBeforeEffect rejected) {
+            receipt=result(command,"FAILED","NOT_STARTED",rejected.getMessage(),null,null);
         } catch(RuntimeException unknown) {
-            receipt=result(command,"UNKNOWN","MAY_HAVE_STARTED","SANDBOX_RESULT_UNKNOWN",null,null);
+            if(unknown instanceof WorkspaceFailure failure && Set.of("ENVIRONMENT_AUTHORIZATION_REVOKED","ENVIRONMENT_STALE_OWNER","ENVIRONMENT_STORAGE_UNAVAILABLE").contains(failure.code())) {
+                try {runtime.stop(command.physicalIdentity());}
+                catch(RuntimeException unconfirmed) { /* Retain physical identity and capacity for host-proof convergence. */ }
+            }
+            // A failed management response is not a terminal physical fact. Preserve
+            // the original accepted command for query-only reconciliation; never POST again.
+            return signed(command,new Receipt(command.commandId(),command.operationId(),command.environmentId(),command.workspaceId(),command.generation(),command.fence(),
+                    "RUNNING","MAY_HAVE_STARTED","SANDBOX_RESULT_UNKNOWN",null,null,0),PATH);
         }
         repository.commitReceipt(command,receipt,instance.id()); // Stop fact must commit before cleanup.
         cleanup(command,receipt);return signed(command,receipt,PATH);

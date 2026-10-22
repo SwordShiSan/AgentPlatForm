@@ -39,6 +39,12 @@ public interface SandboxRuntime extends AutoCloseable {
         }
         public Stop receipt() { return receipt; }
     }
+    final class RejectedBeforeEffect extends RuntimeException {
+        public RejectedBeforeEffect(String code) {
+            super(code);
+            if(code==null||!code.matches("[A-Z_]{1,64}"))throw new IllegalArgumentException("Stable rejection code required");
+        }
+    }
 
     Container prepare(Identity identity, Authority authority);
     RunnerInstance runnerInstance();
