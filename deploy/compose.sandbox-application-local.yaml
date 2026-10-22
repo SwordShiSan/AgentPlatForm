@@ -89,8 +89,14 @@ services:
       SERVER_TOMCAT_THREADS_MAX: "8"
     secrets: [runner_password, runner_private_key, control_public_key]
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ${R32_ROOT}/runtime-attestation.json:/run/fixture/runtime.json:ro
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+      - type: bind
+        source: ${R32_ROOT}/runtime-attestation.json
+        target: /run/fixture/runtime.json
+        read_only: true
   gateway:
     image: ${R32_GATEWAY_IMAGE:?Use frozen feature-enabled gateway config ID}
     profiles: [application]

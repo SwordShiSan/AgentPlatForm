@@ -14,4 +14,3 @@ The runner SHALL resolve only controlled UUID paths on verified XFS prjquota and
 #### Scenario: Repeated or interrupted allocation
 - **WHEN** a matching allocation exists or a previous allocation was interrupted
 - **THEN** durable facts are reconciled without deleting unknown or foreign resources
-
