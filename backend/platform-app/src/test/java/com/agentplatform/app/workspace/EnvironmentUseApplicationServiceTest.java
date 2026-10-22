@@ -26,8 +26,34 @@ class EnvironmentUseApplicationServiceTest {
     @AfterEach void stopTimers() {timers.shutdownNow();}
     private EnvironmentUseApplicationService service() {return new EnvironmentUseApplicationService(repository,runner,timers);}
     @BeforeEach void prepare() {
+        when(repository.lookup(actor,command.id())).thenReturn(command);
         when(repository.admit(eq(actor),eq(workspace),eq(requestId),any(),eq(request))).thenReturn(new Admission(command,true));
         when(repository.receipt(command)).thenReturn(receipt);when(repository.result(actor,command.id())).thenReturn(fact);
+    }
+    @Test void detachedReconciliationOnlyQueriesOriginalCommand() {
+        var pending=new Receipt(command.id(),"UNKNOWN","UNKNOWN",null);
+        when(repository.receipt(command)).thenReturn(pending,receipt,receipt);
+        when(runner.queryUse(command)).thenReturn(receipt);
+        assertEquals(receipt,service().reconcile(actor,workspace,command.id()));
+        verify(runner,never()).executeUse(any());verify(repository,never()).admit(any(),any(),any(),any(),any());
+        verify(repository,never()).renew(any());verify(repository).complete(command);
+        verify(repository,times(2)).lookup(actor,command.id());
+    }
+    @Test void detachedReconciliationRetainsUnconfirmedOwnership() {
+        when(repository.receipt(command)).thenReturn(new Receipt(command.id(),"UNKNOWN","UNKNOWN",null));
+        when(runner.queryUse(command)).thenThrow(new WorkspaceFailure(503,"RUNNER_RESULT_UNAVAILABLE"));
+        assertEquals("ENVIRONMENT_USE_RECONCILIATION_REQUIRED",assertThrows(WorkspaceFailure.class,()->service().reconcile(actor,workspace,command.id())).code());
+        verify(repository,never()).complete(any());verify(runner,never()).executeUse(any());verify(repository,never()).renew(any());
+    }
+    @Test void detachedReconciliationRejectsForeignWorkspaceBeforeRunner() {
+        assertEquals(404,assertThrows(WorkspaceFailure.class,()->service().reconcile(actor,UUID.randomUUID(),command.id())).status());
+        verifyNoInteractions(runner);verify(repository,never()).complete(any());
+    }
+    @Test void detachedReconciliationRejectsHashThatWasNotPersisted() {
+        when(repository.receipt(command)).thenReturn(new Receipt(command.id(),"UNKNOWN","UNKNOWN",null),receipt);
+        when(runner.queryUse(command)).thenReturn(new Receipt(command.id(),"UNKNOWN","UNKNOWN","e".repeat(64)));
+        assertEquals("RUNNER_RECEIPT_MISMATCH",assertThrows(WorkspaceFailure.class,()->service().reconcile(actor,workspace,command.id())).code());
+        verify(repository,never()).complete(any());verify(runner,never()).executeUse(any());
     }
     @Test void responseLossQueriesOriginalUseAndNeverPostsAgain() {
         when(repository.receipt(command)).thenReturn(new Receipt(command.id(),"RUNNING","PENDING",null),receipt);

@@ -103,6 +103,7 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
                 || !"none".equals(host.getNetworkMode()) || !Long.valueOf(SandboxPolicy.MEMORY).equals(host.getMemory())
                 || !Long.valueOf(SandboxPolicy.MEMORY).equals(host.getMemorySwap())
                 || !Long.valueOf(1_000_000_000L).equals(host.getNanoCPUs()) || !Long.valueOf(128).equals(host.getPidsLimit())
+                || !SandboxPolicy.guestProcessLimitMatches(host.getUlimits())
                 || host.getDevices() != null && host.getDevices().length != 0
                 || host.getCapAdd() != null && host.getCapAdd().length != 0
                 || host.getCapDrop() == null || !Arrays.asList(host.getCapDrop()).equals(List.of(Capability.ALL))
@@ -183,6 +184,7 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
         var host = HostConfig.newHostConfig().withRuntime("runsc").withNetworkMode("none")
                 .withReadonlyRootfs(true).withMemory(SandboxPolicy.MEMORY).withMemorySwap(SandboxPolicy.MEMORY)
                 .withNanoCPUs(1_000_000_000L).withPidsLimit(128L).withCapDrop(Capability.ALL)
+                .withUlimits(List.of(new Ulimit("nproc", SandboxPolicy.GUEST_NPROC, SandboxPolicy.GUEST_NPROC)))
                 .withSecurityOpts(List.of("no-new-privileges:true"))
                 .withBinds(new Bind(policy.work(identity), new Volume("/workspace"), AccessMode.rw))
                 .withTmpFs(Map.of("/tmp", "rw,noexec,nosuid,size=64m,uid=10001,gid=10001,mode=700"))

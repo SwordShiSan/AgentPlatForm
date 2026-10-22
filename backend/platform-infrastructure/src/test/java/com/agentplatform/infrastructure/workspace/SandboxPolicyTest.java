@@ -7,6 +7,18 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class SandboxPolicyTest {
+    @Test void missingOrChangedGuestProcessLimitsAreRejected() {
+        assertTrue(SandboxPolicy.guestProcessLimitMatches(new com.github.dockerjava.api.model.Ulimit[]{
+                new com.github.dockerjava.api.model.Ulimit("nproc",32,32)}));
+        assertFalse(SandboxPolicy.guestProcessLimitMatches(null));
+        assertFalse(SandboxPolicy.guestProcessLimitMatches(new com.github.dockerjava.api.model.Ulimit[0]));
+        for (var limit : new com.github.dockerjava.api.model.Ulimit[]{
+                new com.github.dockerjava.api.model.Ulimit("nproc",32,128),
+                new com.github.dockerjava.api.model.Ulimit("nproc",128,128),
+                new com.github.dockerjava.api.model.Ulimit("nofile",32,32),null}) {
+            assertFalse(SandboxPolicy.guestProcessLimitMatches(new com.github.dockerjava.api.model.Ulimit[]{limit}));
+        }
+    }
     private static final String IMAGE = "sha256:" + "a".repeat(64);
     private static final String HELPER = "sha256:" + "b".repeat(64);
     private static final UUID MOUNT = UUID.fromString("00000000-0000-0000-0000-000000000001");

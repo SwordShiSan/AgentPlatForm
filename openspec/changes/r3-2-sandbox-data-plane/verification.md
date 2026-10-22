@@ -1,5 +1,11 @@
 # R3.2 verification
 
+## Source0269549 and stricter PID configuration checkpoint (not VERIFIED)
+
+Full frozen-source Maven/DDD/Enforcer/persistence, frontend38/type/build/contracts and actual PG/MQ56 pass. The standalone non-root SDK image passed51 with640MiB after an exact512MiB OOM/137; original console/inspect and subsequent classification are retained, and640MiB is a temporary probe allowance, not a business/sandbox limit. The current native window proved freshV11/runtime1, actual signed MQ/storage/startup-canary READY, Python/Node/application file roundtrip, network isolation and host CPU1 enforcement. Its PID workload failed and management/cleanup blocked; trusted exact cgroup stop followed by separate recovered-cleanup and R2 restoration does not change that window's FAIL. Remaining native/resource/browser/fault/1800s gates are NOT_RUN.
+
+A separate no-data official-runsc pilot with OCI nproc32/host pids128 passed inherited limit32/32, fork refusal after30 children, normal stop0.1137seconds and original R2 restoration. This supports the tighter next-candidate configuration only; it does not replace final actual runner/workspace acceptance. No third-party source modification or runc fallback. Original source0269549 policy and failed records remain immutable.
+
 ## Current candidate checkpoint: source51b8719a1de1 (not VERIFIED)
 
 Native persisted-fact diagnosis after the interrupted window found nine uses: Python666, Node cross-read, application write/read/list and NETWORK_BOUND all committed exit0; CPU_BOUND committed FAILED/exit1 at its guest wait4 ratio assertion (11.37 versus8.054714335seconds). The prior broad "resource-program failure" must not be described as a network isolation failure. Original ledger facts, stderr and window failure remain preserved. Host cgroup CPU enforcement was not sampled in that attempt and is NOT_RUN. The replacement CPU gate requires exact host cgroup identity/quota/usage/throttling evidence, with guest samples explicitly pending host assertion. This is an acceptance instrumentation correction, not a claim of repaired gVisor or passed CPU isolation.

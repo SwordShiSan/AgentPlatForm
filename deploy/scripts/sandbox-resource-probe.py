@@ -3,6 +3,7 @@ import errno
 import importlib.util
 import json
 import os
+import resource
 from pathlib import Path
 import signal
 import socket
@@ -38,6 +39,8 @@ def cpu():
 
 
 def pids():
+    soft, hard = resource.getrlimit(resource.RLIMIT_NPROC)
+    assert (soft, hard) == (32, 32), (soft, hard)
     children = []
     denied = False
     try:
@@ -52,8 +55,8 @@ def pids():
                 time.sleep(30)
                 os._exit(0)
             children.append(child)
-        assert denied and 8 <= len(children) < 128, len(children)
-        return {"childrenBeforeRefusal": len(children)}
+        assert denied and 8 <= len(children) < 32, len(children)
+        return {"childrenBeforeRefusal": len(children), "guestNprocSoft": soft, "guestNprocHard": hard}
     finally:
         for child in children:
             try:

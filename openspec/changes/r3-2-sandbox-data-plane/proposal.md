@@ -4,6 +4,7 @@
 R3.1 stores directory/quota facts but environment is NOT_CREATED. This change connects durable environment ownership to a real constrained gVisor container and the same workspace through verified file/exec ports.
 
 ## What Changes
+- Add explicit guest RLIMIT_NPROC32 alongside unchanged host pids.max128, bind it into policy hash and fail-closed inspect. This follows a passing no-data official-runtime compatibility pilot; full candidate acceptance remains required.
 - Add V11 environment, operation/dispatch/command/receipt, single sandbox slot, data-use lease and stop facts; retain V1–V10 and runtime baseline1.
 - Extend signed runner with a separate versioned environment protocol while retaining PROVISION v1.
 - Prepare/query/definite retry API and environment status UI; private fixed probes only for data-plane execution.

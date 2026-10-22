@@ -527,6 +527,8 @@ class EnvironmentPostgresTest {
         assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_use_result"));
         assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
         assertEquals(404,assertThrows(WorkspaceFailure.class,()->uses.result(bob,command.id())).status());
+        assertEquals(command,uses.lookup(alice,command.id()));
+        assertEquals(404,assertThrows(WorkspaceFailure.class,()->uses.lookup(bob,command.id())).status());
     }
     @Test void idleStopUsesCurrentFenceAfterSuccessfulPrivateUse() throws Exception {
         var command=use();startUse(command);uses.commitFact(command,runner.id(),known(command));uses.complete(command);

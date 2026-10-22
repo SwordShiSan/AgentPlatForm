@@ -5,6 +5,7 @@
 - [x] 2.1 Locked engine/runtime/image attestation and bounded file/exec/stop experiment.
 - [ ] 2.2 Fail-closed paths/quota/UID,real stop barrier and immutable probe evidence.
 ## 3. Persistence and runner
+- [ ] 3.0 Bind guest nproc32/host pids128 into the policy, inspect refusal and real fork/normal-stop regression; preserve prior PID pressure failure and host recovery evidence.
 - [ ] 3.1 V11 typed Mapper/XML,scoped transactions/slot/use lease/live guards.
 - [ ] 3.2 Confirmed MQ/durable claim/ACK,query-only reconciliation and generation fencing.
 - [ ] 3.3 Signed v2 runner/runtime adapter,real canary,definite stop/idle60 and retained unknown.

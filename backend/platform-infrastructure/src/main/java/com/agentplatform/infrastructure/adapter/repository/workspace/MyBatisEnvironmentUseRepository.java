@@ -197,9 +197,12 @@ public final class MyBatisEnvironmentUseRepository implements EnvironmentUseRepo
         tx();var row=uses.use(cmd.id());if(row==null||!command(row).equals(cmd))throw stale();return readFact(cmd);
     }
     @Override public Fact result(Actor actor,UUID id) {
+        return readFact(lookup(actor,id));
+    }
+    @Override public Command lookup(Actor actor,UUID id) {
         var cmd=lookup(id);lock(cmd.spaceId(),cmd.workspaceId());authorized(actor);
         if(!actor.spaceId().equals(cmd.spaceId())||!actor.userId().equals(cmd.actorId()))throw new WorkspaceFailure(404,"RESOURCE_NOT_FOUND");
-        return readFact(cmd);
+        return cmd;
     }
     @Override public void complete(Command cmd) {
         var row=uses.use(cmd.id());

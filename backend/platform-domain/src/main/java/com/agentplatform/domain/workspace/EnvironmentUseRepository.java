@@ -8,6 +8,7 @@ import java.util.UUID;
 public interface EnvironmentUseRepository {
     Admission admit(Actor actor,UUID workspaceId,UUID requestId,UUID ownerId,Request request);
     Command lookup(UUID useId);
+    Command lookup(Actor actor,UUID useId);
     void renew(Command command);
     boolean accept(Command command,UUID runnerInstanceId);
     void check(Command command,UUID runnerInstanceId);

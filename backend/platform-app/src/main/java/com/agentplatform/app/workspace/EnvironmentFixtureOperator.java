@@ -76,12 +76,17 @@ public final class EnvironmentFixtureOperator implements ApplicationRunner {
     }
     @Override public void run(ApplicationArguments arguments) {
         String action=option(arguments,"workspace-environment-action");
-        if(!Set.of("roundtrip","readback","output-bound","cancel","timeout").contains(action)&&!RESOURCE_PROBES.containsKey(action))throw new WorkspaceFailure(400,"INVALID_FIXTURE_ACTION");
+        if(!Set.of("roundtrip","readback","output-bound","cancel","timeout","reconcile").contains(action)&&!RESOURCE_PROBES.containsKey(action))throw new WorkspaceFailure(400,"INVALID_FIXTURE_ACTION");
         Scope scope=readScope(Path.of(option(arguments,"fixture-scope-file")));var actual=mapper.scope();
         if(actual==null||!"environment_test".equals(actual.databaseName())||actual.migration()!=11||!scope.fixtureId().equals(actual.fixtureId())
                 ||!scope.actorId().equals(actual.actorId())||!scope.spaceId().equals(actual.spaceId())||!scope.workspaceId().equals(actual.workspaceId())
                 ||!scope.policyHash().equals(actual.policyHash())||!scope.policyHash().equals(properties.policyHash()))throw new WorkspaceFailure(403,"FIXTURE_SCOPE_MISMATCH");
         var reports=new ArrayList<Map<String,Object>>();
+        if("reconcile".equals(action)) {
+            var receipt=application.reconcile(new Actor(scope.actorId(),scope.spaceId()),scope.workspaceId(),UUID.fromString(option(arguments,"use-id")));
+            System.out.println(JSON.writeValueAsString(Map.of("fixtureId",scope.fixtureId(),"action",action,"status","PASS","receipt",receipt,"supplierCalls",0)));
+            return;
+        }
         if("roundtrip".equals(action)) {
             for(var probe:List.of(SandboxRuntime.Probe.PYTHON_666,SandboxRuntime.Probe.NODE_CROSS_READ)) {
                 var fact=execute(scope,probe.name(),new Request(null,probe),reports);success(fact);

@@ -17,6 +17,10 @@ The platform SHALL persist environment identity, capacity, owner, outbox and ide
 
 ### Requirement: Authenticated runner and fixed sandbox isolation
 The runner SHALL use independently signed versioned requests/results, pinned image/runsc policy and verified XFS UUID/project quota without exposing management authority to the sandbox.
+The fixed policy SHALL additionally enforce guest RLIMIT_NPROC32 while retaining host pids.max128, bind both to policy identity, and reject missing or altered guest limits during readiness verification.
+#### Scenario: Guest process headroom
+- **WHEN** the fixed guest workload exhausts the32-task guest allowance under host PID128
+- **THEN** fork is explicitly refused, callbacks terminate and the exact sandbox remains normally stoppable; a host-only fallback is recorded separately and cannot make this normal-stop scenario pass
 #### Scenario: Signature or identity invalid
 - **WHEN** algorithm/time/audience/body/path/policy/generation/fence or result signature is altered
 - **THEN** no effect or successful result is accepted
@@ -28,7 +32,10 @@ The runner SHALL use independently signed versioned requests/results, pinned ima
 - **THEN** only environment becomes READY, tied to its physical identity and generation, with no public shell/file capability
 
 ### Requirement: One authoritative bounded data plane
-The platform SHALL run fixed protected file and execution probes against the current workspace with exclusive scoped leases and bounded results.
+The platform SHALL run fixed protected file and execution probes against the current workspace with exclusive scoped leases and bounded results, including query-only reconciliation of an existing use.
+#### Scenario: Original control caller already ended
+- **WHEN** an authorized protected reconciliation command addresses the existing use after its deadline
+- **THEN** only original signed queries/durable facts and guarded completion are used, foreign actors/workspaces are rejected, and no second POST, ownership transfer or program execution occurs
 #### Scenario: Cross-runtime persistent data
 - **WHEN** Python writes, Node reads/writes and application file port reads, then environment is stopped and rebuilt
 - **THEN** the same workspace data/hash survives and execution666 requires actual exit0 and output

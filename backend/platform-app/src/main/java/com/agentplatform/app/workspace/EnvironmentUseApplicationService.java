@@ -58,4 +58,22 @@ public final class EnvironmentUseApplicationService {
         throw new WorkspaceFailure(409,"ENVIRONMENT_USE_RECONCILIATION_REQUIRED");
     }
     public void cancel(Actor actor,UUID useId) {repository.cancel(actor,useId);}
+    /** Existing facts/GET only; does not reacquire an expired execution lease. */
+    public Receipt reconcile(Actor actor,UUID workspace,UUID useId) {
+        var command=repository.lookup(actor,useId);
+        if(!command.workspaceId().equals(workspace))throw new WorkspaceFailure(404,"RESOURCE_NOT_FOUND");
+        var receipt=repository.receipt(command);
+        if(receipt.resultHash()==null) {
+            try {receipt=runner.queryUse(command);}
+            catch(RuntimeException unavailable) {throw new WorkspaceFailure(409,"ENVIRONMENT_USE_RECONCILIATION_REQUIRED");}
+        }
+        var durable=repository.receipt(command);
+        if(receipt==null||receipt.resultHash()==null||durable.resultHash()==null)
+            throw new WorkspaceFailure(409,"ENVIRONMENT_USE_RECONCILIATION_REQUIRED");
+        if(!receipt.resultHash().equals(durable.resultHash()))throw new WorkspaceFailure(503,"RUNNER_RECEIPT_MISMATCH");
+        repository.complete(command);
+        repository.lookup(actor,useId); // Recheck live authorization before projecting metadata.
+        try {runner.queryUse(command);}catch(RuntimeException cleanupPending) { /* Durable stop is authoritative. */ }
+        return repository.receipt(command);
+    }
 }

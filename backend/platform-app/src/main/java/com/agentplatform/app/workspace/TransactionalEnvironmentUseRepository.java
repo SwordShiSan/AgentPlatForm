@@ -36,6 +36,7 @@ public final class TransactionalEnvironmentUseRepository implements EnvironmentU
             });return admitted;});
     }
     @Override public Command lookup(UUID id) {return tx(null,()->delegate.lookup(id));}
+    @Override public Command lookup(Actor actor,UUID id) {return tx(null,()->delegate.lookup(actor,id));}
     @Override public void checkOwnership(Command command) {tx(null,()->{delegate.checkOwnership(command);return null;});}
     @Override public void check(Command command,UUID runner) {tx(null,()->{delegate.check(command,runner);return null;});}
     @Override public void checkStopObservation(Command command,UUID runner) {tx(null,()->{delegate.checkStopObservation(command,runner);return null;});}
