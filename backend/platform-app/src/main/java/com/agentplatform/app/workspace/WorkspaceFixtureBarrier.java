@@ -4,18 +4,23 @@ import java.nio.file.*;
 import java.util.Set;
 
 /** Existing host-driven acceptance pattern; never controlled by a user/API command. */
-final class WorkspaceFixtureBarrier {
+final class WorkspaceFixtureBarrier implements com.agentplatform.domain.workspace.WorkspaceEffectBoundary {
     private static final Set<String> POINTS=Set.of("claim-before-commit","claim-after-commit-before-ack","ack-before-runner","helper-exited-before-receipt");
+    private static final Set<String> ENVIRONMENT_POINTS=Set.of("environment-claim-before-commit","environment-claim-after-commit-before-ack",
+            "environment-ack-before-runner","environment-runner-accepted","environment-before-create","environment-created-before-start",
+            "environment-started-before-readiness","environment-readiness-before-receipt","environment-receipt-before-response",
+            "use-output-before-result","use-result-before-response");
     private final String selected;
     private WorkspaceFixtureBarrier(String selected){this.selected=selected;}
     static WorkspaceFixtureBarrier none(){return new WorkspaceFixtureBarrier(null);}
     static WorkspaceFixtureBarrier configured(String selected,String stage,boolean fixtureProfile,boolean productionProfile) {
         if(selected==null||selected.isBlank())return none();
-        if(!POINTS.contains(selected)||!"r31".equals(stage)||!fixtureProfile||productionProfile)
-            throw new IllegalStateException("Workspace fault barrier requires explicit isolated R31 fixture composition");
+        boolean allowed="r31".equals(stage)&&POINTS.contains(selected)||"r32".equals(stage)&&(POINTS.contains(selected)||ENVIRONMENT_POINTS.contains(selected));
+        if(!allowed||!fixtureProfile||productionProfile)
+            throw new IllegalStateException("Workspace fault barrier requires explicit isolated fixture composition");
         return new WorkspaceFixtureBarrier(selected);
     }
-    void await(String point) {
+    @Override public void await(String point) {
         if(!point.equals(selected))return;
         try {
             Files.writeString(Path.of("/tmp/workspace-fixture-ready"),point,StandardOpenOption.CREATE_NEW);

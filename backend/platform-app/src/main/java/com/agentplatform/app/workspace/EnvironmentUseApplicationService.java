@@ -36,6 +36,9 @@ public final class EnvironmentUseApplicationService {
         try {
             try {receipt=runner.executeUse(command);}catch(RuntimeException unknown) { /* One POST only, then query original use. */ }
             while(Instant.now().isBefore(command.deadline())) {
+                // Immutable DB facts remain authoritative when HTTP response/runner
+                // is lost. This reads a result, never starts work from the database.
+                if(receipt==null||receipt.resultHash()==null)receipt=repository.receipt(command);
                 if(receipt!=null&&receipt.resultHash()!=null) {
                     if(!receipt.resultHash().equals(repository.receipt(command).resultHash()))throw new WorkspaceFailure(503,"RUNNER_RECEIPT_MISMATCH");
                     repository.complete(command);

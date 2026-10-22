@@ -12,8 +12,12 @@ import org.springframework.transaction.support.*;
 public final class TransactionalEnvironmentExecutionRepository implements EnvironmentExecutionRepository {
     private final EnvironmentExecutionRepository delegate;
     private final TransactionTemplate transactions;
+    private final WorkspaceEffectBoundary boundary;
     public TransactionalEnvironmentExecutionRepository(EnvironmentExecutionRepository delegate,TransactionTemplate transactions) {
-        this.delegate=delegate;this.transactions=transactions;
+        this(delegate,transactions,WorkspaceEffectBoundary.NONE);
+    }
+    public TransactionalEnvironmentExecutionRepository(EnvironmentExecutionRepository delegate,TransactionTemplate transactions,WorkspaceEffectBoundary boundary) {
+        this.delegate=delegate;this.transactions=transactions;this.boundary=boundary;
     }
     private void beforeCommit(Command command) {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -30,7 +34,7 @@ public final class TransactionalEnvironmentExecutionRepository implements Enviro
     @Override public List<Publication> publications(UUID owner) {return tx(null,()->delegate.publications(owner));}
     @Override public void published(Publication item,boolean confirmed) {tx(null,()->{delegate.published(item,confirmed);return null;});}
     @Override public Command claim(Publication item,UUID owner) {return tx(null,()->{
-        var command=delegate.claim(item,owner);if(command!=null)beforeCommit(command);return command;
+        var command=delegate.claim(item,owner);if(command!=null) {boundary.await("environment-claim-before-commit");beforeCommit(command);}return command;
     });}
     @Override public Command lookup(UUID id) {return tx(null,()->delegate.lookup(id));}
     @Override public void check(Command command) {tx(null,()->{delegate.check(command);return null;});}

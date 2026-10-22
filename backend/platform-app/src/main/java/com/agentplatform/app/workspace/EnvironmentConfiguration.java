@@ -17,8 +17,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 @EnableConfigurationProperties(EnvironmentProperties.class)
 public class EnvironmentConfiguration {
     @Bean EnvironmentExecutionRepository environmentExecutionRepository(EnvironmentExecutionMapper execution,EnvironmentPreparationMapper preparation,
-            WorkspaceMapper workspaces,TransactionTemplate transactions) {
-        return new TransactionalEnvironmentExecutionRepository(new MyBatisEnvironmentExecutionRepository(execution,preparation,workspaces),transactions);
+            WorkspaceMapper workspaces,TransactionTemplate transactions,WorkspaceFixtureBarrier barrier) {
+        return new TransactionalEnvironmentExecutionRepository(new MyBatisEnvironmentExecutionRepository(execution,preparation,workspaces),transactions,barrier);
     }
     @Bean @Profile({"workspace-worker","workspace-runner"}) EnvironmentUseRepository environmentUseRepository(EnvironmentUseMapper uses,
             EnvironmentPreparationMapper preparation,EnvironmentExecutionMapper execution,WorkspaceMapper workspaces,TransactionTemplate transactions) {
@@ -45,14 +45,14 @@ public class EnvironmentConfiguration {
             if(!environment.policyHash().equals(policy.hash()))throw new IllegalStateException("Frozen environment policy mismatch");
             return policy;
         }
-        @Bean(destroyMethod="close") SandboxRuntime sandboxRuntime(SandboxPolicy policy) {return new DockerSandboxRuntime(policy);}
-        @Bean EnvironmentRunnerApi environmentRunnerApi(EnvironmentExecutionRepository repository,RunnerSignatures signatures,SandboxRuntime runtime,EnvironmentProperties properties) {
-            return new EnvironmentRunnerService(repository,signatures,runtime,properties.imageId(),properties.policyHash(),runtime.runnerInstance());
+        @Bean(destroyMethod="close") SandboxRuntime sandboxRuntime(SandboxPolicy policy,WorkspaceFixtureBarrier barrier) {return new DockerSandboxRuntime(policy,barrier);}
+        @Bean EnvironmentRunnerApi environmentRunnerApi(EnvironmentExecutionRepository repository,RunnerSignatures signatures,SandboxRuntime runtime,EnvironmentProperties properties,WorkspaceFixtureBarrier barrier) {
+            return new EnvironmentRunnerService(repository,signatures,runtime,properties.imageId(),properties.policyHash(),runtime.runnerInstance(),barrier);
         }
         @Bean EnvironmentUseRunnerApi environmentUseRunnerApi(EnvironmentUseRepository repository,EnvironmentExecutionRepository execution,
-                RunnerSignatures signatures,SandboxRuntime runtime) {
+                RunnerSignatures signatures,SandboxRuntime runtime,WorkspaceFixtureBarrier barrier) {
             var instance=runtime.runnerInstance();execution.registerRunner(instance);
-            return new EnvironmentUseRunnerService(repository,signatures,runtime,instance);
+            return new EnvironmentUseRunnerService(repository,signatures,runtime,instance,barrier);
         }
     }
 }

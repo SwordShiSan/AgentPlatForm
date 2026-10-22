@@ -26,12 +26,16 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private final DockerClient docker;
     private final SandboxPolicy policy;
+    private final com.agentplatform.domain.workspace.WorkspaceEffectBoundary boundary;
     private final UUID instanceId=UUID.randomUUID();
     private final ConcurrentMap<UUID, Capture> active = new ConcurrentHashMap<>();
     private final Semaphore helperSlot=new Semaphore(1);
 
     public DockerSandboxRuntime(SandboxPolicy policy) {
-        this.policy = policy;
+        this(policy,com.agentplatform.domain.workspace.WorkspaceEffectBoundary.NONE);
+    }
+    public DockerSandboxRuntime(SandboxPolicy policy,com.agentplatform.domain.workspace.WorkspaceEffectBoundary boundary) {
+        this.policy = policy;this.boundary=boundary;
         var config = DefaultDockerClientConfig.createDefaultConfigBuilder()
                 .withDockerHost("unix:///var/run/docker.sock").withApiVersion("1.45").build();
         var transport = new ApacheDockerHttpClient.Builder().dockerHost(config.getDockerHost())
@@ -183,11 +187,14 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
                 .withBinds(new Bind(policy.work(identity), new Volume("/workspace"), AccessMode.rw))
                 .withTmpFs(Map.of("/tmp", "rw,noexec,nosuid,size=64m,uid=10001,gid=10001,mode=700"))
                 .withLogConfig(new LogConfig(LogConfig.LoggingType.JSON_FILE, Map.of("max-size", "10m", "max-file", "3")));
+        boundary.await("environment-before-create");
         var created = docker.createContainerCmd(policy.image()).withName(name(identity)).withLabels(labels(identity))
                 .withUser("10001:10001").withWorkingDir("/workspace").withCmd(startup(identity)).withHostConfig(host).exec();
         exact(identity);
+        boundary.await("environment-created-before-start");
         authority.check();
         docker.startContainerCmd(created.getId()).exec();
+        boundary.await("environment-started-before-readiness");
         long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
         while (true) {
             try { return verifyReady(identity, authority); }

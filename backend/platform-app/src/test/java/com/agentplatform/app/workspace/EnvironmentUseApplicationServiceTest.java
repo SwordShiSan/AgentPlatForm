@@ -30,6 +30,7 @@ class EnvironmentUseApplicationServiceTest {
         when(repository.receipt(command)).thenReturn(receipt);when(repository.result(actor,command.id())).thenReturn(fact);
     }
     @Test void responseLossQueriesOriginalUseAndNeverPostsAgain() {
+        when(repository.receipt(command)).thenReturn(new Receipt(command.id(),"RUNNING","PENDING",null),receipt);
         when(runner.executeUse(command)).thenThrow(new WorkspaceFailure(503,"RUNNER_RESULT_UNKNOWN"));when(runner.queryUse(command)).thenReturn(receipt);
         assertEquals(fact,service().execute(actor,workspace,requestId,request));
         verify(runner,times(1)).executeUse(command);verify(repository,times(1)).complete(command);
@@ -49,5 +50,11 @@ class EnvironmentUseApplicationServiceTest {
         when(runner.executeUse(command)).thenReturn(new Receipt(command.id(),"RUNNING","KNOWN","e".repeat(64)));
         assertEquals("RUNNER_RECEIPT_MISMATCH",assertThrows(WorkspaceFailure.class,()->service().execute(actor,workspace,requestId,request)).code());
         verify(repository,never()).complete(any());verify(repository,never()).result(any(),any());
+    }
+    @Test void committedFactConvergesEvenIfRunnerAndResponseWereLost() {
+        when(runner.executeUse(command)).thenThrow(new WorkspaceFailure(503,"RUNNER_RESULT_UNKNOWN"));
+        when(runner.queryUse(command)).thenThrow(new WorkspaceFailure(503,"RUNNER_RESULT_UNAVAILABLE"));
+        assertEquals(fact,service().execute(actor,workspace,requestId,request));verify(repository).complete(command);
+        verify(runner,times(1)).executeUse(command);verify(runner,times(1)).queryUse(command);
     }
 }

@@ -31,7 +31,7 @@ public class EnvironmentMessagingConfiguration {
     @Bean(destroyMethod="close") @Profile("workspace-worker") EnvironmentExecution environmentExecution(EnvironmentExecutionRepository repository,EnvironmentRunnerPort runner,
             @Qualifier("workspaceTimers") ThreadPoolTaskScheduler timers) {return new EnvironmentExecution(repository,runner,timers.getScheduledExecutor());}
     @Bean SmartLifecycle environmentLifecycle(EnvironmentExecutionRepository repository,EnvironmentMaintenanceRepository maintenance,SpringEnvironmentMessaging messaging,
-            @Qualifier("workspaceTimers") ThreadPoolTaskScheduler timers,ObjectProvider<EnvironmentExecution> execution,Environment selected) {
+            @Qualifier("workspaceTimers") ThreadPoolTaskScheduler timers,ObjectProvider<EnvironmentExecution> execution,Environment selected,WorkspaceFixtureBarrier barrier) {
         return new SmartLifecycle() {
             private volatile boolean running;
             private java.util.concurrent.ScheduledFuture<?> relay;
@@ -51,9 +51,9 @@ public class EnvironmentMessagingConfiguration {
                 if(selected.acceptsProfiles(Profiles.of("workspace-worker")))messaging.start(new SpringEnvironmentMessaging.Handoff() {
                     @Override public Command claim(Publication item) {
                         if(!running)throw new IllegalStateException("Environment consumer is stopping");
-                        return repository.claim(item,owner);
+                        var command=repository.claim(item,owner);if(command!=null)barrier.await("environment-claim-after-commit-before-ack");return command;
                     }
-                    @Override public void execute(Command command) {execution.getObject().run(command);}
+                    @Override public void execute(Command command) {barrier.await("environment-ack-before-runner");execution.getObject().run(command);}
                 });
             }
             @Override public void stop() {running=false;if(relay!=null)relay.cancel(false);execution.ifAvailable(EnvironmentExecution::close);messaging.close();}

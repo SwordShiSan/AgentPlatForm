@@ -17,8 +17,12 @@ public final class EnvironmentRunnerService implements EnvironmentRunnerApi {
     private final SandboxRuntime runtime;
     private final String image,policy;
     private final RunnerInstance instance;
+    private final WorkspaceEffectBoundary boundary;
     public EnvironmentRunnerService(EnvironmentExecutionRepository repository,RunnerSignatures signatures,SandboxRuntime runtime,String image,String policy,RunnerInstance instance) {
-        this.repository=repository;this.signatures=signatures;this.runtime=runtime;this.image=image;this.policy=policy;this.instance=instance;
+        this(repository,signatures,runtime,image,policy,instance,WorkspaceEffectBoundary.NONE);
+    }
+    public EnvironmentRunnerService(EnvironmentExecutionRepository repository,RunnerSignatures signatures,SandboxRuntime runtime,String image,String policy,RunnerInstance instance,WorkspaceEffectBoundary boundary) {
+        this.repository=repository;this.signatures=signatures;this.runtime=runtime;this.image=image;this.policy=policy;this.instance=instance;this.boundary=boundary;
         repository.registerRunner(instance);
     }
     public static RunnerSignatures.Binding binding(Command command,String method,String path) {
@@ -59,6 +63,7 @@ public final class EnvironmentRunnerService implements EnvironmentRunnerApi {
         if(!command.equals(repository.lookup(command.operationId())))throw new WorkspaceFailure(409,"RUNNER_COMMAND_CONFLICT");
         var previous=repository.accept(command,RunnerSignatures.sha256(body),instance.id());
         if(previous!=null) {cleanup(command,previous);return signed(command,previous,PATH);}
+        boundary.await("environment-runner-accepted");
         Receipt receipt;
         try {
             repository.check(command);
@@ -84,7 +89,9 @@ public final class EnvironmentRunnerService implements EnvironmentRunnerApi {
             return signed(command,new Receipt(command.commandId(),command.operationId(),command.environmentId(),command.workspaceId(),command.generation(),command.fence(),
                     "RUNNING","MAY_HAVE_STARTED","SANDBOX_RESULT_UNKNOWN",null,null,0),PATH);
         }
+        boundary.await("environment-readiness-before-receipt");
         repository.commitReceipt(command,receipt,instance.id()); // Stop fact must commit before cleanup.
+        boundary.await("environment-receipt-before-response");
         cleanup(command,receipt);return signed(command,receipt,PATH);
     }
     @Override public SignedResult query(String token,String operationId) {

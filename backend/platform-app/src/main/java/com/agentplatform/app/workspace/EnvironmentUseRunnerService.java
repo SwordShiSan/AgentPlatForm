@@ -18,11 +18,15 @@ public final class EnvironmentUseRunnerService implements EnvironmentUseRunnerAp
     private final RunnerSignatures signatures;
     private final SandboxRuntime runtime;
     private final RunnerInstance instance;
+    private final WorkspaceEffectBoundary boundary;
     // The database admits one use. The local barrier additionally prevents a lost
     // HTTP response/query from stopping an original invocation that is still exiting.
     private final AtomicReference<UUID> inFlight=new AtomicReference<>();
     public EnvironmentUseRunnerService(EnvironmentUseRepository repository,RunnerSignatures signatures,SandboxRuntime runtime,RunnerInstance instance) {
-        this.repository=repository;this.signatures=signatures;this.runtime=runtime;this.instance=instance;
+        this(repository,signatures,runtime,instance,WorkspaceEffectBoundary.NONE);
+    }
+    public EnvironmentUseRunnerService(EnvironmentUseRepository repository,RunnerSignatures signatures,SandboxRuntime runtime,RunnerInstance instance,WorkspaceEffectBoundary boundary) {
+        this.repository=repository;this.signatures=signatures;this.runtime=runtime;this.instance=instance;this.boundary=boundary;
     }
     public static RunnerSignatures.Binding binding(Command command,String method,String path) {
         return new RunnerSignatures.Binding(method,path,command.id(),command.id(),command.spaceId(),command.workspaceId(),command.generation(),command.fence());
@@ -84,6 +88,7 @@ public final class EnvironmentUseRunnerService implements EnvironmentUseRunnerAp
                 if(stop==null)return signed(command,PATH);
                 fact=unknown(command,stop);
             }
+            boundary.await("use-output-before-result");
             try {repository.commitFact(command,instance.id(),fact);}
             catch(RuntimeException lostBeforeCommit) {
                 // Cancellation/revocation can win after exec exits but before the
@@ -91,6 +96,7 @@ public final class EnvironmentUseRunnerService implements EnvironmentUseRunnerAp
                 var stop=runtime.stop(command.physicalIdentity());
                 repository.commitFact(command,instance.id(),unknown(command,stop));
             }
+            boundary.await("use-result-before-response");
             return signed(command,PATH);
         } finally {inFlight.compareAndSet(command.id(),null);}
     }
