@@ -58,6 +58,14 @@ class EnvironmentPostgresTest {
         try(var connection=DriverManager.getConnection(url,"postgres",password);var statement=connection.createStatement();var rows=statement.executeQuery(text)) {rows.next();return rows.getLong(1);}
     }
     private static String hash(String text) {return RunnerSignatures.sha256(text.getBytes(StandardCharsets.UTF_8));}
+    private SqlSessionTemplate session(javax.sql.DataSource source) throws Exception {
+        var factory=new SqlSessionFactoryBean();factory.setDataSource(source);
+        var configuration=new org.apache.ibatis.session.Configuration();configuration.setMapUnderscoreToCamelCase(true);
+        configuration.setLocalCacheScope(org.apache.ibatis.session.LocalCacheScope.STATEMENT);configuration.setCacheEnabled(false);
+        configuration.getTypeHandlerRegistry().register(new UuidTypeHandler());factory.setConfiguration(configuration);
+        factory.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:mybatis/mapper/workspace/*.xml"));
+        return new SqlSessionTemplate(factory.getObject());
+    }
     @BeforeEach void setup() throws Exception {
         sql("TRUNCATE pf.app_user CASCADE");
         sql("TRUNCATE pf.workspace_runner_instance CASCADE");
@@ -67,12 +75,7 @@ class EnvironmentPostgresTest {
         configuration.setMaximumPoolSize(4);configuration.setMinimumIdle(1);
         pool=new com.zaxxer.hikari.HikariDataSource(configuration);
         transactions=new TransactionTemplate(new JdbcTransactionManager(pool));
-        var factory=new SqlSessionFactoryBean();factory.setDataSource(pool);
-        var mybatis=new org.apache.ibatis.session.Configuration();mybatis.setMapUnderscoreToCamelCase(true);
-        mybatis.setLocalCacheScope(org.apache.ibatis.session.LocalCacheScope.STATEMENT);mybatis.setCacheEnabled(false);
-        mybatis.getTypeHandlerRegistry().register(new UuidTypeHandler());factory.setConfiguration(mybatis);
-        factory.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:mybatis/mapper/workspace/*.xml"));
-        var session=new SqlSessionTemplate(factory.getObject());var mapper=session.getMapper(WorkspaceMapper.class);
+        var session=session(pool);var mapper=session.getMapper(WorkspaceMapper.class);
         workspaces=new TransactionalWorkspaceRepository(new MyBatisWorkspaceRepository(mapper),transactions);
         environments=new TransactionalEnvironmentPreparationRepository(new MyBatisEnvironmentPreparationRepository(
                 session.getMapper(EnvironmentPreparationMapper.class),mapper,"sha256:"+"a".repeat(64),"b".repeat(64)),transactions);
@@ -343,5 +346,129 @@ class EnvironmentPostgresTest {
                 new StoppedRunner(wrong,now.minusSeconds(2),now,hash("wrong")))).code());
         assertEquals("STOPPED_RUNNER_PROOF_EXPIRED",assertThrows(WorkspaceFailure.class,()->runnerProofs.record(
                 new StoppedRunner(runner,now.minusSeconds(602),now.minusSeconds(601),hash("stale")))).code());
+    }
+    private org.springframework.amqp.rabbit.connection.CachingConnectionFactory broker() throws Exception {
+        String file=System.getenv("R32_TEST_MQ_PASSWORD_FILE");Assumptions.assumeTrue(file!=null,"R32 real MQ not selected; NOT_RUN");
+        var connections=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory("127.0.0.1",15699);
+        connections.setPublisherConfirmType(org.springframework.amqp.rabbit.connection.CachingConnectionFactory.ConfirmType.CORRELATED);
+        connections.setPublisherReturns(true);connections.setUsername("r32");connections.setPassword(Files.readString(Path.of(file)).strip());
+        connections.setVirtualHost("/agentplatform");connections.setConnectionTimeout(2000);
+        var admin=new org.springframework.amqp.rabbit.core.RabbitAdmin(connections);
+        var exchange=new org.springframework.amqp.core.DirectExchange(com.agentplatform.infrastructure.workspace.SpringEnvironmentMessaging.EXCHANGE,true,false);
+        var queue=new org.springframework.amqp.core.Queue(com.agentplatform.infrastructure.workspace.SpringEnvironmentMessaging.QUEUE,true);
+        admin.declareExchange(exchange);admin.declareQueue(queue);
+        admin.declareBinding(org.springframework.amqp.core.BindingBuilder.bind(queue).to(exchange).with(com.agentplatform.infrastructure.workspace.SpringEnvironmentMessaging.ROUTE));
+        admin.purgeQueue(queue.getName());return connections;
+    }
+    @Test void actualMqTwoConsumersAndDuplicatePublicationKeepOneOwner() throws Exception {
+        UUID workspace=storage(true);prepare(workspace,UUID.randomUUID(),0,false);
+        var item=executions.publications(UUID.randomUUID()).getFirst();var connections=broker();
+        var delivered=new CountDownLatch(2);var executed=new CountDownLatch(1);var effects=new java.util.concurrent.atomic.AtomicInteger();
+        try(var first=new com.agentplatform.infrastructure.workspace.SpringEnvironmentMessaging(connections,executions);
+                var second=new com.agentplatform.infrastructure.workspace.SpringEnvironmentMessaging(connections,executions)) {
+            for(var messaging:List.of(first,second)) {
+                UUID owner=UUID.randomUUID();
+                messaging.start(new com.agentplatform.infrastructure.workspace.SpringEnvironmentMessaging.Handoff() {
+                    @Override public com.agentplatform.domain.workspace.EnvironmentExecutionData.Command claim(com.agentplatform.domain.workspace.EnvironmentExecutionData.Publication publication) {
+                        var command=executions.claim(publication,owner);delivered.countDown();
+                        assertDoesNotThrow(()->assertTrue(delivered.await(10,TimeUnit.SECONDS)));return command;
+                    }
+                    @Override public void execute(com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command) {effects.incrementAndGet();executed.countDown();}
+                });
+            }
+            first.publish(item);second.publish(item);
+            assertTrue(delivered.await(15,TimeUnit.SECONDS));assertTrue(executed.await(15,TimeUnit.SECONDS));assertEquals(1,effects.get());
+            assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_inbox"));
+            assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_operation WHERE owner_id IS NOT NULL"));
+        } finally {connections.destroy();}
+    }
+    @Test void actualMqClaimCommittedButAckLostDoesNotExecuteAgain() throws Exception {
+        UUID workspace=storage(true);prepare(workspace,UUID.randomUUID(),0,false);
+        var item=executions.publications(UUID.randomUUID()).getFirst();var connections=broker();
+        var deliveries=new java.util.concurrent.atomic.AtomicInteger();var effects=new java.util.concurrent.atomic.AtomicInteger();var redelivered=new CountDownLatch(1);
+        try(var messaging=new com.agentplatform.infrastructure.workspace.SpringEnvironmentMessaging(connections,executions)) {
+            messaging.start(new com.agentplatform.infrastructure.workspace.SpringEnvironmentMessaging.Handoff() {
+                @Override public com.agentplatform.domain.workspace.EnvironmentExecutionData.Command claim(com.agentplatform.domain.workspace.EnvironmentExecutionData.Publication publication) {
+                    var command=executions.claim(publication,UUID.randomUUID());
+                    if(deliveries.incrementAndGet()==1) {assertNotNull(command);throw new IllegalStateException("Injected committed handoff before ACK");}
+                    assertNull(command);redelivered.countDown();return null;
+                }
+                @Override public void execute(com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command) {effects.incrementAndGet();}
+            });
+            messaging.publish(item);assertTrue(redelivered.await(20,TimeUnit.SECONDS));assertEquals(0,effects.get());
+            assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_inbox"));
+            assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        } finally {connections.destroy();}
+    }
+    @Test void actualMqRollbackBeforeClaimCommitIsRedeliveredWithoutPartialOwner() throws Exception {
+        UUID workspace=storage(true);prepare(workspace,UUID.randomUUID(),0,false);
+        var item=executions.publications(UUID.randomUUID()).getFirst();var connections=broker();
+        var attempts=new java.util.concurrent.atomic.AtomicInteger();var effects=new java.util.concurrent.atomic.AtomicInteger();var completed=new CountDownLatch(1);
+        try(var messaging=new com.agentplatform.infrastructure.workspace.SpringEnvironmentMessaging(connections,executions)) {
+            messaging.start(new com.agentplatform.infrastructure.workspace.SpringEnvironmentMessaging.Handoff() {
+                @Override public com.agentplatform.domain.workspace.EnvironmentExecutionData.Command claim(com.agentplatform.domain.workspace.EnvironmentExecutionData.Publication publication) {
+                    if(attempts.incrementAndGet()==1)return transactions.execute(status->{
+                        assertNotNull(executions.claim(publication,UUID.randomUUID()));throw new IllegalStateException("Injected before claim commit");
+                    });
+                    return executions.claim(publication,UUID.randomUUID());
+                }
+                @Override public void execute(com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command) {effects.incrementAndGet();completed.countDown();}
+            });
+            messaging.publish(item);assertTrue(completed.await(20,TimeUnit.SECONDS));assertEquals(1,effects.get());
+            assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_inbox"));
+        } finally {connections.destroy();}
+    }
+    @Test void actualMqReturnedPublicationKeepsDurableOutbox() throws Exception {
+        UUID workspace=storage(true);prepare(workspace,UUID.randomUUID(),0,false);
+        var item=executions.publications(UUID.randomUUID()).getFirst();var connections=broker();
+        var binding=new org.springframework.amqp.core.Binding(com.agentplatform.infrastructure.workspace.SpringEnvironmentMessaging.QUEUE,org.springframework.amqp.core.Binding.DestinationType.QUEUE,
+                com.agentplatform.infrastructure.workspace.SpringEnvironmentMessaging.EXCHANGE,com.agentplatform.infrastructure.workspace.SpringEnvironmentMessaging.ROUTE,Map.of());
+        var admin=new org.springframework.amqp.rabbit.core.RabbitAdmin(connections);admin.removeBinding(binding);
+        try(var messaging=new com.agentplatform.infrastructure.workspace.SpringEnvironmentMessaging(connections,executions)) {
+            assertThrows(WorkspaceFailure.class,()->messaging.publish(item));executions.published(item,false);
+            assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_outbox WHERE status='PENDING'"));
+            assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_inbox"));
+        } finally {admin.declareBinding(binding);connections.destroy();}
+    }
+    @Test void failedStopWithoutTerminationProofNeverOffersGenerationRetry() throws Exception {
+        var original=readyEnvironment();sql("UPDATE pf.workspace_environment SET last_activity_at=clock_timestamp()-interval '61 seconds'");
+        assertEquals(1,maintenance.scheduleStop());
+        sql("UPDATE pf.workspace_environment_operation SET status='FAILED',effect_state='NOT_STARTED' WHERE kind='STOP'");
+        sql("UPDATE pf.workspace_environment SET state='ERROR'");
+        var snapshot=environments.get(alice,original.workspaceId());assertFalse(snapshot.prepareAllowed());assertFalse(snapshot.retryAllowed());
+        assertEquals("ENVIRONMENT_RETRY_UNSAFE",assertThrows(WorkspaceFailure.class,()->prepare(original.workspaceId(),UUID.randomUUID(),3,true)).code());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+    }
+    @Test void actualRunnerAndOperatorRolesHaveOnlyMetadataAndReceiptAuthority() throws Exception {
+        for(String role:List.of("ap_api","ap_worker","ap_runner","ap_workspace_ops"))sql("DO $$ BEGIN CREATE ROLE "+role+" NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$");
+        sql(Files.readString(Path.of(System.getenv("R32_WORKSPACE_GRANTS_FILE"))));
+        sql(Files.readString(Path.of(System.getenv("R32_ENVIRONMENT_GRANTS_FILE"))));
+        var command=claimEnvironment();executions.beforeCall(command);
+        for(String role:List.of("ap_runner","ap_workspace_ops")) {
+            var configuration=new com.zaxxer.hikari.HikariConfig();configuration.setJdbcUrl(url);configuration.setUsername("postgres");configuration.setPassword(password);
+            configuration.setMaximumPoolSize(2);configuration.setMinimumIdle(1);configuration.setConnectionInitSql("SET ROLE "+role);
+            try(var restricted=new com.zaxxer.hikari.HikariDataSource(configuration)) {
+                var session=session(restricted);var tx=new TransactionTemplate(new JdbcTransactionManager(restricted));
+                if(role.equals("ap_runner")) {
+                    var runnerPort=new TransactionalEnvironmentExecutionRepository(new MyBatisEnvironmentExecutionRepository(session.getMapper(EnvironmentExecutionMapper.class),
+                            session.getMapper(EnvironmentPreparationMapper.class),session.getMapper(WorkspaceMapper.class)),tx);
+                    assertEquals(command,runnerPort.lookup(command.operationId()));runnerPort.registerRunner(runner);
+                    assertNull(runnerPort.accept(command,hash("role-bound"),runner.id()));
+                    var receipt=ready(command);runnerPort.commitReceipt(command,receipt,runner.id());assertEquals(receipt,runnerPort.receipt(command));
+                    for(String query:List.of("UPDATE pf.workspace_environment SET state='READY'","UPDATE pf.workspace_environment_operation SET fence=fence+1",
+                            "INSERT INTO pf.workspace_runner_stop_proof(runner_instance_id) VALUES('"+runner.id()+"')"))denied(restricted,query);
+                } else {
+                    var proofPort=new TransactionalRunnerStopProofRepository(new MyBatisRunnerStopProofRepository(session.getMapper(RunnerStopProofMapper.class),session.getMapper(EnvironmentPreparationMapper.class)),tx);
+                    var now=java.time.Instant.now();assertDoesNotThrow(()->proofPort.record(new StoppedRunner(runner,now.minusSeconds(2),now,hash("role-host-fixture"))));
+                    denied(restricted,"UPDATE pf.workspace_runner_instance SET container_id='"+"1".repeat(64)+"'");
+                }
+                for(String table:List.of("pf.app_user","pf.credential","pf.message","pf_runtime.state_slot"))denied(restricted,"SELECT * FROM "+table);
+            }
+        }
+    }
+    private static void denied(javax.sql.DataSource source,String query) throws Exception {
+        try(var connection=source.getConnection();var statement=connection.createStatement()) {
+            assertEquals("42501",assertThrows(java.sql.SQLException.class,()->statement.execute(query)).getSQLState());
+        }
     }
 }

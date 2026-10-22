@@ -82,7 +82,7 @@ public final class MyBatisEnvironmentExecutionRepository implements EnvironmentE
         if(!mapper.runnerActive(instance.id()))throw new WorkspaceFailure(409,"RUNNER_INSTANCE_STOPPED");
     }
     @Override public void checkRunner(Command command,UUID runnerId) {
-        guard(command,false);
+        guard(command,true);
         if(!mapper.runnerMayReconcile(command.commandId(),runnerId))throw new WorkspaceFailure(409,"RUNNER_INSTANCE_STOP_UNPROVEN");
     }
     @Override public Receipt accept(Command command,String hash,UUID runnerId) {
@@ -118,7 +118,7 @@ public final class MyBatisEnvironmentExecutionRepository implements EnvironmentE
             } else if(!"STOPPED".equals(receipt.effectState())||receipt.stop()==null||receipt.container()!=null)throw new WorkspaceFailure(409,"RUNNER_STOP_MISMATCH");
         } else if("FAILED".equals(receipt.state())) {
             if(receipt.effectState()==null||!Set.of("NOT_STARTED","STOPPED").contains(receipt.effectState())||receipt.container()!=null
-                    ||"NOT_STARTED".equals(receipt.effectState())&&receipt.stop()!=null
+                    ||"NOT_STARTED".equals(receipt.effectState())&&(!"PREPARE".equals(command.kind())||receipt.stop()!=null)
                     ||"STOPPED".equals(receipt.effectState())&&receipt.stop()==null)throw new WorkspaceFailure(409,"RUNNER_FAILURE_UNPROVEN");
         } else if("UNKNOWN".equals(receipt.state())&&!"MAY_HAVE_STARTED".equals(receipt.effectState()))throw new WorkspaceFailure(409,"RUNNER_RECEIPT_MISMATCH");
         if(receipt.stop()!=null) {

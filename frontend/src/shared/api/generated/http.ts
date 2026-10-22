@@ -419,6 +419,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{id}/environment": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["getWorkspaceEnvironment"];
+        put?: never;
+        post: operations["prepareWorkspaceEnvironment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{id}/environment/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["retryWorkspaceEnvironment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -678,6 +715,26 @@ export interface components {
             /** Format: uuid */
             traceId: string;
         };
+        EmptyEnvironmentCommand: Record<string, never>;
+        WorkspaceEnvironment: {
+            /** Format: uuid */
+            workspaceId: string;
+            /** @enum {string} */
+            state: "NOT_CREATED" | "PREPARING" | "READY" | "STOPPED" | "ERROR" | "BLOCKED";
+            /** @enum {string} */
+            phase: "NONE" | "PREPARING" | "READY" | "STOPPING" | "STOPPED" | "ERROR" | "BLOCKED";
+            generation: number;
+            version: number;
+            /** Format: uuid */
+            operationId: string | null;
+            errorCode: string | null;
+            allowedActions: ("PREPARE" | "RETRY")[];
+        } & (unknown & unknown & unknown & unknown);
+        EnvironmentSubmission: {
+            /** Format: uuid */
+            operationId: string;
+            environment: components["schemas"]["WorkspaceEnvironment"];
+        };
         CreateWorkspace: {
             name: string;
         };
@@ -689,8 +746,8 @@ export interface components {
             name: string;
             /** @enum {string} */
             state: "PROVISIONING" | "READY" | "ERROR" | "BLOCKED";
-            /** @constant */
-            environmentState: "NOT_CREATED";
+            /** @enum {string} */
+            environmentState: "NOT_CREATED" | "PREPARING" | "READY" | "STOPPED" | "ERROR" | "BLOCKED";
             /** @constant */
             quotaBytes: 2147483648;
             /** @constant */
@@ -724,6 +781,7 @@ export interface components {
         };
     };
     parameters: {
+        EnvironmentMatch: string;
         /** @description Session-bound token; writes also require an exact allowed Origin */
         CsrfToken: string;
         /** @description Optional selector; current membership and credential policy are always checked. */
@@ -1603,6 +1661,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Workspace"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getWorkspaceEnvironment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Independent environment projection; absent environment is NOT_CREATED revision0 without allocation */
+            200: {
+                headers: {
+                    /** @description Quoted environment revision */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceEnvironment"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    prepareWorkspaceEnvironment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                "If-Match": components["parameters"]["EnvironmentMatch"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["EmptyEnvironmentCommand"];
+            };
+        };
+        responses: {
+            /** @description Durable prepare operation; repeat returns original operation identity separately from current projection */
+            202: {
+                headers: {
+                    /** @description Quoted environment revision */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentSubmission"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    retryWorkspaceEnvironment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                "If-Match": components["parameters"]["EnvironmentMatch"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["EmptyEnvironmentCommand"];
+            };
+        };
+        responses: {
+            /** @description Retry only a proven failed operation with no unresolved effect or use */
+            202: {
+                headers: {
+                    /** @description Quoted environment revision */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentSubmission"];
                 };
             };
             default: components["responses"]["IdentityProblem"];

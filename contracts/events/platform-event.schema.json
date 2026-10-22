@@ -73,6 +73,7 @@
         "file.changed",
         "usage.updated",
         "workspace.state_changed",
+        "workspace.environment_changed",
         "preview.state_changed",
         "capability.binding_changed",
         "credential.revoked",
@@ -358,7 +359,10 @@
       "if": {
         "properties": {
           "type": {
-            "const": "workspace.state_changed"
+            "enum": [
+              "workspace.state_changed",
+              "workspace.environment_changed"
+            ]
           }
         },
         "required": [
@@ -370,6 +374,36 @@
           "conversationId": {
             "type": "null"
           },
+          "taskId": {
+            "type": "null"
+          },
+          "attemptId": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "workspace.state_changed"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
           "payload": {
             "type": "object",
             "additionalProperties": false,
@@ -395,7 +429,15 @@
                 ]
               },
               "environmentState": {
-                "const": "NOT_CREATED"
+                "type": "string",
+                "enum": [
+                  "NOT_CREATED",
+                  "PREPARING",
+                  "READY",
+                  "STOPPED",
+                  "ERROR",
+                  "BLOCKED"
+                ]
               },
               "operationId": {
                 "type": "string",
@@ -410,12 +452,70 @@
             }
           }
         }
-      },
-      "else": {
+      }
+    },
+    {
+      "if": {
         "properties": {
-          "conversationId": {
-            "type": "string",
-            "format": "uuid"
+          "type": {
+            "const": "workspace.environment_changed"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "workspaceId",
+              "state",
+              "generation",
+              "version",
+              "operationId",
+              "errorCode"
+            ],
+            "properties": {
+              "workspaceId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "NOT_CREATED",
+                  "PREPARING",
+                  "READY",
+                  "STOPPED",
+                  "ERROR",
+                  "BLOCKED"
+                ]
+              },
+              "generation": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "version": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "operationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "errorCode": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[A-Z_]{1,64}$"
+              }
+            }
           }
         }
       }

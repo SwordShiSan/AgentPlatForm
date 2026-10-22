@@ -41,18 +41,23 @@ public final class MyBatisEnvironmentPreparationRepository implements Environmen
         return row;
     }
 
-    private Snapshot snapshot(UUID workspaceId, Environment environment) {
-        if (environment == null) return new Snapshot(null, workspaceId, "NOT_CREATED", 0, 0, null, null, null, null);
+    private Snapshot snapshot(UUID workspaceId, Environment environment, boolean storageReady, Slot slot) {
+        if (environment == null) return new Snapshot(null, workspaceId, "NOT_CREATED", 0, 0, null, null, null, null,storageReady&&slot.environmentId()==null,false);
         var operation = mapper.operation(environment.operationId());
+        boolean quiet=storageReady&&!mapper.unresolvedUse(environment.id())&&(slot.environmentId()==null||slot.environmentId().equals(environment.id()));
+        boolean stopped="STOPPED".equals(environment.state())&&"STOP".equals(operation.kind())&&"COMMITTED".equals(operation.status())
+                &&"STOPPED".equals(operation.effectState())&&mapper.confirmedStop(operation.id());
+        boolean failed="ERROR".equals(environment.state())&&"FAILED".equals(operation.status())
+                &&("PREPARE".equals(operation.kind())&&"NOT_STARTED".equals(operation.effectState())||mapper.confirmedStop(operation.id()));
         return new Snapshot(environment.id(), workspaceId, environment.state(), environment.generation(), environment.version(),
-                environment.operationId(), operation.kind(), operation.status(), environment.errorCode());
+                environment.operationId(), operation.kind(), operation.status(), environment.errorCode(),quiet&&stopped,quiet&&failed);
     }
 
     @Override public Snapshot get(Actor actor, UUID workspaceId) {
         requireTransaction();
-        mapper.lockSlot(); // Same lock order for a consistent multi-row projection.
-        workspace(actor, workspaceId);
-        return snapshot(workspaceId, mapper.lockEnvironment(actor.spaceId(), workspaceId));
+        var slot=mapper.lockSlot(); // Same lock order for a consistent multi-row projection.
+        var workspace=workspace(actor, workspaceId);
+        return snapshot(workspaceId, mapper.lockEnvironment(actor.spaceId(), workspaceId),"READY".equals(workspace.state()),slot);
     }
 
     @Override public Submission prepare(Actor actor, UUID workspaceId, UUID requestId, String hash, long version, boolean retry) {
@@ -66,7 +71,7 @@ public final class MyBatisEnvironmentPreparationRepository implements Environmen
             if (!workspaceId.equals(previous.workspaceId()) || !hash.equals(previous.requestHash())) {
                 throw new WorkspaceFailure(409, "IDEMPOTENCY_CONFLICT");
             }
-            return new Submission(previous.operationId(), snapshot(workspaceId, environment));
+            return new Submission(previous.operationId(), snapshot(workspaceId, environment,"READY".equals(workspace.state()),slot));
         }
         if (!"READY".equals(workspace.state())) throw new WorkspaceFailure(409, "WORKSPACE_STORAGE_NOT_READY");
         if (version != (environment == null ? 0 : environment.version())) throw new WorkspaceFailure(412, "VERSION_CONFLICT");
@@ -78,7 +83,7 @@ public final class MyBatisEnvironmentPreparationRepository implements Environmen
                     && "COMMITTED".equals(operation.status()) && "STOPPED".equals(operation.effectState())
                     && mapper.confirmedStop(operation.id());
             boolean failed = "ERROR".equals(environment.state()) && "FAILED".equals(operation.status())
-                    && ("NOT_STARTED".equals(operation.effectState()) || mapper.confirmedStop(operation.id()));
+                    && ("PREPARE".equals(operation.kind())&&"NOT_STARTED".equals(operation.effectState()) || mapper.confirmedStop(operation.id()));
             if (!(retry ? failed : stopped) || mapper.unresolvedUse(environment.id())) {
                 throw new WorkspaceFailure(409, "ENVIRONMENT_RETRY_UNSAFE");
             }
@@ -103,6 +108,6 @@ public final class MyBatisEnvironmentPreparationRepository implements Environmen
         payload.put("generation", generation); payload.put("version", next.version());
         payload.put("operationId", next.operationId().toString()); payload.put("errorCode", null);
         mapper.insertEvent(Uuid7.next(), next, JSON.writeValueAsString(payload));
-        return new Submission(next.operationId(), snapshot(workspaceId, next));
+        return new Submission(next.operationId(), snapshot(workspaceId, next,true,slot));
     }
 }

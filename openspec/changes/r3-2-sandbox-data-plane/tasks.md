@@ -9,7 +9,7 @@
 - [ ] 3.2 Confirmed MQ/durable claim/ACK,query-only reconciliation and generation fencing.
 - [ ] 3.3 Signed v2 runner/runtime adapter,real canary,definite stop/idle60 and retained unknown.
 ## 4. Public interface
-- [ ] 4.1 OpenAPI/events/generated clients and validation fixtures.
+- [x] 4.1 OpenAPI/events/generated clients and validation fixtures.
 - [ ] 4.2 Environment prepare/read/retry UI,scoped Query,accessibility and no future capabilities.
 ## 5. Acceptance
 - [ ] 5.1 Engineering/migration/old-program compatibility and actual PG/MQ/process faults.

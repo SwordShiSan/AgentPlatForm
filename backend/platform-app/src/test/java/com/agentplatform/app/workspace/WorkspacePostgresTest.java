@@ -23,15 +23,17 @@ import tools.jackson.databind.json.JsonMapper;
 /** Destructive tests only in the explicitly isolated R31 workspace_test database. */
 class WorkspacePostgresTest {
     private static String url,password;
+    private static boolean r32;
     private com.zaxxer.hikari.HikariDataSource pool;
     private WorkspaceRepository repository;
     private Actor alice,bob;
     private static final JsonMapper JSON=JsonMapper.builder().build();
     @BeforeAll static void migrate() throws Exception {
-        url=System.getenv("R31_TEST_JDBC_URL");Assumptions.assumeTrue(url!=null,"R31 PostgreSQL not selected; NOT_RUN");
-        assertEquals("1",System.getenv("R31_ACCEPTANCE"));
-        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15448/workspace_test?"));
-        password=Files.readString(Path.of(System.getenv("R31_TEST_PASSWORD_FILE"))).strip();
+        r32="1".equals(System.getenv("R32_ACCEPTANCE"));
+        url=System.getenv(r32?"R32_TEST_JDBC_URL":"R31_TEST_JDBC_URL");Assumptions.assumeTrue(url!=null,"Workspace PostgreSQL not selected; NOT_RUN");
+        assertEquals("1",System.getenv(r32?"R32_ACCEPTANCE":"R31_ACCEPTANCE"));
+        assertTrue(url.startsWith(r32?"jdbc:postgresql://127.0.0.1:15449/environment_test?":"jdbc:postgresql://127.0.0.1:15448/workspace_test?"));
+        password=Files.readString(Path.of(System.getenv(r32?"R32_TEST_PASSWORD_FILE":"R31_TEST_PASSWORD_FILE"))).strip();
         var flyway=Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").cleanDisabled(false).load();
         flyway.clean();
         Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").target("9").load().migrate();
@@ -159,7 +161,7 @@ class WorkspacePostgresTest {
     }
     @Test void runnerRoleCanCommitReceiptButCannotReadSecretsOrChat() throws Exception {
         for(String role:List.of("ap_api","ap_worker","ap_runner"))sql("DO $$ BEGIN CREATE ROLE "+role+" NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$");
-        sql(Files.readString(Path.of(System.getenv("R31_GRANTS_FILE"))));
+        sql(Files.readString(Path.of(System.getenv(r32?"R32_WORKSPACE_GRANTS_FILE":"R31_GRANTS_FILE"))));
         create();Command command=claim();repository.beforeCall(command);
         var config=new com.zaxxer.hikari.HikariConfig();config.setJdbcUrl(url);config.setUsername("postgres");config.setPassword(password);
         config.setMaximumPoolSize(2);config.setMinimumIdle(1);config.setConnectionInitSql("SET ROLE ap_runner");
@@ -193,21 +195,22 @@ class WorkspacePostgresTest {
         String database="workspace_fresh_"+UUID.randomUUID().toString().replace("-","");
         assertTrue(database.matches("workspace_fresh_[a-f0-9]{32}"));
         sql("CREATE DATABASE "+database);
-        String fresh=url.replace("/workspace_test?","/"+database+"?");
+        String fresh=url.replace(r32?"/environment_test?":"/workspace_test?","/"+database+"?");
         try {
             var flyway=Flyway.configure().dataSource(fresh,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").load();
             flyway.migrate();
             try(var connection=DriverManager.getConnection(fresh,"postgres",password);var statement=connection.createStatement()) {
                 try(var result=statement.executeQuery("SELECT schema_version FROM pf.baseline_version WHERE id=1")){assertTrue(result.next());assertEquals(1,result.getInt(1));}
-                try(var result=statement.executeQuery("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success")){assertTrue(result.next());assertEquals(10,result.getInt(1));}
+                try(var result=statement.executeQuery("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success")){assertTrue(result.next());assertEquals(11,result.getInt(1));}
             }
         }finally{sql("DROP DATABASE "+database);}
     }
     private org.springframework.amqp.rabbit.connection.CachingConnectionFactory broker() throws Exception {
-        Assumptions.assumeTrue(System.getenv("R31_TEST_MQ_PASSWORD_FILE")!=null,"R31 MQ not selected; NOT_RUN");
-        var connection=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory("127.0.0.1",15698);
+        String file=System.getenv(r32?"R32_TEST_MQ_PASSWORD_FILE":"R31_TEST_MQ_PASSWORD_FILE");
+        Assumptions.assumeTrue(file!=null,"Workspace MQ not selected; NOT_RUN");
+        var connection=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory("127.0.0.1",r32?15699:15698);
         connection.setPublisherConfirmType(org.springframework.amqp.rabbit.connection.CachingConnectionFactory.ConfirmType.CORRELATED);connection.setPublisherReturns(true);
-        connection.setUsername("r31");connection.setPassword(Files.readString(Path.of(System.getenv("R31_TEST_MQ_PASSWORD_FILE"))).strip());
+        connection.setUsername(r32?"r32":"r31");connection.setPassword(Files.readString(Path.of(file)).strip());
         connection.setVirtualHost("/agentplatform");connection.setConnectionTimeout(2000);
         new org.springframework.amqp.rabbit.core.RabbitAdmin(connection).declareBinding(new org.springframework.amqp.core.Binding("ap.workspace.provision.v1",org.springframework.amqp.core.Binding.DestinationType.QUEUE,"ap.workspace.commands.v1","workspace.provision",Map.of()));
         return connection;

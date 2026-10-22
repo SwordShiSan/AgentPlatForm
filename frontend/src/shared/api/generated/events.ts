@@ -30,6 +30,7 @@ export type PlatformEvent = {
     | "file.changed"
     | "usage.updated"
     | "workspace.state_changed"
+    | "workspace.environment_changed"
     | "preview.state_changed"
     | "capability.binding_changed"
     | "credential.revoked"

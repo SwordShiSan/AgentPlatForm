@@ -1,5 +1,5 @@
 name: agentplatform-r32-local
-# Independent foundation profile; application/runner services are added with their gates.
+# Independent foundation; application/runner profiles are added with their gates.
 services:
   postgres:
     image: pgvector/pgvector:0.8.1-pg17-trixie@sha256:137f044b0efe3d57f39b972b9b53641b1f2045b99d879e298bbf514a25787dcf
@@ -16,11 +16,30 @@ services:
     networks: [control, local-access]
     healthcheck: {test: [CMD-SHELL, pg_isready -U postgres -d environment_test], interval: 2s, timeout: 3s, retries: 30}
     logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+  rabbitmq:
+    image: rabbitmq:4.3.6-management@sha256:8dd6e3570ddaa2ef82a6c3a8950e79c1f73893adfbdddbc374fc1f1ac8a0f5dd
+    hostname: agentplatform-r32-mq
+    restart: "no"
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 1:1 +A 4 +sbwt none +sbwtdcpu none +sbwtdio none"
+      RABBITMQ_CTL_ERL_ARGS: "+S 1:1 +A 1 +sbwt none +sbwtdcpu none +sbwtdio none"
+    volumes:
+      - "environment-mq:/var/lib/rabbitmq"
+      - "${R32_ROOT}/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro"
+      - "${R32_ROOT}/rabbitmq-definitions.json:/etc/rabbitmq/definitions.json:ro"
+    ports: ["127.0.0.1:15699:5672", "127.0.0.1:15689:15672"]
+    networks: [control, local-access]
+    healthcheck: {test: [CMD, rabbitmq-diagnostics, -q, ping], interval: 15s, timeout: 10s, retries: 12, start_period: 30s}
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
 secrets:
   postgres_password:
     file: ${R32_ROOT:?Set independent protected R32 fixture root}/postgres-password
 volumes:
   environment-data: {}
+  environment-mq: {}
 networks:
   control: {internal: true}
   local-access: {}

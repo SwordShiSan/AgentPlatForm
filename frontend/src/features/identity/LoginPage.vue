@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useChatDrafts } from '../chat/drafts';
+import { clearEnvironmentRequests } from '../workspace/environment-requests';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
@@ -23,7 +24,7 @@ async function login() {
     const result = await api.POST('/api/v1/auth/login', { body: { username: username.value, password: password.value }, params: { header: { 'X-CSRF-Token': csrf.data.csrfToken } } });
     if (!result.data) throw new Error('Login unavailable');
     setCsrf(result.data.csrfToken);
-    useChatDrafts().clear(); queryClient.clear();
+    useChatDrafts().clear(); clearEnvironmentRequests(); queryClient.clear();
     password.value = '';
     await router.replace('/app');
   } catch (failure) {

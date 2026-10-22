@@ -64,16 +64,18 @@ public final class EnvironmentRunnerService implements EnvironmentRunnerApi {
             repository.check(command);
             repository.checkRunner(command,instance.id());
             if("PREPARE".equals(command.kind())) {
-                var ready=runtime.prepare(command.physicalIdentity(),()->repository.check(command));
+                var ready=runtime.prepare(command.physicalIdentity(),()->repository.checkRunner(command,instance.id()));
                 receipt=result(command,"COMMITTED","READY",null,ready,null);
             } else {
                 var stopped=runtime.stop(command.physicalIdentity());
                 receipt=result(command,"COMMITTED","STOPPED",null,null,stopped);
             }
         } catch(SandboxRuntime.RejectedBeforeEffect rejected) {
+            if(!"PREPARE".equals(command.kind()))return signed(command,new Receipt(command.commandId(),command.operationId(),command.environmentId(),command.workspaceId(),command.generation(),command.fence(),
+                    "RUNNING","MAY_HAVE_STARTED","SANDBOX_STOP_UNCONFIRMED",null,null,0),PATH);
             receipt=result(command,"FAILED","NOT_STARTED",rejected.getMessage(),null,null);
         } catch(RuntimeException unknown) {
-            if(unknown instanceof WorkspaceFailure failure && Set.of("ENVIRONMENT_AUTHORIZATION_REVOKED","ENVIRONMENT_STALE_OWNER","ENVIRONMENT_STORAGE_UNAVAILABLE").contains(failure.code())) {
+            if(unknown instanceof WorkspaceFailure failure && Set.of("ENVIRONMENT_AUTHORIZATION_REVOKED","ENVIRONMENT_STALE_OWNER","ENVIRONMENT_STORAGE_UNAVAILABLE","RUNNER_INSTANCE_STOP_UNPROVEN").contains(failure.code())) {
                 try {runtime.stop(command.physicalIdentity());}
                 catch(RuntimeException unconfirmed) { /* Retain physical identity and capacity for host-proof convergence. */ }
             }
@@ -96,7 +98,7 @@ public final class EnvironmentRunnerService implements EnvironmentRunnerApi {
             Receipt observed=null;
             try {
                 if("PREPARE".equals(command.kind())) observed=result(command,"COMMITTED","READY",null,
-                        runtime.verifyReady(command.physicalIdentity(),()->repository.check(command)),null);
+                        runtime.verifyReady(command.physicalIdentity(),()->repository.checkRunner(command,instance.id())),null);
                 else if(!runtime.inspect(command.physicalIdentity()).running()) observed=result(command,"COMMITTED","STOPPED",null,null,runtime.stop(command.physicalIdentity()));
             } catch(RuntimeException notProven) { /* Query never creates, starts, replays or frees resources. */ }
             if(observed!=null) {repository.commitReceipt(command,observed,instance.id());receipt=observed;}
