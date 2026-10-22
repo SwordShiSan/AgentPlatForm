@@ -27,6 +27,7 @@ class EnvironmentPostgresTest {
     private TransactionTemplate transactions;
     private EnvironmentPreparationRepository environments;
     private WorkspaceRepository workspaces;
+    private EnvironmentExecutionRepository executions;
     private Actor alice, bob;
     private static Flyway flyway(String target) {
         var configuration = Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf")
@@ -71,6 +72,8 @@ class EnvironmentPostgresTest {
         workspaces=new TransactionalWorkspaceRepository(new MyBatisWorkspaceRepository(mapper),transactions);
         environments=new TransactionalEnvironmentPreparationRepository(new MyBatisEnvironmentPreparationRepository(
                 session.getMapper(EnvironmentPreparationMapper.class),mapper,"sha256:"+"a".repeat(64),"b".repeat(64)),transactions);
+        executions=new TransactionalEnvironmentExecutionRepository(new MyBatisEnvironmentExecutionRepository(
+                session.getMapper(EnvironmentExecutionMapper.class),session.getMapper(EnvironmentPreparationMapper.class),mapper),transactions);
         var identity=IdentityPersistenceFixture.create(pool);
         UUID a=identity.provision(UUID.randomUUID(),"alice","alice","not-a-login-password",true);
         UUID b=identity.provision(UUID.randomUUID(),"bob","bob","not-a-login-password",false);
@@ -172,5 +175,69 @@ class EnvironmentPostgresTest {
         assertEquals(11,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
         assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NULL"));
+    }
+    private com.agentplatform.domain.workspace.EnvironmentExecutionData.Command claimEnvironment() throws Exception {
+        UUID workspace=storage(true);prepare(workspace,UUID.randomUUID(),0,false);
+        var publication=executions.publications(UUID.randomUUID()).getFirst();
+        return executions.claim(publication,UUID.randomUUID());
+    }
+    private com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt ready(com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command) {
+        // Synthetic trusted-runner fact for transaction tests; native runtime is tested separately.
+        return new com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt(command.commandId(),command.operationId(),command.environmentId(),command.workspaceId(),
+                command.generation(),command.fence(),"COMMITTED","READY",null,
+                new SandboxRuntime.Container("c".repeat(64),command.imageId(),"2026-10-22T00:00:00Z",true,command.policyHash(),"d".repeat(64)),null,1);
+    }
+    @Test void twoClaimersCommitOneOwnerAndInboxWithoutLeaseStealing() throws Exception {
+        UUID workspace=storage(true);prepare(workspace,UUID.randomUUID(),0,false);
+        var publication=executions.publications(UUID.randomUUID()).getFirst();
+        try(var executor=Executors.newFixedThreadPool(2)) {
+            var first=executor.submit(()->executions.claim(publication,UUID.randomUUID()));
+            var second=executor.submit(()->executions.claim(publication,UUID.randomUUID()));
+            assertEquals(1,java.util.stream.Stream.of(first.get(15,TimeUnit.SECONDS),second.get(15,TimeUnit.SECONDS)).filter(Objects::nonNull).count());
+        }
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_inbox"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_operation WHERE owner_id IS NOT NULL AND status='CLAIMED'"));
+        sql("UPDATE pf.workspace_environment_operation SET lease_until=clock_timestamp()-interval '1 second'");
+        assertNull(executions.claim(publication,UUID.randomUUID()));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+    }
+    @Test void runnerDedupAndDurableReceiptPrecedeReadinessProjection() throws Exception {
+        var command=claimEnvironment();executions.beforeCall(command);
+        assertNull(executions.accept(command,hash("request")));
+        assertEquals("RUNNING",executions.accept(command,hash("request")).state());
+        assertEquals("RUNNER_COMMAND_CONFLICT",assertThrows(WorkspaceFailure.class,()->executions.accept(command,hash("changed"))).code());
+        var receipt=ready(command);executions.commitReceipt(command,receipt);executions.commitReceipt(command,receipt);
+        assertEquals("PREPARING",environments.get(alice,command.workspaceId()).state());
+        assertEquals(receipt,executions.receipt(command));executions.complete(command,receipt);
+        assertEquals("READY",environments.get(alice,command.workspaceId()).state());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_receipt"));
+        assertEquals(2,count("SELECT count(*) FROM pf.workspace_environment_event"));
+    }
+    @Test void commitTimeLeaseGuardRollsBackRunnerReceipt() throws Exception {
+        var command=claimEnvironment();executions.beforeCall(command);executions.accept(command,hash("request"));
+        assertThrows(WorkspaceFailure.class,()->transactions.execute(status->{
+            executions.commitReceipt(command,ready(command));
+            new org.springframework.jdbc.core.JdbcTemplate(pool).update("UPDATE pf.workspace_environment_operation SET lease_until=clock_timestamp()-interval '1 second'");return null;
+        }));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_receipt"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_command WHERE state='RUNNING' AND result_revision=0"));
+    }
+    @Test void unknownReceiptBlocksAndRetainsCapacityWithoutAnotherClaim() throws Exception {
+        var command=claimEnvironment();executions.beforeCall(command);executions.accept(command,hash("request"));
+        var receipt=new com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt(command.commandId(),command.operationId(),command.environmentId(),command.workspaceId(),
+                command.generation(),command.fence(),"UNKNOWN","MAY_HAVE_STARTED","SANDBOX_RESULT_UNKNOWN",null,null,1);
+        executions.commitReceipt(command,receipt);executions.complete(command,receipt);
+        assertEquals("BLOCKED",environments.get(alice,command.workspaceId()).state());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        assertEquals("ENVIRONMENT_RETRY_UNSAFE",assertThrows(WorkspaceFailure.class,()->prepare(command.workspaceId(),UUID.randomUUID(),2,true)).code());
+    }
+    @Test void revokedPendingPreparationIsDurablyRejectedBeforeAck() throws Exception {
+        UUID workspace=storage(true);prepare(workspace,UUID.randomUUID(),0,false);
+        var publication=executions.publications(UUID.randomUUID()).getFirst();
+        sql("UPDATE pf.membership SET status='REVOKED' WHERE user_id='"+alice.userId()+"'");
+        assertNull(executions.claim(publication,UUID.randomUUID()));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_operation WHERE status='FAILED' AND effect_state='NOT_STARTED'"));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_command"));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
     }
 }

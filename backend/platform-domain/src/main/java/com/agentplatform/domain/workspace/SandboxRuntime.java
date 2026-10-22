@@ -18,7 +18,7 @@ public interface SandboxRuntime extends AutoCloseable {
             }
         }
     }
-    record Container(String id, String image, String startedAt, boolean running, String policyHash) {}
+    record Container(String id, String image, String startedAt, boolean running, String policyHash, String readinessHash) {}
     record Output(String execId, long exitCode, String stdout, String stderr,
                   boolean truncated, boolean timedOut, boolean cancelled, Stop stopReceipt) {}
     record Stop(String containerId, String image, String startedAt, String finishedAt,

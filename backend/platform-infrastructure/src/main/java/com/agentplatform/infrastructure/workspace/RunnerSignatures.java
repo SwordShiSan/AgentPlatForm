@@ -24,7 +24,8 @@ public final class RunnerSignatures {
             UUID spaceId, UUID workspaceId, long generation, long fence) {
         public Binding {
             if (!List.of("GET", "POST", "RESPONSE").contains(method)
-                    || !(path.equals("/internal/operations") || path.equals("/internal/operations/" + operationId)) || path.contains("?")
+                    || !(path.equals("/internal/operations") || path.equals("/internal/operations/" + operationId)
+                        || path.equals("/internal/operations/v2/environments") || path.equals("/internal/operations/v2/environments/" + operationId)) || path.contains("?")
                     || path.contains("#") || path.contains("..") || generation < 1 || fence < 1) {
                 throw new IllegalArgumentException("Invalid runner binding");
             }
@@ -110,6 +111,16 @@ public final class RunnerSignatures {
                             jwt.getClaimAsString("body_sha256").getBytes(StandardCharsets.US_ASCII));
             if (!equal) throw new IllegalArgumentException();
         } catch (RuntimeException mismatch) { throw new WorkspaceFailure(401, "RUNNER_COMMAND_BINDING_REJECTED"); }
+    }
+    /** Verify a body-free query from authenticated claims before any database lookup. */
+    public Binding verifiedQuery(String token,String path) {
+        Jwt jwt=authenticate(token);
+        try {
+            var binding=new Binding("GET",path,UUID.fromString(jwt.getId()),UUID.fromString(jwt.getClaimAsString("operation")),
+                    UUID.fromString(jwt.getClaimAsString("space")),UUID.fromString(jwt.getClaimAsString("workspace")),
+                    integerClaim(jwt,"generation"),integerClaim(jwt,"fence"));
+            verify(token,binding,new byte[0]);return binding;
+        } catch(RuntimeException invalid) {throw new WorkspaceFailure(401,"RUNNER_COMMAND_BINDING_REJECTED");}
     }
     public static String sha256(byte[] body) {
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(body)); }

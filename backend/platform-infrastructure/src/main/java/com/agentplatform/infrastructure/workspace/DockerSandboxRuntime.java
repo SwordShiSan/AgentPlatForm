@@ -111,7 +111,7 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
 
     private Container view(InspectContainerResponse found) {
         return new Container(found.getId(), found.getImageId(), found.getState().getStartedAt(),
-                Boolean.TRUE.equals(found.getState().getRunning()), policy.hash());
+                Boolean.TRUE.equals(found.getState().getRunning()), policy.hash(), null);
     }
 
     @Override public Container inspect(Identity identity) { return view(exact(identity)); }
@@ -139,7 +139,7 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
             if (!found.getId().equals(latest.getId()) || !Boolean.TRUE.equals(latest.getState().getRunning())) {
                 throw unavailable("SANDBOX_READINESS_UNCONFIRMED");
             }
-            return view(latest);
+            return new Container(latest.getId(), latest.getImageId(), latest.getState().getStartedAt(), true, policy.hash(), canaryHash(identity));
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
             throw unavailable("SANDBOX_READINESS_UNCONFIRMED");

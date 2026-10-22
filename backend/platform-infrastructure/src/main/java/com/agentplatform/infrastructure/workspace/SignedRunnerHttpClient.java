@@ -12,7 +12,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.Flow;
 import tools.jackson.databind.json.JsonMapper;
 
-public final class SignedRunnerHttpClient implements RunnerControlPort,AutoCloseable {
+public final class SignedRunnerHttpClient implements RunnerControlPort,EnvironmentRunnerPort,AutoCloseable {
     private static final JsonMapper JSON=JsonMapper.builder().build();
     private final URI base;
     private final RunnerSignatures signatures;
@@ -35,8 +35,13 @@ public final class SignedRunnerHttpClient implements RunnerControlPort,AutoClose
     private Receipt request(Command command,boolean query) {
         String path="/internal/operations"+(query?"/"+command.operationId():"");
         byte[] body=query?new byte[0]:JSON.writeValueAsBytes(command);
+        return exchange(binding(command,query?"GET":"POST",path),binding(command,"RESPONSE",path),body,query,Receipt.class);
+    }
+    private <T> T exchange(RunnerSignatures.Binding requestBinding,RunnerSignatures.Binding responseBinding,
+            byte[] body,boolean query,Class<T> type) {
+        String path=requestBinding.path();
         var request=HttpRequest.newBuilder(base.resolve(path)).timeout(timeout)
-                .header("Authorization","Bearer "+signatures.sign(binding(command,query?"GET":"POST",path),body))
+                .header("Authorization","Bearer "+signatures.sign(requestBinding,body))
                 .header("Accept","application/json");
         if(query)request.GET();else request.header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofByteArray(body));
         var pending=client.sendAsync(request.build(),info->new BoundedBody());
@@ -45,8 +50,8 @@ public final class SignedRunnerHttpClient implements RunnerControlPort,AutoClose
                 byte[] bytes=response.body();
                 if(response.statusCode()!=200||bytes.length>65536)throw new WorkspaceFailure(503,"RUNNER_RESULT_UNAVAILABLE");
                 String proof=response.headers().firstValue("X-Runner-Signature").orElseThrow(()->new WorkspaceFailure(503,"RUNNER_RESULT_UNAUTHENTICATED"));
-                signatures.verify(proof,binding(command,"RESPONSE",path),bytes);
-                return JSON.readValue(bytes,Receipt.class);
+                signatures.verify(proof,responseBinding,bytes);
+                return JSON.readValue(bytes,type);
         } catch(InterruptedException interrupted){pending.cancel(true);Thread.currentThread().interrupt();throw new WorkspaceFailure(503,"RUNNER_RESULT_UNKNOWN");}
         catch(ExecutionException|TimeoutException unavailable){pending.cancel(true);throw new WorkspaceFailure(503,"RUNNER_RESULT_UNKNOWN");}
     }
@@ -70,5 +75,17 @@ public final class SignedRunnerHttpClient implements RunnerControlPort,AutoClose
     }
     @Override public Receipt provision(Command command){return request(command,false);}
     @Override public Receipt query(Command command){return request(command,true);}
+    private com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt environment(
+            com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command,boolean query) {
+        String path="/internal/operations/v2/environments"+(query?"/"+command.operationId():"");
+        var requestBinding=new RunnerSignatures.Binding(query?"GET":"POST",path,command.commandId(),command.operationId(),command.spaceId(),command.workspaceId(),command.generation(),command.fence());
+        var responseBinding=new RunnerSignatures.Binding("RESPONSE",path,command.commandId(),command.operationId(),command.spaceId(),command.workspaceId(),command.generation(),command.fence());
+        return exchange(requestBinding,responseBinding,query?new byte[0]:JSON.writeValueAsBytes(command),query,
+                com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt.class);
+    }
+    @Override public com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt prepareEnvironment(
+            com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command) {return environment(command,false);}
+    @Override public com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt queryEnvironment(
+            com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command) {return environment(command,true);}
     @Override public void close(){client.shutdownNow();}
 }

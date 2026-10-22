@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.workspace.EnvironmentExecutionMapper">
+    <select id="publications" resultType="com.agentplatform.domain.workspace.EnvironmentExecutionData$Publication" affectData="true" flushCache="true"><![CDATA[
+        WITH picked AS(SELECT id FROM pf.workspace_environment_outbox WHERE status='PENDING'
+            OR(status='PUBLISHING' AND relay_until<clock_timestamp()) ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 10)
+        UPDATE pf.workspace_environment_outbox o SET status='PUBLISHING',relay_owner=#{owner},relay_until=clock_timestamp()+interval '10 seconds'
+        FROM picked WHERE o.id=picked.id RETURNING o.id,o.operation_id,o.space_id,o.workspace_id,o.environment_id,o.generation,o.fence,o.relay_owner
+    ]]></select>
+    <update id="published">UPDATE pf.workspace_environment_outbox SET status=<choose><when test="confirmed">'PUBLISHED'</when><otherwise>'PENDING'</otherwise></choose>,relay_owner=NULL,relay_until=NULL WHERE id=#{item.id} AND relay_owner=#{item.relayOwner} AND generation=#{item.generation} AND fence=#{item.fence} AND status='PUBLISHING' AND relay_until&gt;clock_timestamp()</update>
+    <select id="knownPublication" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.workspace_environment_outbox WHERE id=#{item.id} AND operation_id=#{item.operationId} AND space_id=#{item.spaceId} AND workspace_id=#{item.workspaceId} AND environment_id=#{item.environmentId} AND generation=#{item.generation} AND fence=#{item.fence})</select>
+    <insert id="inbox">INSERT INTO pf.workspace_environment_inbox(event_id,operation_id) VALUES(#{eventId},#{operationId}) ON CONFLICT(event_id) DO NOTHING</insert>
+    <select id="command" resultType="com.agentplatform.domain.workspace.EnvironmentExecutionData$Command">
+        SELECT 'ENVIRONMENT_V2' AS protocol,o.kind,o.initiator,o.command_id,o.id AS operation_id,o.space_id,o.workspace_id,o.environment_id,
+            o.actor_id,o.owner_id,o.generation,o.fence,e.creation_command_id,e.creation_fence,e.image_id,e.policy_hash,w.project_id,
+            CASE WHEN o.kind='STOP' THEN e.container_id ELSE NULL END AS container_id,
+            CASE WHEN o.kind='STOP' THEN e.container_started_at ELSE NULL END AS container_started_at,o.deadline_at AS deadline
+        FROM pf.workspace_environment_operation o JOIN pf.workspace_environment e ON e.id=o.environment_id
+            JOIN pf.workspace w ON w.id=o.workspace_id WHERE o.id=#{operationId}
+    </select>
+    <update id="claim">UPDATE pf.workspace_environment_operation SET status='CLAIMED',owner_id=#{owner},lease_until=clock_timestamp()+interval '60 seconds',deadline_at=clock_timestamp()+interval '120 seconds',version=version+1 WHERE id=#{operationId} AND status='PENDING'</update>
+    <sql id="owner">id=#{command.operationId} AND command_id=#{command.commandId} AND space_id=#{command.spaceId} AND workspace_id=#{command.workspaceId} AND environment_id=#{command.environmentId} AND owner_id=#{command.ownerId} AND generation=#{command.generation} AND fence=#{command.fence} AND lease_until&gt;clock_timestamp() AND deadline_at&gt;clock_timestamp()</sql>
+    <sql id="active"><include refid="owner"/> AND status IN('CLAIMED','RUNNING')</sql>
+    <select id="owned" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.workspace_environment_operation WHERE <include refid="owner"/><if test="active"> AND status IN('CLAIMED','RUNNING')</if>)</select>
+    <update id="renew">UPDATE pf.workspace_environment_operation SET lease_until=LEAST(deadline_at,clock_timestamp()+interval '60 seconds') WHERE <include refid="active"/></update>
+    <update id="beforeCall">UPDATE pf.workspace_environment_operation SET status='RUNNING',effect_state='MAY_HAVE_STARTED',version=version+1 WHERE <include refid="active"/></update>
+    <select id="commandHash" resultType="string">SELECT request_hash FROM pf.workspace_environment_command WHERE command_id=#{commandId} FOR UPDATE</select>
+    <insert id="accept">INSERT INTO pf.workspace_environment_command(command_id,space_id,workspace_id,environment_id,operation_id,generation,fence,owner_id,request_hash,state) VALUES(#{command.commandId},#{command.spaceId},#{command.workspaceId},#{command.environmentId},#{command.operationId},#{command.generation},#{command.fence},#{command.ownerId},#{hash},'RUNNING') ON CONFLICT(command_id) DO NOTHING</insert>
+    <select id="receipt" resultType="com.agentplatform.infrastructure.dao.po.WorkspaceRows$ReceiptRow">SELECT result_text AS result_json,content_hash FROM pf.workspace_environment_receipt WHERE command_id=#{commandId} ORDER BY revision DESC LIMIT 1</select>
+    <update id="commitRunner">UPDATE pf.workspace_environment_command SET state=#{receipt.state},result_revision=#{receipt.revision} WHERE command_id=#{command.commandId} AND operation_id=#{command.operationId} AND owner_id=#{command.ownerId} AND generation=#{command.generation} AND fence=#{command.fence} AND state='RUNNING' AND result_revision=0</update>
+    <insert id="insertReceipt">INSERT INTO pf.workspace_environment_receipt(command_id,revision,state,result_text,result_json,content_hash) VALUES(#{command.commandId},#{receipt.revision},#{receipt.state},#{json},CAST(#{json} AS jsonb),#{hash})</insert>
+    <insert id="insertStop">INSERT INTO pf.workspace_environment_stop_receipt(id,space_id,workspace_id,environment_id,operation_id,generation,fence,owner_id,proof_kind,container_id,image_id,container_started_at,container_finished_at,exec_stopped,callbacks_stopped,proof_hash,observed_at) VALUES(#{id},#{command.spaceId},#{command.workspaceId},#{command.environmentId},#{command.operationId},#{command.generation},#{command.fence},#{command.ownerId},'LOCAL_INSPECT',#{receipt.stop.containerId},#{receipt.stop.image},#{receipt.stop.startedAt},#{receipt.stop.finishedAt},#{receipt.stop.execStopped},#{receipt.stop.callbacksStopped},#{hash},#{receipt.stop.observedAt})</insert>
+    <update id="completeOperation">UPDATE pf.workspace_environment_operation SET status=#{receipt.state},effect_state=#{receipt.effectState},error_code=#{receipt.errorCode},version=version+1 WHERE <include refid="active"/></update>
+    <update id="projectEnvironment">UPDATE pf.workspace_environment SET state=#{state},error_code=#{receipt.errorCode},version=version+1,updated_at=clock_timestamp(),last_activity_at=clock_timestamp()
+        <if test="receipt.container != null">,container_id=#{receipt.container.id},container_started_at=#{receipt.container.startedAt},readiness_hash=#{receipt.container.readinessHash}</if>
+        WHERE id=#{command.environmentId} AND space_id=#{command.spaceId} AND workspace_id=#{command.workspaceId} AND operation_id=#{command.operationId} AND generation=#{command.generation} AND fence=#{command.fence}
+    </update>
+    <update id="projectWorkspace">UPDATE pf.workspace SET environment_state=#{state},version=version+1,updated_at=clock_timestamp() WHERE space_id=#{command.spaceId} AND id=#{command.workspaceId}</update>
+    <update id="releaseSlot">UPDATE pf.workspace_sandbox_slot SET space_id=NULL,workspace_id=NULL,environment_id=NULL,generation=NULL,revision=revision+1 WHERE id=1 AND space_id=#{command.spaceId} AND workspace_id=#{command.workspaceId} AND environment_id=#{command.environmentId} AND generation=#{command.generation}</update>
+    <update id="uncertain">UPDATE pf.workspace_environment_operation SET status='UNKNOWN',effect_state='MAY_HAVE_STARTED',error_code=#{code},version=version+1 WHERE <include refid="active"/></update>
+    <update id="rejectBeforeClaim">UPDATE pf.workspace_environment_operation SET status='FAILED',effect_state='NOT_STARTED',error_code='ENVIRONMENT_AUTHORIZATION_REVOKED',version=version+1 WHERE id=#{operationId} AND kind='PREPARE' AND status='PENDING' AND effect_state='NOT_STARTED'</update>
+    <update id="projectRejected">UPDATE pf.workspace_environment SET state='ERROR',error_code='ENVIRONMENT_AUTHORIZATION_REVOKED',version=version+1,updated_at=clock_timestamp() WHERE id=#{environmentId}</update>
+</mapper>
