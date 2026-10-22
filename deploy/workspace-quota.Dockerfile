@@ -6,6 +6,7 @@ RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.l
     && dpkg-query -W -f='${Package}=${Version}\n' > /opt/native-packages.lock \
     && rm -rf /var/lib/apt/lists/*
 COPY deploy/scripts/workspace-quota-helper.py /opt/workspace-quota-helper.py
+COPY deploy/scripts/workspace-quota-verifier.py /opt/workspace-quota-verifier.py
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 USER 0:0
 ENTRYPOINT ["python3", "/opt/workspace-quota-helper.py"]

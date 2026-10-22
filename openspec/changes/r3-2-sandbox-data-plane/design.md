@@ -27,3 +27,6 @@ Each use owns a durable ID/gen/fence. Runner revalidates before effects and resu
 
 ## UI and acceptance
 Three public endpoints prepare/get/retry only. Detail distinguishes storage/environment, stable error/actions, READY idle-release explanation; no terminal/file/upload/wake/delete. Real browser through actual API; native positive via private SSH tunnel with newly locally generated fixture credentials, no production credential export. Initial cap2016 services +512sandbox+128runtime+64helper=2720MiB; two-consumer profile stops API/gateway first, remains<=2887. Host>=768MiB/free root>=5GiB; all operator resources counted and builds serial. Read existing operations lessons before execution, fixed scripts before long observation, separate raw failure records. Cloud tests use independent root/DB/XFS/network and bounded finally/watchdog; restore exact R2 V9 and legacy stopped.
+
+## R3.2维护前磁盘准入
+只读现场根盘9,225,768,960字节，不能再实分配4GiB后保持5GiB余量。仅可对已卸载/loop脱离的确切R3.1测试XFS做无损冷归档：锁定运维锁、核验路径/UUID/停机身份，流式压缩并逐字节SHA校验两份保护副本，记录原所有权/模式及恢复命令后才释放原预分配文件。旧测试数据保留可恢复，Docker卷/镜像、生产XFS/数据库和旧平台不动，无全局清理/稀疏冒充/复用旧数据；新R3.2仍独立4GiB实分配和UUID。任何守卫或准入不满足即停止云端窗口，继续独立本地工作。

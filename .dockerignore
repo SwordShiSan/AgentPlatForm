@@ -5,6 +5,8 @@
 !deploy/nginx.conf
 !deploy/probes/**
 !deploy/scripts/workspace-quota-helper.py
+!deploy/scripts/sandbox-file-bridge.py
+!deploy/scripts/workspace-quota-verifier.py
 !deploy/security/**
 !.cache/foundation/**
 !backend/platform-infrastructure/target/probe-libs/**

@@ -17,3 +17,7 @@ Status NOT_RUN. Application code not started; baselineff16819. Every command/sou
 | Restore/closure | Stop all test/fixture/canary resources;restore exact R2/V9/XFS UUID/policies/public history;protected two-level PRs;archive/ledgers/Skill and separately hashed protected packages>=30days |
 
 Failures and NOT_RUN remain explicit; deterministic local tests do not replace native positive proof. Preserve original R3.1 test data and credentials, do not export existing production credentials. Public evidence cross-reference hashes bind UTF8-LF Git blobs; private raw evidence binds actual bytes.
+
+## Implementation checkpoint, not native acceptance
+
+Governance commit92000ff and strict18/18 passed before code. Docker Desktop Linux28.5.1/contextdesktop-linux available; runsc is absent locally and no engine restart/runtime downgrade occurred. Five actual Linux/POSIX bridge tests passed (Unicode atomic roundtrip, bounded list, traversal/symlink/hardlink/FIFO/size and300 parent-link-race reads); three SandboxPolicy JUnit tests and the affected reactor compile/Enforcer passed. These do not prove XFS/gVisor. Docker-java runtime/exec/stop adapter and fixed native probe are prepared; actual native feasibility, V11, persistent delivery, API/UI and all final gates remain NOT_RUN. Read-only cloud preflight found original ten R2 services and official runsc intact; new4GiB allocation requires the recorded reversible cold-archive admission procedure first.
