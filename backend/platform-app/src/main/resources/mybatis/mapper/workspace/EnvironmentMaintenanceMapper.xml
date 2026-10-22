@@ -21,7 +21,7 @@
         VALUES(#{operationId},#{previous.spaceId},#{previous.workspaceId},#{previous.environmentId},'STOP','SYSTEM',#{previous.actorId},#{commandId},#{previous.generation},#{fence},'PENDING')
     </insert>
     <update id="selectStop">UPDATE pf.workspace_environment SET operation_id=#{operationId},fence=#{fence},version=version+1,updated_at=clock_timestamp()
-        WHERE id=#{previous.environmentId} AND space_id=#{previous.spaceId} AND workspace_id=#{previous.workspaceId} AND generation=#{previous.generation} AND fence=#{previous.fence}
+        WHERE id=#{previous.environmentId} AND space_id=#{previous.spaceId} AND workspace_id=#{previous.workspaceId} AND generation=#{previous.generation} AND fence=#{currentFence}
         AND operation_id=#{previous.operationId} AND state='READY'
     </update>
 </mapper>

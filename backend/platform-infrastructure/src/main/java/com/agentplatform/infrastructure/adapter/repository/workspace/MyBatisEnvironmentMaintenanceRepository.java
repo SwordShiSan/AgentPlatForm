@@ -56,7 +56,7 @@ public final class MyBatisEnvironmentMaintenanceRepository implements Environmen
         if(live&&!mapper.idle(row.id()))return 0;
         var operation=Uuid7.next();long fence=Math.addExact(row.fence(),1);
         mapper.insertStop(command,operation,Uuid7.next(),fence);
-        if(mapper.selectStop(command,operation,fence)!=1)throw new WorkspaceFailure(409,"ENVIRONMENT_CONCURRENT_CHANGE");
+        if(mapper.selectStop(command,operation,fence,row.fence())!=1)throw new WorkspaceFailure(409,"ENVIRONMENT_CONCURRENT_CHANGE");
         row=environments.environment(command.spaceId(),command.workspaceId());
         environments.insertOutbox(Uuid7.next(),row);execution.projectWorkspace(command,"READY");event(row);
         return 1;

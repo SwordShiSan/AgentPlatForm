@@ -13,5 +13,5 @@ public interface EnvironmentMaintenanceMapper {
     boolean idle(@Param("environmentId") UUID environmentId);
     void insertStop(@Param("previous") Command previous,@Param("operationId") UUID operationId,
             @Param("commandId") UUID commandId,@Param("fence") long fence);
-    int selectStop(@Param("previous") Command previous,@Param("operationId") UUID operationId,@Param("fence") long fence);
+    int selectStop(@Param("previous") Command previous,@Param("operationId") UUID operationId,@Param("fence") long fence,@Param("currentFence") long currentFence);
 }

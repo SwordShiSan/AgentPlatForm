@@ -25,7 +25,8 @@ public final class RunnerSignatures {
         public Binding {
             if (!List.of("GET", "POST", "RESPONSE").contains(method)
                     || !(path.equals("/internal/operations") || path.equals("/internal/operations/" + operationId)
-                        || path.equals("/internal/operations/v2/environments") || path.equals("/internal/operations/v2/environments/" + operationId)) || path.contains("?")
+                        || path.equals("/internal/operations/v2/environments") || path.equals("/internal/operations/v2/environments/" + operationId)
+                        || path.equals("/internal/workspace-uses/v1") || path.equals("/internal/workspace-uses/v1/" + operationId)) || path.contains("?")
                     || path.contains("#") || path.contains("..") || generation < 1 || fence < 1) {
                 throw new IllegalArgumentException("Invalid runner binding");
             }

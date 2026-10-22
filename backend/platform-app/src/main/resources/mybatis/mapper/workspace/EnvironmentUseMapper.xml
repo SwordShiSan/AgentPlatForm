@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.workspace.EnvironmentUseMapper">
+    <sql id="columns">id,space_id,workspace_id,environment_id,actor_id,owner_id,request_id,generation,fence,creation_command_id,creation_fence,
+        project_id,image_id,policy_hash,container_id,container_started_at,kind,request_hash,request_text,runner_instance_id,status,result_state,
+        exec_id,cancel_requested,error_code,stop_operation_id,lease_until,execute_until,deadline_at,version</sql>
+    <select id="use" resultType="com.agentplatform.infrastructure.dao.po.EnvironmentUseRows$Use">SELECT <include refid="columns"/> FROM pf.workspace_environment_use WHERE id=#{id}</select>
+    <select id="lockUse" resultType="com.agentplatform.infrastructure.dao.po.EnvironmentUseRows$Use">SELECT <include refid="columns"/> FROM pf.workspace_environment_use WHERE id=#{id} FOR UPDATE</select>
+    <select id="request" resultType="com.agentplatform.infrastructure.dao.po.EnvironmentUseRows$Use">SELECT <include refid="columns"/> FROM pf.workspace_environment_use WHERE space_id=#{actor.spaceId} AND actor_id=#{actor.userId} AND request_id=#{requestId}</select>
+    <select id="container" resultType="com.agentplatform.infrastructure.dao.po.EnvironmentUseRows$Physical">SELECT container_id,container_started_at AS started_at,readiness_hash FROM pf.workspace_environment WHERE id=#{environmentId} AND state='READY'</select>
+    <update id="advanceFence">UPDATE pf.workspace_environment SET fence=fence+1,version=version+1,last_activity_at=clock_timestamp(),updated_at=clock_timestamp()
+        WHERE space_id=#{spaceId} AND workspace_id=#{workspaceId} AND id=#{environmentId} AND fence=#{fence} AND version=#{version} AND state='READY'
+    </update>
+    <insert id="insertUse">INSERT INTO pf.workspace_environment_use(id,space_id,workspace_id,environment_id,actor_id,owner_id,request_id,generation,fence,
+        creation_command_id,creation_fence,project_id,image_id,policy_hash,container_id,container_started_at,kind,request_hash,request_text,status,
+        lease_until,execute_until,deadline_at) VALUES(#{row.id},#{row.spaceId},#{row.workspaceId},#{row.environmentId},#{row.actorId},#{row.ownerId},#{row.requestId},#{row.generation},#{row.fence},
+        #{row.creationCommandId},#{row.creationFence},#{row.projectId},#{row.imageId},#{row.policyHash},#{row.containerId},#{row.containerStartedAt},#{row.kind},#{row.requestHash},#{row.requestText},'CLAIMED',
+        clock_timestamp()+interval '60 seconds',clock_timestamp()+interval '120 seconds',clock_timestamp()+interval '135 seconds')</insert>
+    <sql id="owner">id=#{command.id} AND space_id=#{command.spaceId} AND workspace_id=#{command.workspaceId} AND environment_id=#{command.environmentId}
+        AND actor_id=#{command.actorId} AND owner_id=#{command.ownerId} AND generation=#{command.generation} AND fence=#{command.fence}
+        AND lease_until&gt;clock_timestamp() AND deadline_at&gt;clock_timestamp()</sql>
+    <sql id="active"><include refid="owner"/> AND status IN('CLAIMED','RUNNING')</sql>
+    <select id="owned" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.workspace_environment_use WHERE <include refid="owner"/><if test="active"> AND status IN('CLAIMED','RUNNING')</if><if test="executing"> AND execute_until&gt;clock_timestamp() AND NOT cancel_requested</if>)</select>
+    <update id="renew">UPDATE pf.workspace_environment_use SET lease_until=LEAST(deadline_at,clock_timestamp()+interval '60 seconds') WHERE <include refid="active"/></update>
+    <update id="accept">UPDATE pf.workspace_environment_use SET runner_instance_id=#{runnerId},version=version+1 WHERE <include refid="active"/> AND runner_instance_id IS NULL AND execute_until&gt;clock_timestamp() AND NOT cancel_requested</update>
+    <update id="recordExec">UPDATE pf.workspace_environment_use SET exec_id=#{execId},version=version+1 WHERE <include refid="active"/> AND runner_instance_id=#{runnerId} AND exec_id IS NULL AND execute_until&gt;clock_timestamp() AND NOT cancel_requested</update>
+    <select id="result" resultType="com.agentplatform.infrastructure.dao.po.EnvironmentUseRows$Result">SELECT result_text,content_hash,exit_code,truncated,runner_instance_id,prior_runner_proof_id,writer_kind,writer_owner_id,created_at FROM pf.workspace_environment_use_result WHERE use_id=#{id}</select>
+    <insert id="insertResult">INSERT INTO pf.workspace_environment_use_result(use_id,result_text,content_hash,exit_code,truncated,runner_instance_id,prior_runner_proof_id,writer_kind,writer_owner_id)
+        VALUES(#{id},#{row.resultText},#{row.contentHash},#{row.exitCode},#{row.truncated},#{row.runnerInstanceId},#{row.priorRunnerProofId},#{row.writerKind},#{row.writerOwnerId})</insert>
+    <update id="finish">UPDATE pf.workspace_environment_use SET status=#{state},result_state=#{outcome},error_code=#{error},version=version+1
+        WHERE id=#{command.id} AND owner_id=#{command.ownerId} AND space_id=#{command.spaceId} AND workspace_id=#{command.workspaceId}
+        AND environment_id=#{command.environmentId} AND generation=#{command.generation} AND fence=#{command.fence}
+        AND status IN('CLAIMED','RUNNING','UNKNOWN') AND EXISTS(SELECT 1 FROM pf.workspace_environment_use_result r WHERE r.use_id=#{command.id})</update>
+    <update id="uncertain">UPDATE pf.workspace_environment_use SET status='UNKNOWN',result_state='UNKNOWN',error_code=#{error},version=version+1 WHERE <include refid="active"/></update>
+    <update id="projectBlocked">UPDATE pf.workspace_environment SET state='BLOCKED',error_code=#{error},version=version+1,updated_at=clock_timestamp()
+        WHERE id=#{command.environmentId} AND space_id=#{command.spaceId} AND workspace_id=#{command.workspaceId} AND generation=#{command.generation} AND fence=#{command.fence}</update>
+    <update id="projectWorkspaceBlocked">UPDATE pf.workspace SET environment_state='BLOCKED',version=version+1,updated_at=clock_timestamp()
+        WHERE space_id=#{command.spaceId} AND id=#{command.workspaceId}</update>
+    <update id="touchEnvironment">UPDATE pf.workspace_environment SET version=version+1,last_activity_at=clock_timestamp(),updated_at=clock_timestamp()
+        WHERE id=#{command.environmentId} AND space_id=#{command.spaceId} AND workspace_id=#{command.workspaceId} AND generation=#{command.generation} AND fence=#{command.fence}</update>
+    <update id="cancel">UPDATE pf.workspace_environment_use SET cancel_requested=true,version=version+1 WHERE id=#{id} AND space_id=#{actor.spaceId} AND actor_id=#{actor.userId} AND status IN('CLAIMED','RUNNING') AND NOT cancel_requested
+        AND NOT EXISTS(SELECT 1 FROM pf.workspace_environment_use_result r WHERE r.use_id=#{id})</update>
+    <select id="runnerMayReconcile" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.workspace_environment_use u WHERE u.id=#{id}
+        AND EXISTS(SELECT 1 FROM pf.workspace_runner_instance i WHERE i.id=#{runnerId} AND NOT EXISTS(SELECT 1 FROM pf.workspace_runner_stop_proof p WHERE p.runner_instance_id=i.id))
+        AND(u.runner_instance_id=#{runnerId} OR EXISTS(SELECT 1 FROM pf.workspace_runner_stop_proof p WHERE p.runner_instance_id=u.runner_instance_id)))</select>
+    <update id="bindStopObserver">UPDATE pf.workspace_environment_use SET runner_instance_id=#{runnerId},version=version+1
+        WHERE id=#{id} AND runner_instance_id IS NULL AND exec_id IS NULL AND status IN('CLAIMED','UNKNOWN')</update>
+    <select id="validStop" resultType="boolean"><![CDATA[
+        SELECT CAST(#{stop.startedAt} AS timestamptz)<CAST(#{stop.finishedAt} AS timestamptz)
+            AND CAST(#{stop.finishedAt} AS timestamptz)<=#{stop.observedAt}
+            AND #{stop.observedAt}>=clock_timestamp()-interval '300 seconds'
+            AND #{stop.observedAt}<=clock_timestamp()+interval '5 seconds'
+    ]]></select>
+    <update id="projectWorkspaceStopped">UPDATE pf.workspace SET environment_state='STOPPED',version=version+1,updated_at=clock_timestamp()
+        WHERE space_id=#{command.spaceId} AND id=#{command.workspaceId}</update>
+    <update id="releaseSlot">UPDATE pf.workspace_sandbox_slot SET space_id=NULL,workspace_id=NULL,environment_id=NULL,generation=NULL,revision=revision+1
+        WHERE id=1 AND space_id=#{command.spaceId} AND workspace_id=#{command.workspaceId} AND environment_id=#{command.environmentId} AND generation=#{command.generation}</update>
+    <insert id="insertStopFactOperation">INSERT INTO pf.workspace_environment_operation(id,space_id,workspace_id,environment_id,kind,initiator,actor_id,
+        effect_origin,source_use_id,generation,fence,status,effect_state,owner_id,lease_until,deadline_at)
+        VALUES(#{id},#{command.spaceId},#{command.workspaceId},#{command.environmentId},'STOP','SYSTEM',#{command.actorId},'USE_TERMINATION',#{command.id},
+        #{command.generation},#{fence},'COMMITTED','STOPPED',#{ownerId},clock_timestamp()+interval '30 seconds',clock_timestamp()+interval '30 seconds')</insert>
+    <update id="projectStopped">UPDATE pf.workspace_environment SET state='STOPPED',operation_id=#{operationId},fence=#{fence},version=version+1,error_code=#{error},
+        last_activity_at=clock_timestamp(),updated_at=clock_timestamp() WHERE id=#{command.environmentId} AND space_id=#{command.spaceId} AND workspace_id=#{command.workspaceId}
+        AND generation=#{command.generation} AND fence=#{command.fence}</update>
+    <update id="closeStopped">UPDATE pf.workspace_environment_use SET status='STOPPED',result_state=#{outcome},error_code=#{error},stop_operation_id=#{operationId},version=version+1
+        WHERE id=#{command.id} AND space_id=#{command.spaceId} AND workspace_id=#{command.workspaceId} AND environment_id=#{command.environmentId}
+        AND generation=#{command.generation} AND fence=#{command.fence} AND status IN('CLAIMED','RUNNING','UNKNOWN')</update>
+    <insert id="insertUseStopReceipt">INSERT INTO pf.workspace_environment_stop_receipt(id,space_id,workspace_id,environment_id,operation_id,generation,fence,owner_id,
+        runner_instance_id,prior_runner_proof_id,source_use_id,proof_kind,container_id,image_id,container_started_at,container_finished_at,exec_stopped,callbacks_stopped,proof_hash,observed_at)
+        VALUES(#{id},#{command.spaceId},#{command.workspaceId},#{command.environmentId},#{operationId},#{command.generation},#{fence},#{ownerId},
+        #{fact.runnerInstanceId},#{priorProof},#{command.id},'LOCAL_INSPECT',#{fact.stop.containerId},#{fact.stop.image},#{fact.stop.startedAt},#{fact.stop.finishedAt},
+        #{fact.stop.execStopped},#{fact.stop.callbacksStopped},#{hash},#{fact.stop.observedAt})</insert>
+    <select id="stoppedCompletion" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.workspace_environment_use u
+        JOIN pf.workspace_environment e ON e.id=u.environment_id JOIN pf.workspace_environment_operation o ON o.id=u.stop_operation_id
+        JOIN pf.workspace_environment_stop_receipt r ON r.operation_id=o.id AND r.source_use_id=u.id
+        WHERE u.id=#{command.id} AND u.space_id=#{command.spaceId} AND u.workspace_id=#{command.workspaceId} AND u.environment_id=#{command.environmentId}
+        AND u.owner_id=#{command.ownerId} AND u.generation=#{command.generation} AND u.fence=#{command.fence} AND u.status='STOPPED'
+        AND e.operation_id=o.id AND e.state='STOPPED' AND e.generation=u.generation AND e.fence=o.fence AND o.fence&gt;u.fence
+        AND o.effect_origin='USE_TERMINATION' AND o.source_use_id=u.id AND o.status='COMMITTED' AND o.effect_state='STOPPED'
+        AND o.lease_until&gt;clock_timestamp() AND o.deadline_at&gt;clock_timestamp() AND r.exec_stopped AND r.callbacks_stopped)</select>
+</mapper>

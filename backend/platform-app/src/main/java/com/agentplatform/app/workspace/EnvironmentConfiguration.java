@@ -20,6 +20,10 @@ public class EnvironmentConfiguration {
             WorkspaceMapper workspaces,TransactionTemplate transactions) {
         return new TransactionalEnvironmentExecutionRepository(new MyBatisEnvironmentExecutionRepository(execution,preparation,workspaces),transactions);
     }
+    @Bean @Profile({"workspace-worker","workspace-runner"}) EnvironmentUseRepository environmentUseRepository(EnvironmentUseMapper uses,
+            EnvironmentPreparationMapper preparation,EnvironmentExecutionMapper execution,WorkspaceMapper workspaces,TransactionTemplate transactions) {
+        return new TransactionalEnvironmentUseRepository(new MyBatisEnvironmentUseRepository(uses,preparation,execution,workspaces),transactions);
+    }
     @Bean @Profile("workspace-api") EnvironmentPreparationRepository environmentPreparationRepository(EnvironmentPreparationMapper preparation,
             WorkspaceMapper workspaces,TransactionTemplate transactions,EnvironmentProperties properties) {
         return new TransactionalEnvironmentPreparationRepository(new MyBatisEnvironmentPreparationRepository(preparation,workspaces,properties.imageId(),properties.policyHash()),transactions);
@@ -44,6 +48,11 @@ public class EnvironmentConfiguration {
         @Bean(destroyMethod="close") SandboxRuntime sandboxRuntime(SandboxPolicy policy) {return new DockerSandboxRuntime(policy);}
         @Bean EnvironmentRunnerApi environmentRunnerApi(EnvironmentExecutionRepository repository,RunnerSignatures signatures,SandboxRuntime runtime,EnvironmentProperties properties) {
             return new EnvironmentRunnerService(repository,signatures,runtime,properties.imageId(),properties.policyHash(),runtime.runnerInstance());
+        }
+        @Bean EnvironmentUseRunnerApi environmentUseRunnerApi(EnvironmentUseRepository repository,EnvironmentExecutionRepository execution,
+                RunnerSignatures signatures,SandboxRuntime runtime) {
+            var instance=runtime.runnerInstance();execution.registerRunner(instance);
+            return new EnvironmentUseRunnerService(repository,signatures,runtime,instance);
         }
     }
 }

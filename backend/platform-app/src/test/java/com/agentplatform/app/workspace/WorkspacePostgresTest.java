@@ -194,7 +194,7 @@ class WorkspacePostgresTest {
     @Test void freshInstallKeepsMigrationAndRuntimeVersionsSeparate() throws Exception {
         String database="workspace_fresh_"+UUID.randomUUID().toString().replace("-","");
         assertTrue(database.matches("workspace_fresh_[a-f0-9]{32}"));
-        sql("CREATE DATABASE "+database);
+        administrativeSql("CREATE DATABASE "+database);
         String fresh=url.replace(r32?"/environment_test?":"/workspace_test?","/"+database+"?");
         try {
             var flyway=Flyway.configure().dataSource(fresh,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").load();
@@ -203,7 +203,14 @@ class WorkspacePostgresTest {
                 try(var result=statement.executeQuery("SELECT schema_version FROM pf.baseline_version WHERE id=1")){assertTrue(result.next());assertEquals(1,result.getInt(1));}
                 try(var result=statement.executeQuery("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success")){assertTrue(result.next());assertEquals(11,result.getInt(1));}
             }
-        }finally{sql("DROP DATABASE "+database);}
+        }finally{administrativeSql("DROP DATABASE "+database);}
+    }
+    /** Database CREATE/DROP may force an fsync checkpoint; business connections keep their existing timeout. */
+    private static void administrativeSql(String text) throws Exception {
+        String administrativeUrl=url.replace("socketTimeout=5","socketTimeout=30");
+        try(var connection=DriverManager.getConnection(administrativeUrl,"postgres",password);var statement=connection.createStatement()) {
+            statement.setQueryTimeout(30);statement.execute(text);
+        }
     }
     private org.springframework.amqp.rabbit.connection.CachingConnectionFactory broker() throws Exception {
         String file=System.getenv(r32?"R32_TEST_MQ_PASSWORD_FILE":"R31_TEST_MQ_PASSWORD_FILE");

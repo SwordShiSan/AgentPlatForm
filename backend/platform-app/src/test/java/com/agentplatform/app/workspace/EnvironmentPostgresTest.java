@@ -31,6 +31,7 @@ class EnvironmentPostgresTest {
     private EnvironmentMaintenanceRepository maintenance;
     private RunnerInstance runner;
     private RunnerStopProofRepository runnerProofs;
+    private EnvironmentUseRepository uses;
     private Actor alice, bob;
     private static Flyway flyway(String target) {
         var configuration = Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf")
@@ -81,6 +82,8 @@ class EnvironmentPostgresTest {
                 session.getMapper(EnvironmentPreparationMapper.class),mapper,"sha256:"+"a".repeat(64),"b".repeat(64)),transactions);
         executions=new TransactionalEnvironmentExecutionRepository(new MyBatisEnvironmentExecutionRepository(
                 session.getMapper(EnvironmentExecutionMapper.class),session.getMapper(EnvironmentPreparationMapper.class),mapper),transactions);
+        uses=new TransactionalEnvironmentUseRepository(new MyBatisEnvironmentUseRepository(session.getMapper(EnvironmentUseMapper.class),
+                session.getMapper(EnvironmentPreparationMapper.class),session.getMapper(EnvironmentExecutionMapper.class),mapper),transactions);
         runner=new RunnerInstance(UUID.randomUUID(),"e".repeat(64),"sha256:"+"f".repeat(64),"2026-10-22T00:00:00.123456789Z");
         executions.registerRunner(runner);
         runnerProofs=new TransactionalRunnerStopProofRepository(new MyBatisRunnerStopProofRepository(
@@ -465,6 +468,142 @@ class EnvironmentPostgresTest {
                 for(String table:List.of("pf.app_user","pf.credential","pf.message","pf_runtime.state_slot"))denied(restricted,"SELECT * FROM "+table);
             }
         }
+    }
+    private EnvironmentUseData.Request probe() {return new EnvironmentUseData.Request(null,SandboxRuntime.Probe.PYTHON_666);}
+    private EnvironmentUseData.Command use() throws Exception {
+        var ready=readyEnvironment();return uses.admit(alice,ready.workspaceId(),UUID.randomUUID(),UUID.randomUUID(),probe()).command();
+    }
+    private EnvironmentUseData.Fact known(EnvironmentUseData.Command command) {
+        return new EnvironmentUseData.Fact(command.id(),command.environmentId(),command.generation(),command.fence(),command.requestHash(),runner.id(),"KNOWN",
+                new SandboxRuntime.Output("1".repeat(64),0,"666\n","",false,false,false,null),null,null);
+    }
+    private EnvironmentUseData.Fact stopped(EnvironmentUseData.Command command,UUID runnerId) {
+        var now=java.time.Instant.now();
+        var stop=new SandboxRuntime.Stop(command.containerId(),command.imageId(),command.containerStartedAt(),now.minusSeconds(1).toString(),true,true,now);
+        return new EnvironmentUseData.Fact(command.id(),command.environmentId(),command.generation(),command.fence(),command.requestHash(),runnerId,"UNKNOWN",null,stop,"ENVIRONMENT_USE_INTERRUPTED");
+    }
+    private void startUse(EnvironmentUseData.Command command) {
+        assertTrue(uses.accept(command,runner.id()));assertFalse(uses.accept(command,runner.id()));
+        uses.recordExec(command,runner.id(),command.containerId(),"1".repeat(64));
+    }
+    @Test void privateUseIdempotencyNeverTransfersOwnerAndRejectsConcurrentWriters() throws Exception {
+        var ready=readyEnvironment();UUID request=UUID.randomUUID(),owner=UUID.randomUUID();
+        var first=uses.admit(alice,ready.workspaceId(),request,owner,probe());assertTrue(first.fresh());
+        var duplicate=uses.admit(alice,ready.workspaceId(),request,UUID.randomUUID(),probe());
+        assertFalse(duplicate.fresh());assertEquals(first.command(),duplicate.command());assertEquals(owner,duplicate.command().ownerId());
+        assertEquals(2,first.command().fence());assertEquals(1,first.command().creationFence());
+        assertEquals("ENVIRONMENT_USE_BUSY",assertThrows(WorkspaceFailure.class,()->uses.admit(alice,ready.workspaceId(),UUID.randomUUID(),UUID.randomUUID(),probe())).code());
+        var changed=new EnvironmentUseData.Request(null,SandboxRuntime.Probe.NODE_CROSS_READ);
+        assertEquals("IDEMPOTENCY_CONFLICT",assertThrows(WorkspaceFailure.class,()->uses.admit(alice,ready.workspaceId(),request,owner,changed)).code());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_use"));
+    }
+    @Test void privateUseRollbackRestoresFenceAndAdmissionRecords() throws Exception {
+        var ready=readyEnvironment();
+        assertThrows(IllegalStateException.class,()->transactions.execute(status->{
+            uses.admit(alice,ready.workspaceId(),UUID.randomUUID(),UUID.randomUUID(),probe());throw new IllegalStateException("Injected use rollback");
+        }));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_use"));assertEquals(1,count("SELECT fence FROM pf.workspace_environment"));
+        assertEquals(2,count("SELECT count(*) FROM pf.workspace_environment_event"));
+    }
+    @Test void privateUseRejectsForgedActorPathsAndUnboundedContent() throws Exception {
+        var ready=readyEnvironment();
+        assertEquals(404,assertThrows(WorkspaceFailure.class,()->uses.admit(bob,ready.workspaceId(),UUID.randomUUID(),UUID.randomUUID(),probe())).status());
+        for(String path:List.of("/etc/passwd","../other","a/../b","a//b","a\\b")) {
+            var request=new EnvironmentUseData.Request(new SandboxRuntime.FileRequest(SandboxRuntime.FileAction.READ,path,null),null);
+            assertThrows(WorkspaceFailure.class,()->uses.admit(alice,ready.workspaceId(),UUID.randomUUID(),UUID.randomUUID(),request));
+        }
+        var request=new EnvironmentUseData.Request(new SandboxRuntime.FileRequest(SandboxRuntime.FileAction.WRITE,"large",Base64.getEncoder().encodeToString(new byte[32769])),null);
+        assertThrows(WorkspaceFailure.class,()->uses.admit(alice,ready.workspaceId(),UUID.randomUUID(),UUID.randomUUID(),request));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_use"));
+    }
+    @Test void committedPrivateOutputConvergesAfterOwnerExpiryWithoutNewExecution() throws Exception {
+        var command=use();startUse(command);uses.commitFact(command,runner.id(),known(command));
+        // Immutable result commits first. A later cancellation cannot replace that fact.
+        uses.cancel(alice,command.id());assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_use WHERE cancel_requested"));
+        sql("UPDATE pf.workspace_environment_use SET lease_until=clock_timestamp()-interval '1 second'");
+        assertThrows(WorkspaceFailure.class,()->uses.check(command,runner.id()));
+        uses.complete(command);uses.complete(command);
+        assertEquals("COMMITTED",uses.receipt(command).state());assertEquals("666\n",uses.result(alice,command.id()).output().stdout());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_use_result"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        assertEquals(404,assertThrows(WorkspaceFailure.class,()->uses.result(bob,command.id())).status());
+    }
+    @Test void idleStopUsesCurrentFenceAfterSuccessfulPrivateUse() throws Exception {
+        var command=use();startUse(command);uses.commitFact(command,runner.id(),known(command));uses.complete(command);
+        sql("UPDATE pf.workspace_environment SET last_activity_at=clock_timestamp()-interval '61 seconds'");
+        assertEquals(1,maintenance.scheduleStop());assertEquals(3,count("SELECT fence FROM pf.workspace_environment"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_outbox o JOIN pf.workspace_environment_operation p ON p.id=o.operation_id WHERE p.kind='STOP'"));
+    }
+    @Test void unresolvedPrivateUseRetainsSlotAndStopsIdleCleanup() throws Exception {
+        var command=use();startUse(command);uses.uncertain(command,"RUNNER_UNAVAILABLE");
+        sql("UPDATE pf.workspace_environment_use SET lease_until=clock_timestamp()-interval '1 second'");
+        sql("UPDATE pf.workspace_environment SET last_activity_at=clock_timestamp()-interval '61 seconds'");
+        assertEquals(0,maintenance.scheduleStop());assertEquals("UNKNOWN",uses.receipt(command).resultState());
+        assertEquals("BLOCKED",environments.get(alice,command.workspaceId()).state());
+        assertThrows(WorkspaceFailure.class,()->uses.admit(alice,command.workspaceId(),UUID.randomUUID(),UUID.randomUUID(),probe()));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+    }
+    @Test void cancelledOrRevokedUseRejectsSuccessButAcceptsExactStopFact() throws Exception {
+        var command=use();startUse(command);uses.cancel(alice,command.id());
+        assertThrows(WorkspaceFailure.class,()->uses.commitFact(command,runner.id(),known(command)));
+        sql("UPDATE pf.membership SET status='REVOKED' WHERE user_id='"+alice.userId()+"'");
+        sql("UPDATE pf.workspace_environment_use SET lease_until=clock_timestamp()-interval '1 second'");
+        uses.commitFact(command,runner.id(),stopped(command,runner.id()));uses.complete(command);
+        assertTrue(uses.stopCommitted(command.id()));assertEquals("STOPPED",uses.receipt(command).state());
+        assertEquals("UNKNOWN",uses.receipt(command).resultState());
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_operation WHERE effect_origin='USE_TERMINATION' AND command_id IS NULL AND source_use_id='"+command.id()+"'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_outbox")); // Only original PREPARE, no fabricated delivery.
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_stop_receipt WHERE source_use_id='"+command.id()+"'"));
+        assertEquals(1,count("SELECT reserved_slots FROM pf.workspace_capacity")); // Storage remains reserved.
+    }
+    @Test void commitTimeLeaseExpiryRollsBackExecBinding() throws Exception {
+        var command=use();assertTrue(uses.accept(command,runner.id()));
+        assertThrows(WorkspaceFailure.class,()->transactions.execute(status->{
+            uses.recordExec(command,runner.id(),command.containerId(),"1".repeat(64));
+            try {sqlInTransaction("UPDATE pf.workspace_environment_use SET lease_until=clock_timestamp()-interval '1 second'");}
+            catch(Exception failure) {throw new RuntimeException(failure);}return null;
+        }));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_use WHERE exec_id IS NOT NULL"));
+    }
+    private void sqlInTransaction(String text) throws Exception {
+        var connection=org.springframework.jdbc.datasource.DataSourceUtils.getConnection(pool);
+        try(var statement=connection.createStatement()) {statement.execute(text);}
+        finally {org.springframework.jdbc.datasource.DataSourceUtils.releaseConnection(connection,pool);}
+    }
+    @Test void replacementRunnerRequiresProofOfOriginalBeforeStopReconciliation() throws Exception {
+        var command=use();startUse(command);
+        var replacement=new RunnerInstance(UUID.randomUUID(),"2".repeat(64),runner.imageId(),runner.startedAt());executions.registerRunner(replacement);
+        assertEquals("RUNNER_INSTANCE_STOP_UNPROVEN",assertThrows(WorkspaceFailure.class,()->uses.commitFact(command,replacement.id(),stopped(command,replacement.id()))).code());
+        var now=java.time.Instant.now();runnerProofs.record(new StoppedRunner(runner,now.minusSeconds(2),now,hash("private-use-stop-proof")));
+        uses.commitFact(command,replacement.id(),stopped(command,replacement.id()));uses.complete(command);
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_use_result WHERE writer_kind='SYSTEM_STOP' AND prior_runner_proof_id='"+runner.id()+"'"));
+        assertTrue(uses.stopCommitted(command.id()));
+    }
+    @Test void lostPostBeforeAcceptanceConsumesAcceptanceAsStopOnlyAndRejectsLateExecution() throws Exception {
+        var command=use();uses.checkStopObservation(command,runner.id());
+        assertFalse(uses.accept(command,runner.id())); // Query won the acceptance race; late POST must not execute.
+        uses.commitFact(command,runner.id(),stopped(command,runner.id()));uses.complete(command);
+        assertTrue(uses.stopCommitted(command.id()));assertEquals("UNKNOWN",uses.receipt(command).resultState());
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_use WHERE exec_id IS NOT NULL"));
+    }
+    @Test void restrictedRunnerCanBindExecAndResultButCannotFinishUseOrChangeLease() throws Exception {
+        for(String role:List.of("ap_api","ap_worker","ap_runner","ap_workspace_ops"))sql("DO $$ BEGIN CREATE ROLE "+role+" NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$");
+        sql(Files.readString(Path.of(System.getenv("R32_WORKSPACE_GRANTS_FILE"))));sql(Files.readString(Path.of(System.getenv("R32_ENVIRONMENT_GRANTS_FILE"))));
+        var command=use();
+        var configuration=new com.zaxxer.hikari.HikariConfig();configuration.setJdbcUrl(url);configuration.setUsername("postgres");configuration.setPassword(password);
+        configuration.setMaximumPoolSize(2);configuration.setMinimumIdle(1);configuration.setConnectionInitSql("SET ROLE ap_runner");
+        try(var restricted=new com.zaxxer.hikari.HikariDataSource(configuration)) {
+            var session=session(restricted);var transactions=new TransactionTemplate(new JdbcTransactionManager(restricted));
+            var port=new TransactionalEnvironmentUseRepository(new MyBatisEnvironmentUseRepository(session.getMapper(EnvironmentUseMapper.class),
+                    session.getMapper(EnvironmentPreparationMapper.class),session.getMapper(EnvironmentExecutionMapper.class),session.getMapper(WorkspaceMapper.class)),transactions);
+            assertTrue(port.accept(command,runner.id()));port.recordExec(command,runner.id(),command.containerId(),"1".repeat(64));
+            port.commitFact(command,runner.id(),known(command));assertEquals("KNOWN",port.receipt(command).resultState());
+            for(String update:List.of("status='COMMITTED'","owner_id='"+UUID.randomUUID()+"'","lease_until=clock_timestamp()+interval '1 hour'","fence=fence+1"))
+                denied(restricted,"UPDATE pf.workspace_environment_use SET "+update);
+            denied(restricted,"UPDATE pf.workspace_environment_use_result SET exit_code=0");
+        }
+        uses.complete(command);assertEquals("COMMITTED",uses.receipt(command).state());
     }
     private static void denied(javax.sql.DataSource source,String query) throws Exception {
         try(var connection=source.getConnection();var statement=connection.createStatement()) {

@@ -12,7 +12,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.Flow;
 import tools.jackson.databind.json.JsonMapper;
 
-public final class SignedRunnerHttpClient implements RunnerControlPort,EnvironmentRunnerPort,AutoCloseable {
+public final class SignedRunnerHttpClient implements RunnerControlPort,EnvironmentRunnerPort,EnvironmentUseRunnerPort,AutoCloseable {
     private static final JsonMapper JSON=JsonMapper.builder().build();
     private final URI base;
     private final RunnerSignatures signatures;
@@ -87,5 +87,19 @@ public final class SignedRunnerHttpClient implements RunnerControlPort,Environme
             com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command) {return environment(command,false);}
     @Override public com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt queryEnvironment(
             com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command) {return environment(command,true);}
+    private com.agentplatform.domain.workspace.EnvironmentUseData.Receipt use(
+            com.agentplatform.domain.workspace.EnvironmentUseData.Command command,boolean query) {
+        String path="/internal/workspace-uses/v1"+(query?"/"+command.id():"");
+        var requestBinding=new RunnerSignatures.Binding(query?"GET":"POST",path,command.id(),command.id(),command.spaceId(),command.workspaceId(),command.generation(),command.fence());
+        var responseBinding=new RunnerSignatures.Binding("RESPONSE",path,command.id(),command.id(),command.spaceId(),command.workspaceId(),command.generation(),command.fence());
+        var receipt=exchange(requestBinding,responseBinding,query?new byte[0]:JSON.writeValueAsBytes(command),query,
+                com.agentplatform.domain.workspace.EnvironmentUseData.Receipt.class);
+        if(!command.id().equals(receipt.useId())||!Set.of("CLAIMED","RUNNING","COMMITTED","FAILED","UNKNOWN","STOPPED").contains(receipt.state())
+                ||!Set.of("PENDING","KNOWN","UNKNOWN").contains(receipt.resultState())
+                ||receipt.resultHash()!=null&&!receipt.resultHash().matches("[0-9a-f]{64}"))throw new WorkspaceFailure(503,"RUNNER_RECEIPT_MISMATCH");
+        return receipt;
+    }
+    @Override public com.agentplatform.domain.workspace.EnvironmentUseData.Receipt executeUse(com.agentplatform.domain.workspace.EnvironmentUseData.Command command) {return use(command,false);}
+    @Override public com.agentplatform.domain.workspace.EnvironmentUseData.Receipt queryUse(com.agentplatform.domain.workspace.EnvironmentUseData.Command command) {return use(command,true);}
     @Override public void close(){client.shutdownNow();}
 }

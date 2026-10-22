@@ -16,6 +16,7 @@ class EnvironmentProfileTest {
                 .withBean(EnvironmentExecutionMapper.class,()->mock(EnvironmentExecutionMapper.class))
                 .withBean(EnvironmentPreparationMapper.class,()->mock(EnvironmentPreparationMapper.class))
                 .withBean(EnvironmentMaintenanceMapper.class,()->mock(EnvironmentMaintenanceMapper.class))
+                .withBean(EnvironmentUseMapper.class,()->mock(EnvironmentUseMapper.class))
                 .withBean(WorkspaceMapper.class,()->mock(WorkspaceMapper.class))
                 .withBean(TransactionTemplate.class,()->new TransactionTemplate(mock(PlatformTransactionManager.class)))
                 .withPropertyValues("platform.workspace.environment.image-id=sha256:"+"a".repeat(64),"platform.workspace.environment.policy-hash="+"b".repeat(64))
