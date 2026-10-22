@@ -2,7 +2,11 @@
 import base64
 import importlib.util
 import os
+import json
 from pathlib import Path
+import select
+import subprocess
+import sys
 import tempfile
 import threading
 import unittest
@@ -96,6 +100,28 @@ class SandboxFileBridgeTest(unittest.TestCase):
             stop.set()
             thread.join(5)
         self.assertFalse(thread.is_alive())
+
+    def test_one_frame_completes_while_stdin_remains_open(self):
+        process = subprocess.Popen([sys.executable, str(spec.origin)], stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            process.stdin.write(b'{"action":"SHELL","path":"unused"}\n')
+            process.stdin.flush()
+            self.assertTrue(select.select([process.stdout], [], [], 3)[0], "Must not wait for stdin EOF")
+            self.assertEqual("FILE_ACTION_REJECTED", json.loads(process.stdout.readline())["error"])
+            self.assertEqual(1, process.wait(3))
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait(3)
+            for stream in (process.stdin, process.stdout, process.stderr):
+                stream.close()
+
+    def test_missing_frame_terminator_is_rejected(self):
+        process = subprocess.run([sys.executable, str(spec.origin)], input=b'{"action":"LIST","path":""}',
+                                 capture_output=True, timeout=3)
+        self.assertEqual(1, process.returncode)
+        self.assertEqual("FILE_REQUEST_REJECTED", json.loads(process.stdout)["error"])
 
 
 if __name__ == "__main__":

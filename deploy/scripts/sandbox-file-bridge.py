@@ -126,9 +126,13 @@ def execute(request, root="/workspace"):
 def main():
     os.umask(0o077)
     try:
-        raw = sys.stdin.buffer.read(MAX_REQUEST + 1)
+        # docker-java exec does not promise an input half-close after a finite stream.
+        # One bounded JSONL frame is complete without waiting for transport EOF.
+        raw = sys.stdin.buffer.readline(MAX_REQUEST + 1)
         if len(raw) > MAX_REQUEST:
             raise Rejected("FILE_REQUEST_TOO_LARGE")
+        if not raw.endswith(b"\n"):
+            raise Rejected("FILE_REQUEST_REJECTED")
         request = json.loads(raw)
         result = execute(request)
     except Rejected as failure:

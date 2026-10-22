@@ -45,6 +45,7 @@ public final class SandboxRuntimeProbe {
                 assertions.add("locked-gvisor-container-and-policy");
                 var written = runtime.file(current, UUID.randomUUID(), new SandboxRuntime.FileRequest(SandboxRuntime.FileAction.WRITE,
                         "a.py", Base64.getEncoder().encodeToString("print(666)\n".getBytes(StandardCharsets.UTF_8))), authority, () -> false);
+                persist(Path.of("/reports/bridge-write-result.json"), JSON.writeValueAsString(written));
                 if (written.exitCode() != 0 || !JSON.readTree(written.stdout()).path("ok").asBoolean()) throw new AssertionError("Bridge write");
                 var python = runtime.probe(current, UUID.randomUUID(), SandboxRuntime.Probe.PYTHON_666, authority, () -> false);
                 var node = runtime.probe(current, UUID.randomUUID(), SandboxRuntime.Probe.NODE_CROSS_READ, authority, () -> false);

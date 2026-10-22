@@ -28,7 +28,7 @@ public record SandboxPolicy(String image, String helperImage, String workspaceRo
     public String hash() {
         return RunnerSignatures.sha256(("environment-v2|" + image + "|" + helperImage + "|" + workspaceRoot + "|" + mountUuid + "|" + quotaDevice
                 + "|" + RUNSC_SHA256 + "|systrap|uid10001|ro|net-none|caps-none|devices-none|"
-                + "memory512m-swap512m|cpu1|pids128|tmpfs64m|bridge-v1").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                + "memory512m-swap512m|cpu1|pids128|tmpfs64m|bridge-v2-jsonl").getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     public String work(com.agentplatform.domain.workspace.SandboxRuntime.Identity identity) {

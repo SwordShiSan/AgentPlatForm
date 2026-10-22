@@ -167,7 +167,7 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
         payload.put("action", request.action().name());
         payload.put("path", request.path());
         if (request.contentBase64() != null) payload.put("contentBase64", request.contentBase64());
-        byte[] input = JSON.writeValueAsBytes(payload);
+        byte[] input = (JSON.writeValueAsString(payload) + "\n").getBytes(StandardCharsets.UTF_8);
         if (input.length > 65536) throw new WorkspaceFailure(413, "FILE_REQUEST_TOO_LARGE");
         return execute(identity, use, new String[]{"python3", "/opt/platform/sandbox-file-bridge.py"}, input, authority, cancelled);
     }
