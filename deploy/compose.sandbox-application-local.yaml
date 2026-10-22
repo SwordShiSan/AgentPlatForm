@@ -117,8 +117,8 @@ services:
   operator:
     <<: *app
     profiles: [operator]
-    mem_limit: 256m
-    memswap_limit: 256m
+    mem_limit: 320m
+    memswap_limit: 320m
     entrypoint: [java, -Xms16m, -Xmx112m, -jar, /app/platform.jar]
     environment:
       <<: *storage
