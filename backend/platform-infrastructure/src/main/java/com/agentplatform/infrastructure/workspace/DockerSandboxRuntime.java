@@ -283,6 +283,8 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
             case NODE_CROSS_READ -> new String[]{"node", "-e", "const fs=require('fs');if(fs.readFileSync('/workspace/probe-python.txt','utf8')!=='中文😀')process.exit(2);fs.writeFileSync('/workspace/probe-node.txt','666');console.log(666)"};
             case WAIT_FOR_CANCEL -> new String[]{"python3", "-c", "import time;print('started',flush=True);time.sleep(180)"};
             case OUTPUT_BOUND -> new String[]{"python3", "-c", "import sys;sys.stdout.write('x'*262144);sys.stderr.write('y'*262144)"};
+            case CPU_BOUND,PID_BOUND,MEMORY_BOUND,NETWORK_BOUND,TMP_BOUND,BYTE_QUOTA,INODE_QUOTA,PATH_RACE ->
+                    new String[]{"python3","/opt/platform/sandbox-resource-probe.py",probe.name()};
         };
         return execute(identity, use, program, null, authority, cancelled);
     }
@@ -328,6 +330,7 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
                 if (Boolean.FALSE.equals(state.isRunning()) && capture.finished.getCount() == 0) {
                     if (capture.failure != null || state.getExitCodeLong() == null) throw unavailable("SANDBOX_EXEC_RESULT_UNKNOWN");
                     authority.check();
+                    if(!Boolean.TRUE.equals(exact(identity).getState().getRunning()))throw unavailable("SANDBOX_CONTAINER_EXITED");
                     completed = true;
                     return capture.output(state.getExitCodeLong(), false, false, null);
                 }

@@ -23,6 +23,10 @@ import tools.jackson.databind.json.JsonMapper;
 @ConditionalOnProperty(name="platform.workspace.environment.fixture-enabled",havingValue="true")
 public final class EnvironmentFixtureOperator implements ApplicationRunner {
     private static final JsonMapper JSON=JsonMapper.builder().build();
+    private static final Map<String,SandboxRuntime.Probe> RESOURCE_PROBES=Map.of("resource-cpu",SandboxRuntime.Probe.CPU_BOUND,
+            "resource-pid",SandboxRuntime.Probe.PID_BOUND,"resource-memory",SandboxRuntime.Probe.MEMORY_BOUND,"resource-network",SandboxRuntime.Probe.NETWORK_BOUND,
+            "resource-tmp",SandboxRuntime.Probe.TMP_BOUND,"resource-bytes",SandboxRuntime.Probe.BYTE_QUOTA,
+            "resource-inodes",SandboxRuntime.Probe.INODE_QUOTA,"resource-paths",SandboxRuntime.Probe.PATH_RACE);
     public record Scope(UUID fixtureId,UUID runId,UUID actorId,UUID spaceId,UUID workspaceId,String policyHash) {}
     private final EnvironmentUseRepository repository;
     private final EnvironmentUseApplicationService application;
@@ -72,7 +76,7 @@ public final class EnvironmentFixtureOperator implements ApplicationRunner {
     }
     @Override public void run(ApplicationArguments arguments) {
         String action=option(arguments,"workspace-environment-action");
-        if(!Set.of("roundtrip","readback","output-bound","cancel","timeout").contains(action))throw new WorkspaceFailure(400,"INVALID_FIXTURE_ACTION");
+        if(!Set.of("roundtrip","readback","output-bound","cancel","timeout").contains(action)&&!RESOURCE_PROBES.containsKey(action))throw new WorkspaceFailure(400,"INVALID_FIXTURE_ACTION");
         Scope scope=readScope(Path.of(option(arguments,"fixture-scope-file")));var actual=mapper.scope();
         if(actual==null||!"environment_test".equals(actual.databaseName())||actual.migration()!=11||!scope.fixtureId().equals(actual.fixtureId())
                 ||!scope.actorId().equals(actual.actorId())||!scope.spaceId().equals(actual.spaceId())||!scope.workspaceId().equals(actual.workspaceId())
@@ -97,6 +101,16 @@ public final class EnvironmentFixtureOperator implements ApplicationRunner {
             var fact=execute(scope,action,new Request(null,SandboxRuntime.Probe.OUTPUT_BOUND),reports);success(fact);
             if(!fact.output().truncated()||fact.output().stdout().getBytes(StandardCharsets.UTF_8).length+(long)fact.output().stderr().getBytes(StandardCharsets.UTF_8).length>65536)
                 throw new WorkspaceFailure(409,"FIXTURE_ASSERTION_FAILED");
+        } else if(RESOURCE_PROBES.containsKey(action)) {
+            var fact=execute(scope,action,new Request(null,RESOURCE_PROBES.get(action)),reports);
+            if("resource-memory".equals(action)) {
+                if(!("KNOWN".equals(fact.resultState())&&fact.output()!=null&&fact.output().exitCode()==137)
+                        &&!("UNKNOWN".equals(fact.resultState())&&fact.stop()!=null&&repository.stopCommitted(fact.useId())))
+                    throw new WorkspaceFailure(409,"FIXTURE_ASSERTION_FAILED");
+            } else {
+                success(fact);var output=JSON.readTree(fact.output().stdout());
+                if(!output.path("ok").asBoolean()||!RESOURCE_PROBES.get(action).name().equals(output.path("probe").asText()))throw new WorkspaceFailure(409,"FIXTURE_ASSERTION_FAILED");
+            }
         } else if("cancel".equals(action)||"timeout".equals(action)) {
             var actor=new Actor(scope.actorId(),scope.spaceId());
             var admitted=repository.admit(actor,scope.workspaceId(),request(scope,action),UUID.randomUUID(),new Request(null,SandboxRuntime.Probe.WAIT_FOR_CANCEL));
@@ -106,6 +120,8 @@ public final class EnvironmentFixtureOperator implements ApplicationRunner {
             record(fact,reports);
             if(!"UNKNOWN".equals(fact.resultState())||fact.stop()==null||!repository.stopCommitted(fact.useId()))throw new WorkspaceFailure(409,"FIXTURE_ASSERTION_FAILED");
         }
-        System.out.println(JSON.writeValueAsString(Map.of("fixtureId",scope.fixtureId(),"runId",scope.runId(),"action",action,"status","PASS","supplierCalls",0,"uses",reports)));
+        System.out.println(JSON.writeValueAsString(Map.of("fixtureId",scope.fixtureId(),"runId",scope.runId(),"action",action,
+                "status","resource-memory".equals(action)?"RECORDED_REQUIRES_HOST_ASSERTION":"PASS",
+                "scope","fixed program assertions; host isolation/resource assertions separate","supplierCalls",0,"uses",reports)));
     }
 }

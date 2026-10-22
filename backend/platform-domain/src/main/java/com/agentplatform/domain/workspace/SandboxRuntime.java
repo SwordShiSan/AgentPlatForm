@@ -23,7 +23,8 @@ public interface SandboxRuntime extends AutoCloseable {
                   boolean truncated, boolean timedOut, boolean cancelled, Stop stopReceipt) {}
     record Stop(String containerId, String image, String startedAt, String finishedAt,
                 boolean execStopped, boolean callbacksStopped, Instant observedAt) {}
-    enum Probe { PYTHON_666, NODE_CROSS_READ, WAIT_FOR_CANCEL, OUTPUT_BOUND }
+    enum Probe { PYTHON_666, NODE_CROSS_READ, WAIT_FOR_CANCEL, OUTPUT_BOUND,
+        CPU_BOUND, PID_BOUND, MEMORY_BOUND, NETWORK_BOUND, TMP_BOUND, BYTE_QUOTA, INODE_QUOTA, PATH_RACE }
     enum FileAction { READ, WRITE, LIST }
     record FileRequest(FileAction action, String path, String contentBase64) {}
     @FunctionalInterface interface Authority { void check(); }
