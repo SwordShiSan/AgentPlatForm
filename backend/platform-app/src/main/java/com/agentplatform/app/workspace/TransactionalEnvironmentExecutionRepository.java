@@ -37,9 +37,11 @@ public final class TransactionalEnvironmentExecutionRepository implements Enviro
     @Override public void checkOwnership(Command command) {tx(null,()->{delegate.checkOwnership(command);return null;});}
     @Override public void renew(Command command) {tx(command,()->{delegate.renew(command);return null;});}
     @Override public void beforeCall(Command command) {tx(command,()->{delegate.beforeCall(command);return null;});}
-    @Override public Receipt accept(Command command,String hash) {return tx(command,()->delegate.accept(command,hash));}
+    @Override public void registerRunner(RunnerInstance instance) {tx(null,()->{delegate.registerRunner(instance);return null;});}
+    @Override public void checkRunner(Command command,UUID runnerId) {tx(null,()->{delegate.checkRunner(command,runnerId);return null;});}
+    @Override public Receipt accept(Command command,String hash,UUID runnerId) {return tx(command,()->delegate.accept(command,hash,runnerId));}
     @Override public Receipt receipt(Command command) {return tx(null,()->delegate.receipt(command));}
-    @Override public void commitReceipt(Command command,Receipt receipt) {tx(command,()->{delegate.commitReceipt(command,receipt);return null;});}
+    @Override public void commitReceipt(Command command,Receipt receipt,UUID runnerId) {tx(command,()->{delegate.commitReceipt(command,receipt,runnerId);return null;});}
     @Override public void complete(Command command,Receipt receipt) {tx(command,()->{delegate.complete(command,receipt);return null;});}
     @Override public void uncertain(Command command,String code) {tx(command,()->{delegate.uncertain(command,code);return null;});}
     @Override public void quarantine(UUID id,String reason,String hash) {tx(null,()->{delegate.quarantine(id,reason,hash);return null;});}

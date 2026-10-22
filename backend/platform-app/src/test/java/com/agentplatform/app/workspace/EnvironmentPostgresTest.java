@@ -29,6 +29,8 @@ class EnvironmentPostgresTest {
     private WorkspaceRepository workspaces;
     private EnvironmentExecutionRepository executions;
     private EnvironmentMaintenanceRepository maintenance;
+    private RunnerInstance runner;
+    private RunnerStopProofRepository runnerProofs;
     private Actor alice, bob;
     private static Flyway flyway(String target) {
         var configuration = Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf")
@@ -58,6 +60,7 @@ class EnvironmentPostgresTest {
     private static String hash(String text) {return RunnerSignatures.sha256(text.getBytes(StandardCharsets.UTF_8));}
     @BeforeEach void setup() throws Exception {
         sql("TRUNCATE pf.app_user CASCADE");
+        sql("TRUNCATE pf.workspace_runner_instance CASCADE");
         sql("UPDATE pf.workspace_capacity SET reserved_bytes=0,reserved_slots=0,next_project_id=200001");
         sql("INSERT INTO pf.workspace_sandbox_slot(id) VALUES(1) ON CONFLICT(id) DO UPDATE SET space_id=NULL,workspace_id=NULL,environment_id=NULL,generation=NULL");
         var configuration=new com.zaxxer.hikari.HikariConfig();configuration.setJdbcUrl(url);configuration.setUsername("postgres");configuration.setPassword(password);
@@ -75,6 +78,10 @@ class EnvironmentPostgresTest {
                 session.getMapper(EnvironmentPreparationMapper.class),mapper,"sha256:"+"a".repeat(64),"b".repeat(64)),transactions);
         executions=new TransactionalEnvironmentExecutionRepository(new MyBatisEnvironmentExecutionRepository(
                 session.getMapper(EnvironmentExecutionMapper.class),session.getMapper(EnvironmentPreparationMapper.class),mapper),transactions);
+        runner=new RunnerInstance(UUID.randomUUID(),"e".repeat(64),"sha256:"+"f".repeat(64),"2026-10-22T00:00:00.123456789Z");
+        executions.registerRunner(runner);
+        runnerProofs=new TransactionalRunnerStopProofRepository(new MyBatisRunnerStopProofRepository(
+                session.getMapper(RunnerStopProofMapper.class),session.getMapper(EnvironmentPreparationMapper.class)),transactions);
         maintenance=new TransactionalEnvironmentMaintenanceRepository(new MyBatisEnvironmentMaintenanceRepository(
                 session.getMapper(EnvironmentMaintenanceMapper.class),session.getMapper(EnvironmentPreparationMapper.class),session.getMapper(EnvironmentExecutionMapper.class),mapper),transactions);
         var identity=IdentityPersistenceFixture.create(pool);
@@ -83,6 +90,12 @@ class EnvironmentPostgresTest {
         alice=new Actor(a,identity.spaces(a).getFirst().id());bob=new Actor(b,identity.spaces(b).getFirst().id());
     }
     @AfterEach void close() {if(pool!=null)pool.close();}
+    private com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt accept(com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command,String hash) {
+        return executions.accept(command,hash,runner.id());
+    }
+    private void commitReceipt(com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command,com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt receipt) {
+        executions.commitReceipt(command,receipt,runner.id());
+    }
     private UUID storage(boolean ready) throws Exception {
         UUID id=workspaces.create(alice,UUID.randomUUID(),hash("storage"),"R32 workspace").id();
         if(ready) {
@@ -206,10 +219,10 @@ class EnvironmentPostgresTest {
     }
     @Test void runnerDedupAndDurableReceiptPrecedeReadinessProjection() throws Exception {
         var command=claimEnvironment();executions.beforeCall(command);
-        assertNull(executions.accept(command,hash("request")));
-        assertEquals("RUNNING",executions.accept(command,hash("request")).state());
-        assertEquals("RUNNER_COMMAND_CONFLICT",assertThrows(WorkspaceFailure.class,()->executions.accept(command,hash("changed"))).code());
-        var receipt=ready(command);executions.commitReceipt(command,receipt);executions.commitReceipt(command,receipt);
+        assertNull(accept(command,hash("request")));
+        assertEquals("RUNNING",accept(command,hash("request")).state());
+        assertEquals("RUNNER_COMMAND_CONFLICT",assertThrows(WorkspaceFailure.class,()->accept(command,hash("changed"))).code());
+        var receipt=ready(command);commitReceipt(command,receipt);commitReceipt(command,receipt);
         assertEquals("PREPARING",environments.get(alice,command.workspaceId()).state());
         assertEquals(receipt,executions.receipt(command));executions.complete(command,receipt);
         assertEquals("READY",environments.get(alice,command.workspaceId()).state());
@@ -217,19 +230,19 @@ class EnvironmentPostgresTest {
         assertEquals(2,count("SELECT count(*) FROM pf.workspace_environment_event"));
     }
     @Test void commitTimeLeaseGuardRollsBackRunnerReceipt() throws Exception {
-        var command=claimEnvironment();executions.beforeCall(command);executions.accept(command,hash("request"));
+        var command=claimEnvironment();executions.beforeCall(command);accept(command,hash("request"));
         assertThrows(WorkspaceFailure.class,()->transactions.execute(status->{
-            executions.commitReceipt(command,ready(command));
+            commitReceipt(command,ready(command));
             new org.springframework.jdbc.core.JdbcTemplate(pool).update("UPDATE pf.workspace_environment_operation SET lease_until=clock_timestamp()-interval '1 second'");return null;
         }));
         assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_receipt"));
         assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_command WHERE state='RUNNING' AND result_revision=0"));
     }
     @Test void unknownReceiptBlocksAndRetainsCapacityWithoutAnotherClaim() throws Exception {
-        var command=claimEnvironment();executions.beforeCall(command);executions.accept(command,hash("request"));
+        var command=claimEnvironment();executions.beforeCall(command);accept(command,hash("request"));
         var receipt=new com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt(command.commandId(),command.operationId(),command.environmentId(),command.workspaceId(),
                 command.generation(),command.fence(),"UNKNOWN","MAY_HAVE_STARTED","SANDBOX_RESULT_UNKNOWN",null,null,1);
-        executions.commitReceipt(command,receipt);executions.complete(command,receipt);
+        commitReceipt(command,receipt);executions.complete(command,receipt);
         assertEquals("BLOCKED",environments.get(alice,command.workspaceId()).state());
         assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
         assertEquals("ENVIRONMENT_RETRY_UNSAFE",assertThrows(WorkspaceFailure.class,()->prepare(command.workspaceId(),UUID.randomUUID(),2,true)).code());
@@ -254,8 +267,8 @@ class EnvironmentPostgresTest {
         assertEquals("ENVIRONMENT_STALE_OWNER",assertThrows(WorkspaceFailure.class,()->executions.renew(command)).code());
     }
     private com.agentplatform.domain.workspace.EnvironmentExecutionData.Command readyEnvironment() throws Exception {
-        var command=claimEnvironment();executions.beforeCall(command);executions.accept(command,hash("prepare"));
-        var receipt=ready(command);executions.commitReceipt(command,receipt);executions.complete(command,receipt);return command;
+        var command=claimEnvironment();executions.beforeCall(command);accept(command,hash("prepare"));
+        var receipt=ready(command);commitReceipt(command,receipt);executions.complete(command,receipt);return command;
     }
     @Test void idleStopIsDurableAndReleasesOnlyAfterExactStopReceipt() throws Exception {
         var original=readyEnvironment();assertEquals(0,maintenance.scheduleStop());
@@ -267,11 +280,11 @@ class EnvironmentPostgresTest {
         var command=executions.claim(publication,UUID.randomUUID());
         assertEquals(original.physicalIdentity(),command.physicalIdentity());assertEquals(2,command.fence());
         assertNotEquals(original.commandId(),command.commandId());
-        executions.beforeCall(command);executions.accept(command,hash("stop"));
+        executions.beforeCall(command);accept(command,hash("stop"));
         var stop=new SandboxRuntime.Stop("c".repeat(64),command.imageId(),command.containerStartedAt(),"2026-10-22T00:00:05Z",true,true,java.time.Instant.now());
         var receipt=new com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt(command.commandId(),command.operationId(),command.environmentId(),command.workspaceId(),
                 command.generation(),command.fence(),"COMMITTED","STOPPED",null,null,stop,1);
-        executions.commitReceipt(command,receipt);
+        commitReceipt(command,receipt);
         assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
         assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_stop_receipt"));
         executions.complete(command,receipt);
@@ -288,5 +301,47 @@ class EnvironmentPostgresTest {
         var item=executions.publications(UUID.randomUUID()).stream().filter(p->!p.operationId().equals(original.operationId())).findFirst().orElseThrow();
         var stop=executions.claim(item,UUID.randomUUID());assertNotNull(stop);assertEquals("STOP",stop.kind());
         assertDoesNotThrow(()->executions.check(stop));
+    }
+    @Test void aNewRunnerCannotAssertOldCallbacksStoppedWithoutHostProof() throws Exception {
+        var command=claimEnvironment();executions.beforeCall(command);accept(command,hash("prepare"));
+        var replacement=new RunnerInstance(UUID.randomUUID(),"1".repeat(64),runner.imageId(),"2026-10-22T00:00:05Z");
+        executions.registerRunner(replacement);
+        assertEquals("RUNNING",executions.accept(command,hash("prepare"),replacement.id()).state());
+        assertEquals("RUNNER_INSTANCE_STOP_UNPROVEN",assertThrows(WorkspaceFailure.class,()->executions.checkRunner(command,replacement.id())).code());
+        assertEquals("RUNNER_INSTANCE_STOP_UNPROVEN",assertThrows(WorkspaceFailure.class,()->executions.commitReceipt(command,ready(command),replacement.id())).code());
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_receipt"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        assertDoesNotThrow(()->executions.checkRunner(command,runner.id()));
+    }
+    @Test void runnerIdentityBindsExactContainerAndNanosecondStart() {
+        assertDoesNotThrow(()->executions.registerRunner(runner));
+        var forged=new RunnerInstance(runner.id(),"1".repeat(64),runner.imageId(),runner.startedAt());
+        assertEquals(409,assertThrows(WorkspaceFailure.class,()->executions.registerRunner(forged)).status());
+        var sameStart=new RunnerInstance(UUID.randomUUID(),runner.containerId(),runner.imageId(),runner.startedAt());
+        assertEquals(409,assertThrows(WorkspaceFailure.class,()->executions.registerRunner(sameStart)).status());
+        var freshStart=new RunnerInstance(UUID.randomUUID(),runner.containerId(),runner.imageId(),"2026-10-22T00:00:00.123456790Z");
+        assertDoesNotThrow(()->executions.registerRunner(freshStart));
+    }
+    @Test void verifiedHostEvidenceEnablesOnlyQueryConvergenceAndNeverReleasesCapacity() throws Exception {
+        var command=claimEnvironment();executions.beforeCall(command);accept(command,hash("prepare"));
+        var replacement=new RunnerInstance(UUID.randomUUID(),"1".repeat(64),runner.imageId(),"2026-10-22T00:00:05Z");
+        executions.registerRunner(replacement);
+        var now=java.time.Instant.now();var proof=new StoppedRunner(runner,now.minusSeconds(2),now,hash("verified-host-fixture"));
+        runnerProofs.record(proof);runnerProofs.record(proof);
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_runner_stop_proof"));
+        assertEquals("RUNNER_INSTANCE_STOP_UNPROVEN",assertThrows(WorkspaceFailure.class,()->executions.checkRunner(command,runner.id())).code());
+        assertDoesNotThrow(()->executions.checkRunner(command,replacement.id()));
+        assertEquals("RUNNER_INSTANCE_STOPPED",assertThrows(WorkspaceFailure.class,()->executions.registerRunner(runner)).code());
+        assertEquals("RUNNING",executions.receipt(command).state());
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_receipt"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+    }
+    @Test void hostEvidenceMismatchAndExpiredObservationAreRejected() {
+        var now=java.time.Instant.now();
+        var wrong=new RunnerInstance(runner.id(),"1".repeat(64),runner.imageId(),runner.startedAt());
+        assertEquals("STOPPED_RUNNER_IDENTITY_MISMATCH",assertThrows(WorkspaceFailure.class,()->runnerProofs.record(
+                new StoppedRunner(wrong,now.minusSeconds(2),now,hash("wrong")))).code());
+        assertEquals("STOPPED_RUNNER_PROOF_EXPIRED",assertThrows(WorkspaceFailure.class,()->runnerProofs.record(
+                new StoppedRunner(runner,now.minusSeconds(602),now.minusSeconds(601),hash("stale")))).code());
     }
 }

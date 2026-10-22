@@ -16,8 +16,10 @@ public final class EnvironmentRunnerService implements EnvironmentRunnerApi {
     private final RunnerSignatures signatures;
     private final SandboxRuntime runtime;
     private final String image,policy;
-    public EnvironmentRunnerService(EnvironmentExecutionRepository repository,RunnerSignatures signatures,SandboxRuntime runtime,String image,String policy) {
-        this.repository=repository;this.signatures=signatures;this.runtime=runtime;this.image=image;this.policy=policy;
+    private final RunnerInstance instance;
+    public EnvironmentRunnerService(EnvironmentExecutionRepository repository,RunnerSignatures signatures,SandboxRuntime runtime,String image,String policy,RunnerInstance instance) {
+        this.repository=repository;this.signatures=signatures;this.runtime=runtime;this.image=image;this.policy=policy;this.instance=instance;
+        repository.registerRunner(instance);
     }
     public static RunnerSignatures.Binding binding(Command command,String method,String path) {
         return new RunnerSignatures.Binding(method,path,command.commandId(),command.operationId(),command.spaceId(),command.workspaceId(),command.generation(),command.fence());
@@ -55,11 +57,12 @@ public final class EnvironmentRunnerService implements EnvironmentRunnerApi {
         try {command=JSON.readValue(body,Command.class);}catch(RuntimeException invalid) {throw new WorkspaceFailure(400,"INVALID_ENVIRONMENT_COMMAND");}
         validate(command);signatures.verify(token,binding(command,"POST",PATH),body);
         if(!command.equals(repository.lookup(command.operationId())))throw new WorkspaceFailure(409,"RUNNER_COMMAND_CONFLICT");
-        var previous=repository.accept(command,RunnerSignatures.sha256(body));
+        var previous=repository.accept(command,RunnerSignatures.sha256(body),instance.id());
         if(previous!=null) {cleanup(command,previous);return signed(command,previous,PATH);}
         Receipt receipt;
         try {
             repository.check(command);
+            repository.checkRunner(command,instance.id());
             if("PREPARE".equals(command.kind())) {
                 var ready=runtime.prepare(command.physicalIdentity(),()->repository.check(command));
                 receipt=result(command,"COMMITTED","READY",null,ready,null);
@@ -70,7 +73,7 @@ public final class EnvironmentRunnerService implements EnvironmentRunnerApi {
         } catch(RuntimeException unknown) {
             receipt=result(command,"UNKNOWN","MAY_HAVE_STARTED","SANDBOX_RESULT_UNKNOWN",null,null);
         }
-        repository.commitReceipt(command,receipt); // Stop fact must commit before cleanup.
+        repository.commitReceipt(command,receipt,instance.id()); // Stop fact must commit before cleanup.
         cleanup(command,receipt);return signed(command,receipt,PATH);
     }
     @Override public SignedResult query(String token,String operationId) {
@@ -80,13 +83,14 @@ public final class EnvironmentRunnerService implements EnvironmentRunnerApi {
         signatures.verify(token,binding(command,"GET",path),new byte[0]);
         var receipt=repository.receipt(command);
         if("RUNNING".equals(receipt.state())) {
+            repository.checkRunner(command,instance.id());
             Receipt observed=null;
             try {
                 if("PREPARE".equals(command.kind())) observed=result(command,"COMMITTED","READY",null,
                         runtime.verifyReady(command.physicalIdentity(),()->repository.check(command)),null);
                 else if(!runtime.inspect(command.physicalIdentity()).running()) observed=result(command,"COMMITTED","STOPPED",null,null,runtime.stop(command.physicalIdentity()));
             } catch(RuntimeException notProven) { /* Query never creates, starts, replays or frees resources. */ }
-            if(observed!=null) {repository.commitReceipt(command,observed);receipt=observed;}
+            if(observed!=null) {repository.commitReceipt(command,observed,instance.id());receipt=observed;}
         }
         cleanup(command,receipt);return signed(command,receipt,path);
     }

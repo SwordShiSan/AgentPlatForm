@@ -76,14 +76,24 @@ public final class MyBatisEnvironmentExecutionRepository implements EnvironmentE
     @Override public void checkOwnership(Command command) {guard(command,false);}
     @Override public void renew(Command command) {guard(command,true);if(mapper.renew(command)!=1)throw new WorkspaceFailure(409,"ENVIRONMENT_STALE_OWNER");}
     @Override public void beforeCall(Command command) {guard(command,true);if(mapper.beforeCall(command)!=1)throw new WorkspaceFailure(409,"ENVIRONMENT_STALE_OWNER");}
-    @Override public Receipt accept(Command command,String hash) {
+    @Override public void registerRunner(RunnerInstance instance) {
+        tx();mapper.registerRunner(instance);
+        if(!instance.equals(mapper.runner(instance.id())))throw new WorkspaceFailure(409,"RUNNER_INSTANCE_CONFLICT");
+        if(!mapper.runnerActive(instance.id()))throw new WorkspaceFailure(409,"RUNNER_INSTANCE_STOPPED");
+    }
+    @Override public void checkRunner(Command command,UUID runnerId) {
+        guard(command,false);
+        if(!mapper.runnerMayReconcile(command.commandId(),runnerId))throw new WorkspaceFailure(409,"RUNNER_INSTANCE_STOP_UNPROVEN");
+    }
+    @Override public Receipt accept(Command command,String hash,UUID runnerId) {
         guard(command,true);
+        if(!mapper.runnerActive(runnerId))throw new WorkspaceFailure(409,"RUNNER_INSTANCE_UNREGISTERED");
         var previous=mapper.commandHash(command.commandId());
         if(previous!=null) {
             if(!previous.equals(hash))throw new WorkspaceFailure(409,"RUNNER_COMMAND_CONFLICT");
             return receipt(command);
         }
-        if(mapper.accept(command,hash)!=1)throw new WorkspaceFailure(409,"RUNNER_COMMAND_CONFLICT");
+        if(mapper.accept(command,hash,runnerId)!=1)throw new WorkspaceFailure(409,"RUNNER_COMMAND_CONFLICT");
         return null;
     }
     @Override public Receipt receipt(Command command) {
@@ -119,17 +129,20 @@ public final class MyBatisEnvironmentExecutionRepository implements EnvironmentE
                     ||command.containerStartedAt()!=null&&!command.containerStartedAt().equals(stop.startedAt()))throw new WorkspaceFailure(409,"RUNNER_STOP_MISMATCH");
         }
     }
-    @Override public void commitReceipt(Command command,Receipt receipt) {
-        guard(command,true);validate(command,receipt);
+    @Override public void commitReceipt(Command command,Receipt receipt,UUID runnerId) {
+        guard(command,true);checkRunner(command,runnerId);validate(command,receipt);
         var existing=mapper.receipt(command.commandId());
         String json=JSON.writeValueAsString(receipt);String hash=RunnerSignatures.sha256(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         if(existing!=null) {
             if(!existing.contentHash().equals(hash))throw new WorkspaceFailure(409,"RUNNER_RECEIPT_CONFLICT");
             return;
         }
-        if(mapper.commitRunner(command,receipt)!=1)throw new WorkspaceFailure(409,"RUNNER_RECEIPT_CONFLICT");
+        if(mapper.commitRunner(command,receipt,runnerId)!=1)throw new WorkspaceFailure(409,"RUNNER_RECEIPT_CONFLICT");
         mapper.insertReceipt(command,receipt,json,hash);
-        if(receipt.stop()!=null)mapper.insertStop(Uuid7.next(),command,receipt,RunnerSignatures.sha256(JSON.writeValueAsBytes(receipt.stop())));
+        if(receipt.stop()!=null) {
+            var original=mapper.originalRunner(command.commandId());
+            mapper.insertStop(Uuid7.next(),command,receipt,RunnerSignatures.sha256(JSON.writeValueAsBytes(receipt.stop())),runnerId,runnerId.equals(original)?null:original);
+        }
     }
     @Override public void complete(Command command,Receipt receipt) {
         guard(command,true);validate(command,receipt);

@@ -14,9 +14,11 @@ public interface EnvironmentExecutionRepository {
     void checkOwnership(Command command);
     void renew(Command command);
     void beforeCall(Command command);
-    Receipt accept(Command command, String requestHash);
+    void registerRunner(RunnerInstance instance);
+    void checkRunner(Command command, UUID runnerInstanceId);
+    Receipt accept(Command command, String requestHash, UUID runnerInstanceId);
     Receipt receipt(Command command);
-    void commitReceipt(Command command, Receipt receipt);
+    void commitReceipt(Command command, Receipt receipt, UUID runnerInstanceId);
     void complete(Command command, Receipt receipt);
     void uncertain(Command command, String code);
     void quarantine(UUID id, String reason, String payloadHash);

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.workspace.RunnerStopProofMapper">
+    <select id="lockRunner" resultType="com.agentplatform.domain.workspace.RunnerInstance">SELECT id,container_id,image_id,started_at FROM pf.workspace_runner_instance WHERE id=#{id} FOR UPDATE</select>
+    <select id="evidence" resultType="string">SELECT evidence_hash FROM pf.workspace_runner_stop_proof WHERE runner_instance_id=#{id}</select>
+    <select id="fresh" resultType="boolean">SELECT #{proof.observedAt} BETWEEN clock_timestamp()-interval '300 seconds' AND clock_timestamp()+interval '5 seconds'</select>
+    <insert id="insert">INSERT INTO pf.workspace_runner_stop_proof(runner_instance_id,container_id,image_id,started_at,stopped_at,observed_at,evidence_hash) VALUES(#{proof.instance.id},#{proof.instance.containerId},#{proof.instance.imageId},#{proof.instance.startedAt},#{proof.stoppedAt},#{proof.observedAt},#{proof.evidenceHash})</insert>
+</mapper>

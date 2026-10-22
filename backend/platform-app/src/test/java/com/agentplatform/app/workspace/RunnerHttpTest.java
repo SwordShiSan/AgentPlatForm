@@ -54,7 +54,8 @@ class RunnerHttpTest {
                 @org.springframework.beans.factory.annotation.Qualifier("runner") RunnerSignatures signatures){return new RunnerControlService(repository,signatures,allocator);}
         @Bean EnvironmentRunnerApi environmentApi(EnvironmentExecutionRepository repository,SandboxRuntime sandbox,
                 @org.springframework.beans.factory.annotation.Qualifier("runner") RunnerSignatures signatures) {
-            return new EnvironmentRunnerService(repository,signatures,sandbox,"sha256:"+"a".repeat(64),"b".repeat(64));
+            return new EnvironmentRunnerService(repository,signatures,sandbox,"sha256:"+"a".repeat(64),"b".repeat(64),
+                    new RunnerInstance(UUID.randomUUID(),"e".repeat(64),"sha256:"+"f".repeat(64),"2026-10-22T00:00:00Z"));
         }
     }
     @BeforeEach void resetPorts() {
@@ -109,10 +110,10 @@ class RunnerHttpTest {
         when(sandbox.prepare(eq(command.physicalIdentity()),any())).thenReturn(ready);
         try(var client=new com.agentplatform.infrastructure.workspace.SignedRunnerHttpClient(URI.create("http://127.0.0.1:"+port),control)) {
             var result=client.prepareEnvironment(command);assertEquals("COMMITTED",result.state());assertEquals(ready,result.container());
-            when(environmentRepository.accept(eq(command),anyString())).thenReturn(result);
+            when(environmentRepository.accept(eq(command),anyString(),any(UUID.class))).thenReturn(result);
             assertEquals(result,client.prepareEnvironment(command));
             verify(sandbox,times(1)).prepare(eq(command.physicalIdentity()),any());
-            verify(environmentRepository,times(1)).commitReceipt(command,result);
+            verify(environmentRepository,times(1)).commitReceipt(eq(command),eq(result),any(UUID.class));
             when(environmentRepository.receipt(command)).thenReturn(result);
             assertEquals(result,client.queryEnvironment(command));
         }

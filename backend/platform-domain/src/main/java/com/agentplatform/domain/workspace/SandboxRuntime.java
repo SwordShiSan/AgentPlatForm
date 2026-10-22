@@ -41,6 +41,7 @@ public interface SandboxRuntime extends AutoCloseable {
     }
 
     Container prepare(Identity identity, Authority authority);
+    RunnerInstance runnerInstance();
     Container inspect(Identity identity);
     /** Query original startup facts without re-executing a lost preparation command. */
     Container verifyReady(Identity identity, Authority authority);

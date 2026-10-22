@@ -26,6 +26,7 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private final DockerClient docker;
     private final SandboxPolicy policy;
+    private final UUID instanceId=UUID.randomUUID();
     private final ConcurrentMap<UUID, Capture> active = new ConcurrentHashMap<>();
 
     public DockerSandboxRuntime(SandboxPolicy policy) {
@@ -115,6 +116,15 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
     }
 
     @Override public Container inspect(Identity identity) { return view(exact(identity)); }
+
+    @Override public com.agentplatform.domain.workspace.RunnerInstance runnerInstance() {
+        String hostname=System.getenv("HOSTNAME");
+        if(hostname==null||!hostname.matches("[0-9a-f]{12,64}"))throw unavailable("RUNNER_INSTANCE_UNVERIFIED");
+        var self=docker.inspectContainerCmd(hostname).exec();
+        if(!Boolean.TRUE.equals(self.getState().getRunning())||self.getConfig().getLabels()==null
+                ||!"runner".equals(self.getConfig().getLabels().get("ap.role")))throw unavailable("RUNNER_INSTANCE_UNVERIFIED");
+        return new com.agentplatform.domain.workspace.RunnerInstance(instanceId,self.getId(),self.getImageId(),self.getState().getStartedAt());
+    }
 
     @Override public Container verifyReady(Identity identity, Authority authority) {
         authority.check();

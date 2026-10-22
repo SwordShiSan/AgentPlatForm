@@ -112,6 +112,25 @@ CREATE TABLE pf.workspace_environment_inbox (
     operation_id uuid NOT NULL REFERENCES pf.workspace_environment_operation(id),
     received_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
+CREATE TABLE pf.workspace_runner_instance (
+    id uuid PRIMARY KEY,
+    container_id varchar(64) NOT NULL CHECK(container_id ~ '^[0-9a-f]{64}$'),
+    image_id text NOT NULL CHECK(image_id ~ '^sha256:[0-9a-f]{64}$'),
+    started_at text NOT NULL,
+    registered_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    UNIQUE(container_id,started_at)
+);
+CREATE TABLE pf.workspace_runner_stop_proof (
+    runner_instance_id uuid PRIMARY KEY REFERENCES pf.workspace_runner_instance(id),
+    container_id varchar(64) NOT NULL CHECK(container_id ~ '^[0-9a-f]{64}$'),
+    image_id text NOT NULL CHECK(image_id ~ '^sha256:[0-9a-f]{64}$'),
+    started_at text NOT NULL,
+    stopped_at timestamptz NOT NULL,
+    observed_at timestamptz NOT NULL,
+    evidence_hash varchar(64) NOT NULL UNIQUE CHECK(evidence_hash ~ '^[0-9a-f]{64}$'),
+    consumed_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    CHECK(CAST(started_at AS timestamptz)<stopped_at AND stopped_at<=observed_at)
+);
 CREATE TABLE pf.workspace_environment_command (
     command_id uuid PRIMARY KEY,
     space_id uuid NOT NULL,
@@ -121,6 +140,8 @@ CREATE TABLE pf.workspace_environment_command (
     generation bigint NOT NULL CHECK(generation>0),
     fence bigint NOT NULL CHECK(fence>0),
     owner_id uuid NOT NULL,
+    runner_instance_id uuid NOT NULL REFERENCES pf.workspace_runner_instance(id),
+    result_runner_instance_id uuid REFERENCES pf.workspace_runner_instance(id),
     request_hash varchar(64) NOT NULL CHECK(request_hash ~ '^[0-9a-f]{64}$'),
     state text NOT NULL CHECK(state IN('RUNNING','COMMITTED','FAILED','UNKNOWN')),
     result_revision bigint NOT NULL DEFAULT 0 CHECK(result_revision>=0),
@@ -150,9 +171,11 @@ CREATE TABLE pf.workspace_environment_use (
     generation bigint NOT NULL CHECK(generation>0),
     fence bigint NOT NULL CHECK(fence>0),
     owner_id uuid NOT NULL,
+    runner_instance_id uuid REFERENCES pf.workspace_runner_instance(id),
     kind text NOT NULL CHECK(kind IN('FILE_READ','FILE_WRITE','FILE_LIST','FIXED_PROBE')),
     request_hash varchar(64) NOT NULL CHECK(request_hash ~ '^[0-9a-f]{64}$'),
     status text NOT NULL CHECK(status IN('CLAIMED','RUNNING','COMMITTED','FAILED','UNKNOWN','STOPPED')),
+    result_state text NOT NULL DEFAULT 'PENDING' CHECK(result_state IN('PENDING','KNOWN','UNKNOWN')),
     container_id varchar(64) CHECK(container_id ~ '^[0-9a-f]{64}$'),
     exec_id varchar(64) UNIQUE CHECK(exec_id ~ '^[0-9a-f]{64}$'),
     lease_until timestamptz NOT NULL,
@@ -162,7 +185,7 @@ CREATE TABLE pf.workspace_environment_use (
     FOREIGN KEY(space_id,workspace_id,environment_id) REFERENCES pf.workspace_environment(space_id,workspace_id,id),
     UNIQUE(space_id,workspace_id,environment_id,id),
     CHECK(lease_until<=deadline_at),
-    CHECK(status<>'RUNNING' OR(container_id IS NOT NULL AND exec_id IS NOT NULL))
+    CHECK(status<>'RUNNING' OR(container_id IS NOT NULL AND exec_id IS NOT NULL AND runner_instance_id IS NOT NULL))
 );
 CREATE UNIQUE INDEX environment_one_unresolved_use ON pf.workspace_environment_use(environment_id)
     WHERE status IN('CLAIMED','RUNNING','UNKNOWN');
@@ -183,6 +206,8 @@ CREATE TABLE pf.workspace_environment_stop_receipt (
     generation bigint NOT NULL CHECK(generation>0),
     fence bigint NOT NULL CHECK(fence>0),
     owner_id uuid NOT NULL,
+    runner_instance_id uuid NOT NULL REFERENCES pf.workspace_runner_instance(id),
+    prior_runner_proof_id uuid REFERENCES pf.workspace_runner_stop_proof(runner_instance_id),
     proof_kind text NOT NULL CHECK(proof_kind IN('LOCAL_INSPECT','HOST_PROOF','NEVER_STARTED')),
     container_id varchar(64) NOT NULL CHECK(container_id ~ '^[0-9a-f]{64}$'),
     image_id text NOT NULL CHECK(image_id ~ '^sha256:[0-9a-f]{64}$'),
