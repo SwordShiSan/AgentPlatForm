@@ -71,7 +71,7 @@ public final class EnvironmentUseApplicationService {
         if(receipt==null||receipt.resultHash()==null||durable.resultHash()==null)
             throw new WorkspaceFailure(409,"ENVIRONMENT_USE_RECONCILIATION_REQUIRED");
         if(!receipt.resultHash().equals(durable.resultHash()))throw new WorkspaceFailure(503,"RUNNER_RECEIPT_MISMATCH");
-        repository.complete(command);
+        if(!java.util.Set.of("COMMITTED","FAILED","STOPPED").contains(durable.state()))repository.complete(command);
         repository.lookup(actor,useId); // Recheck live authorization before projecting metadata.
         try {runner.queryUse(command);}catch(RuntimeException cleanupPending) { /* Durable stop is authoritative. */ }
         return repository.receipt(command);

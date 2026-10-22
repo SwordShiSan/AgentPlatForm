@@ -45,6 +45,13 @@ class EnvironmentUseApplicationServiceTest {
         assertEquals("ENVIRONMENT_USE_RECONCILIATION_REQUIRED",assertThrows(WorkspaceFailure.class,()->service().reconcile(actor,workspace,command.id())).code());
         verify(repository,never()).complete(any());verify(runner,never()).executeUse(any());verify(repository,never()).renew(any());
     }
+    @Test void alreadyCommittedReconciliationDoesNotReapplyOldOwnership() {
+        var completed=new Receipt(command.id(),"COMMITTED","KNOWN",receipt.resultHash());
+        when(repository.receipt(command)).thenReturn(completed);
+        assertEquals(completed,service().reconcile(actor,workspace,command.id()));
+        verify(repository,never()).complete(any());verify(repository,never()).renew(any());
+        verify(repository,never()).admit(any(),any(),any(),any(),any());verify(runner,never()).executeUse(any());
+    }
     @Test void detachedReconciliationRejectsForeignWorkspaceBeforeRunner() {
         assertEquals(404,assertThrows(WorkspaceFailure.class,()->service().reconcile(actor,UUID.randomUUID(),command.id())).status());
         verifyNoInteractions(runner);verify(repository,never()).complete(any());
