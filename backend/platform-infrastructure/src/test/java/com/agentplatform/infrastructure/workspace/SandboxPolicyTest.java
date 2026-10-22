@@ -10,6 +10,12 @@ class SandboxPolicyTest {
     @Test void missingOrChangedGuestProcessLimitsAreRejected() {
         assertTrue(SandboxPolicy.guestProcessLimitMatches(new com.github.dockerjava.api.model.Ulimit[]{
                 new com.github.dockerjava.api.model.Ulimit("nproc",32,32)}));
+        assertTrue(SandboxPolicy.guestProcessLimitMatches(new com.github.dockerjava.api.model.Ulimit[]{
+                new com.github.dockerjava.api.model.Ulimit("nproc",32,32),
+                new com.github.dockerjava.api.model.Ulimit("nofile",1048576,1048576)}));
+        assertFalse(SandboxPolicy.guestProcessLimitMatches(new com.github.dockerjava.api.model.Ulimit[]{
+                new com.github.dockerjava.api.model.Ulimit("nproc",32,32),
+                new com.github.dockerjava.api.model.Ulimit("nproc",128,128)}));
         assertFalse(SandboxPolicy.guestProcessLimitMatches(null));
         assertFalse(SandboxPolicy.guestProcessLimitMatches(new com.github.dockerjava.api.model.Ulimit[0]));
         for (var limit : new com.github.dockerjava.api.model.Ulimit[]{

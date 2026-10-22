@@ -33,10 +33,17 @@ public record SandboxPolicy(String image, String helperImage, String workspaceRo
     }
 
     static boolean guestProcessLimitMatches(com.github.dockerjava.api.model.Ulimit[] limits) {
-        return limits != null && limits.length == 1 && limits[0] != null
-                && "nproc".equals(limits[0].getName())
-                && Long.valueOf(GUEST_NPROC).equals(limits[0].getSoftLong())
-                && Long.valueOf(GUEST_NPROC).equals(limits[0].getHardLong());
+        if (limits == null) return false;
+        int matches = 0;
+        for (var limit : limits) {
+            if (limit == null) return false;
+            if ("nproc".equals(limit.getName())) {
+                if (++matches != 1 || !Long.valueOf(GUEST_NPROC).equals(limit.getSoftLong())
+                        || !Long.valueOf(GUEST_NPROC).equals(limit.getHardLong())) return false;
+            }
+        }
+        // Docker can append inherited daemon limits (for example nofile).
+        return matches == 1;
     }
 
     public String work(com.agentplatform.domain.workspace.SandboxRuntime.Identity identity) {

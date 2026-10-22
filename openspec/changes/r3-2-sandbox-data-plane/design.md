@@ -2,9 +2,13 @@
 
 ## Detached private-use reconciliation
 
+Use a reusable host-only attestation formatter with the existing standard HMAC-SHA256 envelope, strict private key/metadata files and actual stopped runner inspect (exact UUID/container/config/start, role label,PID0/finished time). It only writes a protected proof; it cannot stop containers, change the database or attest a removed/merely paused runner. The existing standalone least-privilege operator verifies/imports it. No key reaches API/worker/runner/sandbox and no new signing protocol is introduced.
+
 Provide an explicit protected application/fixture reconciliation action for an existing use UUID after its original120/135second caller has ended. It performs live scoped repository lookup, reads any durable fact, otherwise sends only the original signed GET, verifies its hash against the durable result and applies the existing completion transaction. It must never call admit/POST, renew/transfer owner, create a new request or execute the fixed program again. Missing/unconfirmed facts stay pending. Recheck current authorization before returning bounded receipt metadata; no file payload or public endpoint. A replaced runner still requires the existing trusted prior-runner host-stop proof; this action cannot turn an empty callback table into evidence. Reuse the old immutable runtime/policy only for convergence, then create a new generation with the tighter policy; never edit the old fact/hash or hot-adopt its container.
 
 ## PID pressure feasibility follow-up
+
+Actual stopped-pilot inspect also contains the daemon's inherited nofile1048576/1048576. Match exactly one nproc32/32 entry without treating that unrelated default as a policy mismatch; missing, duplicate or altered nproc remains refused. This native shape was checked before starting the new candidate, rather than weakening a failed runtime gate.
 
 The bounded pilot `/srv/agentplatform/acceptance/r32-pidpilot-20261022t112226z` passed: Docker exec inherited32/32, the fixed program refused after30 children, normal Docker stop completed in0.1137seconds, and R2 was restored without emergency stop. Accept this configuration for the next candidate: docker-java HostConfig.withUlimits(new Ulimit("nproc",32,32)); require precisely that limit during inspect, add `nproc32` to the immutable policy hash and retain host PID128. New generation only; old-policy environments are not hot-adopted. This proves only the no-data compatibility experiment, not the final persistent runner/file/idle/quota gates.
 
