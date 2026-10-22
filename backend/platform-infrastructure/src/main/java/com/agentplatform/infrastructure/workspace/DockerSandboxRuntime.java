@@ -270,7 +270,12 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
             authority.check();
             var start = docker.execStartCmd(exec).withDetach(false).withTty(false);
             if (input != null) start.withStdIn(new ByteArrayInputStream(input));
-            capture.startRequested = true;
+            synchronized (capture) {
+                // A stop before start must prohibit every later start, not merely
+                // count down a latch while the execution thread can still start.
+                if (capture.stopRequested) throw unavailable("SANDBOX_STOP_REQUESTED");
+                capture.startRequested = true;
+            }
             start.exec(capture);
             long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(120);
             while (true) {
@@ -309,7 +314,10 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
     @Override public Stop stop(Identity identity) {
         var found = exact(identity);
         Capture capture = active.get(identity.environmentId());
-        if (capture != null && !capture.startRequested) capture.finished.countDown();
+        if (capture != null) synchronized (capture) {
+            capture.stopRequested = true;
+            if (!capture.startRequested) capture.finished.countDown();
+        }
         if (Boolean.TRUE.equals(found.getState().getRunning())) {
             docker.stopContainerCmd(found.getId()).withTimeout(2).exec();
         }
@@ -348,6 +356,7 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
         private final CountDownLatch finished = new CountDownLatch(1);
         private volatile String execId;
         private volatile boolean startRequested;
+        private volatile boolean stopRequested;
         private volatile boolean truncated;
         private volatile Throwable failure;
         @Override public synchronized void onNext(Frame frame) {

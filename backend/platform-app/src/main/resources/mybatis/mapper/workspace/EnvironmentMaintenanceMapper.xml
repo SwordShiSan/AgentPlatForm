@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.workspace.EnvironmentMaintenanceMapper">
+    <select id="expiredOperation" resultType="java.util.UUID"><![CDATA[
+        SELECT o.id FROM pf.workspace_environment_operation o JOIN pf.workspace_environment e ON e.operation_id=o.id
+        WHERE o.status IN('CLAIMED','RUNNING') AND(o.lease_until<=clock_timestamp() OR o.deadline_at<=clock_timestamp())
+        ORDER BY o.created_at LIMIT 1
+    ]]></select>
+    <update id="blockExpired"><![CDATA[
+        UPDATE pf.workspace_environment_operation SET status='UNKNOWN',effect_state='MAY_HAVE_STARTED',error_code='ENVIRONMENT_OWNER_EXPIRED',version=version+1
+        WHERE id=#{operationId} AND status IN('CLAIMED','RUNNING') AND(lease_until<=clock_timestamp() OR deadline_at<=clock_timestamp())
+    ]]></update>
+    <select id="readyOperation" resultType="java.util.UUID">
+        SELECT o.id FROM pf.workspace_environment e JOIN pf.workspace_environment_operation o ON o.id=e.operation_id
+        WHERE e.state='READY' AND o.status='COMMITTED' AND o.kind='PREPARE' ORDER BY e.last_activity_at LIMIT 1
+    </select>
+    <select id="idle" resultType="boolean"><![CDATA[
+        SELECT EXISTS(SELECT 1 FROM pf.workspace_environment WHERE id=#{environmentId} AND state='READY' AND last_activity_at<=clock_timestamp()-interval '60 seconds')
+    ]]></select>
+    <insert id="insertStop">INSERT INTO pf.workspace_environment_operation(id,space_id,workspace_id,environment_id,kind,initiator,actor_id,command_id,generation,fence,status)
+        VALUES(#{operationId},#{previous.spaceId},#{previous.workspaceId},#{previous.environmentId},'STOP','SYSTEM',#{previous.actorId},#{commandId},#{previous.generation},#{fence},'PENDING')
+    </insert>
+    <update id="selectStop">UPDATE pf.workspace_environment SET operation_id=#{operationId},fence=#{fence},version=version+1,updated_at=clock_timestamp()
+        WHERE id=#{previous.environmentId} AND space_id=#{previous.spaceId} AND workspace_id=#{previous.workspaceId} AND generation=#{previous.generation} AND fence=#{previous.fence}
+        AND operation_id=#{previous.operationId} AND state='READY'
+    </update>
+</mapper>

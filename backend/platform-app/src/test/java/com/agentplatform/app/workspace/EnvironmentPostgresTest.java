@@ -28,6 +28,7 @@ class EnvironmentPostgresTest {
     private EnvironmentPreparationRepository environments;
     private WorkspaceRepository workspaces;
     private EnvironmentExecutionRepository executions;
+    private EnvironmentMaintenanceRepository maintenance;
     private Actor alice, bob;
     private static Flyway flyway(String target) {
         var configuration = Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf")
@@ -74,6 +75,8 @@ class EnvironmentPostgresTest {
                 session.getMapper(EnvironmentPreparationMapper.class),mapper,"sha256:"+"a".repeat(64),"b".repeat(64)),transactions);
         executions=new TransactionalEnvironmentExecutionRepository(new MyBatisEnvironmentExecutionRepository(
                 session.getMapper(EnvironmentExecutionMapper.class),session.getMapper(EnvironmentPreparationMapper.class),mapper),transactions);
+        maintenance=new TransactionalEnvironmentMaintenanceRepository(new MyBatisEnvironmentMaintenanceRepository(
+                session.getMapper(EnvironmentMaintenanceMapper.class),session.getMapper(EnvironmentPreparationMapper.class),session.getMapper(EnvironmentExecutionMapper.class),mapper),transactions);
         var identity=IdentityPersistenceFixture.create(pool);
         UUID a=identity.provision(UUID.randomUUID(),"alice","alice","not-a-login-password",true);
         UUID b=identity.provision(UUID.randomUUID(),"bob","bob","not-a-login-password",false);
@@ -239,5 +242,51 @@ class EnvironmentPostgresTest {
         assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_operation WHERE status='FAILED' AND effect_state='NOT_STARTED'"));
         assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_command"));
         assertEquals(0,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+    }
+    @Test void expirationBlocksWithoutReplacingOwnerOrFreeingSlot() throws Exception {
+        var command=claimEnvironment();
+        assertEquals(0,maintenance.blockExpired());
+        sql("UPDATE pf.workspace_environment_operation SET lease_until=clock_timestamp()-interval '1 second'");
+        assertEquals(1,maintenance.blockExpired());assertEquals(0,maintenance.blockExpired());
+        assertEquals("BLOCKED",environments.get(alice,command.workspaceId()).state());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_operation WHERE owner_id='"+command.ownerId()+"' AND status='UNKNOWN'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        assertEquals("ENVIRONMENT_STALE_OWNER",assertThrows(WorkspaceFailure.class,()->executions.renew(command)).code());
+    }
+    private com.agentplatform.domain.workspace.EnvironmentExecutionData.Command readyEnvironment() throws Exception {
+        var command=claimEnvironment();executions.beforeCall(command);executions.accept(command,hash("prepare"));
+        var receipt=ready(command);executions.commitReceipt(command,receipt);executions.complete(command,receipt);return command;
+    }
+    @Test void idleStopIsDurableAndReleasesOnlyAfterExactStopReceipt() throws Exception {
+        var original=readyEnvironment();assertEquals(0,maintenance.scheduleStop());
+        sql("UPDATE pf.workspace_environment SET last_activity_at=clock_timestamp()-interval '61 seconds'");
+        assertEquals(1,maintenance.scheduleStop());assertEquals(0,maintenance.scheduleStop());
+        var stopping=environments.get(alice,original.workspaceId());
+        assertEquals("STOP",stopping.operationKind());assertEquals("PENDING",stopping.operationStatus());assertEquals("READY",stopping.state());
+        var publication=executions.publications(UUID.randomUUID()).stream().filter(p->p.operationId().equals(stopping.operationId())).findFirst().orElseThrow();
+        var command=executions.claim(publication,UUID.randomUUID());
+        assertEquals(original.physicalIdentity(),command.physicalIdentity());assertEquals(2,command.fence());
+        assertNotEquals(original.commandId(),command.commandId());
+        executions.beforeCall(command);executions.accept(command,hash("stop"));
+        var stop=new SandboxRuntime.Stop("c".repeat(64),command.imageId(),command.containerStartedAt(),"2026-10-22T00:00:05Z",true,true,java.time.Instant.now());
+        var receipt=new com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt(command.commandId(),command.operationId(),command.environmentId(),command.workspaceId(),
+                command.generation(),command.fence(),"COMMITTED","STOPPED",null,null,stop,1);
+        executions.commitReceipt(command,receipt);
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_stop_receipt"));
+        executions.complete(command,receipt);
+        assertEquals("STOPPED",environments.get(alice,command.workspaceId()).state());
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        var rebuilt=prepare(command.workspaceId(),UUID.randomUUID(),4,false);
+        assertEquals(2,rebuilt.environment().generation());assertEquals(5,rebuilt.environment().version());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_stop_receipt"));
+    }
+    @Test void revocationDoesNotPreventPrivilegeReducingStop() throws Exception {
+        var original=readyEnvironment();
+        sql("UPDATE pf.membership SET status='REVOKED' WHERE user_id='"+alice.userId()+"'");
+        assertEquals(1,maintenance.scheduleStop());
+        var item=executions.publications(UUID.randomUUID()).stream().filter(p->!p.operationId().equals(original.operationId())).findFirst().orElseThrow();
+        var stop=executions.claim(item,UUID.randomUUID());assertNotNull(stop);assertEquals("STOP",stop.kind());
+        assertDoesNotThrow(()->executions.check(stop));
     }
 }
