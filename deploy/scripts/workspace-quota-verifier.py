@@ -55,7 +55,17 @@ def verify(space, workspace, project, expected_uuid):
     for flag, expected in (("-b", 2097152), ("-i", 100000)):
         report = quota.run(["xfs_quota", "-x", "-c", f"report -p {flag} -n -N -L {project} -U {project}", str(root)])
         quota.hard_limit(report, project, expected)
-    project_stat = quota.run(["xfs_io", "-r", "-c", "stat", str(work)])
+    # O_PATH obtains the checked directory handle without granting root a DAC bypass.
+    # Enter it only after dropping to its owner;0700 ancestors remain unchanged.
+    work_fd = os.open(work, os.O_PATH | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    try:
+        os.setgroups([])
+        os.setgid(10001)
+        os.setuid(10001)
+        os.fchdir(work_fd)
+    finally:
+        os.close(work_fd)
+    project_stat = quota.run(["xfs_io", "-r", "-c", "stat", "."])
     if not re.search(rf"fsxattr\.projid\s*=\s*{project}\b", project_stat):
         raise ValueError("WORKSPACE_PROJECT_MISMATCH")
     return {"verified": True, "allocationHash": hashlib.sha256(raw).hexdigest()}
