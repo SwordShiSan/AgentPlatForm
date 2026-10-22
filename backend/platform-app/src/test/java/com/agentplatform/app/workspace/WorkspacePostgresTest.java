@@ -36,7 +36,7 @@ class WorkspacePostgresTest {
         flyway.clean();
         Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").target("9").load().migrate();
         assertEquals(9,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
-        flyway.migrate();assertEquals(10,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
+        flyway.migrate();assertEquals(11,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
     }
     private static void sql(String text) throws Exception {

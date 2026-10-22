@@ -6,6 +6,7 @@
 !deploy/probes/**
 !deploy/scripts/workspace-quota-helper.py
 !deploy/scripts/sandbox-file-bridge.py
+!deploy/scripts/sandbox-entrypoint.py
 !deploy/scripts/workspace-quota-verifier.py
 !deploy/security/**
 !.cache/foundation/**

@@ -2,7 +2,7 @@
 - [x] 1.1 Approved Plan, clean baseline/phase tree and unique step/change.
 - [x] 1.2 Formal Plan,ADR/contracts/scope alignment and strict before application code.
 ## 2. Feasibility
-- [ ] 2.1 Locked engine/runtime/image attestation and bounded file/exec/stop experiment.
+- [x] 2.1 Locked engine/runtime/image attestation and bounded file/exec/stop experiment.
 - [ ] 2.2 Fail-closed paths/quota/UID,real stop barrier and immutable probe evidence.
 ## 3. Persistence and runner
 - [ ] 3.1 V11 typed Mapper/XML,scoped transactions/slot/use lease/live guards.

@@ -1,0 +1,26 @@
+name: agentplatform-r32-local
+# Independent foundation profile; application/runner services are added with their gates.
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.1-pg17-trixie@sha256:137f044b0efe3d57f39b972b9b53641b1f2045b99d879e298bbf514a25787dcf
+    restart: "no"
+    mem_limit: 320m
+    memswap_limit: 320m
+    cpus: 1
+    environment:
+      POSTGRES_DB: environment_test
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    ports: ["127.0.0.1:15449:5432"]
+    volumes: ["environment-data:/var/lib/postgresql/data"]
+    networks: [control, local-access]
+    healthcheck: {test: [CMD-SHELL, pg_isready -U postgres -d environment_test], interval: 2s, timeout: 3s, retries: 30}
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+secrets:
+  postgres_password:
+    file: ${R32_ROOT:?Set independent protected R32 fixture root}/postgres-password
+volumes:
+  environment-data: {}
+networks:
+  control: {internal: true}
+  local-access: {}

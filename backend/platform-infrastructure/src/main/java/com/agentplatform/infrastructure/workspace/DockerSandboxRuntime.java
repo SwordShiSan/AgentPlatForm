@@ -46,6 +46,25 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
                 "ap.fence", Long.toString(identity.fence()), "ap.policy", policy.hash());
     }
 
+    private String[] startup(Identity identity) {
+        return new String[]{"--environment", identity.environmentId().toString(), "--space", identity.spaceId().toString(),
+                "--workspace", identity.workspaceId().toString(), "--command", identity.commandId().toString(),
+                "--generation", Long.toString(identity.generation()), "--fence", Long.toString(identity.fence()),
+                "--policy", policy.hash()};
+    }
+
+    private String canary(Identity identity) {
+        return "r32-ready-v1\n" + identity.environmentId() + "\n" + identity.spaceId() + "\n" + identity.workspaceId()
+                + "\n" + identity.commandId() + "\n" + identity.generation() + "\n" + identity.fence() + "\n" + policy.hash() + "\n";
+    }
+
+    private String canaryHash(Identity identity) {
+        try {
+            return HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(canary(identity).getBytes(StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
+    }
+
     private void runtime() {
         try {
             var entry = docker.infoCmd().exec().getRuntimes().get("runsc");
@@ -72,6 +91,8 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
         if (!policy.image().equals(found.getImageId()) || found.getConfig().getLabels() == null
                 || !found.getConfig().getLabels().entrySet().containsAll(labels(identity).entrySet())
                 || !"10001:10001".equals(found.getConfig().getUser()) || !"runsc".equals(host.getRuntime())
+                || !Arrays.equals(new String[]{"python3", "/opt/platform/sandbox-entrypoint.py"}, found.getConfig().getEntrypoint())
+                || !Arrays.equals(startup(identity), found.getConfig().getCmd())
                 || !Boolean.TRUE.equals(host.getReadonlyRootfs()) || Boolean.TRUE.equals(host.getPrivileged())
                 || !"none".equals(host.getNetworkMode()) || !Long.valueOf(SandboxPolicy.MEMORY).equals(host.getMemory())
                 || !Long.valueOf(SandboxPolicy.MEMORY).equals(host.getMemorySwap())
@@ -95,6 +116,38 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
 
     @Override public Container inspect(Identity identity) { return view(exact(identity)); }
 
+    @Override public Container verifyReady(Identity identity, Authority authority) {
+        authority.check();
+        runtime();
+        var found = exact(identity);
+        if (!Boolean.TRUE.equals(found.getState().getRunning())) throw unavailable("SANDBOX_NOT_RUNNING");
+        var capture = new Capture();
+        try {
+            docker.logContainerCmd(found.getId()).withStdOut(true).withTail(1).exec(capture);
+            if (!capture.finished.await(5, TimeUnit.SECONDS) || capture.failure != null || capture.truncated) {
+                throw unavailable("SANDBOX_READINESS_UNCONFIRMED");
+            }
+            var receipt = JSON.readTree(capture.stdout());
+            if (receipt == null || !receipt.path("ready").asBoolean() || !identity.commandId().toString().equals(receipt.path("commandId").asText())
+                    || !policy.hash().equals(receipt.path("policyHash").asText())
+                    || !canaryHash(identity).equals(receipt.path("contentHash").asText())) {
+                throw unavailable("SANDBOX_READINESS_UNCONFIRMED");
+            }
+            verifyStorage(identity, true);
+            authority.check();
+            var latest = exact(identity);
+            if (!found.getId().equals(latest.getId()) || !Boolean.TRUE.equals(latest.getState().getRunning())) {
+                throw unavailable("SANDBOX_READINESS_UNCONFIRMED");
+            }
+            return view(latest);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw unavailable("SANDBOX_READINESS_UNCONFIRMED");
+        } finally {
+            try { capture.close(); } catch (java.io.IOException ignored) { /* transport closure is not stop proof */ }
+        }
+    }
+
     @Override public Container prepare(Identity identity, Authority authority) {
         authority.check();
         runtime();
@@ -112,14 +165,27 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
                 .withTmpFs(Map.of("/tmp", "rw,noexec,nosuid,size=64m,uid=10001,gid=10001,mode=700"))
                 .withLogConfig(new LogConfig(LogConfig.LoggingType.JSON_FILE, Map.of("max-size", "10m", "max-file", "3")));
         var created = docker.createContainerCmd(policy.image()).withName(name(identity)).withLabels(labels(identity))
-                .withUser("10001:10001").withWorkingDir("/workspace").withCmd("sleep", "infinity").withHostConfig(host).exec();
+                .withUser("10001:10001").withWorkingDir("/workspace").withCmd(startup(identity)).withHostConfig(host).exec();
         exact(identity);
         authority.check();
         docker.startContainerCmd(created.getId()).exec();
-        return inspect(identity);
+        long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (true) {
+            try { return verifyReady(identity, authority); }
+            catch (WorkspaceFailure notReady) {
+                if (!"SANDBOX_READINESS_UNCONFIRMED".equals(notReady.code()) || System.nanoTime() >= until) throw notReady;
+                try { Thread.sleep(100); }
+                catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw unavailable("SANDBOX_READINESS_UNCONFIRMED");
+                }
+            }
+        }
     }
 
-    private void verifyStorage(Identity identity) {
+    private void verifyStorage(Identity identity) { verifyStorage(identity, false); }
+
+    private void verifyStorage(Identity identity, boolean checkCanary) {
         String verifier = "ap-env-verify-" + UUID.randomUUID();
         var host = HostConfig.newHostConfig().withNetworkMode("none").withReadonlyRootfs(true)
                 .withMemory(64L * 1024 * 1024).withMemorySwap(64L * 1024 * 1024).withPidsLimit(32L)
@@ -128,11 +194,13 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
                 .withDevices(DockerWorkspaceAllocator.fixedQuotaDevice(policy.quotaDevice()))
                 .withBinds(new Bind(policy.workspaceRoot(), new Volume("/quota"), AccessMode.ro))
                 .withTmpFs(Map.of("/tmp", "rw,noexec,nosuid,size=8m"));
+        var arguments = new ArrayList<>(List.of("--space", identity.spaceId().toString(), "--workspace", identity.workspaceId().toString(),
+                "--project", Integer.toString(identity.projectId()), "--mount-uuid", policy.mountUuid().toString()));
+        if (checkCanary) arguments.addAll(List.of("--canary-command", identity.commandId().toString(), "--canary-hash", canaryHash(identity)));
         var created = docker.createContainerCmd(policy.helperImage()).withName(verifier).withUser("0:0")
                 .withLabels(Map.of("ap.role", "environment-verifier", "ap.command", identity.commandId().toString()))
                 .withHostConfig(host).withEntrypoint("python3", "/opt/workspace-quota-verifier.py")
-                .withCmd("--space", identity.spaceId().toString(), "--workspace", identity.workspaceId().toString(),
-                        "--project", Integer.toString(identity.projectId()), "--mount-uuid", policy.mountUuid().toString()).exec();
+                .withCmd(arguments.toArray(String[]::new)).exec();
         boolean stopped = false;
         try {
             docker.startContainerCmd(created.getId()).exec();
