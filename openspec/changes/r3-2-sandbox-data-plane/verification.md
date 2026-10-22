@@ -1,5 +1,15 @@
 # R3.2 verification
 
+## Current candidate checkpoint: source51b8719a1de1 (not VERIFIED)
+
+Native persisted-fact diagnosis after the interrupted window found nine uses: Python666, Node cross-read, application write/read/list and NETWORK_BOUND all committed exit0; CPU_BOUND committed FAILED/exit1 at its guest wait4 ratio assertion (11.37 versus8.054714335seconds). The prior broad "resource-program failure" must not be described as a network isolation failure. Original ledger facts, stderr and window failure remain preserved. Host cgroup CPU enforcement was not sampled in that attempt and is NOT_RUN. The replacement CPU gate requires exact host cgroup identity/quota/usage/throttling evidence, with guest samples explicitly pending host assertion. This is an acceptance instrumentation correction, not a claim of repaired gVisor or passed CPU isolation.
+
+The immutable candidate's full Maven, frontend38 cases and non-root Linux SDK51 cases pass. A fresh isolated whole-process dataset migrated toV11/runtime1, provisioned three fixture accounts, and started the exact runner plus API/worker/gateway. The runner-root integration correction and temporary320MiB bootstrap operator passed their actual rerun; previous startup failures remain preserved.
+
+Actual browser run `runtime-51b8719a1de1/browser-1792661295309` passes real sessions, virtual NOT_CREATED/ETag0 without allocation, storage-not-ready rejection, unknown-field/CSRF rejection, two users and administrator isolation, network recovery,375/768/1440 widths, CSS200, keyboard/theme, internal-route closure, logout and other-session survival. The original successful lost-response/idempotency assertion is linked from its preserved failed driver run against the same workspace, not replayed. Earlier driver failures remain FAIL: refresh before SPA navigation, then Tab from an uncontrolled focus position. The corrected keyboard test starts from a known navigation link. This is local negative-native-boundary evidence only; no XFS/runsc positive claim. Supplier calls0. The complete local fixture stack was explicitly stopped with volumes/images retained before artifact export.
+
+Current native whole-chain, separate-process fault windows, positive browser, resource limits,1800s observation and final production restoration gates remain NOT_RUN. No PR promotion or R3 production deployment is authorized by this checkpoint alone.
+
 Status NOT_RUN. Application code not started; baselineff16819. Every command/source/image/environment/exit/assertion/hash is retained separately. Model calls0; productionR2 unchanged until explicitly recorded temporary native window.
 
 | Group | Mandatory evidence |

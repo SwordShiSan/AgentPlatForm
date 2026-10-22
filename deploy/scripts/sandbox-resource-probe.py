@@ -30,8 +30,11 @@ def cpu():
         assert status == 0
         consumed += usage.ru_utime + usage.ru_stime
     elapsed = time.monotonic() - started
-    assert 1 < consumed <= elapsed * 1.35, (consumed, elapsed)
-    return {"sampleCpuSeconds": consumed, "sampleWallSeconds": elapsed}
+    # wait4 is the sandbox's accounting view. The exact host cgroup quota,
+    # usage and throttling deltas are the authority for the CPU1 boundary.
+    assert consumed > 1 and elapsed >= 8, (consumed, elapsed)
+    return {"guestSampleCpuSeconds": consumed, "sampleWallSeconds": elapsed,
+            "enforcementEvidence": "REQUIRES_HOST_CGROUP_ASSERTION"}
 
 
 def pids():

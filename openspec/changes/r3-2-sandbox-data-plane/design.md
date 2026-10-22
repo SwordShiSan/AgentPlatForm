@@ -1,5 +1,13 @@
 # Design
 
+## CPU acceptance authority refinement
+
+The current native candidate committed the fixed Python/Node/file roundtrip and network probe, but the CPU probe failed its guest wait4 accounting ratio (11.37CPU seconds/8.0547wall seconds). Preserve that FAIL; this does not establish host quota failure or a specific third-party bug. CPU enforcement must be assessed from the exact sandbox's host cgroup quota/period, monotonic CPU usage and throttling deltas while the fixed two-child workload runs. The guest program reports its workload/accounting sample only; like the memory probe, the protected operator must emit RECORDED_REQUIRES_HOST_ASSERTION until the independent host assertion is saved. Missing cgroup identity/counters or an exceeded host bound remains FAIL/NOT_RUN, never a guest-declared PASS. No runtime downgrade, larger CPU quota or third-party modification is permitted. A new source/image and affected regression are required after updating the probe.
+
+## Native acceptance disk preparation refinement
+
+After the completed feasibility window has restored R2, its inactive independent R32 feasibility XFS may undergo the same reversible cold archival as the earlier R31 test disk. This applies only to `/srv/agentplatform/acceptance/r32-feas-20261022t024730z/quota/workspaces.xfs`, UUID1756391f-bccc-4fa9-8694-ea1501bcec1d. Under the switch lock, verify the completed restoration receipt, no live controller/container/mount/loop and exact regular non-symlink source. Before releasing that exact raw allocation, preserve two independently decompression/hash-verified protected archives and source metadata/UUID/restore instructions; recheck inode/mtime/hash and root reserve. No production/legacy volume or image cleanup. The final candidate receives a new root, new data and new preallocated4GiB filesystem; insufficient admission stops staging. Temporary account/migration operator320MiB is separate from the256MiB data-use fixture; sandbox-phase use requires API/gateway stopped,2624MiB including sandbox/runtime/helper. Argon2 parameters and swap constraints stay unchanged.
+
 ## Accepted baseline and framework ownership
 Base main ff16819fec83c5eb27bb936a41552df61032d24b; phase synced by fast-forward before step creation. Java21/Boot4.0.8/AgentScope2.0.4/docker-java3.7.1 and existing Nimbus/Spring AMQP/MyBatis remain locked. No extra Agent loop or JDBC executor.
 

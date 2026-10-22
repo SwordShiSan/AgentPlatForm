@@ -121,7 +121,7 @@ public final class EnvironmentFixtureOperator implements ApplicationRunner {
             if(!"UNKNOWN".equals(fact.resultState())||fact.stop()==null||!repository.stopCommitted(fact.useId()))throw new WorkspaceFailure(409,"FIXTURE_ASSERTION_FAILED");
         }
         System.out.println(JSON.writeValueAsString(Map.of("fixtureId",scope.fixtureId(),"runId",scope.runId(),"action",action,
-                "status","resource-memory".equals(action)?"RECORDED_REQUIRES_HOST_ASSERTION":"PASS",
+                "status",Set.of("resource-memory","resource-cpu").contains(action)?"RECORDED_REQUIRES_HOST_ASSERTION":"PASS",
                 "scope","fixed program assertions; host isolation/resource assertions separate","supplierCalls",0,"uses",reports)));
     }
 }
