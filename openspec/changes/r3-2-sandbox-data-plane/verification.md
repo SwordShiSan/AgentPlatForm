@@ -1,5 +1,14 @@
 # R3.2 verification
 
+## Final mandatory acceptance PASS; protected promotion pending
+
+Application19d3f5229cd3 and testdaab8c4b4e71 completed all mandatory gates. Final creation/mount window:3 actual process cases with two worker processes, one owner/inbox/command each; before-create produced0 containers, created-before-start produced1/0 starts, after-start produced1/1 and converged by original query. Unknown cases retained capacity and independent disabled database snapshots. The canonical fixture database OID16384 was restored. Missing XFS refused before effect without writing the underlying directory; remounting the same UUID allowed real browser explicit retry, retained-file readback and idle stopping. BLOCKED UI offered no retry.
+
+The separate1879.700147-second observation completed21 cycles and376 samples with broker/DB failures and exact helper mutual exclusion. Both windows restored the exact R2 ten services/policies/V9/production UUID; all R3.2 test/fixture resources stopped and old platform remained stopped. Final public IP browser passed login, history refresh, cross-account/admin isolation, layouts/themes and logout; no model request. Protected217-file evidence index SHA256751be650316a277394d0c4b69df208ac52ecb3b9b540026f9dea68c2ad5db848 is present in two local protected copies. Final static strict and links checks passed. Public sanitized evidence is deploy/r3.2-acceptance.json and evidence/r32/evidence-index.json; original FAIL records remain.
+
+Historical notes below are preserved process snapshots. R3.2 is not marked VERIFIED until protected step→phase→main promotion completes. R3 remains unreleased, production R2 unchanged; no public file/shell/model tool capability is claimed.
+
+
 ## Current observation checkpoint, final process gates pending
 
 The first isolated creation-matrix launch failed during API startup at its experimental256MiB cap, before the case submitted an operation. Its clone was preserved with connections disabled, canonical OID16384 restored, exact R2 restored, and the original FAIL retained. The next short dual-worker profile keeps proven API384, workers288 each and MQ384; with PG320/runner384/gateway32/sandbox512/runtime128/helper64 the configured ceiling is2784MiB. This is a separately measured transient fault profile, not a claim that the earlier31-minute single-worker observation used these different allocations.
