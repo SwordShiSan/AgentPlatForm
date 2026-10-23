@@ -132,6 +132,8 @@ The proof importer is a non-web standalone `workspace-environment-ops` profile w
 
 V12纠正后的受保护整链路fixture仅接受迁移版本12，继续要求独立environment_test数据库、精确fixture/actor/space/workspace/策略身份；不能沿用原V11硬编码，也不放宽为任意未来版本。此处修正验收驱动版本门禁，不改变生产授权或runtime baseline1。
 
+最终验收增加固定宿主conformance probe：仅在独立工程已有STOPPED收据、全局槽空闲且API/worker/runner停止后，串行启动一个锁定gVisor canary和一个64MiB受信桥接容器，验证同一XFS目录中的路径/文件类型拒绝及跨容器目录变化下安全读取。该probe不是应用账本权威；签名runner、helper intent/exec/stop事实及进程丢失由真实持久链路独立验证。现有file-helper-before-exec-start故障钩子补入r32隔离fixture允许列表；生产profile、其他stage及任意故障名仍拒绝。整合窗口依次执行短门禁、真实浏览器、至少1800秒观察及恢复；每项失败仍阻断后续观察/晋级。
+
 file-helper复用锁定quota-helper镜像中的Python/固定桥接入口，但显式non-root10001、root只读、cap_drop ALL/no-new-privileges、无网络/设备/socket/凭据，只挂当前work。固定入口只接受有界JSONL，禁止用户代码/任意程序参数；64MiB/32PID/CPU1，与quota helper共用单辅助槽，不并行占额。gVisor继续512MiB/CPU1/PID128+nproc32，负责全部不可信执行。策略hash升级为分离桥接版本并绑定helper镜像/限制；只对新generation生效。
 
 新增V12（不修改V1–V11或runtime baseline1），为原use增加独立helper intent/physical binding与不可变停止收据。纯Java端口与MyBatis类型Mapper/PO/XML，Spring TransactionTemplate短事务；锁序仍slot→workspace→environment→use→helper。先提交稳定use派生的helper名称/镜像/策略/owner/fence/runner意图，再Docker create；持久绑定精确container后，在start请求前提交start intent，exec身份在execStart前提交。外部IO不在DB事务内。已存在/结果不明的intent只能查询原helper，不重新create/start；查询不到不能推出从未创建。

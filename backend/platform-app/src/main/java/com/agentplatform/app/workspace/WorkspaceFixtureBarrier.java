@@ -9,7 +9,7 @@ final class WorkspaceFixtureBarrier implements com.agentplatform.domain.workspac
     private static final Set<String> ENVIRONMENT_POINTS=Set.of("environment-claim-before-commit","environment-claim-after-commit-before-ack",
             "environment-ack-before-runner","environment-runner-accepted","environment-before-create","environment-created-before-start",
             "environment-started-before-readiness","environment-readiness-before-receipt","environment-receipt-before-response",
-            "use-output-before-result","use-result-before-response");
+            "use-output-before-result","use-result-before-response","file-helper-before-exec-start");
     private final String selected;
     private WorkspaceFixtureBarrier(String selected){this.selected=selected;}
     static WorkspaceFixtureBarrier none(){return new WorkspaceFixtureBarrier(null);}
