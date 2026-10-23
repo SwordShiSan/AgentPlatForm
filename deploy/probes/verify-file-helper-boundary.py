@@ -66,7 +66,7 @@ def main(plan_file):
     def create(name, image, runtime, memory, pids, tmp, program):
         args = ['docker','create','--name',name,'--label','r32.root='+str(root),'--label','r32.boundary='+nonce,
                 '--runtime',runtime,'--network','none','--read-only','--user','10001:10001',
-                '--cap-drop','ALL','--security-opt','no-new-privileges','--memory',str(memory)+'m',
+                '--cap-drop','ALL','--security-opt','no-new-privileges:true','--memory',str(memory)+'m',
                 '--memory-swap',str(memory)+'m','--cpus','1','--pids-limit',str(pids),
                 '--tmpfs','/tmp:rw,noexec,nosuid,size='+str(tmp)+'m,uid=10001,gid=10001,mode=700',
                 '--mount','type=bind,src='+str(work)+',dst=/workspace','--entrypoint','python3']
@@ -141,6 +141,12 @@ print(json.dumps({'mutations':count}),flush=True)
         failures=[]
         for row in reversed(report['containers']):
             try:
+                before=inspect(row['id'])['State']
+                if before['Status']=='created' and not before['Running'] and before['Pid']==0:
+                    assert before['StartedAt'].startswith('0001') and before['FinishedAt'].startswith('0001')
+                    row['neverStarted']=True
+                    call(['docker','rm',row['id']])
+                    continue
                 call(['docker','stop','-t','5',row['id']]);state=inspect(row['id'])['State']
                 assert not state['Running'] and state['Pid']==0 and state['FinishedAt']>state['StartedAt']
                 row['stopped']={'startedAt':state['StartedAt'],'finishedAt':state['FinishedAt'],'pid':state['Pid']}
