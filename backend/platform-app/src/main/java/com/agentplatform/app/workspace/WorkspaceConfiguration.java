@@ -16,7 +16,7 @@ public class WorkspaceConfiguration {
             @org.springframework.beans.factory.annotation.Value("${platform.workspace.fixture.point:}")String point,
             @org.springframework.beans.factory.annotation.Value("${platform.workspace.fixture.stage:}")String stage) {
         return WorkspaceFixtureBarrier.configured(point,stage,environment.acceptsProfiles(org.springframework.core.env.Profiles.of("workspace-fixture")),
-                environment.acceptsProfiles(org.springframework.core.env.Profiles.of("r1-http | cloud-api | cloud-worker | production")));
+                environment.acceptsProfiles(org.springframework.core.env.Profiles.of("r1-http | cloud-api | cloud-worker | cloud-runner | production")));
     }
     @Bean WorkspaceRepository workspaceRepository(WorkspaceMapper mapper,TransactionTemplate transactions,WorkspaceFixtureBarrier barrier) {
         return new TransactionalWorkspaceRepository(new MyBatisWorkspaceRepository(mapper),transactions,barrier);

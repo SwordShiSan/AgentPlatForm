@@ -14,7 +14,7 @@ class WorkspaceProfileIsolationTest {
                 .withInitializer(context->context.getEnvironment().setActiveProfiles(profiles));
     }
     @Test void nestedConfigurationCannotLeakIntoMigrationOperatorOrChat() {
-        for(String profile:new String[]{"cloud-migrate","identity-ops","chat-worker","chat-local"}) {
+        for(String profile:new String[]{"cloud-migrate","identity-ops","chat-worker","chat-local","workspace-environment-ops"}) {
             runner(profile).withPropertyValues("platform.workspace.enabled=true").run(context->{
                 assertNull(context.getStartupFailure());assertEquals(0,context.getBeansOfType(CachingConnectionFactory.class).size());
             });

@@ -29,14 +29,19 @@ public final class DockerWorkspaceAllocator implements WorkspaceAllocator, AutoC
         this(image,root,mountUuid,null);
     }
     public DockerWorkspaceAllocator(String image,String root,UUID mountUuid,String quotaDevice) {
-        if(image==null||!image.matches("sha256:[a-f0-9]{64}")||root==null
-                ||!(root.equals("/srv/agentplatform/workspaces")||root.matches("/srv/agentplatform/acceptance/r31-[a-z0-9-]+/workspaces")))
+        if(image==null||!image.matches("sha256:[a-f0-9]{64}"))
             throw new IllegalArgumentException("Pinned helper and fixed trusted mount required");
-        this.image=image;this.root=root;this.mountUuid=Objects.requireNonNull(mountUuid);this.quotaDevice=fixedQuotaDevice(quotaDevice);
+        this.image=image;this.root=fixedWorkspaceRoot(root);this.mountUuid=Objects.requireNonNull(mountUuid);this.quotaDevice=fixedQuotaDevice(quotaDevice);
         var config=DefaultDockerClientConfig.createDefaultConfigBuilder().withDockerHost("unix:///var/run/docker.sock").withApiVersion("1.45").build();
         var transport=new ApacheDockerHttpClient.Builder().dockerHost(config.getDockerHost()).connectionTimeout(Duration.ofSeconds(2))
                 .responseTimeout(Duration.ofSeconds(10)).maxConnections(4).build();
         docker=DockerClientImpl.getInstance(config,transport);
+    }
+    static String fixedWorkspaceRoot(String path) {
+        if(path==null||!(path.equals("/srv/agentplatform/workspaces")
+                ||path.matches("/srv/agentplatform/acceptance/r3[12]-[a-z0-9-]+/workspaces")))
+            throw new IllegalArgumentException("Pinned helper and fixed trusted mount required");
+        return path;
     }
     static Device fixedQuotaDevice(String path) {
         if(path==null||path.isEmpty())return null; // Desktop negative profile cannot allocate real XFS.

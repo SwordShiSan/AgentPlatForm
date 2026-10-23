@@ -75,9 +75,29 @@ const workspaceSchema = ajv.compile(api.components.schemas.Workspace);
 const workspaceFixture = { id: fixture.eventId, spaceId: fixture.spaceId, name: '项目 😀', state: 'READY', environmentState: 'NOT_CREATED',
   quotaBytes: 2147483648, quotaInodes: 100000, version: 1, operationId: fixture.eventId, errorCode: null, createdAt: fixture.occurredAt, fileAccess: false, shellAccess: false };
 assert(workspaceSchema(workspaceFixture));
-for (const patch of [{ shellAccess: true }, { fileAccess: true }, { environmentState: 'READY' }, { quotaBytes: 0 }, { version: 0 }, { path: '/private' }]) {
+assert(workspaceSchema({ ...workspaceFixture, environmentState: 'READY' }), 'Independent environment readiness is valid without public file/shell access');
+for (const patch of [{ shellAccess: true }, { fileAccess: true }, { environmentState: 'EXECUTABLE' }, { quotaBytes: 0 }, { version: 0 }, { path: '/private' }]) {
   assert(!workspaceSchema({ ...workspaceFixture, ...patch }), 'Invalid storage-only workspace accepted');
 }
+
+const environmentEvent = { ...fixture, conversationId: null, type: 'workspace.environment_changed', payload: {
+  workspaceId: fixture.spaceId, state: 'PREPARING', generation: 1, version: 1, operationId: fixture.eventId, errorCode: null,
+} };
+assert(validateEvent(environmentEvent), 'Environment events have their own workspace identity');
+for (const patch of [{ containerId: 'private' }, { hostPath: '/private' }, { apiKey: 'secret' }, { generation: 0 }, { state: 'RUNNING' }]) {
+  assert(!validateEvent({ ...environmentEvent, payload: { ...environmentEvent.payload, ...patch } }), 'Unsafe environment event accepted');
+}
+assert(!validateEvent({ ...environmentEvent, taskId: fixture.eventId }), 'Environment operations must not fabricate task identities');
+const environmentSchema = ajv.compile(api.components.schemas.WorkspaceEnvironment);
+const environmentFixture = { workspaceId: fixture.spaceId, state: 'NOT_CREATED', phase: 'NONE', generation: 0, version: 0, operationId: null, errorCode: null, allowedActions: ['PREPARE'] };
+assert(environmentSchema(environmentFixture));
+for (const patch of [{ containerId: 'private' }, { path: '/private' }, { version: -1 }, { allowedActions: ['SHELL'] }, { allowedActions: ['PREPARE', 'RETRY'] }]) {
+  assert(!environmentSchema({ ...environmentFixture, ...patch }), 'Unsafe environment projection accepted');
+}
+assert(!environmentSchema({ ...environmentFixture, state: 'BLOCKED', phase: 'BLOCKED', allowedActions: ['RETRY'] }), 'Unknown environments cannot expose retry');
+const emptyEnvironmentCommand = ajv.compile(api.components.schemas.EmptyEnvironmentCommand);
+assert(emptyEnvironmentCommand({}));
+for (const input of [null, { image: 'mutable' }, { command: 'shell' }, { path: '/host' }]) assert(!emptyEnvironmentCommand(input));
 
 const health = ajv.compile(api.components.schemas.HealthResponse);
 const readiness = ajv.compile(api.components.schemas.ReadinessResponse);

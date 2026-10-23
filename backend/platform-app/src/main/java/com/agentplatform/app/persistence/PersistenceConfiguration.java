@@ -17,7 +17,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 
 /** A single managed pool and transaction manager per API, worker or operator process. */
 @Configuration(proxyBeanMethods = false)
-@Profile({"identity-local", "identity-ops", "chat-local", "chat-worker", "chat-ops", "workspace-api", "workspace-worker", "workspace-runner"})
+@Profile({"identity-local", "identity-ops", "chat-local", "chat-worker", "chat-ops", "workspace-api", "workspace-worker", "workspace-runner", "workspace-environment-ops", "workspace-environment-fixture"})
 @EnableConfigurationProperties(StorageProperties.class)
 @MapperScan(basePackages = "com.agentplatform.infrastructure.dao", annotationClass = org.apache.ibatis.annotations.Mapper.class)
 public class PersistenceConfiguration {
