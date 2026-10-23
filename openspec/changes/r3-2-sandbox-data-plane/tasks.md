@@ -5,6 +5,8 @@
 - [x] 2.1 Locked engine/runtime/image attestation and bounded file/exec/stop experiment.
 - [ ] 2.2 Fail-closed paths/quota/UID,real stop barrier and immutable probe evidence.
 ## 3. Persistence and runner
+- [ ] 3.4 Approved trusted file-helper correction: V12 intents/physical identities/immutable stop facts, fixed non-root runtime, query-only recovery and cross-container path attacks.
+- [ ] 3.5 Keep helper and quota verification mutually exclusive within64MiB auxiliary budget; enforce stop before success/cleanup, no sandbox execution downgrade.
 - [ ] 3.0 Bind guest nproc32/host pids128 into the policy, inspect refusal and real fork/normal-stop regression; preserve prior PID pressure failure and host recovery evidence.
 - [ ] 3.1 V11 typed Mapper/XML,scoped transactions/slot/use lease/live guards.
 - [ ] 3.2 Confirmed MQ/durable claim/ACK,query-only reconciliation and generation fencing.

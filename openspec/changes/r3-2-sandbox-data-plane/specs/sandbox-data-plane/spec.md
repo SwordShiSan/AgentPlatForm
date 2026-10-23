@@ -66,3 +66,21 @@ The platform SHALL verify real persistence/broker/browser/Linux boundaries and p
 #### Scenario: Final evidence and user interface
 - **WHEN** all mandatory gates pass
 - **THEN** protected PRs precede VERIFIED, archive/body/evidence hashes are validated after checkout, and UI exposes preparation/status without terminal/files or hidden UNKNOWN retry
+
+### Requirement: Separate trusted file bridge and helper facts
+The platform SHALL perform private fixed file operations in a pinned non-root trusted helper, keep every untrusted program on gVisor, and persist helper intent and exact physical identity under the original use. V12 SHALL be additive; helper output SHALL NOT create a second file result authority.
+#### Scenario: File request and isolation
+- **WHEN** a protected file use starts
+- **THEN** helper intent commits before create, exact container binds before start, exec identity commits before execStart, and helper is limited to64MiB/32PIDs/CPU1 with one work mount and no network/capability/device/socket/credential or user program
+#### Scenario: Response loss and physical uncertainty
+- **WHEN** create/start/result response is lost or an original helper intent already exists
+- **THEN** only the original identity is queried, no second helper or replayed write is allowed, and missing or ambiguous physical facts retain BLOCKED and capacity
+#### Scenario: Helper completion and stop
+- **WHEN** a file output or cancellation is committed
+- **THEN** exact helper stop and callback termination are persisted before success; sandbox termination is separately required before environment slot release, and only durable facts authorize container cleanup
+#### Scenario: Cross-boundary filesystem attack
+- **WHEN** an isolated gVisor attacker renames directories or substitutes soft/hard links while trusted file IO runs
+- **THEN** outside markers remain unchanged and unsafe paths/kinds are rejected; same-container native controls alone do not satisfy this scenario
+#### Scenario: Authority loss or replacement runner
+- **WHEN** membership/owner/fence/DB authority is lost or another runner observes the use
+- **THEN** new effects and ordinary result commits are refused, precise stop evidence may converge through the original use, and replacement observation requires valid prior-runner stop proof

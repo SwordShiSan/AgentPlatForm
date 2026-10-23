@@ -13,3 +13,6 @@ R3.1 stores directory/quota facts but environment is NOT_CREATED. This change co
 
 ## Impact
 Six existing modules, generated HTTP/event clients, scoped MyBatis grants, independent local/Linus acceptance and protected step→phase→main. Production R2 is restored after any approved serial maintenance window. Historical R3.1 evidence remains separate.
+
+## Approved file-helper correction
+User selected the trusted file-helper route on2026-10-23 after actual runsc path-race failure and same-host controls. Add V12 scoped helper intent/identity/immutable stop facts without modifying V1–V11; keep untrusted execution on gVisor. Fixed non-root64MiB helper has no network/capabilities/socket/credentials, shares the auxiliary slot with quota verification, and cannot run user programs. Preserve one use result authority, query-only recovery and helper+sandbox stop barriers. No host-level diagnostic workaround or third-party source modification.

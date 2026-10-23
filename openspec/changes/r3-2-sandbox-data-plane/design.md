@@ -97,3 +97,41 @@ The proof importer is a non-web standalone `workspace-environment-ops` profile w
 - Desktop runner self-inspection uses structured Compose bind mounts for host files. A Windows drive-letter source in a short `HostConfig.Binds` string cannot be parsed by docker-java3.7.1. Merely spelling long YAML syntax is insufficient when Compose normalizes it back to legacy binds: set `bind.create_host_path=false` and inspect the created container's actual `HostConfig.Mounts` before starting the JVM. Preserve the exact source/target/read-only policy without a third-party fork. This is a deployment-config correction only: retain the already built source242c333 images, bind the corrected config's own Git/blob hash separately, and require unchanged backend/frontend trees before reusing those artifacts.
 - Local bootstrap confirmed an operator cgroup OOM at256MiB during the unchanged Argon2 provisioning/recheck path. Adjust only that temporary migration/account operator to320MiB; dependencies+bootstrap total1152MiB, or2624MiB with sandbox scenario after API/gateway stop. The data-use fixture remains256MiB. Do not lower password parameters or use swap. Bootstrap first reads the exact existing identity_operation/user/space facts before deciding whether provisioning is needed; repeated startup is not a reason to repeat completed expensive operations. Runner registration/process startup must pass before starting API/gateway and waiting for their health.
 - Storage PROVISION's existing allocator must accept the newly approved `/srv/agentplatform/acceptance/r32-<lowercase-id>/workspaces` root as well as its existing production/R31 roots. The first real startup after mount correction exposed that the original R31 allowlist had not been extended. Keep the fixed namespace grammar; reject traversal, arbitrary paths, uppercase/underscore identifiers and unsupported stage roots. Add pure policy tests and build a new application candidate; no old migration or physical quota policy changes.
+
+## 2026-10-23 路径竞态阻断与替代路线评审（未实施）
+
+当前R3.2仍IMPLEMENTING，不能VERIFIED。a433764候选本地工程、SDK51、真实PG/MQ56通过；新的gVisor链路已通过原文件复挂/新generation读回、Python/Node/应用端口、PID32、网络、宿主CPU1及tmp64MiB，但PATH_RACE失败，后续输出/取消/完整故障/浏览器/1800秒观察未完成。所有失败日志保留，云端已恢复同一R2，旧平台停机，供应商调用0。
+
+原测试路径程序在临时目录建立outside marker、在workspace目录并发替换目录/符号链接，通过现有fd桥接写入。数据库不可变事实为FAILED/KNOWN/exit1，outside marker不再保持原值；不是无结果的网络故障。随后同宿主/同镜像/同资源的小对照：runsc systrap在tmpfs与独立bind各失败，runc在两者各通过。对照只说明结果与当前运行时组合相关，未证明第三方根因或一般宿主逃逸；runc仅无数据诊断对照，不是用户沙箱降级。
+
+在用户要求换用安全操作路线后，暂停宿主级追加诊断，不采用写内核接口、任意syscall实验或第三方源码补丁绕过。本轮先基于已有证据/本地代码形成下面可评审路线；原门禁保持FAIL。
+
+### 路线A（建议）：受信文件桥接与不可信执行分离
+
+保留官方gVisor执行Python/Node，文件READ/WRITE/LIST由固定镜像、固定入口、非root的短生命周期受信file-helper完成。只挂当前已验证的work目录，无Docker socket、凭据、设备、网络或额外能力；根只读、cap_drop ALL、no-new-privileges，初始64MiB/32PID/1CPU，包含在原临时helper预算内，不与quota helper并行。helper接收有界JSONL，不接收用户程序/host path/命令或额外mount。文件桥接继续目录句柄/NOFOLLOW及普通文件/单链接检查，不退回字符串路径校验。
+
+这是控制面固定程序，不能把业务代码移出gVisor。所有用户程序仍只在runsc；无需更换Java、AgentScope、XFS、MQ或Docker-java。需要实测跨容器改名/软硬链攻击和同源hash后才可接受此路线，单独原生对照通过不是实现验收。
+
+**实施前必须解决的账本缺口**：现有use.exec身份只绑定sandbox，不能拿sandbox ID冒充helper。应为同一use增加独立受信helper物理身份/intent、开始前持久绑定、精确container/config/start/exec/结果/停止回执和原命令查询；响应丢失不能重建第二个helper。停止屏障同时覆盖helper及sandbox；任一未确认保持BLOCKED/槽不释放。旧owner/授权失效仍拒绝结果；辅助容器自身无权改账本。根据持久字段需要增加V12，而不是修改已实际安装的V11/V1–V10，版本边界须先同步计划/ADR/specs。新增64MiB与原helper互斥后的总预算仍须重新计算和实测。
+
+**验证顺序**：先纯本地固定程序/身份模型最小实验；再真实PG事务及停止语义；再一条最短真实Linux贯通；通过才扩展路径/资源/故障矩阵及浏览器；最后1800秒。每次失败先保存固定程序exit/stdout/stderr/账本，再清理恢复，避免另开维护窗口只读原因。最终仍需完整受影响回归和两级PR。
+
+### 路线B：官方运行时补丁/替代运行时专项
+
+只在官方修复版本有可复核依据或当前边界不可满足时，单独选择新官方runsc或其他隔离方案，评估无KVM主机、内存/存储/停止能力并完整重验。不自行维护第三方源码，不因原生runc对照通过而把它变为业务沙箱。此路线时间和资源尚未评估，不能承诺更换即可解决。
+
+上述两路线是待选择的计划修订，不是已接受ADR或已交付实现。选定后先同步同一个change的proposal/specs/design/tasks/verification和正式计划、strict通过再编码；不开R3.3，不删除原失败，不提前进入观察。
+
+## 2026-10-23 已批准修订：独立受信文件桥接
+
+用户已选择路线A：保留gVisor，仅将平台固定READ/WRITE/LIST移到短生命周期受信file-helper。此选择替代此前“待选择”状态；不批准任何业务执行降级runc、第三方源码修改或宿主级追加诊断。沿用同一R3.2/change，不开启下一阶段。
+
+file-helper复用锁定quota-helper镜像中的Python/固定桥接入口，但显式non-root10001、root只读、cap_drop ALL/no-new-privileges、无网络/设备/socket/凭据，只挂当前work。固定入口只接受有界JSONL，禁止用户代码/任意程序参数；64MiB/32PID/CPU1，与quota helper共用单辅助槽，不并行占额。gVisor继续512MiB/CPU1/PID128+nproc32，负责全部不可信执行。策略hash升级为分离桥接版本并绑定helper镜像/限制；只对新generation生效。
+
+新增V12（不修改V1–V11或runtime baseline1），为原use增加独立helper intent/physical binding与不可变停止收据。纯Java端口与MyBatis类型Mapper/PO/XML，Spring TransactionTemplate短事务；锁序仍slot→workspace→environment→use→helper。先提交稳定use派生的helper名称/镜像/策略/owner/fence/runner意图，再Docker create；持久绑定精确container后，在start请求前提交start intent，exec身份在execStart前提交。外部IO不在DB事务内。已存在/结果不明的intent只能查询原helper，不重新create/start；查询不到不能推出从未创建。
+
+停止证据必须覆盖helper和sandbox，包含精确container/config/start/exec、回调退出及observedAt。正常文件结果也须先确认并持久化helper停止；成功输出仍在原use.result提交，禁止建立第二套文件结果权威。helper没有确切停止证明时不提交成功/释放槽；helper停止不足以证明sandbox停止。仅在有不可变结果/停止事实后清除精确helper容器，响应丢失不重放写入。重启查询须验证原runner停止证明；缺物理身份或处在start结果不明窗口，保持BLOCKED，不伪造NEVER_STARTED。
+
+V12 mapper角色权限精确到必要列，helper进程完全无数据库访问。旧V11文件use保留其执行位置/事实，不把旧gVisor exec重新标成helper执行。普通聊天仍workspaceId=null，公开API/事件保持原形状。
+
+先做身份/停止账本的确定性与真实PG最小回归，再一条固定helper读写；然后gVisor攻击者与独立file-helper跨容器竞态、软/硬链/设备/缺挂载/权限、取消/超时/DB不可用/owner失效与原查询。原runsc内PATH_RACE失败保留为该旧桥接边界失败，不强求不再承担文件桥接的guest库冒充通过；新的跨边界攻击门禁必须实际通过。最后才完整矩阵/浏览器及>=1800s观察。每次失败在清理前采集当前固定用例账本/有界输出，避免只读原因再开窗口。全部受影响验收重新绑定新源码/策略/镜像；R3.2未VERIFIED，云端继续R2。
