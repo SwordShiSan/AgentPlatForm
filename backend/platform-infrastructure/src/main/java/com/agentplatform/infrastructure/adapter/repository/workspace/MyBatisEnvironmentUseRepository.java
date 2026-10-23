@@ -20,9 +20,14 @@ public final class MyBatisEnvironmentUseRepository implements EnvironmentUseRepo
     private final EnvironmentPreparationMapper environments;
     private final EnvironmentExecutionMapper execution;
     private final WorkspaceMapper workspaces;
+    private final FileHelperRepository fileHelpers;
     public MyBatisEnvironmentUseRepository(EnvironmentUseMapper uses,EnvironmentPreparationMapper environments,
             EnvironmentExecutionMapper execution,WorkspaceMapper workspaces) {
-        this.uses=uses;this.environments=environments;this.execution=execution;this.workspaces=workspaces;
+        this(uses,environments,execution,workspaces,null);
+    }
+    public MyBatisEnvironmentUseRepository(EnvironmentUseMapper uses,EnvironmentPreparationMapper environments,
+            EnvironmentExecutionMapper execution,WorkspaceMapper workspaces,FileHelperRepository fileHelpers) {
+        this.uses=uses;this.environments=environments;this.execution=execution;this.workspaces=workspaces;this.fileHelpers=fileHelpers;
     }
     private static void tx() {
         if(!TransactionSynchronizationManager.isActualTransactionActive())throw new IllegalStateException("Environment use transaction required");
@@ -132,7 +137,9 @@ public final class MyBatisEnvironmentUseRepository implements EnvironmentUseRepo
             if(!runner.equals(row.runnerInstanceId()))throw new WorkspaceFailure(409,"RUNNER_INSTANCE_STOP_UNPROVEN");
             return false;
         }
-        if(uses.accept(cmd,runner)!=1)throw stale();return true;
+        if(uses.accept(cmd,runner)!=1)throw stale();
+        if(cmd.request().file()!=null&&(fileHelpers==null||uses.trustedFileMode(cmd,runner)!=1))throw stale();
+        return true;
     }
     @Override public boolean cancelled(Command cmd) {
         var row=guard(cmd,false,true);return row.cancelRequested();
@@ -155,8 +162,15 @@ public final class MyBatisEnvironmentUseRepository implements EnvironmentUseRepo
                 ||!Set.of("KNOWN","UNKNOWN").contains(fact.resultState())||fact.errorCode()!=null&&!fact.errorCode().matches("[A-Z_]{1,64}"))
             throw new WorkspaceFailure(409,"ENVIRONMENT_USE_RESULT_MISMATCH");
         var output=fact.output();
+        var helperSnapshot=cmd.request().file()==null||fileHelpers==null?null:fileHelpers.find(cmd,runner);
+        var helperStop=cmd.request().file()==null||fileHelpers==null?null:fileHelpers.retirement(cmd);
+        boolean noHelperEffect=cmd.request().file()!=null&&helperSnapshot==null&&row.execId()==null&&"UNKNOWN".equals(fact.resultState());
+        if(cmd.request().file()!=null&&(fileHelpers==null||!"TRUSTED_HELPER".equals(uses.fileMode(cmd.id()))
+                ||helperStop==null&&!noHelperEffect))throw new WorkspaceFailure(409,"FILE_HELPER_STOP_UNPROVEN");
         if("KNOWN".equals(fact.resultState())) {
-            if(output==null||fact.stop()!=null||output.timedOut()||output.cancelled()||!Objects.equals(row.execId(),output.execId())||output.execId()==null
+            boolean execMatches=cmd.request().file()==null?Objects.equals(row.execId(),output==null?null:output.execId()):
+                    helperStop!=null&&helperStop.physical()!=null&&Objects.equals(helperStop.physical().execId(),output==null?null:output.execId());
+            if(output==null||fact.stop()!=null||output.timedOut()||output.cancelled()||!execMatches||output.execId()==null
                     ||output.stdout()==null||output.stderr()==null||output.stdout().getBytes(StandardCharsets.UTF_8).length+(long)output.stderr().getBytes(StandardCharsets.UTF_8).length>65536)
                 throw new WorkspaceFailure(409,"ENVIRONMENT_USE_OUTPUT_MISMATCH");
         } else if(output!=null||fact.stop()==null)throw new WorkspaceFailure(409,"ENVIRONMENT_USE_UNKNOWN_OUTPUT");

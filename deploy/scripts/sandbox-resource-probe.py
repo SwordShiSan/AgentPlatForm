@@ -1,6 +1,5 @@
 """Fixed isolated acceptance programs. No user code, path, endpoint or limit arguments."""
 import errno
-import importlib.util
 import json
 import os
 import resource
@@ -8,7 +7,6 @@ from pathlib import Path
 import signal
 import socket
 import sys
-import threading
 import time
 import uuid
 
@@ -143,65 +141,8 @@ def inode_quota():
         directory.rmdir()
 
 
-def path_race():
-    spec = importlib.util.spec_from_file_location('fixed_bridge', '/opt/platform/sandbox-file-bridge.py')
-    bridge = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(bridge)
-    root = Path('/workspace')
-    outside = Path('/tmp/r32-outside')
-    outside.mkdir(mode=0o700)
-    marker = outside / 'marker'
-    marker.write_bytes(b'outside-unchanged')
-    link, hard, fifo = (root / name for name in ('r32-link', 'r32-hard', 'r32-fifo'))
-    original = root / 'r32-link-source'
-    original.write_bytes(b'source')
-    try:
-        link.symlink_to(marker)
-        os.link(original, hard)
-        os.mkfifo(fifo, 0o600)
-        for file in (link, hard, fifo):
-            try:
-                bridge.execute({'action': 'READ', 'path': file.name})
-                raise AssertionError('unsafe kind accepted')
-            except (bridge.Rejected, OSError):
-                pass
-    finally:
-        for file in (link, hard, fifo, original):
-            file.unlink(missing_ok=True)
-    target, held = root / 'r32-race', root / 'r32-race-held'
-    target.mkdir(mode=0o700)
-    stop = threading.Event()
-    def attack():
-        while not stop.is_set():
-            target.rename(held)
-            target.symlink_to(outside, target_is_directory=True)
-            target.unlink()
-            held.rename(target)
-    attacker = threading.Thread(target=attack)
-    attacker.start()
-    accepted = rejected = 0
-    try:
-        for _ in range(1000):
-            try:
-                result = bridge.execute({'action': 'WRITE', 'path': 'r32-race/marker', 'contentBase64': 'c2FmZQ=='})
-                assert result['ok']
-                accepted += 1
-            except (bridge.Rejected, OSError):
-                rejected += 1
-        assert marker.read_bytes() == b'outside-unchanged'
-    finally:
-        stop.set()
-        attacker.join(timeout=3)
-        assert not attacker.is_alive()
-        (target / 'marker').unlink(missing_ok=True)
-        target.rmdir()
-        marker.unlink()
-        outside.rmdir()
-    return {"raceAccepted": accepted, "raceRejected": rejected, "outsideUnchanged": True}
-
-
 PROGRAMS = {'CPU_BOUND': cpu, 'PID_BOUND': pids, 'MEMORY_BOUND': memory, 'NETWORK_BOUND': network,
-            'TMP_BOUND': temporary, 'BYTE_QUOTA': byte_quota, 'INODE_QUOTA': inode_quota, 'PATH_RACE': path_race}
+            'TMP_BOUND': temporary, 'BYTE_QUOTA': byte_quota, 'INODE_QUOTA': inode_quota}
 
 if __name__ == '__main__':
     assert len(sys.argv) == 2 and sys.argv[1] in PROGRAMS

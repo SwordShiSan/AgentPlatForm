@@ -27,9 +27,11 @@ public record SandboxPolicy(String image, String helperImage, String workspaceRo
     }
 
     public String hash() {
-        return RunnerSignatures.sha256(("environment-v2|" + image + "|" + helperImage + "|" + workspaceRoot + "|" + mountUuid + "|" + quotaDevice
+        return RunnerSignatures.sha256(("environment-v3|" + image + "|" + helperImage + "|" + workspaceRoot + "|" + mountUuid + "|" + quotaDevice
                 + "|" + RUNSC_SHA256 + "|systrap|uid10001|ro|net-none|caps-none|devices-none|"
-                + "memory512m-swap512m|cpu1|pids128|nproc" + GUEST_NPROC + "|tmpfs64m|bridge-v2-jsonl|startup-canary-v1").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                + "memory512m-swap512m|cpu1|pids128|nproc" + GUEST_NPROC + "|tmpfs64m|guest-no-file-bridge|"
+                + "trusted-file-helper:runc|uid10001|ro|net-none|caps-none|devices-none|memory64m-swap64m|cpu1|pids32|tmpfs8m|bridge-v3-jsonl|startup-canary-v1")
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     static boolean guestProcessLimitMatches(com.github.dockerjava.api.model.Ulimit[] limits) {

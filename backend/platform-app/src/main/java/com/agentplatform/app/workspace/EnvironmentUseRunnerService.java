@@ -19,6 +19,7 @@ public final class EnvironmentUseRunnerService implements EnvironmentUseRunnerAp
     private final SandboxRuntime runtime;
     private final RunnerInstance instance;
     private final WorkspaceEffectBoundary boundary;
+    private final FileHelperRepository fileHelpers;
     // The database admits one use. The local barrier additionally prevents a lost
     // HTTP response/query from stopping an original invocation that is still exiting.
     private final AtomicReference<UUID> inFlight=new AtomicReference<>();
@@ -26,7 +27,11 @@ public final class EnvironmentUseRunnerService implements EnvironmentUseRunnerAp
         this(repository,signatures,runtime,instance,WorkspaceEffectBoundary.NONE);
     }
     public EnvironmentUseRunnerService(EnvironmentUseRepository repository,RunnerSignatures signatures,SandboxRuntime runtime,RunnerInstance instance,WorkspaceEffectBoundary boundary) {
-        this.repository=repository;this.signatures=signatures;this.runtime=runtime;this.instance=instance;this.boundary=boundary;
+        this(repository,signatures,runtime,instance,boundary,null);
+    }
+    public EnvironmentUseRunnerService(EnvironmentUseRepository repository,RunnerSignatures signatures,SandboxRuntime runtime,RunnerInstance instance,
+            WorkspaceEffectBoundary boundary,FileHelperRepository fileHelpers) {
+        this.repository=repository;this.signatures=signatures;this.runtime=runtime;this.instance=instance;this.boundary=boundary;this.fileHelpers=fileHelpers;
     }
     public static RunnerSignatures.Binding binding(Command command,String method,String path) {
         return new RunnerSignatures.Binding(method,path,command.id(),command.id(),command.spaceId(),command.workspaceId(),command.generation(),command.fence());
@@ -46,12 +51,34 @@ public final class EnvironmentUseRunnerService implements EnvironmentUseRunnerAp
                 "UNKNOWN",null,stop,"ENVIRONMENT_USE_INTERRUPTED");
     }
     private void cleanup(Command command) {
+        if(command.request().file()!=null&&fileHelpers!=null) {
+            var stopped=fileHelpers.retirement(command);
+            if(stopped!=null) {
+                try {runtime.removeStoppedFileHelper(command.physicalIdentity(),command.id(),runtime.fileHelperIntent(command.physicalIdentity(),command.id()),stopped);}
+                catch(RuntimeException pending) {System.getLogger("platform.workspace.environment").log(System.Logger.Level.WARNING,"Durable file-helper stop retained; exact container cleanup pending");}
+            }
+        }
         if(!repository.stopCommitted(command.id()))return;
         var fact=repository.committedFact(command);
         if(fact.stop()!=null) {
             try {runtime.removeStopped(command.physicalIdentity(),fact.stop());}
             catch(RuntimeException pending) {System.getLogger("platform.workspace.environment").log(System.Logger.Level.WARNING,"Durable data-use stop retained; exact container cleanup pending");}
         }
+    }
+    private SandboxRuntime.FileHelperAuthority fileAuthority(Command command) {
+        if(fileHelpers==null)throw new WorkspaceFailure(503,"FILE_HELPER_UNAVAILABLE");
+        var intent=runtime.fileHelperIntent(command.physicalIdentity(),command.id());
+        return new SandboxRuntime.FileHelperAuthority() {
+            @Override public FileHelperData.Intent intent() {return intent;}
+            @Override public FileHelperData.Snapshot snapshot() {return fileHelpers.find(command,instance.id());}
+            @Override public void created(FileHelperData.Physical physical) {repository.check(command,instance.id());fileHelpers.created(command,instance.id(),physical);}
+            @Override public void requestStart() {repository.check(command,instance.id());fileHelpers.requestStart(command,instance.id());}
+            @Override public void started(FileHelperData.Physical physical) {repository.check(command,instance.id());fileHelpers.started(command,instance.id(),physical);}
+            @Override public void recordExec(FileHelperData.Physical physical) {repository.check(command,instance.id());fileHelpers.recordExec(command,instance.id(),physical);}
+            @Override public void stopped(FileHelperData.Stopped stop) {fileHelpers.stopped(command,instance.id(),stop);}
+            @Override public FileHelperData.Stopped retirement() {return fileHelpers.retirement(command);}
+            @Override public void check() {repository.check(command,instance.id());}
+        };
     }
     @Override public SignedResult operate(String token,byte[] body) {
         signatures.authenticate(token);
@@ -74,9 +101,12 @@ public final class EnvironmentUseRunnerService implements EnvironmentUseRunnerAp
             try {
                 authority.check();
                 var cancelled=(java.util.function.BooleanSupplier)()->!Instant.now().isBefore(command.executeUntil())||repository.cancelled(command);
-                var output=command.request().file()!=null?
-                        runtime.file(command.physicalIdentity(),command.id(),command.request().file(),authority,cancelled):
-                        runtime.probe(command.physicalIdentity(),command.id(),command.request().probe(),authority,cancelled);
+                SandboxRuntime.Output output;
+                if(command.request().file()!=null) {
+                    var fileAuthority=fileAuthority(command);
+                    fileHelpers.intent(command,instance.id(),fileAuthority.intent());
+                    output=runtime.file(command.physicalIdentity(),command.id(),command.request().file(),fileAuthority,cancelled);
+                } else output=runtime.probe(command.physicalIdentity(),command.id(),command.request().probe(),authority,cancelled);
                 fact=output.timedOut()||output.cancelled()?unknown(command,output.stopReceipt()):
                         new Fact(command.id(),command.environmentId(),command.generation(),command.fence(),command.requestHash(),instance.id(),"KNOWN",output,output.stopReceipt(),null);
             } catch(SandboxRuntime.Terminated terminated) {fact=unknown(command,terminated.receipt());}
@@ -109,6 +139,7 @@ public final class EnvironmentUseRunnerService implements EnvironmentUseRunnerAp
         if(receipt.resultHash()==null&&!command.id().equals(inFlight.get())) {
             repository.checkStopObservation(command,instance.id());
             try {
+                if(command.request().file()!=null)runtime.stopFileHelper(command.physicalIdentity(),command.id(),fileAuthority(command));
                 var stop=runtime.stop(command.physicalIdentity());
                 repository.commitFact(command,instance.id(),unknown(command,stop));
             } catch(RuntimeException unproven) { /* No result, no replay and no slot release. */ }

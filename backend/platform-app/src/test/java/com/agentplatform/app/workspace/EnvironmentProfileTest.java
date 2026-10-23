@@ -17,6 +17,7 @@ class EnvironmentProfileTest {
                 .withBean(EnvironmentPreparationMapper.class,()->mock(EnvironmentPreparationMapper.class))
                 .withBean(EnvironmentMaintenanceMapper.class,()->mock(EnvironmentMaintenanceMapper.class))
                 .withBean(EnvironmentUseMapper.class,()->mock(EnvironmentUseMapper.class))
+                .withBean(FileHelperMapper.class,()->mock(FileHelperMapper.class))
                 .withBean(WorkspaceFixtureBarrier.class,WorkspaceFixtureBarrier::none)
                 .withBean(WorkspaceMapper.class,()->mock(WorkspaceMapper.class))
                 .withBean(TransactionTemplate.class,()->new TransactionTemplate(mock(PlatformTransactionManager.class)))

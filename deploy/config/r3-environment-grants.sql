@@ -1,4 +1,4 @@
--- Apply after V11 and r3-workspace-grants.sql. Create these roles privately first.
+-- Apply after V12 and r3-workspace-grants.sql. Create these roles privately first.
 GRANT USAGE ON SCHEMA pf TO ap_api,ap_worker,ap_runner,ap_workspace_ops;
 GRANT SELECT,INSERT,UPDATE ON pf.workspace_sandbox_slot,pf.workspace_environment,
     pf.workspace_environment_operation,pf.workspace_environment_idempotency,pf.workspace_environment_outbox TO ap_api,ap_worker;
@@ -20,6 +20,13 @@ GRANT SELECT,INSERT ON pf.workspace_runner_instance,pf.workspace_environment_com
     pf.workspace_environment_receipt,pf.workspace_environment_stop_receipt TO ap_runner;
 GRANT UPDATE(state,result_revision,result_runner_instance_id) ON pf.workspace_environment_command TO ap_runner;
 GRANT SELECT,INSERT ON pf.workspace_environment_use_result TO ap_runner;
+GRANT SELECT ON pf.workspace_file_helper,pf.workspace_file_helper_stop TO ap_runner;
+GRANT INSERT(use_id,space_id,workspace_id,environment_id,owner_id,generation,fence,runner_instance_id,image_id,policy_hash,container_name,intent_hash)
+    ON pf.workspace_file_helper TO ap_runner;
+GRANT UPDATE(container_id,start_requested,started_at,exec_id,version) ON pf.workspace_file_helper TO ap_runner;
+GRANT INSERT(use_id,observer_runner_id,prior_runner_proof_id,container_id,image_id,started_at,exec_id,never_started,finished_at,
+    exec_stopped,callbacks_stopped,stop_text,content_hash,observed_at) ON pf.workspace_file_helper_stop TO ap_runner;
+GRANT UPDATE(file_execution_mode,version) ON pf.workspace_environment_use TO ap_runner;
 REVOKE UPDATE(status) ON pf.workspace_environment_use FROM ap_runner;
 GRANT UPDATE(runner_instance_id,exec_id,version) ON pf.workspace_environment_use TO ap_runner;
 

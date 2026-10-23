@@ -20,6 +20,9 @@ public interface EnvironmentUseMapper {
     boolean stoppedCompletion(@Param("command") Command command);
     int renew(@Param("command") Command command);
     int accept(@Param("command") Command command,@Param("runnerId") UUID runnerId);
+    int trustedFileMode(@Param("command") Command command,@Param("runnerId") UUID runnerId);
+    int trustedFileExec(@Param("command") Command command,@Param("runnerId") UUID runnerId,@Param("execId") String execId);
+    String fileMode(@Param("id") UUID id);
     int recordExec(@Param("command") Command command,@Param("runnerId") UUID runnerId,@Param("execId") String execId);
     Result result(@Param("id") UUID id);
     void insertResult(@Param("id") UUID id,@Param("row") Result row);

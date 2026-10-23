@@ -4,9 +4,12 @@ LABEL org.opencontainers.image.revision=$SOURCE_REVISION
 RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
     && apt-get -o Acquire::Retries=3 update && apt-get install -y --no-install-recommends xfsprogs=6.13.0-2+deb13u1 util-linux=2.41.5-0+deb13u1 \
     && dpkg-query -W -f='${Package}=${Version}\n' > /opt/native-packages.lock \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && install -d -m 0755 /opt/platform
 COPY deploy/scripts/workspace-quota-helper.py /opt/workspace-quota-helper.py
 COPY deploy/scripts/workspace-quota-verifier.py /opt/workspace-quota-verifier.py
+COPY deploy/scripts/sandbox-file-bridge.py /opt/platform/sandbox-file-bridge.py
+COPY deploy/scripts/file-helper-entrypoint.py /opt/platform/file-helper-entrypoint.py
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 USER 0:0
 ENTRYPOINT ["python3", "/opt/workspace-quota-helper.py"]

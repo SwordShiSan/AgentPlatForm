@@ -31,6 +31,7 @@ class EnvironmentPostgresTest {
     private EnvironmentMaintenanceRepository maintenance;
     private RunnerInstance runner;
     private RunnerStopProofRepository runnerProofs;
+    private FileHelperRepository fileHelpers;
     private EnvironmentUseRepository uses;
     private Actor alice, bob;
     private static Flyway flyway(String target) {
@@ -49,7 +50,7 @@ class EnvironmentPostgresTest {
         flyway("10").migrate();
         assertEquals(10,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         flyway(null).migrate();
-        assertEquals(11,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
+        assertEquals(12,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
     }
     private static void sql(String text) throws Exception {
@@ -82,8 +83,11 @@ class EnvironmentPostgresTest {
                 session.getMapper(EnvironmentPreparationMapper.class),mapper,"sha256:"+"a".repeat(64),"b".repeat(64)),transactions);
         executions=new TransactionalEnvironmentExecutionRepository(new MyBatisEnvironmentExecutionRepository(
                 session.getMapper(EnvironmentExecutionMapper.class),session.getMapper(EnvironmentPreparationMapper.class),mapper),transactions);
-        uses=new TransactionalEnvironmentUseRepository(new MyBatisEnvironmentUseRepository(session.getMapper(EnvironmentUseMapper.class),
-                session.getMapper(EnvironmentPreparationMapper.class),session.getMapper(EnvironmentExecutionMapper.class),mapper),transactions);
+        var useMapper=session.getMapper(EnvironmentUseMapper.class);var preparationMapper=session.getMapper(EnvironmentPreparationMapper.class);
+        var executionMapper=session.getMapper(EnvironmentExecutionMapper.class);
+        fileHelpers=new TransactionalFileHelperRepository(new MyBatisFileHelperRepository(session.getMapper(FileHelperMapper.class),useMapper,
+                preparationMapper,executionMapper,mapper),transactions);
+        uses=new TransactionalEnvironmentUseRepository(new MyBatisEnvironmentUseRepository(useMapper,preparationMapper,executionMapper,mapper,fileHelpers),transactions);
         runner=new RunnerInstance(UUID.randomUUID(),"e".repeat(64),"sha256:"+"f".repeat(64),"2026-10-22T00:00:00.123456789Z");
         executions.registerRunner(runner);
         runnerProofs=new TransactionalRunnerStopProofRepository(new MyBatisRunnerStopProofRepository(
@@ -192,9 +196,9 @@ class EnvironmentPostgresTest {
         assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment WHERE state='PREPARING'"));
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
     }
-    @Test void freshInstallReachesV11AndPreservesRuntimeBaseline() throws Exception {
+    @Test void freshInstallReachesV12AndPreservesRuntimeBaseline() throws Exception {
         flyway(null).clean();flyway(null).migrate();
-        assertEquals(11,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
+        assertEquals(12,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
         assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NULL"));
     }
@@ -470,6 +474,44 @@ class EnvironmentPostgresTest {
         }
     }
     private EnvironmentUseData.Request probe() {return new EnvironmentUseData.Request(null,SandboxRuntime.Probe.PYTHON_666);}
+    @Test void fileHelperLifecycleIsFencedAndStopEvidenceIsImmutable() throws Exception {
+        var ready=readyEnvironment();
+        var request=new EnvironmentUseData.Request(new SandboxRuntime.FileRequest(SandboxRuntime.FileAction.WRITE,"sample.txt",
+                Base64.getEncoder().encodeToString("ok".getBytes(StandardCharsets.UTF_8))),null);
+        var command=uses.admit(alice,ready.workspaceId(),UUID.randomUUID(),UUID.randomUUID(),request).command();
+        assertTrue(uses.accept(command,runner.id()));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_use WHERE id='"+command.id()+"' AND file_execution_mode='TRUSTED_HELPER'"));
+        var intent=new FileHelperData.Intent(command.id(),"sha256:"+"c".repeat(64),command.policyHash(),"ap-file-helper-"+command.id());
+        fileHelpers.intent(command,runner.id(),intent);
+        var created=new FileHelperData.Physical("d".repeat(64),intent.imageId(),null,null);
+        fileHelpers.created(command,runner.id(),created);fileHelpers.requestStart(command,runner.id());
+        String started=java.time.Instant.now().minusSeconds(2).toString();
+        var running=new FileHelperData.Physical(created.containerId(),intent.imageId(),started,null);
+        fileHelpers.started(command,runner.id(),running);
+        var executing=new FileHelperData.Physical(created.containerId(),intent.imageId(),started,"e".repeat(64));
+        fileHelpers.recordExec(command,runner.id(),executing);
+        assertEquals("RUNNING",uses.receipt(command).state());
+        var stop=new FileHelperData.Stopped(executing,intent.imageId(),false,java.time.Instant.now().minusMillis(500).toString(),true,true,
+                java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
+        fileHelpers.stopped(command,runner.id(),stop);
+        assertEquals(stop,fileHelpers.retirement(command));
+        assertEquals(executing,fileHelpers.find(command,runner.id()).physical());
+        var different=new FileHelperData.Physical(created.containerId(),intent.imageId(),started,"f".repeat(64));
+        assertEquals("FILE_HELPER_STOPPED",assertThrows(WorkspaceFailure.class,()->fileHelpers.recordExec(command,runner.id(),different)).code());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_file_helper_stop WHERE use_id='"+command.id()+"'"));
+    }
+    @Test void missingFileHelperCanOnlyRecordNeverStartedBeforeAnyStartRequest() throws Exception {
+        var ready=readyEnvironment();
+        var request=new EnvironmentUseData.Request(new SandboxRuntime.FileRequest(SandboxRuntime.FileAction.READ,"sample.txt",null),null);
+        var command=uses.admit(alice,ready.workspaceId(),UUID.randomUUID(),UUID.randomUUID(),request).command();uses.accept(command,runner.id());
+        var intent=new FileHelperData.Intent(command.id(),"sha256:"+"c".repeat(64),command.policyHash(),"ap-file-helper-"+command.id());
+        fileHelpers.intent(command,runner.id(),intent);
+        var never=new FileHelperData.Stopped(null,intent.imageId(),true,null,true,true,java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
+        fileHelpers.stopped(command,runner.id(),never);
+        assertEquals(never,fileHelpers.retirement(command));
+        assertEquals("FILE_HELPER_STOPPED",assertThrows(WorkspaceFailure.class,()->fileHelpers.created(command,runner.id(),
+                new FileHelperData.Physical("d".repeat(64),intent.imageId(),null,null))).code());
+    }
     private EnvironmentUseData.Command use() throws Exception {
         var ready=readyEnvironment();return uses.admit(alice,ready.workspaceId(),UUID.randomUUID(),UUID.randomUUID(),probe()).command();
     }

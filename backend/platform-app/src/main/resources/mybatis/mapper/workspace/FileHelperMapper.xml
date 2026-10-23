@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.workspace.FileHelperMapper">
+    <sql id="columns">use_id,space_id,workspace_id,environment_id,owner_id,generation,fence,runner_instance_id,image_id,policy_hash,
+        container_name,intent_hash,container_id,start_requested,started_at,exec_id,version</sql>
+    <select id="find" resultType="com.agentplatform.infrastructure.dao.po.FileHelperRows$Helper">SELECT <include refid="columns"/> FROM pf.workspace_file_helper WHERE use_id=#{id}</select>
+    <select id="lock" resultType="com.agentplatform.infrastructure.dao.po.FileHelperRows$Helper">SELECT <include refid="columns"/> FROM pf.workspace_file_helper WHERE use_id=#{id} FOR UPDATE</select>
+    <insert id="insert">INSERT INTO pf.workspace_file_helper(use_id,space_id,workspace_id,environment_id,owner_id,generation,fence,
+        runner_instance_id,image_id,policy_hash,container_name,intent_hash) VALUES(#{command.id},#{command.spaceId},#{command.workspaceId},#{command.environmentId},
+        #{command.ownerId},#{command.generation},#{command.fence},#{runner},#{intent.imageId},#{intent.policyHash},#{intent.containerName},#{hash})</insert>
+    <update id="created">UPDATE pf.workspace_file_helper SET container_id=#{container},version=version+1 WHERE use_id=#{id} AND container_id IS NULL AND NOT start_requested
+        AND NOT EXISTS(SELECT 1 FROM pf.workspace_file_helper_stop s WHERE s.use_id=pf.workspace_file_helper.use_id)</update>
+    <update id="startRequested">UPDATE pf.workspace_file_helper SET start_requested=true,version=version+1 WHERE use_id=#{id} AND container_id IS NOT NULL AND NOT start_requested
+        AND NOT EXISTS(SELECT 1 FROM pf.workspace_file_helper_stop s WHERE s.use_id=pf.workspace_file_helper.use_id)</update>
+    <update id="started">UPDATE pf.workspace_file_helper SET started_at=#{physical.startedAt},version=version+1 WHERE use_id=#{id} AND start_requested
+        AND container_id=#{physical.containerId} AND image_id=#{physical.imageId} AND started_at IS NULL
+        AND NOT EXISTS(SELECT 1 FROM pf.workspace_file_helper_stop s WHERE s.use_id=pf.workspace_file_helper.use_id)</update>
+    <update id="recordExec">UPDATE pf.workspace_file_helper SET exec_id=#{physical.execId},version=version+1 WHERE use_id=#{id} AND container_id=#{physical.containerId}
+        AND image_id=#{physical.imageId} AND started_at=#{physical.startedAt} AND exec_id IS NULL
+        AND NOT EXISTS(SELECT 1 FROM pf.workspace_file_helper_stop s WHERE s.use_id=pf.workspace_file_helper.use_id)</update>
+    <select id="stop" resultType="com.agentplatform.infrastructure.dao.po.FileHelperRows$Stop">SELECT stop_text,content_hash,observer_runner_id,prior_runner_proof_id,
+        container_id,image_id,started_at,exec_id,never_started,finished_at,exec_stopped,callbacks_stopped,observed_at
+        FROM pf.workspace_file_helper_stop WHERE use_id=#{id}</select>
+    <select id="fresh" resultType="boolean">SELECT #{stop.observedAt} BETWEEN clock_timestamp()-interval '300 seconds' AND clock_timestamp()+interval '5 seconds'</select>
+    <insert id="insertStop">INSERT INTO pf.workspace_file_helper_stop(use_id,observer_runner_id,prior_runner_proof_id,container_id,image_id,
+        started_at,exec_id,never_started,finished_at,exec_stopped,callbacks_stopped,stop_text,content_hash,observed_at)
+        VALUES(#{id},#{observer},#{prior},#{containerId},#{stop.imageId},#{startedAt},#{execId},
+        #{stop.neverStarted},#{stop.finishedAt},#{stop.execStopped},#{stop.callbacksStopped},#{text},#{hash},#{stop.observedAt})</insert>
+</mapper>

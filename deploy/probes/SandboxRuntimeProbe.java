@@ -1,4 +1,5 @@
 import com.agentplatform.domain.workspace.SandboxRuntime;
+import com.agentplatform.domain.workspace.FileHelperData;
 import com.agentplatform.infrastructure.workspace.DockerSandboxRuntime;
 import com.agentplatform.infrastructure.workspace.SandboxPolicy;
 import java.nio.ByteBuffer;
@@ -43,15 +44,15 @@ public final class SandboxRuntimeProbe {
                 var container = runtime.prepare(current, authority);
                 if (!container.running()) throw new AssertionError("Not running");
                 assertions.add("locked-gvisor-container-and-policy");
-                var written = runtime.file(current, UUID.randomUUID(), new SandboxRuntime.FileRequest(SandboxRuntime.FileAction.WRITE,
-                        "a.py", Base64.getEncoder().encodeToString("print(666)\n".getBytes(StandardCharsets.UTF_8))), authority, () -> false);
+                var written = file(runtime,current,new SandboxRuntime.FileRequest(SandboxRuntime.FileAction.WRITE,
+                        "a.py", Base64.getEncoder().encodeToString("print(666)\n".getBytes(StandardCharsets.UTF_8))),authority);
                 persist(Path.of("/reports/bridge-write-result.json"), JSON.writeValueAsString(written));
                 if (written.exitCode() != 0 || !JSON.readTree(written.stdout()).path("ok").asBoolean()) throw new AssertionError("Bridge write");
                 var python = runtime.probe(current, UUID.randomUUID(), SandboxRuntime.Probe.PYTHON_666, authority, () -> false);
                 var node = runtime.probe(current, UUID.randomUUID(), SandboxRuntime.Probe.NODE_CROSS_READ, authority, () -> false);
                 if (python.exitCode() != 0 || node.exitCode() != 0 || !python.stdout().strip().equals("666") || !node.stdout().strip().equals("666")) throw new AssertionError("Execution facts");
-                var read = runtime.file(current, UUID.randomUUID(), new SandboxRuntime.FileRequest(SandboxRuntime.FileAction.READ,
-                        "probe-node.txt", null), authority, () -> false);
+                var read = file(runtime,current,new SandboxRuntime.FileRequest(SandboxRuntime.FileAction.READ,
+                        "probe-node.txt", null),authority);
                 if (!JSON.readTree(read.stdout()).path("contentBase64").asText().equals("NjY2")) throw new AssertionError("Cross-runtime file");
                 assertions.add("Python-Node-application-file-port-same-authority");
                 var bounded = runtime.probe(current, UUID.randomUUID(), SandboxRuntime.Probe.OUTPUT_BOUND, authority, () -> false);
@@ -70,8 +71,8 @@ public final class SandboxRuntimeProbe {
                 current = new SandboxRuntime.Identity(environment, space, workspace, UUID.randomUUID(), 2, 2, 200001);
                 runtime.prepare(current, authority);
                 removed = false;
-                var persisted = runtime.file(current, UUID.randomUUID(), new SandboxRuntime.FileRequest(SandboxRuntime.FileAction.READ,
-                        "probe-node.txt", null), authority, () -> false);
+                var persisted = file(runtime,current,new SandboxRuntime.FileRequest(SandboxRuntime.FileAction.READ,
+                        "probe-node.txt", null),authority);
                 if (!JSON.readTree(persisted.stdout()).path("contentBase64").asText().equals("NjY2")) throw new AssertionError("Rebuild lost file");
                 assertions.add("new-generation-same-workspace-data");
                 var stopped = runtime.stop(current);
@@ -92,6 +93,28 @@ public final class SandboxRuntimeProbe {
                 }
             }
         }
+    }
+    private static SandboxRuntime.Output file(DockerSandboxRuntime runtime,SandboxRuntime.Identity identity,
+            SandboxRuntime.FileRequest request,SandboxRuntime.UseAuthority parent) {
+        UUID use=UUID.randomUUID(),runner=UUID.randomUUID();
+        var intent=runtime.fileHelperIntent(identity,use);
+        final FileHelperData.Snapshot[] current={null};
+        var authority=new SandboxRuntime.FileHelperAuthority() {
+            @Override public FileHelperData.Intent intent() {return intent;}
+            @Override public FileHelperData.Snapshot snapshot() {return current[0];}
+            @Override public void created(FileHelperData.Physical physical) {parent.check();current[0]=new FileHelperData.Snapshot(intent,runner,physical,false,null);}
+            @Override public void requestStart() {parent.check();current[0]=new FileHelperData.Snapshot(intent,runner,current[0].physical(),true,null);}
+            @Override public void started(FileHelperData.Physical physical) {parent.check();current[0]=new FileHelperData.Snapshot(intent,runner,physical,true,null);}
+            @Override public void recordExec(FileHelperData.Physical physical) {
+                parent.check();persist(Path.of("/reports/file-helper-exec-bindings.jsonl"),JSON.writeValueAsString(Map.of("use",use,"container",physical.containerId(),"exec",physical.execId()))+"\n");
+                current[0]=new FileHelperData.Snapshot(intent,runner,physical,true,null);
+            }
+            @Override public void stopped(FileHelperData.Stopped stop) {current[0]=new FileHelperData.Snapshot(intent,runner,stop.physical(),current[0].startRequested(),stop);}
+            @Override public FileHelperData.Stopped retirement() {return current[0]==null?null:current[0].stopped();}
+            @Override public void check() {parent.check();}
+        };
+        try {return runtime.file(identity,use,request,authority,()->false);}
+        finally {var receipt=authority.retirement();if(receipt!=null)runtime.removeStoppedFileHelper(identity,use,intent,receipt);}
     }
     private static void persist(Path path, String value) {
         try (var channel = FileChannel.open(path, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND)) {

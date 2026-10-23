@@ -26,7 +26,7 @@ public final class EnvironmentFixtureOperator implements ApplicationRunner {
     private static final Map<String,SandboxRuntime.Probe> RESOURCE_PROBES=Map.of("resource-cpu",SandboxRuntime.Probe.CPU_BOUND,
             "resource-pid",SandboxRuntime.Probe.PID_BOUND,"resource-memory",SandboxRuntime.Probe.MEMORY_BOUND,"resource-network",SandboxRuntime.Probe.NETWORK_BOUND,
             "resource-tmp",SandboxRuntime.Probe.TMP_BOUND,"resource-bytes",SandboxRuntime.Probe.BYTE_QUOTA,
-            "resource-inodes",SandboxRuntime.Probe.INODE_QUOTA,"resource-paths",SandboxRuntime.Probe.PATH_RACE);
+            "resource-inodes",SandboxRuntime.Probe.INODE_QUOTA);
     public record Scope(UUID fixtureId,UUID runId,UUID actorId,UUID spaceId,UUID workspaceId,String policyHash) {}
     private final EnvironmentUseRepository repository;
     private final EnvironmentUseApplicationService application;

@@ -23,6 +23,17 @@
     <select id="owned" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.workspace_environment_use WHERE <include refid="owner"/><if test="active"> AND status IN('CLAIMED','RUNNING')</if><if test="executing"> AND execute_until&gt;clock_timestamp() AND NOT cancel_requested</if>)</select>
     <update id="renew">UPDATE pf.workspace_environment_use SET lease_until=LEAST(deadline_at,clock_timestamp()+interval '60 seconds') WHERE <include refid="active"/></update>
     <update id="accept">UPDATE pf.workspace_environment_use SET runner_instance_id=#{runnerId},version=version+1 WHERE <include refid="active"/> AND runner_instance_id IS NULL AND execute_until&gt;clock_timestamp() AND NOT cancel_requested</update>
+    <update id="trustedFileMode">UPDATE pf.workspace_environment_use SET file_execution_mode='TRUSTED_HELPER',version=version+1
+        WHERE id=#{command.id} AND space_id=#{command.spaceId} AND workspace_id=#{command.workspaceId} AND environment_id=#{command.environmentId}
+        AND actor_id=#{command.actorId} AND owner_id=#{command.ownerId} AND runner_instance_id=#{runnerId} AND kind LIKE 'FILE_%'
+        AND generation=#{command.generation} AND fence=#{command.fence} AND status IN('CLAIMED','RUNNING')
+        AND execute_until&gt;clock_timestamp() AND lease_until&gt;clock_timestamp() AND NOT cancel_requested</update>
+    <update id="trustedFileExec">UPDATE pf.workspace_environment_use SET exec_id=#{execId},version=version+1
+        WHERE id=#{command.id} AND space_id=#{command.spaceId} AND workspace_id=#{command.workspaceId} AND environment_id=#{command.environmentId}
+        AND actor_id=#{command.actorId} AND owner_id=#{command.ownerId} AND runner_instance_id=#{runnerId} AND file_execution_mode='TRUSTED_HELPER'
+        AND status='CLAIMED' AND exec_id IS NULL AND generation=#{command.generation} AND fence=#{command.fence}
+        AND execute_until&gt;clock_timestamp() AND lease_until&gt;clock_timestamp() AND NOT cancel_requested</update>
+    <select id="fileMode" resultType="string">SELECT file_execution_mode FROM pf.workspace_environment_use WHERE id=#{id}</select>
     <update id="recordExec">UPDATE pf.workspace_environment_use SET exec_id=#{execId},version=version+1 WHERE <include refid="active"/> AND runner_instance_id=#{runnerId} AND exec_id IS NULL AND execute_until&gt;clock_timestamp() AND NOT cancel_requested</update>
     <select id="result" resultType="com.agentplatform.infrastructure.dao.po.EnvironmentUseRows$Result">SELECT result_text,content_hash,exit_code,truncated,runner_instance_id,prior_runner_proof_id,writer_kind,writer_owner_id,created_at FROM pf.workspace_environment_use_result WHERE use_id=#{id}</select>
     <insert id="insertResult">INSERT INTO pf.workspace_environment_use_result(use_id,result_text,content_hash,exit_code,truncated,runner_instance_id,prior_runner_proof_id,writer_kind,writer_owner_id)

@@ -21,8 +21,12 @@ public class EnvironmentConfiguration {
         return new TransactionalEnvironmentExecutionRepository(new MyBatisEnvironmentExecutionRepository(execution,preparation,workspaces),transactions,barrier);
     }
     @Bean @Profile({"workspace-worker","workspace-runner"}) EnvironmentUseRepository environmentUseRepository(EnvironmentUseMapper uses,
+            EnvironmentPreparationMapper preparation,EnvironmentExecutionMapper execution,WorkspaceMapper workspaces,FileHelperRepository fileHelpers,TransactionTemplate transactions) {
+        return new TransactionalEnvironmentUseRepository(new MyBatisEnvironmentUseRepository(uses,preparation,execution,workspaces,fileHelpers),transactions);
+    }
+    @Bean @Profile({"workspace-worker","workspace-runner"}) FileHelperRepository fileHelperRepository(FileHelperMapper helpers,EnvironmentUseMapper uses,
             EnvironmentPreparationMapper preparation,EnvironmentExecutionMapper execution,WorkspaceMapper workspaces,TransactionTemplate transactions) {
-        return new TransactionalEnvironmentUseRepository(new MyBatisEnvironmentUseRepository(uses,preparation,execution,workspaces),transactions);
+        return new TransactionalFileHelperRepository(new MyBatisFileHelperRepository(helpers,uses,preparation,execution,workspaces),transactions);
     }
     @Bean @Profile("workspace-api") EnvironmentPreparationRepository environmentPreparationRepository(EnvironmentPreparationMapper preparation,
             WorkspaceMapper workspaces,TransactionTemplate transactions,EnvironmentProperties properties) {
@@ -50,9 +54,9 @@ public class EnvironmentConfiguration {
             return new EnvironmentRunnerService(repository,signatures,runtime,properties.imageId(),properties.policyHash(),runtime.runnerInstance(),barrier);
         }
         @Bean EnvironmentUseRunnerApi environmentUseRunnerApi(EnvironmentUseRepository repository,EnvironmentExecutionRepository execution,
-                RunnerSignatures signatures,SandboxRuntime runtime,WorkspaceFixtureBarrier barrier) {
+                RunnerSignatures signatures,SandboxRuntime runtime,FileHelperRepository fileHelpers,WorkspaceFixtureBarrier barrier) {
             var instance=runtime.runnerInstance();execution.registerRunner(instance);
-            return new EnvironmentUseRunnerService(repository,signatures,runtime,instance,barrier);
+            return new EnvironmentUseRunnerService(repository,signatures,runtime,instance,barrier,fileHelpers);
         }
     }
 }

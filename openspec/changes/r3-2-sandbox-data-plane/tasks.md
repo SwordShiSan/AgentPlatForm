@@ -5,8 +5,10 @@
 - [x] 2.1 Locked engine/runtime/image attestation and bounded file/exec/stop experiment.
 - [ ] 2.2 Fail-closed paths/quota/UID,real stop barrier and immutable probe evidence.
 ## 3. Persistence and runner
-- [ ] 3.4 Approved trusted file-helper correction: V12 intents/physical identities/immutable stop facts, fixed non-root runtime, query-only recovery and cross-container path attacks.
-- [ ] 3.5 Keep helper and quota verification mutually exclusive within64MiB auxiliary budget; enforce stop before success/cleanup, no sandbox execution downgrade.
+- [x] 3.4a Implement V12 helper intent/physical identity/immutable stop facts, fixed non-root runtime and original-command query path; local Maven, actual PG/MQ41 and helper smoke evidence recorded.
+- [ ] 3.4b Revalidate the signed runner and separate helper against actual gVisor/XFS, cross-container paths and process-loss windows on the current candidate.
+- [x] 3.5a Implement an ownership-aware auxiliary allowance: retain unresolved helpers, permit only original-use stop reconciliation, retain uncertain quota verifiers independently, reject stale permits; five deterministic regression cases passed.
+- [ ] 3.5b Verify actual helper/quota mutual exclusion within64MiB and stop-before-cleanup under native faults; preserve gVisor execution isolation.
 - [ ] 3.0 Bind guest nproc32/host pids128 into the policy, inspect refusal and real fork/normal-stop regression; preserve prior PID pressure failure and host recovery evidence.
 - [ ] 3.1 V11 typed Mapper/XML,scoped transactions/slot/use lease/live guards.
 - [ ] 3.2 Confirmed MQ/durable claim/ACK,query-only reconciliation and generation fencing.
