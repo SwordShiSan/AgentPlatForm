@@ -23,5 +23,5 @@
 - [x] 5.2b Complete replacement cross-container helper path gate and remaining native faults/resources/browser cases; obsolete fixture action failure is preserved and not treated as a security PASS.
 - [x] 5.3 >=1800s native fault observation and exact R2 restoration.
 ## 6. Closure
-- [ ] 6.1 Immutable source/image/command evidence and protected step→phase→main.
-- [ ] 6.2 Archive,stage/global/ADR/Skill and independently hashed protected deliveries;fixtures stopped.
+- [x] 6.1 Immutable source/image/command evidence and protected step→phase→main (PR84/85).
+- [x] 6.2 Archive,stage/global/ADR/Skill and independently hashed protected deliveries;fixtures stopped.
