@@ -1,5 +1,9 @@
 # R3.2 verification
 
+## Protected implementation promotion complete
+
+PR84 merged exact stepe1570e8 into phaseceb95ce; PR85 merged that phase into main248b7d7. Branch PR/non-force protection remains, Actions disabled, no synthetic CI status. All required implementation and acceptance items are complete. Administrative task6.2 includes this archive itself and independent protected delivery: it is recorded complete only after those actions, not used to bypass any feature or test gate. Canonical stage/global/ADR/risk body is updated locally (R3.2 VERIFIED,R3 2/4,global14/40,productionR2); Skill operations/evidence references SHA2562a272cf8c167c4bf2671472118ce27c9bb512365d87387d859600b0b343c1fd6 /4fb7d2249d64a57e29a9755aacadc6890a34f07d7e15180993bdf9f0ef8def1b. Body and evidence are separately delivered, not inferred from Git.
+
 ## Final mandatory acceptance PASS; protected promotion pending
 
 Application19d3f5229cd3 and testdaab8c4b4e71 completed all mandatory gates. Final creation/mount window:3 actual process cases with two worker processes, one owner/inbox/command each; before-create produced0 containers, created-before-start produced1/0 starts, after-start produced1/1 and converged by original query. Unknown cases retained capacity and independent disabled database snapshots. The canonical fixture database OID16384 was restored. Missing XFS refused before effect without writing the underlying directory; remounting the same UUID allowed real browser explicit retry, retained-file readback and idle stopping. BLOCKED UI offered no retry.
@@ -223,3 +227,9 @@ The first integrated closure window retained separate successful output-bound, b
 
 That window then failed before the conformance guest started: Docker preserved CLI security option shorthand while the probe asserted explicit no-new-privileges:true. The next probe uses the explicit value and cleans an exact never-started created container without inventing a termination timestamp. This is a probe configuration/failure-cleanup correction, not weaker isolation or repaired runtime. The prior failure remains FAIL. Exact R2 ten services/policies, production UUID and migration9 were restored; legacy stayed stopped. Browser, helper process-loss/boundary and1800-second observation remain pending until their own receipts pass. Existing native receipts may be reused only with unchanged scoped images/runtime/input identities.
 
+
+## Administrative closure completed
+
+Implementation promoted through protected PR84/85 (main248b7d7). OpenSpec archived on 2026-10-23; all functional and administrative tasks complete. Canonical stage/global/ADR and deduplicated Skill updated. Fixtures stopped and exact R2 ten-service restoration verified.
+
+Protected body/evidence delivery has two matching local copies and a byte-verified cloud copy, retention at least30 days. Preliminary delivery directory: `/srv/agentplatform/acceptance/r32-full-20261023t104739z/delivery/pre-closure-248b7d7ea94a-1792764567547826700`. Body SHA256 `640661811d0d7690527462d5200e3357edc7850de04143ce3871cc8317bd6797`; evidence SHA256 `14da893d4d5b14023877529bcd05053babf1ff5a7f8aa421770e8b54ef1b1b6e`. Final checkout packaging is recorded separately by the stable protected delivery receipt and does not change application artifacts. Secrets/raw SQL excluded; historical failures retained.
