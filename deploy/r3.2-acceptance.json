@@ -1,0 +1,150 @@
+{
+  "stage": "R3.2",
+  "status": "ACCEPTANCE_PASS_PENDING_PROTECTED_PROMOTION",
+  "applicationSource": "19d3f5229cd32ae070ddf1c87741b35adebbcbf9",
+  "testSource": "daab8c4b4e71e561f1b6061847b2c1395445aa00",
+  "backendTree": "ec7b9dc80fd3a7ac449c5362b50fae0697546ea1",
+  "frontendTree": "3c94d228783072bb62e601a68dc2f6dd36b3d0fd",
+  "images": [
+    {
+      "component": "api",
+      "source": "19d3f5229cd32ae070ddf1c87741b35adebbcbf9",
+      "configId": "sha256:60741be1d9cf125a5c9f99902128ce1f5de1bd8cdeb9524db7aece2f5027bb82",
+      "manifestDigest": "sha256:8c8667f26b286bda488b2aa9cbb9915f293bccd1f55770162bcc6b19f452cace",
+      "platform": "linux/amd64",
+      "archiveSha256": "f7b5bf00655ee53b62bcefa29caa803b609127cdd1feade31dbb90710367f588"
+    },
+    {
+      "component": "sandbox",
+      "source": "88395340b1501dc1f146c3d7816412824685ae76",
+      "configId": "sha256:82b3fa923e171f29531bda1b436b0a1982c2ca6ce1ea44708f0dc529d3a099d4",
+      "manifestDigest": "sha256:e7296fcbf34eec0a4c6af4b38ce785ce15516ccfa4122cce5cad31fc8a19a434",
+      "platform": "linux/amd64",
+      "archiveSha256": "f7f3d1199686424c1e9f6190f9fcca5d35443145ca065845a30e8ff4c7cbe763"
+    },
+    {
+      "component": "workspace-quota",
+      "source": "88395340b1501dc1f146c3d7816412824685ae76",
+      "configId": "sha256:fa1ad6e67dde1a36b3807d56db307dee71ce70a20bb92f79dbeb9956e7a34864",
+      "manifestDigest": "sha256:3f90534fa17643092642ad63ca1e4fae7016b8b4d79d04aab958bc20394031e4",
+      "platform": "linux/amd64",
+      "archiveSha256": "bb5fffd91b1b92428a238124859d9fe9a98091c64a2f6679f467ca7e9df3bce1"
+    },
+    {
+      "component": "sandbox-runtime-probe",
+      "source": "88395340b1501dc1f146c3d7816412824685ae76",
+      "configId": "sha256:ca383a9bd27868e488053b583c4e52255464284538df21692078a07ca3026821",
+      "manifestDigest": "sha256:28216cf65353c2a20e9ca22d01a0a093e75436391d6c63dfd7ca8c642f96885d",
+      "platform": "linux/amd64",
+      "archiveSha256": "17c0ea217239406d9f9b65dfe777bea5e515e7381eafbcc395b2c8254878e4b1"
+    },
+    {
+      "component": "gateway",
+      "source": "0269549cc05dc79cd7d41c12e2ecc06649eb85db",
+      "configId": "sha256:ca6611d30ee0a95fa9f0659f9ce48272481ff51c37bfe10e189b75ca02cda3d5",
+      "manifestDigest": "sha256:55ad7c96d85a7bea473046f40b79ea5e5a84ed926dea92c7c567d76f110c2fce",
+      "platform": "linux/amd64",
+      "archiveSha256": "d9027f4df95457f105c1695dcbb675bbae83adfed6d230a3e1574524af2cfd52"
+    }
+  ],
+  "schema": 12,
+  "runtimeBaseline": 1,
+  "migrationsV1ToV10Unchanged": true,
+  "gates": {
+    "maven": {
+      "status": "PASS",
+      "infrastructureTests": 76,
+      "appTests": 89,
+      "logSha256": "3a4a41daeb9f7c965480f961c275346e3ccb82064ec42cd412bfbfdae8807352"
+    },
+    "realPgMq": {
+      "status": "PASS",
+      "tests": 58,
+      "logSha256": "0b184f659f2026806eaf9a3357c9e5e2a867e817d7e4b4abcceead7130e626fa"
+    },
+    "frontend": {
+      "status": "PASS_REUSED_UNCHANGED_TREE",
+      "source": "0269549cc05dc79cd7d41c12e2ecc06649eb85db",
+      "unitTests": 38,
+      "actualNativeBrowser": "PASS"
+    },
+    "linuxSdk": {
+      "status": "PASS_REUSED_UNCHANGED_HARNESS",
+      "source": "a433764e7b22d251ea7b29dfa5d38a4224e5f1a5",
+      "tests": 51,
+      "scope": "Actual non-root Linux SDK/fixture/Jackson/Harness compatibility; native gVisor/XFS NOT_RUN"
+    },
+    "originalHelperRecovery": {
+      "status": "PASS",
+      "useId": "01a168ac-745e-78ba-b85b-e64c4d967dd7",
+      "result": "UNKNOWN",
+      "replayed": false,
+      "originalProofImportedBeforeReplacement": true,
+      "retiredExecObserved": true,
+      "queries": 2,
+      "sameUseCount": true
+    },
+    "actualCreationWindows": {
+      "status": "PASS",
+      "cases": 3,
+      "twoWorkers": true,
+      "unknownNeverReplayed": true
+    },
+    "missingMountAndExplicitRetry": {
+      "status": "PASS",
+      "underlyingDirectoryUnchanged": true,
+      "sameUuidRemounted": true,
+      "realBlockedAndRetryBrowser": true
+    },
+    "observation": {
+      "status": "PASS",
+      "elapsedSeconds": 1879.7001471221447,
+      "samples": 376,
+      "cycles": 21,
+      "brokerRestart": true,
+      "databaseRestart": true,
+      "sampledValuesOnly": true,
+      "supplierCalls": 0
+    },
+    "r2Restored": {
+      "status": "PASS",
+      "services": 10,
+      "productionMigration": 9,
+      "testResourcesRunning": 0,
+      "publicLoginHistoryIsolation": true
+    }
+  },
+  "scope": {
+    "publicEnvironmentPreparation": true,
+    "publicFiles": false,
+    "publicShell": false,
+    "productionTools": false,
+    "r3Deployed": false,
+    "supplierCalls": 0,
+    "productionTagUnchanged": "production-r2-9ee7aadfe242",
+    "githubActionsEnabled": false
+  },
+  "resourceProfiles": {
+    "observedSingleWorker": "original validated bounded profile",
+    "shortDualWorkerLimitMiB": 2784,
+    "hostReserveMiB": 768,
+    "rootReserveGiB": 5,
+    "sampleValuesAreNotAbsolutePeaks": true
+  },
+  "historicalMetadataNotes": [
+    "The retry browser noUnknownReplay=false field was a kind predicate; that test asserted ERROR/RETRY before submitting and is not an UNKNOWN replay. Original JSON retained.",
+    "The PG driver testOnlyV12ExpectationCorrection marker is historical; source19d3f522 and58 actual PG/MQ tests are authoritative. It does not claim Docker runtime coverage."
+  ],
+  "failuresRetained": true,
+  "faultedDatabasesKeptAndDisabled": true,
+  "retainDays": 30,
+  "evidenceIndex": "evidence/r32/evidence-index.json",
+  "evidenceIndexSha256": "5f570b941a7c7b7bd97f85eeb8d7dfdb7ebfae4f6ee70e495a86cfa68af557cd",
+  "protectedIndexSha256": "751be650316a277394d0c4b69df208ac52ecb3b9b540026f9dea68c2ad5db848",
+  "supplementalReports": {
+    "final-r2-public-browser-result.json": {
+      "sha256": "932458a3f053bdb94e5df42fb2a0a7f68918be20974a37831323c6961bab0e84",
+      "bytes": 862
+    }
+  }
+}

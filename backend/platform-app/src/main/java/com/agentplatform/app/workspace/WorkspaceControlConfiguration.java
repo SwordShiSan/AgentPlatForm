@@ -13,7 +13,7 @@ public class WorkspaceControlConfiguration {
         return new RunnerSignatures(WorkspaceKeys.read(properties.privateKeyFile(),properties.keyId(),true),
                 WorkspaceKeys.read(properties.runnerPublicKeyFile(),properties.runnerKeyId(),false),"platform-control","platform-runner",Clock.systemUTC());
     }
-    @Bean(destroyMethod="close") RunnerControlPort runnerControlPort(WorkspaceControlProperties properties,RunnerSignatures signatures) {
+    @Bean(destroyMethod="close") SignedRunnerHttpClient runnerControlPort(WorkspaceControlProperties properties,RunnerSignatures signatures) {
         return new SignedRunnerHttpClient(properties.runnerBase(),signatures);
     }
 }
