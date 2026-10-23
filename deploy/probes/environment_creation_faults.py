@@ -102,7 +102,7 @@ def run(context):
             config=copy.deepcopy(normal)
             for worker in ['worker','worker-2']:
                 config['services'][worker]['mem_limit']='288m';config['services'][worker]['memswap_limit']='288m'
-                config['services'][worker]['entrypoint']=['java','-Xms32m','-Xmx128m','-jar','/app/platform.jar']
+                config['services'][worker]['entrypoint']=copy.deepcopy(normal['services'][worker]['entrypoint'])
                 if 'deploy' in config['services'][worker]:config['services'][worker].pop('deploy')
             # Keep proven API384; this short dual-consumer fixture uses MQ384.
             # Includes both workers, guest512/helper64/runtime128 below2887MiB.
@@ -159,7 +159,7 @@ def run(context):
             if index<2:assert sql('SELECT environment_id IS NOT NULL FROM pf.workspace_sandbox_slot WHERE id=1;')=='t'
             if index==0:
                 config['services']['api']['mem_limit']='384m';config['services']['api']['memswap_limit']='384m'
-                config['services']['api']['entrypoint']=['java','-Xms32m','-Xmx192m','-jar','/app/platform.jar']
+                config['services']['api']['entrypoint']=copy.deepcopy(normal['services']['api']['entrypoint'])
                 fault.write_text(json.dumps(config,indent=2))
                 call(commands+['--profile','application','up','-d','--wait','--wait-timeout','120','api','gateway'],timeout=150)
                 context['sample']();browser_gate('blocked-browser')
