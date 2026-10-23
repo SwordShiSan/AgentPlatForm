@@ -20,6 +20,11 @@ public final class SandboxRuntimeProbe {
         if (!root.matches("/srv/agentplatform/acceptance/r32-[a-z0-9-]+/workspaces")) throw new IllegalArgumentException("Private fixture only");
         var policy = new SandboxPolicy(input.path("image").asText(), input.path("helperImage").asText(), root,
                 UUID.fromString(input.path("mountUuid").asText()), input.path("quotaDevice").asText(), Path.of("/run/fixture/runtime.json"));
+        if (args.length == 1 && "--policy-only".equals(args[0])) {
+            System.out.println(JSON.writeValueAsString(Map.of("policyHash", policy.hash())));
+            return;
+        }
+        if (args.length != 0) throw new IllegalArgumentException("Unknown fixture mode");
         UUID environment = UUID.fromString(input.path("environmentId").asText());
         UUID space = UUID.fromString(input.path("spaceId").asText());
         UUID workspace = UUID.fromString(input.path("workspaceId").asText());
@@ -98,7 +103,7 @@ public final class SandboxRuntimeProbe {
             SandboxRuntime.FileRequest request,SandboxRuntime.UseAuthority parent) {
         UUID use=UUID.randomUUID(),runner=UUID.randomUUID();
         var intent=runtime.fileHelperIntent(identity,use);
-        final FileHelperData.Snapshot[] current={null};
+        final FileHelperData.Snapshot[] current={new FileHelperData.Snapshot(intent,runner,null,false,null)};
         var authority=new SandboxRuntime.FileHelperAuthority() {
             @Override public FileHelperData.Intent intent() {return intent;}
             @Override public FileHelperData.Snapshot snapshot() {return current[0];}

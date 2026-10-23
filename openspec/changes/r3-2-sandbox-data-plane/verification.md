@@ -144,3 +144,9 @@ Code review found two project lifecycle defects, not environment failures: retai
 - One newly requested read-only cloud status attempt exited255: the same22/tcp endpoint closed before authentication; stderr SHA256 `EF216CFEC26B7A9A003652120E1951CC67D25479C1FED35A248F40D67E857183`. No remote command or maintenance window ran. The available browser inventory contained no cloud-console tab, and creating a new tab was refused by standalone sidebar mode; no unrelated user tab was navigated.
 
 Earlier JVM/runtime-probe image identities predate this allowance correction and are not acceptance identities for it. Native signed-runner, cross-container/gVisor/XFS, process faults, browser, observation and restoration remain required. Save a step-branch implementation checkpoint only; do not merge to phase/main, archive the change, or mark R3.2 VERIFIED on these local results.
+
+## Native resumption preparation (2026-10-23)
+
+The user-authorized Clash global-to-rule change restored the same-key SSH connection; live read-only checks confirmed the original new-platform ten services, legacy stopped and public readiness200/READY. Prior pre-authentication failures remain historical evidence, not a current blocker. The independently allocated R3.2 XFS image remains unmounted and fully allocated; root-free sampling is about6.1GB, so a second4GiB image is not admitted.
+
+Pre-window review found a fixture mismatch: `SandboxRuntimeProbe` had not seeded its memory observer with the helper intent required by the runtime. It now starts with that intent snapshot; production's existing durable intent path is unchanged. The protected probe also offers `--policy-only`, returning the compiled `SandboxPolicy` hash before constructing any Docker client. Native controllers must use this output instead of the stale duplicated v2 formula. Compilation/policy-only and current native regressions remain required; previous native evidence is not transferred to this correction.
