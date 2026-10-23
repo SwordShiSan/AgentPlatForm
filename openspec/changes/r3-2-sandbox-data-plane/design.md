@@ -130,6 +130,8 @@ The proof importer is a non-web standalone `workspace-environment-ops` profile w
 
 原生feasibility探针的内存观察器必须先建立与生产intent提交等价的初始snapshot，再进入runtime.file；它仍不是DB持久化证据。维护控制器从同一候选的编译后SandboxPolicy读取policy hash，不再复制旧版本字符串公式。仅输出策略hash的探针模式不创建Docker client、容器或执行操作，只供受保护验收脚本计算身份；生产公开接口不增加能力。
 
+V12纠正后的受保护整链路fixture仅接受迁移版本12，继续要求独立environment_test数据库、精确fixture/actor/space/workspace/策略身份；不能沿用原V11硬编码，也不放宽为任意未来版本。此处修正验收驱动版本门禁，不改变生产授权或runtime baseline1。
+
 file-helper复用锁定quota-helper镜像中的Python/固定桥接入口，但显式non-root10001、root只读、cap_drop ALL/no-new-privileges、无网络/设备/socket/凭据，只挂当前work。固定入口只接受有界JSONL，禁止用户代码/任意程序参数；64MiB/32PID/CPU1，与quota helper共用单辅助槽，不并行占额。gVisor继续512MiB/CPU1/PID128+nproc32，负责全部不可信执行。策略hash升级为分离桥接版本并绑定helper镜像/限制；只对新generation生效。
 
 新增V12（不修改V1–V11或runtime baseline1），为原use增加独立helper intent/physical binding与不可变停止收据。纯Java端口与MyBatis类型Mapper/PO/XML，Spring TransactionTemplate短事务；锁序仍slot→workspace→environment→use→helper。先提交稳定use派生的helper名称/镜像/策略/owner/fence/runner意图，再Docker create；持久绑定精确container后，在start请求前提交start intent，exec身份在execStart前提交。外部IO不在DB事务内。已存在/结果不明的intent只能查询原helper，不重新create/start；查询不到不能推出从未创建。

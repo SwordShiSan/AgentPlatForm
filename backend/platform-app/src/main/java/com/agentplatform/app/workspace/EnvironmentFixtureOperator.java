@@ -78,7 +78,7 @@ public final class EnvironmentFixtureOperator implements ApplicationRunner {
         String action=option(arguments,"workspace-environment-action");
         if(!Set.of("roundtrip","readback","output-bound","cancel","timeout","reconcile").contains(action)&&!RESOURCE_PROBES.containsKey(action))throw new WorkspaceFailure(400,"INVALID_FIXTURE_ACTION");
         Scope scope=readScope(Path.of(option(arguments,"fixture-scope-file")));var actual=mapper.scope();
-        if(actual==null||!"environment_test".equals(actual.databaseName())||actual.migration()!=11||!scope.fixtureId().equals(actual.fixtureId())
+        if(actual==null||!"environment_test".equals(actual.databaseName())||actual.migration()!=12||!scope.fixtureId().equals(actual.fixtureId())
                 ||!scope.actorId().equals(actual.actorId())||!scope.spaceId().equals(actual.spaceId())||!scope.workspaceId().equals(actual.workspaceId())
                 ||!scope.policyHash().equals(actual.policyHash())||!scope.policyHash().equals(properties.policyHash()))throw new WorkspaceFailure(403,"FIXTURE_SCOPE_MISMATCH");
         var reports=new ArrayList<Map<String,Object>>();
