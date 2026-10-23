@@ -35,9 +35,9 @@ The runner SHALL resolve only controlled UUID paths on verified XFS prjquota and
 #### Scenario: Missing mount or unsafe path
 - **WHEN** the expected mount, UUID, quota or path ownership is invalid
 - **THEN** provisioning refuses before writing a fallback directory
-#### Scenario: Ready storage
+#### Scenario: Initial storage provisioning
 - **WHEN** actual directory/project/quota identity is verified
-- **THEN** workspace storage is READY but environment remains NOT_CREATED and shell/file capabilities remain unavailable
+- **THEN** initial workspace storage is READY and environment remains NOT_CREATED until an independently authorized environment preparation operation; public shell/file capabilities remain unavailable
 #### Scenario: Native quota device identity
 - **WHEN** the helper validates a real XFS mount
 - **THEN** its source must be the operator-pinned non-symlink loop block node matching filesystem device identity, exposed to this trusted helper only with read device permission, or provisioning refuses before effects without widening capabilities or sandbox access

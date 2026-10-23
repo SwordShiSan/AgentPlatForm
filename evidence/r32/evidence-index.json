@@ -1,6 +1,6 @@
 {
   "stage": "R3.2",
-  "status": "ACCEPTANCE_PASS_PENDING_PROTECTED_PROMOTION",
+  "status": "VERIFIED",
   "applicationSource": "19d3f5229cd32ae070ddf1c87741b35adebbcbf9",
   "testSource": "daab8c4b4e71e561f1b6061847b2c1395445aa00",
   "backendTree": "ec7b9dc80fd3a7ac449c5362b50fae0697546ea1",
@@ -1025,5 +1025,27 @@
       "sha256": "932458a3f053bdb94e5df42fb2a0a7f68918be20974a37831323c6961bab0e84",
       "bytes": 862
     }
-  }
+  },
+  "implementationPromotion": {
+    "status": "IMPLEMENTATION_PROMOTED",
+    "applicationSource": "19d3f5229cd32ae070ddf1c87741b35adebbcbf9",
+    "step": {
+      "number": 84,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/84",
+      "head": "e1570e8b34755d11629103f344a60d1b697b6af3",
+      "base": "phase/r3-cloud-workspace",
+      "mergeSha": "ceb95ce062fcd115d2cfd3b29262630c70c026ac"
+    },
+    "main": {
+      "number": 85,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/85",
+      "head": "ceb95ce062fcd115d2cfd3b29262630c70c026ac",
+      "base": "main",
+      "mergeSha": "248b7d7ea94acfd0d98e949caacbf6a780160f56"
+    },
+    "actionsEnabled": false,
+    "branchProtectionPreserved": true,
+    "r3Released": false
+  },
+  "archive": "openspec/changes/archive/2026-10-23-r3-2-sandbox-data-plane"
 }
