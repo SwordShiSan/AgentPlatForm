@@ -1,5 +1,11 @@
 # R3.2 verification
 
+## Current observation checkpoint, final process gates pending
+
+Application19d3f5229cd3 completed1879.700147seconds of actual single-slot lifecycle/fault observation:21 cycles,376 host samples, broker restart preserved the same accepted operation without DB direct execution, and DB interruption failed closed then recovered. Minimum sampled MemAvailable1797242880bytes, minimum root-free5735911424bytes; swap-free rose from1968988160 to1969364992bytes. These are samples, not absolute peaks or higher concurrency capacity. Final native event proof and R2 restoration remain bound to the window's own completion receipt.
+
+The separate final process fixture is prepared but NOT_RUN. Its local PostgreSQL mechanics pilot passed actual disabled-template clone, connection rejection, faulted clone retention and original OID/UNKNOWN readback restoration, then stopped its local PG container. The native matrix will still independently test two worker processes, all three actual creation boundaries, BLOCKED read-only UI, missing-mount no-write refusal, explicit browser retry and retained-file readback. No PR promotion, archive or VERIFIED declaration until these mandatory cases and final R2 restore pass.
+
 ## Current stop-observation correction, not VERIFIED
 
 Native closure-61fa-resume3 passed the separate helper boundary (24 reads during7823 directory mutations,11 safe reads/13 refusals; both exact containers stopped). The helper-before-exec process-loss case durably bound use01a168ac-745e-78ba-b85b-e64c4d967dd7, helper and exec, killed its exact runner and imported the signed stop proof. Original-use reconciliation then failed. Read-only Engine inspection confirmed Docker retired that exec with404 while its exact helper container was exited/PID0 with valid timestamps. This exposes an application adapter observation defect, not a reason to replay the file request or release from404 alone.

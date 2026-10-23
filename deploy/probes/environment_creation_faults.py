@@ -20,6 +20,7 @@ def run(context):
     call, sql, save, progress = (context[n] for n in ['call', 'sql', 'save', 'progress'])
     base, cid, api = context['BASE'], context['cid'], context['api']
     assert re.fullmatch('/srv/agentplatform/acceptance/r32-full-[a-z0-9-]+', str(root))
+    assert re.fullmatch('agentplatform-r32-[a-z0-9-]+',plan['project'])
     assert op.resolve().is_relative_to(root.resolve())
     assert api(context['base']+'/environment')[2]['state'] == 'STOPPED'
     assert sql("SELECT count(*) FROM pf.workspace_environment_use WHERE status IN('CLAIMED','RUNNING','UNKNOWN');") == '0'
@@ -27,7 +28,8 @@ def run(context):
     normal = json.loads((op/'compose.json').read_text())
     stamp = str(int(time.time())); canonical = 'r32_canonical_'+stamp
     canonical_oid = sql('SELECT oid FROM pg_database WHERE datname=current_database();')
-    clones = []; renamed = False; active_case = None
+    assert canonical_oid.isdigit()
+    clones = []; active_case = None; event_streams=[]
 
     def admin(query):
         return call(['docker','exec','-i',cid('postgres'),'psql','--no-psqlrc','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-t','-A'],query)
@@ -50,6 +52,13 @@ def run(context):
         output = call(['docker','exec',cid('rabbitmq'),'rabbitmqctl','-q','list_queues','-p','/agentplatform','name','messages_ready','messages_unacknowledged'],timeout=30)
         lines = [line.split() for line in output.splitlines() if line.startswith('ap.workspace.environment.v2\t')]
         assert len(lines) == 1 and lines[0][1:] == ['0','0'], 'Retain pending messages; never purge to pass'
+
+    def browser_gate(kind):
+        save(kind+'-ready',{'workspaceId':context['workspaceId'],'source':plan['source'],'kind':kind})
+        receipt=op/'reports'/(kind+'-result.json');until=time.monotonic()+240
+        while not receipt.exists():
+            assert time.monotonic()<until,'Protected browser state result missing';time.sleep(1)
+        assert json.loads(receipt.read_text())['status']=='PASS'
 
     def preserve_case(name):
         stop_apps();empty_queue()
@@ -84,7 +93,7 @@ def run(context):
         size=int(admin("SELECT pg_database_size('environment_test');"))
         assert shutil.disk_usage('/').free >= 5*1024**3+size*4+64*1024**2
         admin('ALTER DATABASE environment_test ALLOW_CONNECTIONS false;');disconnects()
-        admin('ALTER DATABASE environment_test RENAME TO '+canonical+';');renamed=True
+        admin('ALTER DATABASE environment_test RENAME TO '+canonical+';')
         for index,point in enumerate(['environment-before-create','environment-created-before-start','environment-started-before-readiness']):
             case='c'+str(index+1);active_case='r32_fault_'+stamp+'_'+case
             progress('CREATION_FAULT_'+case)
@@ -107,6 +116,9 @@ def run(context):
             call(commands+['--profile','application','up','-d','--wait','--wait-timeout','180','api','gateway','worker','worker-2','runner'],timeout=230)
             context['sample']()
             view=api(context['base']+'/environment')[2];assert view['state']=='STOPPED'
+            events_file=(op/'reports'/(case+'-events.private.jsonl')).open('wb')
+            events=subprocess.Popen(['docker','events','--format','{{json .}}','--filter','type=container','--filter','label=ap.role=sandbox'],stdout=events_file,stderr=subprocess.DEVNULL)
+            event_streams.append((events,events_file));time.sleep(.2)
             accepted=api(context['base']+'/environment',{}, {**context['headers'],'Idempotency-Key':str(uuid.uuid4()),'If-Match':'"'+str(view['version'])+'"'})[2]
             runner=cid('runner');deadline=time.monotonic()+65
             while True:
@@ -116,6 +128,8 @@ def run(context):
             operation=accepted['operationId']
             owner=json.loads(sql("SELECT json_build_object('runnerInstanceId',r.id,'containerId',r.container_id,'imageId',r.image_id,'startedAt',r.started_at,'environmentId',o.environment_id,'generation',o.generation,'commandId',o.command_id,'operationId',o.id)::text FROM pf.workspace_environment_operation o JOIN pf.workspace_environment_command c ON c.operation_id=o.id JOIN pf.workspace_runner_instance r ON r.id=c.runner_instance_id WHERE o.id='"+operation+"';"))
             assert owner['containerId']==runner
+            assert owner['imageId']==context['ids']['api']
+            assert sql("SELECT state FROM pf.workspace_environment WHERE workspace_id='"+context['workspaceId']+"';")=='PREPARING'
             call(['docker','kill','--signal','KILL',runner])
             call(commands+['stop','api','gateway'],timeout=60)
             name='ap-sandbox-'+owner['environmentId']+'-'+str(owner['generation'])
@@ -143,6 +157,12 @@ def run(context):
             assert sql("SELECT count(*) FROM pf.workspace_environment_inbox WHERE operation_id='"+operation+"';")=='1'
             assert sql("SELECT count(DISTINCT owner_id) FROM pf.workspace_environment_operation WHERE id='"+operation+"';")=='1'
             if index<2:assert sql('SELECT environment_id IS NOT NULL FROM pf.workspace_sandbox_slot WHERE id=1;')=='t'
+            if index==0:
+                config['services']['api']['mem_limit']='384m';config['services']['api']['memswap_limit']='384m'
+                config['services']['api']['entrypoint']=['java','-Xms32m','-Xmx192m','-jar','/app/platform.jar']
+                fault.write_text(json.dumps(config,indent=2))
+                call(commands+['--profile','application','up','-d','--wait','--wait-timeout','120','api','gateway'],timeout=150)
+                context['sample']();browser_gate('blocked-browser')
             if physical is not None:
                 latest=json.loads(call(['docker','inspect',physical['Id']]))[0]
                 if latest['State']['Running']:call(['docker','stop','-t','3',physical['Id']],timeout=20)
@@ -150,13 +170,22 @@ def run(context):
                 assert not latest['State']['Running'] and latest['State']['Pid']==0
                 if index==1:assert latest['State']['Status']=='created' and latest['State']['StartedAt'].startswith('0001')
                 else:assert latest['State']['FinishedAt']>latest['State']['StartedAt']
+                save(case+'-physical-stop',{'id':latest['Id'],'image':latest['Image'],'state':latest['State'],'scope':'Exact host fixture cleanup; not a fabricated platform stop receipt'})
                 call(['docker','rm',physical['Id']])
             else:
                 assert subprocess.run(['docker','inspect',name],capture_output=True,timeout=10).returncode!=0
-            save(case+'-result',{'status':'PASS','point':point,'operationId':operation,'finalState':state,'oneOwner':True,'oneInbox':True,'oneCommand':True,'createdContainers':0 if index==0 else 1,'noReplay':True,'unknownCapacityRetained':index<2,'supplierCalls':0})
+            time.sleep(.2);events.terminate();events.wait(timeout=10);events_file.close()
+            history=[json.loads(line) for line in (op/'reports'/(case+'-events.private.jsonl')).read_text().splitlines()]
+            history=[e for e in history if e.get('Actor',{}).get('Attributes',{}).get('ap.command')==owner['commandId']]
+            creates=sum(e.get('Action')=='create' for e in history);starts=sum(e.get('Action')=='start' for e in history)
+            assert creates==(0 if index==0 else 1) and starts==(1 if index==2 else 0)
+            save(case+'-result',{'status':'PASS','point':point,'operationId':operation,'finalState':state,'oneOwner':True,'oneInbox':True,'oneCommand':True,'createdContainers':creates,'startedContainers':starts,'noReplay':True,'unknownCapacityRetained':index<2,'supplierCalls':0})
             preserve_case(active_case);active_case=None
         save('creation-fault-result',{'status':'PASS','cases':3,'twoWorkers':True,'canonicalOid':canonical_oid,'clones':clones,'supplierCalls':0})
     finally:
+        for events,stream in event_streams:
+            if events.poll() is None:events.terminate();events.wait(timeout=10)
+            stream.close()
         actual_name=admin('SELECT datname FROM pg_database WHERE oid='+canonical_oid+';')
         if actual_name==canonical:
             stop_apps();disconnects()
@@ -171,3 +200,49 @@ def run(context):
             admin('ALTER DATABASE environment_test ALLOW_CONNECTIONS true;')
         else:
             raise AssertionError('Canonical fixture database identity changed; preserve all records for host recovery')
+
+
+def verify_mount_retry(context):
+    """Actual missing-mount denial and explicit retry, using the restored canonical fixture."""
+    root,op,plan=(context[n] for n in ['ROOT','OP','PLAN'])
+    call,sql,save,api=(context[n] for n in ['call','sql','save','api'])
+    base=context['BASE'];workspace=context['workspaceId'];url=context['base']+'/environment'
+    def stop_apps():call(base+['stop','api','gateway','worker','worker-2','runner'],timeout=100)
+    def start_apps():call(base+['--profile','application','up','-d','--wait','--wait-timeout','180','runner','worker','api','gateway'],timeout=230)
+    def remount():
+        assert context['loop']==(root/'quota/loop-device').read_text().strip()
+        call(['mount','-o','prjquota,noatime',context['loop'],str(root/'workspaces')])
+        context['mounted']=True
+        assert call(['findmnt','-n','-o','UUID','--target',str(root/'workspaces')])==plan['filesystemUuid']
+    assert sql('SELECT environment_id IS NULL FROM pf.workspace_sandbox_slot WHERE id=1;')=='t'
+    stop_apps()
+    assert call(['findmnt','-n','-o','UUID','--target',str(root/'workspaces')])==plan['filesystemUuid']
+    try:
+        call(['umount',str(root/'workspaces')]);context['mounted']=False
+        assert not list((root/'workspaces').iterdir()),'Underlying mount directory must already be empty; never delete to satisfy guard'
+        start_apps();view=api(url)[2];assert view['state']=='STOPPED'
+        accepted=api(url,{}, {**context['headers'],'Idempotency-Key':str(uuid.uuid4()),'If-Match':'"'+str(view['version'])+'"'})[2]
+        deadline=time.monotonic()+125
+        while True:
+            failed=api(url)[2]
+            if failed['state']=='ERROR':break
+            assert failed['state'] not in ['READY','BLOCKED'] and time.monotonic()<deadline
+            time.sleep(1)
+        assert failed['allowedActions']==['RETRY'] and failed['operationId']==accepted['operationId']
+        assert sql("SELECT status||'/'||effect_state FROM pf.workspace_environment_operation WHERE id='"+accepted['operationId']+"';")=='FAILED/NOT_STARTED'
+        assert sql('SELECT environment_id IS NULL FROM pf.workspace_sandbox_slot WHERE id=1;')=='t'
+        assert not list((root/'workspaces').iterdir()),'Missing mount caused an underlying-directory write'
+        save('missing-mount-result',{'status':'PASS','operationId':accepted['operationId'],'state':failed['state'],'effect':'NOT_STARTED','underlyingDirectoryUnchanged':True,'retryOnlyAfterDefiniteFailure':True})
+        stop_apps();remount();start_apps()
+        save('retry-browser-ready',{'source':plan['source'],'workspaceId':workspace,'kind':'retry-browser'})
+        receipt=op/'reports/retry-browser-result.json';deadline=time.monotonic()+240
+        while not receipt.exists():
+            assert time.monotonic()<deadline,'Protected definite-retry browser receipt missing';time.sleep(1)
+        assert json.loads(receipt.read_text())['status']=='PASS'
+        context['fixture']('readback')
+        deadline=time.monotonic()+140
+        while api(url)[2]['state']!='STOPPED':
+            assert time.monotonic()<deadline;time.sleep(1)
+        save('mount-retry-result',{'status':'PASS','realBrowserExplicitRetry':True,'retainedFilesReadBack':True,'sameXfsUuid':plan['filesystemUuid'],'idleStopConfirmed':True,'supplierCalls':0})
+    finally:
+        if not context['mounted']:stop_apps();remount()
