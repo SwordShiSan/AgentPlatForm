@@ -146,6 +146,30 @@ Pre-launch review of the full chain found its protected fixture still required m
 
 After that fixture-only correction, host-side offline Maven verify passed: infrastructure73 + application89 tests, zero failures/errors/skips; log `.cache/r32-local/fixture-v12-verify.log`, SHA256 `2d0cb66ff7a6cad7c6819b43628897e8c44276f4ca953d2f860ec475d5c2023b`. Opt-in real PG/MQ suites are not included in this count. Strict and diff whitespace checks passed. Skill references now record these confirmed build/policy/fixture/window lessons; operations SHA256 `7801b4fb0167fc0dba3b52a0f7234c7b338b04418c43fbed892fe3af5b0a82dc`, evidence-index SHA256 `e36462548345d8e754972c9b576078665bfc756f13587107a6377f77718d3536`.
 
+## Actual V12 chain and retained failures (2026-10-23; stage NOT VERIFIED)
+
+Application source `fed7b03523cfe485404b9d23f305b0b9c19b6a22` is pushed and remote-ref verified. The API config is `sha256:6752cd6c9ed7cd30f4945c68b1a757b504bd82f657d1d101f6d92166b9b9a973`, archive SHA256 `d15f67eb168262e15b28ebee853bfff3804d0a908516cba396737206ad1eb19b`. Sandbox/helper/native-probe source remains8839534; gateway source remains0269549. Exact tree comparisons confirmed unchanged native inputs since8839534 and unchanged frontend since0269549. Per-component provenance is retained, not relabeled as a single-source build.
+
+Preserved-driver windows exposed three separate conditions: (1) umask077 made a newly created non-sensitive policy directory0700; explicit chmod0755 on only that directory corrected non-root probe access; (2) early cleanup assumed compose.json already existed, so the independent watchdog performed the remaining unmount/detach and R2 restoration; (3) the old dataset's legacy-policy environment was still durably READY while its exact container was stopped. V11→V12 migration and runner startup passed, but the initial STOPPED assumption failed. A compatible old-bundle normal-stop attempt remained BLOCKED. No SQL status reset, new creation or unknown-use replay was used. These FAIL records remain in their distinct operation directories.
+
+The detached old test filesystem UUID `90e42a27-0acb-436b-a16c-2b13de3533c4` was preserved losslessly in two cloud compressed copies and one ACL-protected local copy. All three decompress to the original4294967296bytes with SHA256 `3a9bedd2f11c318df5007d814b4c3e7770bbde27442e1eb01e76eef91bd1b90d`; compressed SHA256 `91ea12351334f4a8686860b5977fc700c1b65fb693948a28b7ab874e69b90df8`. Only after inode/mtime/UUID/hash/no-mount/no-running-reference checks was the raw test allocation reclaimed. Its database/volumes/containers/images/failure reports remain; no production allocation was changed.
+
+Fresh independent project `agentplatform-r32-20261023t104739z`, root `/srv/agentplatform/acceptance/r32-full-20261023t104739z`, filesystem UUID `2e8474aa-17a2-4bf8-91c2-77be00443cab`, has separate credentials, database, volumes and network. Policy hash is `281c38beb45d172ad93089961b812fb92da3bbd9f8fae695022dd9ad4f701848`. Actual results:
+
+| Gate | Result |
+|---|---|
+| Fresh V12 installation / runtime baseline1 | PASS |
+| Transactional storage creation, MQ and signed runner environment preparation | PASS |
+| Python→Node→application file-port same workspace and trusted helper | PASS |
+| Fixed network, CPU, PID and tmp probes | PASS; distinct fixture reports and host CPU evidence retained |
+| Full driver batch | FAIL: obsolete `resource-paths` action was no longer accepted by the corrected fixture |
+| Replacement cross-container helper path gate, remaining fault/resource/browser gates,1800s observation | NOT_RUN/incomplete; no stage promotion |
+| Final R2 restoration | PASS: exact10 services, legacy0, R3.2 test containers0, production UUID unchanged, migration9, HTTP Host login/readiness200 and public readiness shape unchanged |
+
+The obsolete-action failure was a driver-preflight omission, not a passing replacement path test. Added read-only `deploy/scripts/check-environment-fixture-driver.py`: checks the current Java fixture action declarations against fixed Python calls before maintenance. The actual failed driver is rejected for `resource-paths`; a corrected preflight input passes. This check neither runs the driver nor validates isolation. Generators now assert the old action occurs exactly once before replacing it; removing that obsolete invocation does not remove the replacement security gate.
+
+Sanitized protected local index `.cache/r32-local/checkpoint-fed7-native/index.json`, SHA256 `4827c5c315068cb99a7f85d10b7e3c4740244d969a9d0b5c7c300da535e84be6`, binds9 cloud/local matching records and per-image source/config/archive identities. Retain through at least2026-11-22. Skills operations/evidence references were deduplicated again: SHA256 `7f5fc9b87c92ed04629bf36b2e05b3040c68110737801751ab52f02a03e4a8e9` / `7cfcd918c1f1339089fa203c264df92afd4be822c505de3baddc9cd1fd0c9c5c`. No provider calls or production R3 deployment occurred. Current fresh test environment must be reconciled/stopped through its same bundle before further preparation; do not assume its DB state changed merely because cleanup stopped containers.
+
 ## Closure review and auxiliary allowance correction (2026-10-23; NOT VERIFIED)
 
 Code review found two project lifecycle defects, not environment failures: retaining a file helper's semaphore also prevented the original command from querying its stop; and a file helper's no-effect receipt could release the shared allowance after its nested quota verifier remained unresolved. The approved design was clarified and strict passed before this correction.

@@ -19,6 +19,8 @@
 ## 5. Acceptance
 - [ ] 5.1 Engineering/migration/old-program compatibility and actual PG/MQ/process faults.
 - [ ] 5.2 Actual data plane/security/resource/stop and dual-user/browser matrix.
+- [x] 5.2a Current application candidate fed7b035: fresh V12, actual MQ/signed runner prepare, trusted-helper/Python/Node/application roundtrip, fixed network/CPU/PID/tmp probes; retain distinct native records and exact R2 restoration.
+- [ ] 5.2b Complete replacement cross-container helper path gate and remaining native faults/resources/browser cases; obsolete fixture action failure is preserved and not treated as a security PASS.
 - [ ] 5.3 >=1800s native fault observation and exact R2 restoration.
 ## 6. Closure
 - [ ] 6.1 Immutable source/image/command evidence and protected step→phase→main.
