@@ -1,5 +1,9 @@
 # Design
 
+## Exact stopped container when Docker retires an exec record
+
+Native helper-before-exec process loss showed Docker may return404 for a previously durably bound exec after its exact container stops. A404 alone is never termination evidence. The runtime may treat that retired exec as stopped only after validating the original container identity/policy/start, Running=false, Paused=false, Restarting=false, PID=0 and a valid nonzero FinishedAt after StartedAt. Local callback completion remains mandatory; a replacement runner additionally requires the persisted original-runner stop proof. Transport errors, missing container, running/nonzero-PID container, missing/malformed chronology and stale ownership remain fail closed. The output remains UNKNOWN; no new exec/start or file request is allowed. This fixes observation of an already stopped process, without changing policy limits, the stop receipt codec or public contracts.
+
 ## Detached private-use reconciliation
 
 Use a reusable host-only attestation formatter with the existing standard HMAC-SHA256 envelope, strict private key/metadata files and actual stopped runner inspect (exact UUID/container/config/start, role label,PID0/finished time). It only writes a protected proof; it cannot stop containers, change the database or attest a removed/merely paused runner. The existing standalone least-privilege operator verifies/imports it. No key reaches API/worker/runner/sandbox and no new signing protocol is introduced.

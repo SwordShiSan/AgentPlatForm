@@ -1,5 +1,11 @@
 # R3.2 verification
 
+## Current stop-observation correction, not VERIFIED
+
+Native closure-61fa-resume3 passed the separate helper boundary (24 reads during7823 directory mutations,11 safe reads/13 refusals; both exact containers stopped). The helper-before-exec process-loss case durably bound use01a168ac-745e-78ba-b85b-e64c4d967dd7, helper and exec, killed its exact runner and imported the signed stop proof. Original-use reconciliation then failed. Read-only Engine inspection confirmed Docker retired that exec with404 while its exact helper container was exited/PID0 with valid timestamps. This exposes an application adapter observation defect, not a reason to replay the file request or release from404 alone.
+
+Design/specs were updated and strict passed before the correction. The adapter now requires exact terminal container facts and retains callback/prior-runner proof checks when a bound exec no longer exists. Three focused regression tests pass, including active/paused/restarting/nonzero-PID/missing fields and malformed/non-increasing nanosecond chronology. Full engineering and native original-use recovery must pass on the new artifact. Prior failures remain preserved; R2 was restored, R3 not deployed, supplier calls0.
+
 ## Source0269549 and stricter PID configuration checkpoint (not VERIFIED)
 
 Full frozen-source Maven/DDD/Enforcer/persistence, frontend38/type/build/contracts and actual PG/MQ56 pass. The standalone non-root SDK image passed51 with640MiB after an exact512MiB OOM/137; original console/inspect and subsequent classification are retained, and640MiB is a temporary probe allowance, not a business/sandbox limit. The current native window proved freshV11/runtime1, actual signed MQ/storage/startup-canary READY, Python/Node/application file roundtrip, network isolation and host CPU1 enforcement. Its PID workload failed and management/cleanup blocked; trusted exact cgroup stop followed by separate recovered-cleanup and R2 restoration does not change that window's FAIL. Remaining native/resource/browser/fault/1800s gates are NOT_RUN.

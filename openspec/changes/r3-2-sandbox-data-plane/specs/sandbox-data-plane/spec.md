@@ -84,3 +84,7 @@ The platform SHALL perform private fixed file operations in a pinned non-root tr
 #### Scenario: Authority loss or replacement runner
 - **WHEN** membership/owner/fence/DB authority is lost or another runner observes the use
 - **THEN** new effects and ordinary result commits are refused, precise stop evidence may converge through the original use, and replacement observation requires valid prior-runner stop proof
+
+#### Scenario: Retired exec record after exact container termination
+- **WHEN** Docker no longer retains the durably bound helper exec after the original container terminates
+- **THEN** absence alone cannot release capacity; only an exact unpaused stopped container with zero PID and valid start/finish chronology, callback termination and any required original-runner proof may establish stopping, with outcome UNKNOWN and no replay

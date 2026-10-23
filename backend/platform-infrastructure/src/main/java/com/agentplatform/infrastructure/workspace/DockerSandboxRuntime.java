@@ -50,6 +50,21 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
     }
 
     private static WorkspaceFailure unavailable(String code) { return new WorkspaceFailure(503, code); }
+    /** An exec404 is only an observation gap after its exact parent has ended. */
+    static boolean confirmedContainerStopped(InspectContainerResponse.ContainerState state) {
+        if(state==null||!"exited".equals(state.getStatus())||!Boolean.FALSE.equals(state.getRunning())
+                ||!Boolean.FALSE.equals(state.getPaused())||!Boolean.FALSE.equals(state.getRestarting())
+                ||!Long.valueOf(0).equals(state.getPidLong()))return false;
+        try {
+            Instant start=Instant.parse(state.getStartedAt()),finish=Instant.parse(state.getFinishedAt());
+            return start.isAfter(Instant.EPOCH)&&finish.isAfter(start);
+        } catch(RuntimeException invalid) {return false;}
+    }
+    private boolean execStopped(InspectContainerResponse parent,String execId) {
+        if(execId==null)return true;
+        try {return Boolean.FALSE.equals(docker.inspectExecCmd(execId).exec().isRunning());}
+        catch(NotFoundException retired) {return confirmedContainerStopped(parent.getState());}
+    }
     private String name(Identity identity) { return "ap-sandbox-" + identity.environmentId() + "-" + identity.generation(); }
     private static String helperName(UUID useId) {return "ap-file-helper-"+useId;}
     private Map<String, String> labels(Identity identity) {
@@ -490,9 +505,12 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
         long until=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);
         do {
             found=exactFileHelper(identity,intent,snapshot.physical().containerId());
-            boolean execStopped=snapshot.physical().execId()==null||Boolean.FALSE.equals(docker.inspectExecCmd(snapshot.physical().execId()).exec().isRunning());
+            if(snapshot.physical().startedAt()!=null&&!snapshot.physical().startedAt().equals(startedAt(found)))
+                throw unavailable("FILE_HELPER_STOP_IDENTITY_MISMATCH");
+            boolean execStopped=execStopped(found,snapshot.physical().execId());
             boolean callbacksStopped=capture==null||capture.finished.getCount()==0;
-            if(!Boolean.TRUE.equals(found.getState().getRunning())&&execStopped&&callbacksStopped) {
+            if((startedAt(found)==null&&!Boolean.TRUE.equals(found.getState().getRunning())&&Long.valueOf(0).equals(found.getState().getPidLong())
+                    ||confirmedContainerStopped(found.getState()))&&execStopped&&callbacksStopped) {
                 String start=startedAt(found),finished=found.getState().getFinishedAt();
                 if(snapshot.startRequested()&&start==null||start!=null&&(finished==null||finished.startsWith("0001")))throw unavailable("FILE_HELPER_STOP_UNCONFIRMED");
                 var physical=physical(found,snapshot.physical().execId());
@@ -601,10 +619,9 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
         long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
         do {
             found = exact(identity);
-            boolean execStopped = capture == null || capture.execId == null
-                    || Boolean.FALSE.equals(docker.inspectExecCmd(capture.execId).exec().isRunning());
+            boolean execStopped = capture == null || execStopped(found,capture.execId);
             boolean callbacksStopped = capture == null || capture.finished.getCount() == 0;
-            if (!Boolean.TRUE.equals(found.getState().getRunning()) && execStopped && callbacksStopped
+            if (confirmedContainerStopped(found.getState()) && execStopped && callbacksStopped
                     && found.getState().getFinishedAt() != null && !found.getState().getFinishedAt().startsWith("0001")) {
                 return new Stop(found.getId(), found.getImageId(), found.getState().getStartedAt(),
                         found.getState().getFinishedAt(), true, true, Instant.now());
