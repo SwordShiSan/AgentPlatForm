@@ -104,15 +104,15 @@ def run(context):
                 config['services'][worker]['mem_limit']='288m';config['services'][worker]['memswap_limit']='288m'
                 config['services'][worker]['entrypoint']=['java','-Xms32m','-Xmx128m','-jar','/app/platform.jar']
                 if 'deploy' in config['services'][worker]:config['services'][worker].pop('deploy')
-            # Existing fixture sessions avoid a concurrent password hash here.
+            # Keep proven API384; this short dual-consumer fixture uses MQ384.
             # Includes both workers, guest512/helper64/runtime128 below2887MiB.
-            config['services']['api']['mem_limit']='256m';config['services']['api']['memswap_limit']='256m'
-            config['services']['api']['entrypoint']=['java','-Xms32m','-Xmx128m','-jar','/app/platform.jar']
-            config['services']['api'].pop('deploy',None)
+            config['services']['rabbitmq']['mem_limit']='384m';config['services']['rabbitmq']['memswap_limit']='384m'
+            config['services']['rabbitmq'].pop('deploy',None)
             env=config['services']['runner']['environment'];env['SPRING_PROFILES_ACTIVE']='workspace-runner,workspace-fixture'
             env['PLATFORM_WORKSPACE_FIXTURE_STAGE']='r32';env['PLATFORM_WORKSPACE_FIXTURE_POINT']=point
             fault=op/(case+'-compose.json');fault.write_text(json.dumps(config,indent=2))
             commands=['docker','compose','-p',plan['project'],'-f',str(fault)]
+            call(commands+['up','-d','--wait','--wait-timeout','150','postgres','rabbitmq'],timeout=180)
             call(commands+['--profile','application','up','-d','--wait','--wait-timeout','180','api','gateway','worker','worker-2','runner'],timeout=230)
             context['sample']()
             view=api(context['base']+'/environment')[2];assert view['state']=='STOPPED'
