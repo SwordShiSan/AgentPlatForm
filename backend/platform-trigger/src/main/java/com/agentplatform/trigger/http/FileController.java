@@ -1,6 +1,8 @@
 package com.agentplatform.trigger.http;
 
 import com.agentplatform.api.files.FileApi;
+import com.agentplatform.api.identity.IdentityApi;
+import com.agentplatform.domain.identity.IdentityFailure;
 import com.agentplatform.domain.files.FileFailure;
 import jakarta.servlet.http.*;
 import java.nio.charset.StandardCharsets;
@@ -19,7 +21,13 @@ public final class FileController {
             @jakarta.validation.constraints.NotNull @jakarta.validation.constraints.Pattern(regexp="[a-f0-9]{64}") String sha256,
             String fileId,String baseVersionId) {}
     private final FileApi service;
-    public FileController(FileApi service) { this.service=service; }
+    private final IdentityApi identity;
+    public FileController(FileApi service,IdentityApi identity) { this.service=service;this.identity=identity; }
+    private void session(HttpServletRequest request,FileApi.Caller caller) {
+        var current=identity.me(RequestIdentity.token(request),request.getHeader("X-Space-Id"));
+        if(current==null||!caller.userId().equals(current.id())||current.spaces().stream().noneMatch(s->caller.spaceId().equals(s.id())))
+            throw new IdentityFailure(401,"AUTHENTICATION_REQUIRED");
+    }
     private static FileApi.Caller caller(HttpServletRequest request) {
         var identity=RequestIdentity.caller(request);return new FileApi.Caller(identity.userId(),identity.spaceId());
     }
@@ -34,8 +42,9 @@ public final class FileController {
     }
     @PutMapping(value="/uploads/{id}/content",consumes="application/octet-stream")
     ResponseEntity<FileApi.UploadView> content(HttpServletRequest request,@PathVariable String id) throws java.io.IOException {
-        try(var stream=request.getInputStream()) {
-            return ResponseEntity.ok().header("Cache-Control","no-store").body(service.transfer(caller(request),id,request.getContentLengthLong(),stream));
+        var caller=caller(request);
+        try(var stream=new SessionCheckedInputStream(request.getInputStream(),()->session(request,caller))) {
+            return ResponseEntity.ok().header("Cache-Control","no-store").body(service.transfer(caller,id,request.getContentLengthLong(),stream));
         }
     }
     @PostMapping("/uploads/{id}/complete") ResponseEntity<FileApi.OperationView> complete(HttpServletRequest request,@PathVariable String id) {
@@ -58,7 +67,10 @@ public final class FileController {
     }
     @GetMapping("/files/{id}/content") void download(HttpServletRequest request,HttpServletResponse response,@PathVariable String id,
             @RequestParam(required=false) String versionId) throws java.io.IOException {
-        try(var content=service.download(caller(request),id,versionId,request.getHeader("Range"))) {
+        var caller=caller(request);
+        session(request,caller);
+        try(var content=service.download(caller,id,versionId,request.getHeader("Range"))) {
+            var checked=new SessionCheckedInputStream(content.stream(),()->session(request,caller));
             response.setStatus(content.first()==null?200:206);
             response.setHeader("Cache-Control","no-store");response.setHeader("X-Content-Type-Options","nosniff");
             response.setHeader("Accept-Ranges","bytes");response.setHeader("ETag","\""+content.sha256()+"\"");
@@ -66,8 +78,12 @@ public final class FileController {
             response.setHeader("Content-Disposition",ContentDisposition.attachment().filename(content.filename(),StandardCharsets.UTF_8).build().toString());
             if(content.first()!=null)response.setHeader("Content-Range","bytes "+content.first()+"-"+content.last()+"/"+content.totalBytes());
             byte[] buffer=new byte[65536];int read;var target=response.getOutputStream();
-            while((read=content.stream().read(buffer))!=-1)target.write(buffer,0,read);
+            while((read=checked.read(buffer))!=-1)target.write(buffer,0,read);
             target.flush();
+        } catch(RuntimeException|java.io.IOException failure) {
+            if(!response.isCommitted()){response.reset();throw failure;}
+            // A partial binary response cannot be replaced with a Problem JSON body.
+            response.getOutputStream().close();
         }
     }
 }

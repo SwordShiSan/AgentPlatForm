@@ -56,6 +56,32 @@ class StreamBridgeTests(unittest.TestCase):
                 bridge.apply(self.header(b"new",path="é.txt"),io.BytesIO(b"new"),root)
             self.assertEqual(len(list(Path(root).iterdir())),1)
 
+    def test_late_new_target_cannot_be_overwritten(self):
+        with tempfile.TemporaryDirectory() as root:
+            original=bridge.rename_new
+            def create_competitor(parent, temporary, name):
+                Path(root,name).write_bytes(b"competitor")
+                return original(parent,temporary,name)
+            with patch.object(bridge,"rename_new",side_effect=create_competitor):
+                with self.assertRaisesRegex(bridge.Rejected,"FILE_NAME_CONFLICT"):
+                    bridge.apply(self.header(b"our-content"),io.BytesIO(b"our-content"),root)
+            self.assertEqual(Path(root,"a.txt").read_bytes(),b"competitor")
+            self.assertEqual(len(list(Path(root).iterdir())),1)
+
+    def test_cli_device_guard_refuses_missing_or_different_mount_before_writing(self):
+        with tempfile.TemporaryDirectory() as root:
+            header=self.header(b"x")
+            with self.assertRaisesRegex(bridge.Rejected,"FILE_MOUNT_REJECTED"):
+                bridge.apply(header,io.BytesIO(b"x"),root,require_device=True)
+            device=os.stat(root).st_dev
+            header["filesystemDevice"]=[os.major(device),os.minor(device)+1]
+            with self.assertRaisesRegex(bridge.Rejected,"FILE_MOUNT_REJECTED"):
+                bridge.apply(header,io.BytesIO(b"x"),root,require_device=True)
+            self.assertEqual(list(Path(root).iterdir()),[])
+            header["filesystemDevice"]=[os.major(device),os.minor(device)]
+            bridge.apply(header,io.BytesIO(b"x"),root,require_device=True)
+            self.assertEqual(Path(root,"a.txt").read_bytes(),b"x")
+
     def test_before_write_storage_failure_keeps_old_file_and_after_rename_is_unknown(self):
         with tempfile.TemporaryDirectory() as root:
             target=Path(root,"a.txt");target.write_bytes(b"old")

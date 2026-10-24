@@ -59,4 +59,20 @@ class FileHttpTest {
         var response=request("POST",path,"{\"path\":\"x\",\"bytes\":0,\"sha256\":\""+hash+"\",\"endpoint\":\"http://foreign\"}",true,true);
         assertEquals(400,response.statusCode());assertTrue(response.body().contains("UNKNOWN_REQUEST_FIELD"));verifyNoInteractions(files);
     }
+    @Test void aRevokedSessionCannotContinueAStartedUpload()throws Exception {
+        var me=new IdentityApi.MeResponse(USER,"fixture",false,List.of(new IdentityApi.SpaceResponse(SPACE,"PERSONAL","OWNER",0)));
+        doReturn(me,me).doThrow(new IdentityFailure(401,"AUTHENTICATION_REQUIRED")).when(identity).me(eq("fixture-session"),isNull());
+        var bytes=new java.util.concurrent.atomic.AtomicLong();
+        when(files.transfer(any(),any(),anyLong(),any())).thenAnswer(call->{
+            var stream=(java.io.InputStream)call.getArgument(3);byte[] buffer=new byte[65536];int count;
+            while((count=stream.read(buffer))!=-1)bytes.addAndGet(count);return null;
+        });
+        var request=HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api/v1/uploads/"+WORKSPACE+"/content")).timeout(Duration.ofSeconds(10))
+                .header("Cookie","ap_session=fixture-session").header("Origin","http://localhost").header("X-CSRF-Token","fixture-csrf")
+                .header("Content-Type","application/octet-stream").PUT(HttpRequest.BodyPublishers.ofByteArray(new byte[2*1024*1024])).build();
+        try(var client=HttpClient.newHttpClient()) {
+            assertEquals(401,client.send(request,HttpResponse.BodyHandlers.ofString()).statusCode());
+        }
+        assertTrue(bytes.get()<=1024*1024);verify(files).transfer(any(),any(),eq(2L*1024*1024),any());
+    }
 }

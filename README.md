@@ -2,6 +2,8 @@
 
 当前实施：**R3.3 IMPLEMENTING，R3已完成2/4 VERIFIED、未RELEASED**。前序[R3.2验收](deploy/r3.2-acceptance.json)已完成；本期按[正式计划](../项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R3.3-文件资产与额度实施计划.md)和唯一change `r3-3-file-assets-quota` 实现公开文件、显式替换、不可变版本与额度。首批工程和传输探针通过不等于完整阶段通过；文件功能开关默认关闭，签名runner/MQ、浏览器、Linux故障及最终观察未全部完成前不晋级。云端继续R2，不调用真实供应商。以下为历史阶段快照，实施状态以仓库外局部台账为准。
 
+R3.3 的固定本机回归入口、已验证子集及待验收边界见[本地实施说明](deploy/R3.3-LOCAL.md)。
+
 当前实施：**R3.2 IMPLEMENTING，R3仍1/4 VERIFIED、未RELEASED**。按批准计划开始沙箱环境与受保护数据面；公开文件管理和任意shell仍关闭，生产继续R2。唯一change `r3-2-sandbox-data-plane` 已strict通过，所有本阶段实际验收仍NOT_RUN。
 
 当前：**R3.1 VERIFIED，R3 完成 1/4、未 RELEASED**。工作区控制面、独立签名 runner、真实 XFS/gVisor 与故障恢复验收已通过 PR #78/#79 两级晋级。READY 仅存储目录和配额，执行环境仍为 NOT_CREATED，shell/文件能力关闭。云端继续原 R2 十服务，旧平台停机保留；没有 R3 生产部署或真实供应商调用。[验收摘要](deploy/r3.1-acceptance.json)、[实施与运维边界](deploy/R3.1-LOCAL.md)。R3.2 须另行 Plan/OpenSpec。以下为历史过程。

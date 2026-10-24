@@ -1,4 +1,25 @@
 -- Additive file assets. No file body, endpoint or credential is stored in these facts.
+CREATE TABLE pf.file_transfer_slot (
+    id integer PRIMARY KEY CHECK(id=1),
+    owner_id uuid,
+    object_key_hash varchar(64) CHECK(object_key_hash ~ '^[0-9a-f]{64}$'),
+    started_at timestamptz,
+    process_role text CHECK(process_role IN('API','WORKER','RUNNER','TEST')),
+    process_id uuid,
+    revision bigint NOT NULL DEFAULT 1 CHECK(revision>0),
+    CHECK((owner_id IS NULL)=(object_key_hash IS NULL)),
+    CHECK((owner_id IS NULL)=(started_at IS NULL)),
+    CHECK((owner_id IS NULL)=(process_role IS NULL)),
+    CHECK((owner_id IS NULL)=(process_id IS NULL))
+);
+INSERT INTO pf.file_transfer_slot(id) VALUES(1);
+CREATE TABLE pf.file_transfer_release (
+    owner_id uuid PRIMARY KEY,
+    proof_kind text NOT NULL DEFAULT 'TRANSPORT_CLOSED' CHECK(proof_kind IN('TRANSPORT_CLOSED','RUNNER_RECEIPT')),
+    runner_command_id uuid,
+    CHECK((proof_kind='RUNNER_RECEIPT')=(runner_command_id IS NOT NULL)),
+    released_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
 CREATE TABLE pf.file_entry (
     id uuid PRIMARY KEY,
     space_id uuid NOT NULL,
@@ -11,6 +32,9 @@ CREATE TABLE pf.file_entry (
     collection_state text NOT NULL DEFAULT 'PENDING' CHECK(collection_state IN('PENDING','CONFIRMED','CHANGED','BLOCKED')),
     revision bigint NOT NULL DEFAULT 1 CHECK(revision>0),
     created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    observed_bytes bigint CHECK(observed_bytes>=0),
+    observed_sha256 varchar(64) CHECK(observed_sha256 ~ '^[0-9a-f]{64}$'),
+    last_scan_epoch uuid,
     FOREIGN KEY(space_id,workspace_id) REFERENCES pf.workspace(space_id,id),
     UNIQUE(space_id,workspace_id,id),
     UNIQUE(space_id,workspace_id,relative_path),
@@ -97,13 +121,32 @@ CREATE TABLE pf.file_operation (
     effect_state text NOT NULL DEFAULT 'NOT_STARTED' CHECK(effect_state IN('NOT_STARTED','MAY_HAVE_STARTED','CONFIRMED')),
     error_code varchar(64),
     revision bigint NOT NULL DEFAULT 1 CHECK(revision>0),
+    helper_image_id text NOT NULL CHECK(helper_image_id ~ '^sha256:[0-9a-f]{64}$'),
+    helper_policy_hash varchar(64) NOT NULL CHECK(helper_policy_hash ~ '^[0-9a-f]{64}$'),
+    scan_parent text,
+    scan_cursor text,
+    scan_epoch uuid,
+    scan_stamp text,
     created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
     FOREIGN KEY(space_id,workspace_id) REFERENCES pf.workspace(space_id,id),
     FOREIGN KEY(space_id,workspace_id,upload_id) REFERENCES pf.upload_session(space_id,workspace_id,id),
     UNIQUE(space_id,workspace_id,id),
     UNIQUE(space_id,workspace_id,id,command_id,generation),
+    UNIQUE(space_id,workspace_id,id,command_id,generation,helper_image_id,helper_policy_hash),
     CHECK((kind='APPLY_UPLOAD')=(upload_id IS NOT NULL)),
+    CHECK((kind='SCAN')=(scan_parent IS NOT NULL AND scan_epoch IS NOT NULL)),
     CHECK(status NOT IN('CLAIMED','RUNNING') OR(owner_id IS NOT NULL AND fence IS NOT NULL AND lease_until IS NOT NULL AND deadline_at IS NOT NULL))
+);
+CREATE TABLE pf.file_scan_directory (
+    space_id uuid NOT NULL,
+    workspace_id uuid NOT NULL,
+    parent_path text NOT NULL,
+    cursor_path text,
+    epoch uuid NOT NULL,
+    directory_stamp text,
+    last_scanned_at timestamptz,
+    PRIMARY KEY(space_id,workspace_id,parent_path),
+    FOREIGN KEY(space_id,workspace_id) REFERENCES pf.workspace(space_id,id)
 );
 ALTER TABLE pf.upload_session ADD CONSTRAINT upload_operation_fk
     FOREIGN KEY(space_id,workspace_id,operation_id) REFERENCES pf.file_operation(space_id,workspace_id,id);
@@ -153,6 +196,7 @@ CREATE TABLE pf.workspace_file_lease (
     fence bigint NOT NULL DEFAULT 0 CHECK(fence>=0),
     lease_until timestamptz,
     status text NOT NULL DEFAULT 'FREE' CHECK(status IN('FREE','ACTIVE','BLOCKED')),
+    revision bigint NOT NULL DEFAULT 1 CHECK(revision>0),
     FOREIGN KEY(space_id,workspace_id) REFERENCES pf.workspace(space_id,id),
     FOREIGN KEY(space_id,workspace_id,operation_id) REFERENCES pf.file_operation(space_id,workspace_id,id),
     CHECK((status='FREE')=(operation_id IS NULL AND owner_id IS NULL AND lease_until IS NULL)),
@@ -176,6 +220,12 @@ CREATE TABLE pf.file_inbox (
     operation_id uuid NOT NULL REFERENCES pf.file_operation(id),
     received_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
+CREATE TABLE pf.file_delivery_quarantine (
+    id uuid PRIMARY KEY,
+    code varchar(64) NOT NULL,
+    body_sha256 varchar(64) NOT NULL CHECK(body_sha256 ~ '^[0-9a-f]{64}$'),
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
 CREATE TABLE pf.file_runner_command (
     command_id uuid PRIMARY KEY,
     space_id uuid NOT NULL,
@@ -189,12 +239,16 @@ CREATE TABLE pf.file_runner_command (
     image_id text NOT NULL CHECK(image_id ~ '^sha256:[0-9a-f]{64}$'),
     policy_hash varchar(64) NOT NULL CHECK(policy_hash ~ '^[0-9a-f]{64}$'),
     container_id varchar(64) UNIQUE CHECK(container_id ~ '^[0-9a-f]{64}$'),
+    start_requested boolean NOT NULL DEFAULT false,
     started_at text,
     exec_id varchar(64) UNIQUE CHECK(exec_id ~ '^[0-9a-f]{64}$'),
     created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
-    FOREIGN KEY(space_id,workspace_id,operation_id,command_id,generation)
-        REFERENCES pf.file_operation(space_id,workspace_id,id,command_id,generation),
-    UNIQUE(space_id,workspace_id,command_id)
+    FOREIGN KEY(space_id,workspace_id,operation_id,command_id,generation,image_id,policy_hash)
+        REFERENCES pf.file_operation(space_id,workspace_id,id,command_id,generation,helper_image_id,helper_policy_hash),
+    UNIQUE(space_id,workspace_id,command_id),
+    CHECK(NOT start_requested OR container_id IS NOT NULL),
+    CHECK(started_at IS NULL OR start_requested),
+    CHECK(exec_id IS NULL OR started_at IS NOT NULL)
 );
 CREATE TABLE pf.file_runner_receipt (
     command_id uuid PRIMARY KEY,
@@ -223,3 +277,5 @@ CREATE TABLE pf.file_event (
     FOREIGN KEY(space_id,workspace_id,file_id) REFERENCES pf.file_entry(space_id,workspace_id,id),
     UNIQUE(file_id,file_revision)
 );
+ALTER TABLE pf.file_transfer_release ADD CONSTRAINT file_transfer_stop_command_fk
+    FOREIGN KEY(runner_command_id) REFERENCES pf.file_runner_command(command_id);

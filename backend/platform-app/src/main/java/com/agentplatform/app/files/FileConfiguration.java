@@ -3,6 +3,8 @@ package com.agentplatform.app.files;
 import com.agentplatform.api.files.FileApi;
 import com.agentplatform.domain.files.*;
 import com.agentplatform.infrastructure.adapter.repository.files.MyBatisFileRepository;
+import com.agentplatform.infrastructure.adapter.repository.files.MyBatisFileTransferPermit;
+import com.agentplatform.infrastructure.dao.files.FileTransferMapper;
 import com.agentplatform.infrastructure.dao.files.FileMapper;
 import com.agentplatform.infrastructure.dao.workspace.*;
 import com.agentplatform.infrastructure.storage.*;
@@ -19,7 +21,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 @Configuration(proxyBeanMethods=false)
 @Profile({"workspace-api","workspace-worker","workspace-runner"})
 @ConditionalOnProperty(name={"platform.workspace.enabled","platform.workspace.files.enabled"},havingValue="true")
-@EnableConfigurationProperties(FileConfiguration.Properties.class)
+@EnableConfigurationProperties({FileConfiguration.Properties.class,FileExecutionProperties.class})
 public class FileConfiguration {
     @ConfigurationProperties("platform.files.assets")
     public record Properties(URI endpoint,String bucket,Path accessKeyFile,Path secretKeyFile) {
@@ -34,10 +36,18 @@ public class FileConfiguration {
         return S3Clients.create(properties.endpoint(),StaticCredentialsProvider.create(AwsBasicCredentials.create(
                 Files.readString(properties.accessKeyFile()).strip(),Files.readString(properties.secretKeyFile()).strip())));
     }
-    @Bean AssetStore fileAssetStore(S3Client fileS3Client,Properties properties) { return new S3AssetStore(fileS3Client,properties.bucket()); }
+    @Bean FileTransferPermit fileTransferPermit(FileTransferMapper mapper,TransactionTemplate transactions,org.springframework.core.env.Environment environment,
+            @org.springframework.beans.factory.annotation.Qualifier("runnerInstanceNonce")org.springframework.beans.factory.ObjectProvider<java.util.UUID> instance) {
+        String role=environment.acceptsProfiles(org.springframework.core.env.Profiles.of("workspace-runner"))?"RUNNER":
+                environment.acceptsProfiles(org.springframework.core.env.Profiles.of("workspace-worker"))?"WORKER":"API";
+        return new TransactionalFileTransferPermit(new MyBatisFileTransferPermit(mapper,role,"RUNNER".equals(role)?instance.getObject():java.util.UUID.randomUUID()),transactions);
+    }
+    @Bean AssetStore fileAssetStore(S3Client fileS3Client,Properties properties,FileTransferPermit permits,org.springframework.core.env.Environment environment) {
+        return new SerialAssetStore(new S3AssetStore(fileS3Client,properties.bucket()),permits,environment.acceptsProfiles(org.springframework.core.env.Profiles.of("workspace-runner")));
+    }
     @Bean @Profile({"workspace-api","workspace-worker"}) FileRepository fileRepository(FileMapper mapper,WorkspaceMapper workspaces,
-            EnvironmentPreparationMapper environments,TransactionTemplate transactions) {
-        return new TransactionalFileRepository(new MyBatisFileRepository(mapper,workspaces,environments),transactions);
+            EnvironmentPreparationMapper environments,TransactionTemplate transactions,FileExecutionProperties execution) {
+        return new TransactionalFileRepository(new MyBatisFileRepository(mapper,workspaces,environments,execution.helperImage(),execution.policyHash()),transactions);
     }
     @Bean @Profile("workspace-api") FileApi fileApi(FileRepository repository,AssetStore assets,com.agentplatform.api.identity.IdentityApi identity) { return new FileApplicationService(repository,assets); }
 }

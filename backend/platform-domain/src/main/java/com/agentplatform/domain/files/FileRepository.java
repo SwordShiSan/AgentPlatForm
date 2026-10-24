@@ -11,6 +11,8 @@ public interface FileRepository {
     Upload beginTransfer(Actor actor, UUID id, UUID owner);
     void transferVerified(Actor actor, UUID id, UUID owner);
     void transferUncertain(Actor actor, UUID id, UUID owner);
+    void transferRejected(Actor actor, UUID id, UUID owner);
+    void guardTransfer(Actor actor, UUID id, UUID owner);
     Operation completeUpload(Actor actor, UUID uploadId);
     List<Entry> list(Actor actor, UUID workspace, String parent, String after, int limit);
     Entry file(Actor actor, UUID fileId);
@@ -26,4 +28,12 @@ public interface FileRepository {
     Receipt receipt(Command command);
     void commitProjection(Command command, Receipt receipt);
     void uncertain(Command command, String code);
+    void blockExpired();
+    void quarantine(UUID id, String code, String bodyHash);
+    List<Command> reconciliations();
+    void observeProjection(Command command);
+    void reconcileProjection(Command command, Receipt receipt);
+    void scheduleScan();
+    Upload claimCleanup();
+    void cleanupComplete(Upload upload);
 }

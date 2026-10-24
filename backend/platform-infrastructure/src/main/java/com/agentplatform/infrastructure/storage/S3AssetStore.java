@@ -102,5 +102,14 @@ public final class S3AssetStore implements AssetStore {
         return new Content(stream, response.contentLength(), total);
     }
 
-    @Override public void deleteUncommitted(String key) { client.deleteObject(b -> b.bucket(bucket).key(key)); }
+    @Override public void deleteUncommitted(String key) {
+        client.headBucket(b->b.bucket(bucket));
+        client.deleteObject(b -> b.bucket(bucket).key(key));
+        try {client.headObject(b->b.bucket(bucket).key(key));}
+        catch(software.amazon.awssdk.services.s3.model.S3Exception absent) {
+            if(absent.statusCode()==404){client.headBucket(b->b.bucket(bucket));return;}
+            throw absent;
+        }
+        throw new FileFailure(503,"STAGING_DELETE_UNCONFIRMED");
+    }
 }

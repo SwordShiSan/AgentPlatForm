@@ -12,10 +12,11 @@ import secrets
 import stat
 import sys
 import unicodedata
+import ctypes
 
 MAX_BYTES = 100 * 1024 * 1024
 CHUNK_BYTES = 64 * 1024
-MAX_HEADER = 8192
+MAX_HEADER = 65536
 
 
 class Rejected(ValueError):
@@ -47,6 +48,22 @@ def parent_fd(root, parts):
         raise
 
 
+def verify_device(root, expected, required):
+    if expected is None:
+        if required:
+            raise Rejected("FILE_MOUNT_REJECTED")
+        return
+    if not isinstance(expected, list) or len(expected) != 2 or any(type(value) is not int or value < 0 for value in expected):
+        raise Rejected("FILE_MOUNT_REJECTED")
+    fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    try:
+        device = os.fstat(fd).st_dev
+        if [os.major(device), os.minor(device)] != expected:
+            raise Rejected("FILE_MOUNT_REJECTED")
+    finally:
+        os.close(fd)
+
+
 def canonical_collision(parent, name):
     with os.scandir(parent) as entries:
         for entry in entries:
@@ -67,6 +84,8 @@ def hash_regular(parent, name):
         while chunk := os.read(fd, CHUNK_BYTES):
             digest.update(chunk)
         after = os.fstat(fd)
+        if not stat.S_ISREG(after.st_mode) or after.st_nlink != 1:
+            raise Rejected("FILE_KIND_REJECTED")
         if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (
                 after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns):
             raise Rejected("FILE_CHANGED_DURING_READ")
@@ -76,8 +95,24 @@ def hash_regular(parent, name):
         os.close(fd)
 
 
-def apply(header, source, root="/workspace"):
+def rename_new(parent, temporary, name):
+    """Linux's atomic no-replace rename; a late new target must never be overwritten."""
+    function = getattr(ctypes.CDLL(None, use_errno=True), "renameat2", None)
+    if function is None:
+        raise Rejected("FILE_ATOMIC_CREATE_UNAVAILABLE")
+    function.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+    function.restype = ctypes.c_int
+    if function(parent, os.fsencode(temporary), parent, os.fsencode(name), 1) != 0:
+        failure = ctypes.get_errno()
+        if failure == errno.EEXIST:
+            raise Rejected("FILE_NAME_CONFLICT")
+        raise OSError(failure, os.strerror(failure))
+
+
+def apply(header, source, root="/workspace", require_device=False):
     fields = {"protocol", "operationId", "path", "bytes", "sha256", "expectedSha256"}
+    if isinstance(header, dict) and "filesystemDevice" in header:
+        fields.add("filesystemDevice")
     if not isinstance(header, dict) or set(header) != fields or header["protocol"] != "file-stream-v1":
         raise Rejected("FILE_PROTOCOL_REJECTED")
     import uuid
@@ -96,6 +131,7 @@ def apply(header, source, root="/workspace"):
         if not isinstance(value, str) or len(value) != 64 or any(ch not in "0123456789abcdef" for ch in value):
             raise Rejected("FILE_HASH_REJECTED")
     parts = path_parts(header["path"])
+    verify_device(root, header.get("filesystemDevice"), require_device)
     parent = parent_fd(root, parts[:-1])
     temporary = ".ap-upload-" + header["operationId"] + "-" + secrets.token_hex(8)
     temporary_exists = False
@@ -134,12 +170,18 @@ def apply(header, source, root="/workspace"):
             raise Rejected("FILE_VERSION_CONFLICT")
         # The runner's exclusive data-plane lease excludes all authorized writers.
         # Never invoke this routine again to recover an uncertain original effect.
-        os.rename(temporary, parts[-1], src_dir_fd=parent, dst_dir_fd=parent)
+        if header["expectedSha256"] is None:
+            rename_new(parent, temporary, parts[-1])
+        else:
+            os.rename(temporary, parts[-1], src_dir_fd=parent, dst_dir_fd=parent)
         renamed = True
         temporary_exists = False
         os.fsync(parent)
+        committed = hash_regular(parent, parts[-1])
+        if committed is None or committed["bytes"] != size or committed["sha256"] != header["sha256"]:
+            raise Rejected("FILE_RESULT_UNKNOWN")
         return {"protocol": "file-stream-v1", "operationId": header["operationId"],
-                "state": "APPLIED", "bytes": size, "sha256": header["sha256"]}
+                "state": "APPLIED", "bytes": committed["bytes"], "sha256": committed["sha256"]}
     except OSError as failure:
         if renamed:
             raise Rejected("FILE_RESULT_UNKNOWN") from None
@@ -157,7 +199,7 @@ def main():
         line = sys.stdin.buffer.readline(MAX_HEADER + 1)
         if len(line) > MAX_HEADER or not line.endswith(b"\n"):
             raise Rejected("FILE_PROTOCOL_REJECTED")
-        result = apply(json.loads(line), sys.stdin.buffer)
+        result = apply(json.loads(line), sys.stdin.buffer, require_device=True)
     except (Rejected, ValueError, OSError) as failure:
         result = {"state": "FAILED", "code": str(failure) if isinstance(failure, Rejected) else "FILE_IO_FAILURE"}
     print(json.dumps(result, separators=(",", ":")))

@@ -12,7 +12,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.Flow;
 import tools.jackson.databind.json.JsonMapper;
 
-public final class SignedRunnerHttpClient implements RunnerControlPort,EnvironmentRunnerPort,EnvironmentUseRunnerPort,AutoCloseable {
+public final class SignedRunnerHttpClient implements RunnerControlPort,EnvironmentRunnerPort,EnvironmentUseRunnerPort,com.agentplatform.domain.files.FileRunnerPort,AutoCloseable {
     private static final JsonMapper JSON=JsonMapper.builder().build();
     private final URI base;
     private final RunnerSignatures signatures;
@@ -75,6 +75,15 @@ public final class SignedRunnerHttpClient implements RunnerControlPort,Environme
     }
     @Override public Receipt provision(Command command){return request(command,false);}
     @Override public Receipt query(Command command){return request(command,true);}
+    private com.agentplatform.domain.files.FileData.Receipt file(com.agentplatform.domain.files.FileData.Command command,boolean query) {
+        String path="/internal/file-operations/v1"+(query?"/"+command.operation().id():"");var op=command.operation();
+        byte[] body=query?new byte[0]:JSON.writeValueAsBytes(command);
+        var request=new RunnerSignatures.Binding(query?"GET":"POST",path,op.commandId(),op.id(),op.spaceId(),op.workspaceId(),op.generation(),op.fence());
+        var response=new RunnerSignatures.Binding("RESPONSE",path,op.commandId(),op.id(),op.spaceId(),op.workspaceId(),op.generation(),op.fence());
+        return exchange(request,response,body,query,com.agentplatform.domain.files.FileData.Receipt.class);
+    }
+    @Override public com.agentplatform.domain.files.FileData.Receipt applyFile(com.agentplatform.domain.files.FileData.Command command){return file(command,false);}
+    @Override public com.agentplatform.domain.files.FileData.Receipt queryFile(com.agentplatform.domain.files.FileData.Command command){return file(command,true);}
     private com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt environment(
             com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command,boolean query) {
         String path="/internal/operations/v2/environments"+(query?"/"+command.operationId():"");

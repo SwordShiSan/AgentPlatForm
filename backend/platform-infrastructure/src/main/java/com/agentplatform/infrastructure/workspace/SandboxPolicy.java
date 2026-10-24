@@ -16,7 +16,7 @@ public record SandboxPolicy(String image, String helperImage, String workspaceRo
         if (image == null || !image.matches("sha256:[a-f0-9]{64}")
                 || helperImage == null || !helperImage.matches("sha256:[a-f0-9]{64}")
                 || workspaceRoot == null || !(workspaceRoot.equals("/srv/agentplatform/workspaces")
-                || workspaceRoot.matches("/srv/agentplatform/acceptance/r32-[a-z0-9-]+/workspaces"))) {
+                || workspaceRoot.matches("/srv/agentplatform/acceptance/r3[23]-[a-z0-9-]+/workspaces"))) {
             throw new IllegalArgumentException("Pinned sandbox images and trusted workspace root required");
         }
         java.util.Objects.requireNonNull(mountUuid);

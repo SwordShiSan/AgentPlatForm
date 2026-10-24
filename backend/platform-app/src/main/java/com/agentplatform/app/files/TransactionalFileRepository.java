@@ -30,6 +30,8 @@ public final class TransactionalFileRepository implements FileRepository {
     @Override public Upload beginTransfer(Actor a, UUID id, UUID owner) { return tx(() -> delegate.beginTransfer(a,id,owner)); }
     @Override public void transferVerified(Actor a, UUID id, UUID owner) { tx(() -> {delegate.transferVerified(a,id,owner);return null;}); }
     @Override public void transferUncertain(Actor a, UUID id, UUID owner) { tx(() -> {delegate.transferUncertain(a,id,owner);return null;}); }
+    @Override public void transferRejected(Actor a, UUID id, UUID owner) { tx(() -> {delegate.transferRejected(a,id,owner);return null;}); }
+    @Override public void guardTransfer(Actor a, UUID id, UUID owner) { tx(() -> {delegate.guardTransfer(a,id,owner);return null;}); }
     @Override public Operation completeUpload(Actor a, UUID id) { return tx(() -> delegate.completeUpload(a,id)); }
     @Override public List<Entry> list(Actor a, UUID w, String parent, String after, int limit) { return tx(() -> delegate.list(a,w,parent,after,limit)); }
     @Override public Entry file(Actor a, UUID id) { return tx(() -> delegate.file(a,id)); }
@@ -45,4 +47,12 @@ public final class TransactionalFileRepository implements FileRepository {
     @Override public Receipt receipt(Command c) { return tx(() -> delegate.receipt(c)); }
     @Override public void commitProjection(Command c, Receipt r) { tx(() -> {delegate.commitProjection(c,r);return null;}); }
     @Override public void uncertain(Command c, String code) { tx(() -> {delegate.uncertain(c,code);return null;}); }
+    @Override public void blockExpired() { tx(() -> {delegate.blockExpired();return null;}); }
+    @Override public void quarantine(UUID id,String code,String hash) { tx(() -> {delegate.quarantine(id,code,hash);return null;}); }
+    @Override public List<Command> reconciliations(){return tx(delegate::reconciliations);}
+    @Override public void observeProjection(Command c){tx(()->{delegate.observeProjection(c);return null;});}
+    @Override public void reconcileProjection(Command c,Receipt r){tx(()->{delegate.reconcileProjection(c,r);return null;});}
+    @Override public void scheduleScan(){tx(()->{delegate.scheduleScan();return null;});}
+    @Override public Upload claimCleanup(){return tx(delegate::claimCleanup);}
+    @Override public void cleanupComplete(Upload u){tx(()->{delegate.cleanupComplete(u);return null;});}
 }

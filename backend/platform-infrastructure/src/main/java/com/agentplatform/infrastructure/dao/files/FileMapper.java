@@ -9,6 +9,7 @@ import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface FileMapper {
+    java.time.Instant databaseTime();
     Storage lockStorage(@Param("space") UUID space);
     int reserve(@Param("space") UUID space, @Param("bytes") long bytes);
     Upload request(@Param("actor") Actor actor, @Param("request") UUID request);
@@ -20,6 +21,7 @@ public interface FileMapper {
     int beginTransfer(@Param("id") UUID id, @Param("owner") UUID owner);
     int transferVerified(@Param("id") UUID id, @Param("owner") UUID owner);
     int transferUncertain(@Param("id") UUID id, @Param("owner") UUID owner);
+    int transferRejected(@Param("id") UUID id, @Param("owner") UUID owner);
     Entry file(@Param("id") UUID id);
     Entry path(@Param("space") UUID space, @Param("workspace") UUID workspace, @Param("path") String path);
     List<Entry> list(@Param("space") UUID space, @Param("workspace") UUID workspace, @Param("parent") String parent,
@@ -57,6 +59,32 @@ public interface FileMapper {
     int commitUpload(@Param("row") Upload upload);
     int completeOperation(@Param("command") Command command);
     int releaseLease(@Param("command") Command command);
-    boolean committedOwned(@Param("command") Command command);
+    boolean committedOwned(@Param("command") Command command,@Param("recovery")boolean recovery);
+    List<UUID> reconciliationIds();
+    boolean projectionCurrent(@Param("command")Command command);
     void event(@Param("id") UUID id, @Param("row") Upload upload, @Param("revision") long revision, @Param("json") String json);
+    List<UUID> expiredOperations();
+    int expireOperation(@Param("id")UUID id);
+    int expireLease(@Param("id")UUID id);
+    int reconcileReservation(@Param("id")UUID uploadId);
+    int rejectPending(@Param("id")UUID id,@Param("code")String code);
+    int failOperation(@Param("command")Command command);
+    int abortUpload(@Param("row")Upload upload);
+    int releaseReservation(@Param("row")Upload upload);
+    int refundSpace(@Param("row")Upload upload);
+    void quarantine(@Param("id")UUID id,@Param("code")String code,@Param("hash")String hash);
+    ScanDirectory scanCandidate();
+    void ensureScanDirectory(@Param("space")UUID space,@Param("workspace")UUID workspace,@Param("parent")String parent,@Param("epoch")UUID epoch);
+    ScanDirectory lockScanDirectory(@Param("space")UUID space,@Param("workspace")UUID workspace,@Param("parent")String parent);
+    boolean unresolvedFileOperation(@Param("workspace")UUID workspace);
+    int scanEntry(@Param("id")UUID id,@Param("command")Command command,@Param("entry")ScanItem entry);
+    int missingScanEntries(@Param("command")Command command);
+    int advanceScan(@Param("command")Command command,@Param("page")ScanPage page,@Param("epoch")UUID nextEpoch);
+    int deferScan(@Param("command")Command command,@Param("epoch")UUID epoch);
+    UUID cleanupCandidate();
+    boolean cleanupEligible(@Param("id")UUID id);
+    int tombstoneUpload(@Param("id")UUID id);
+    int tombstoneAsset(@Param("row")Upload row);
+    int purgeAsset(@Param("row")Upload row);
+    int expireUpload(@Param("row")Upload row);
 }

@@ -27,6 +27,7 @@ const error = ref('');
 const conflict = ref(false);
 const preview = ref<string>();
 const previewName = ref('');
+const previewHistorical = ref(false);
 let controller = new AbortController();
 let epoch = 0;
 watch(scope, value => {
@@ -128,8 +129,8 @@ async function submit() {
     await client.invalidateQueries({ queryKey: ['file-upload'] }); await client.invalidateQueries({ queryKey: ['workspace-storage'] });
   } catch (failure) {
     if (epoch !== current) return;
-    conflict.value = failure instanceof ApiError && failure.problem.status === 412;
-    error.value = conflict.value ? '文件已有新版本，本地所选文件已保留，未覆盖当前内容。' : failure instanceof ApiError
+    conflict.value = failure instanceof ApiError && (failure.problem.status === 412 || failure.problem.status === 409 && failure.problem.code === 'FILE_NAME_CONFLICT');
+    error.value = conflict.value ? '目标已存在或版本已变化，本地所选文件已保留，未覆盖当前内容。' : failure instanceof ApiError
       ? `操作未完成：${failure.problem.code}${failure.problem.traceId ? `，诊断编号 ${failure.problem.traceId}` : ''}` : '请求尚未确认，请读取原上传状态后再操作。';
     if (pending.value?.uploadId) void upload.refetch();
   } finally { if (epoch === current) busy.value = false; }
@@ -141,6 +142,7 @@ async function showPreview(item: Item) {
   try {
     const result = await api.GET('/api/v1/files/{id}/content', { signal: controller.signal, parseAs: 'arrayBuffer', params: { path: { id: item.id }, query: { versionId: item.versionId }, header: headers.value } });
     if (current !== epoch || !result.data) return; preview.value = textPreview(result.data); previewName.value = item.name;
+    previewHistorical.value = item.collectionState !== 'CONFIRMED';
   } catch { if (current === epoch) error.value = '无法作为 UTF-8 文本预览，请下载或检查权限。'; }
 }
 function openDirectory(value: string) { parent.value = value; cursor.value = undefined; preview.value = undefined; }
@@ -148,6 +150,14 @@ function abandonDefiniteConflict() {
   if (!conflict.value || operationId.value || busy.value) return;
   pending.value = undefined; saveFileRequest(scope.value); replacement.value = undefined; conflict.value = false;
   error.value = '已结束本次明确冲突的选择；未应用的暂存内容按上传保留规则清理。所选文件仍保留。';
+}
+const definiteEnd = computed(() => upload.data.value?.state === 'EXPIRED'
+  || upload.data.value?.state === 'ABORTED' && operation.data.value?.state === 'FAILED');
+function finishDefiniteUpload() {
+  if (!definiteEnd.value || busy.value) return;
+  pending.value = undefined; saveFileRequest(scope.value); replacement.value = undefined; conflict.value = false;
+  phase.value = '原上传已明确结束。所选文件仍保留；新建或确认当前版本后可发起另一笔上传。';
+  void client.invalidateQueries({ queryKey: ['workspace-files'] });
 }
 const uploadLabel = computed(() => operation.data.value ? ({ PENDING: '文件作业排队中', CLAIMED: '已领取文件作业', RUNNING: '正在准备并保存版本', COMMITTED: '已完成', FAILED: '文件作业失败', UNKNOWN: '结果待核对，不会重做' })[operation.data.value.state]
   : upload.data.value ? ({ CREATED: '等待上传内容', UPLOADING: '正在传输', VERIFYING: '传输结果待核对', VERIFIED: '内容已校验，等待完成', QUEUED: '文件作业排队中', COMMITTED: '已完成', ABORTED: '上传已结束', EXPIRED: '上传已过期', UNKNOWN: '结果待核对' })[upload.data.value.state] : phase.value);
@@ -170,8 +180,8 @@ function readOriginalState() { if (pending.value?.uploadId) void upload.refetch(
       <p v-else-if="!query.data.value?.items.length" role="status">此目录暂无已确认文件。</p>
       <ul v-else class="file-list">
         <li v-for="item in query.data.value?.items ?? []" :key="item.id">
-          <div><NButton v-if="item.kind === 'DIRECTORY'" @click="openDirectory(item.path)">{{ item.name }}／</NButton><strong v-else>{{ item.name }}</strong><p>{{ item.kind === 'DIRECTORY' ? '目录' : item.bytes === null ? '尚未封存' : bytes(item.bytes) }} · {{ item.collectionState === 'CONFIRMED' ? '已确认版本' : '存在未采集内容或待核对状态' }}</p></div>
-          <div v-if="item.kind === 'FILE' && item.versionId" class="file-actions"><NButton @click="showPreview(item)">只读预览</NButton><a :href="downloadHref(item)" download>下载确认版本</a><NButton :disabled="busy || Boolean(pending) || item.collectionState !== 'CONFIRMED'" @click="replace(item)">替换此文件</NButton></div>
+          <div><NButton v-if="item.kind === 'DIRECTORY'" @click="openDirectory(item.path)">{{ item.name }}／</NButton><strong v-else>{{ item.name }}</strong><p>{{ item.kind === 'DIRECTORY' ? '目录' : item.bytes === null ? '尚未封存' : `${item.collectionState !== 'CONFIRMED' ? '上次封存版本 ' : ''}${bytes(item.bytes)}` }} · {{ item.collectionState === 'CONFIRMED' ? '已确认版本' : '存在未采集内容或待核对状态' }}</p></div>
+          <div v-if="item.kind === 'FILE' && item.versionId" class="file-actions"><NButton @click="showPreview(item)">{{ item.collectionState === 'CONFIRMED' ? '只读预览' : '预览上次封存版本' }}</NButton><a :href="downloadHref(item)" download>下载已封存版本</a><NButton :disabled="busy || Boolean(pending) || item.collectionState !== 'CONFIRMED'" @click="replace(item)">替换此文件</NButton></div>
         </li>
       </ul>
       <NButton v-if="query.data.value?.nextCursor" @click="cursor = query.data.value.nextCursor ?? undefined">下一页</NButton>
@@ -185,11 +195,12 @@ function readOriginalState() { if (pending.value?.uploadId) void upload.refetch(
         <NButton attr-type="submit" type="primary" :disabled="busy || !canContinue">{{ busy ? '处理中…' : pending ? '继续原上传／确认完成' : replacement ? '确认替换并上传' : '上传新文件' }}</NButton>
         <NButton v-if="pending?.uploadId" :disabled="busy" @click="readOriginalState">读取原状态</NButton>
         <NButton v-if="conflict && !operationId" :disabled="busy" @click="abandonDefiniteConflict">结束这次明确冲突的选择</NButton>
+        <NButton v-if="pending && definiteEnd" :disabled="busy" @click="finishDefiniteUpload">结束原上传并保留所选文件</NButton>
         <p v-if="uploadLabel" role="status">{{ uploadLabel }}</p><p v-if="operation.data.value?.errorCode">原因编号：{{ operation.data.value.errorCode }}</p>
         <progress v-if="busy" :value="progress" max="100" aria-label="文件校验或传输进度">{{ progress }}%</progress>
       </form>
       <p v-if="error" role="alert">{{ error }}</p>
-      <section v-if="preview !== undefined" aria-label="只读文本预览"><h4>{{ previewName }} · 只读</h4><NButton @click="preview = undefined">关闭预览</NButton><pre tabindex="0">{{ preview }}</pre></section>
+      <section v-if="preview !== undefined" aria-label="只读文本预览"><h4>{{ previewName }} · 只读{{ previewHistorical ? ' · 上次封存版本，当前内容待采集' : '' }}</h4><NButton @click="preview = undefined">关闭预览</NButton><pre tabindex="0">{{ preview }}</pre></section>
       <p>当前不提供文本编辑、移动、删除或历史恢复；执行环境释放后文件仍保留。</p>
     </template>
   </section>

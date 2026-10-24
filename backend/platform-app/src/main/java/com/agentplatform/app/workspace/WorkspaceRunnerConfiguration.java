@@ -11,6 +11,8 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 @Configuration(proxyBeanMethods=false) @Profile("workspace-runner")
 @EnableConfigurationProperties(WorkspaceRunnerProperties.class)
 public class WorkspaceRunnerConfiguration {
+    @Bean java.util.UUID runnerInstanceNonce() {return java.util.UUID.randomUUID();}
+    @Bean AuxiliaryContainerSlot auxiliaryContainerSlot() {return new AuxiliaryContainerSlot();}
     @Bean RunnerSignatures runnerSignatures(WorkspaceRunnerProperties properties) {
         return new RunnerSignatures(WorkspaceKeys.read(properties.privateKeyFile(),properties.keyId(),true),
                 WorkspaceKeys.read(properties.controlPublicKeyFile(),properties.controlKeyId(),false),"platform-runner","platform-control",Clock.systemUTC());

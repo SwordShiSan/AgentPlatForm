@@ -1,0 +1,200 @@
+name: agentplatform-r33-local
+services:
+  postgres:
+    image: ${R33_POSTGRES_IMAGE:?Use locked imported PostgreSQL config ID}
+    restart: no
+    mem_limit: 320m
+    memswap_limit: 320m
+    cpus: 1
+    environment:
+      POSTGRES_DB: file_runtime
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    ports:
+      - 127.0.0.1:15451:5432
+    volumes:
+      - environment-data:/var/lib/postgresql/data
+    networks:
+      - control
+      - local-access
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres -d file_runtime
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+  rabbitmq:
+    image: ${R33_RABBITMQ_IMAGE:?Use locked imported RabbitMQ config ID}
+    hostname: agentplatform-r33-mq
+    restart: no
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: +S 1:1 +A 4 +sbwt none +sbwtdcpu none +sbwtdio none
+      RABBITMQ_CTL_ERL_ARGS: +S 1:1 +A 1 +sbwt none +sbwtdcpu none +sbwtdio none
+    volumes:
+      - environment-mq:/var/lib/rabbitmq
+      - ${R33_ROOT}/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ${R33_ROOT}/rabbitmq-definitions.json:/etc/rabbitmq/definitions.json:ro
+    ports:
+      - 127.0.0.1:15700:5672
+      - 127.0.0.1:15690:15672
+    networks:
+      - control
+      - local-access
+    healthcheck:
+      test:
+        - CMD
+        - rabbitmq-diagnostics
+        - -q
+        - ping
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+  master:
+    image: ${R33_SEAWEED_IMAGE:?Use locked imported SeaweedFS config ID}
+    user: 10001:10001
+    restart: no
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      GOMEMLIMIT: 96MiB
+      GOMAXPROCS: "1"
+    networks:
+      - control
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    mem_limit: 128m
+    memswap_limit: 128m
+    command:
+      - master
+      - -ip=master
+      - -mdir=/data
+      - -volumeSizeLimitMB=256
+      - -defaultReplication=000
+    volumes:
+      - ${R33_ROOT:?Set independent probe root}/master:/data
+  volume:
+    image: ${R33_SEAWEED_IMAGE:?Use locked imported SeaweedFS config ID}
+    user: 10001:10001
+    restart: no
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      GOMEMLIMIT: 96MiB
+      GOMAXPROCS: "1"
+    networks:
+      - control
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    mem_limit: 128m
+    memswap_limit: 128m
+    command:
+      - volume
+      - -ip=volume
+      - -master=master:9333
+      - -dir=/data
+      - -max=2
+      - -minFreeSpace=5GiB
+    volumes:
+      - ${R33_ROOT}/volume:/data
+    depends_on:
+      - master
+  filer:
+    image: ${R33_SEAWEED_IMAGE:?Use locked imported SeaweedFS config ID}
+    user: 10001:10001
+    restart: no
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      GOMEMLIMIT: 96MiB
+      GOMAXPROCS: "1"
+    networks:
+      - control
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    mem_limit: 128m
+    memswap_limit: 128m
+    command:
+      - filer
+      - -ip=filer
+      - -master=master:9333
+      - -defaultStoreDir=/data
+    volumes:
+      - ${R33_ROOT}/filer:/data
+    depends_on:
+      - volume
+  s3:
+    image: ${R33_SEAWEED_IMAGE:?Use locked imported SeaweedFS config ID}
+    user: 10001:10001
+    restart: no
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      GOMEMLIMIT: 192MiB
+      GOMAXPROCS: "1"
+      WEED_S3_SSE_KEK_PASSPHRASE: ${R33_FIXTURE_KEK:?Use independent protected fixture secret}
+    networks:
+      - control
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    mem_limit: 256m
+    memswap_limit: 256m
+    command:
+      - s3
+      - -ip.bind=0.0.0.0
+      - -filer=filer:8888
+      - -config=/etc/seaweedfs/s3.json
+      - -iam=false
+    volumes:
+      - ${R33_ROOT}/s3.json:/etc/seaweedfs/s3.json:ro
+    ports:
+      - 127.0.0.1:18333:8333
+    depends_on:
+      - filer
+secrets:
+  postgres_password:
+    file: ${R33_ROOT:?Set independent protected R33 fixture root}/postgres-password
+volumes:
+  environment-data:
+    name: agentplatform-r33-local-${R33_DATASET:?Select a fresh runtime dataset}-pg
+  environment-mq:
+    name: agentplatform-r33-local-${R33_DATASET}-mq
+networks:
+  control:
+    internal: true
+  local-access: {}

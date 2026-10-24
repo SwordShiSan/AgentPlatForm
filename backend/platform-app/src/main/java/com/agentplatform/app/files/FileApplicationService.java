@@ -58,10 +58,13 @@ public final class FileApplicationService implements FileApi {
         final UUID uploadId=upload.id();
         try {
             assets.put(upload.objectKey(),upload.sizeBytes(),upload.sha256(),
-                    new AuthorizedAssetStream(content,upload.sizeBytes(),upload.sha256(),()->repository.upload(actor,uploadId)));
+                    new AuthorizedAssetStream(content,upload.sizeBytes(),upload.sha256(),()->repository.guardTransfer(actor,uploadId,owner)));
             repository.transferVerified(actor,upload.id(),owner);
         } catch(RuntimeException failure) {
-            try { repository.transferUncertain(actor,upload.id(),owner); } catch(RuntimeException pending) { failure.addSuppressed(pending); }
+            try {
+                if(failure instanceof FileFailure rejected&&rejected.status()==423)repository.transferRejected(actor,upload.id(),owner);
+                else repository.transferUncertain(actor,upload.id(),owner);
+            } catch(RuntimeException pending) { failure.addSuppressed(pending); }
             throw failure;
         }
         return view(repository.upload(actor,upload.id()));
