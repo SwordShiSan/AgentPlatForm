@@ -65,6 +65,59 @@ class FilePostgresTest {
     private static long count(String text) throws Exception {
         try(var c=DriverManager.getConnection(url,"postgres",password);var s=c.createStatement();var r=s.executeQuery(text)) {r.next();return r.getLong(1);}
     }
+    private record ScopedFiles(HikariDataSource pool,FileRepository repository) implements AutoCloseable {
+        @Override public void close(){pool.close();}
+    }
+    private ScopedFiles scopedFiles(String role) throws Exception {
+        assertTrue(Set.of("ap_api","ap_worker").contains(role));
+        var config=new HikariConfig();config.setJdbcUrl(url);config.setUsername("postgres");config.setPassword(password);
+        config.setMaximumPoolSize(1);config.setMinimumIdle(1);config.setConnectionInitSql("SET ROLE "+role);
+        var limitedPool=new HikariDataSource(config);
+        var factory=new SqlSessionFactoryBean();factory.setDataSource(limitedPool);
+        var settings=new org.apache.ibatis.session.Configuration();settings.setMapUnderscoreToCamelCase(true);
+        settings.setCacheEnabled(false);settings.setLocalCacheScope(org.apache.ibatis.session.LocalCacheScope.STATEMENT);
+        settings.getTypeHandlerRegistry().register(new UuidTypeHandler());factory.setConfiguration(settings);
+        factory.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:mybatis/mapper/**/*.xml"));
+        var session=new SqlSessionTemplate(factory.getObject());
+        var tx=new TransactionTemplate(new JdbcTransactionManager(limitedPool));
+        return new ScopedFiles(limitedPool,new TransactionalFileRepository(new MyBatisFileRepository(session.getMapper(FileMapper.class),
+                session.getMapper(WorkspaceMapper.class),session.getMapper(EnvironmentPreparationMapper.class),"sha256:"+"a".repeat(64),"b".repeat(64)),tx));
+    }
+    @Test void realApiAndWorkerRolesReserveRefundAndSettleWithoutQuotaAdministration() throws Exception {
+        for(String role:List.of("ap_migration","ap_api","ap_worker","ap_runner","ap_workspace_ops"))
+            sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='"+role+"') THEN CREATE ROLE "+role+" NOLOGIN;END IF;END $$");
+        for(String name:List.of("r1-runtime-grants.sql","r2-runtime-grants.sql","r3-workspace-grants.sql","r3-environment-grants.sql","r3-file-grants.sql"))
+            sql(Files.readString(Path.of("../../deploy/config",name)));
+        try(var api=scopedFiles("ap_api");var worker=scopedFiles("ap_worker")) {
+            for(boolean applied:List.of(false,true)) {
+                var body=new UploadRequest(applied?"role-success.bin":"role-no-effect.bin",8,"a".repeat(64),null,null,null);
+                var upload=api.repository().create(alice,workspace,UUID.randomUUID(),"c".repeat(64),body);
+                assertEquals(8,api.repository().usage(alice,workspace).reservedBytes());
+                var transfer=UUID.randomUUID();api.repository().beginTransfer(alice,upload.id(),transfer);
+                api.repository().transferVerified(alice,upload.id(),transfer);var operation=api.repository().completeUpload(alice,upload.id());
+                var publication=worker.repository().publications(UUID.randomUUID()).stream()
+                        .filter(item->item.operationId().equals(operation.id())).findFirst().orElseThrow();
+                var command=worker.repository().claim(publication,UUID.randomUUID());assertNotNull(command);
+                worker.repository().beforeCall(command);
+                // This models stopped physical receipts, not an Engine/S3 acceptance claim.
+                var instance=instance();runner.register(instance);runner.accept(command,instance,"e".repeat(64));
+                if(applied) {
+                    var json=JsonMapper.builder().build().writeValueAsString(Map.of("protocol","file-stream-v2","operationId",command.operation().id(),
+                            "state","APPLIED","bytes",8,"sha256","a".repeat(64)));
+                    runner.recordResult(command,instance.id(),physicalResult(command,instance,"APPLIED",json));
+                } else runner.recordResult(command,instance.id(),notStarted(command,"NOT_APPLIED"));
+                worker.repository().commitProjection(command,runner.receipt(command));
+                assertEquals(0,api.repository().usage(alice,workspace).reservedBytes());
+                assertEquals(applied?8:0,api.repository().usage(alice,workspace).committedBytes());
+                assertEquals(applied?"COMMITTED":"ABORTED",api.repository().upload(alice,upload.id()).status());
+                assertEquals(404,assertThrows(FileFailure.class,()->api.repository().upload(bob,upload.id())).status());
+            }
+            for(var limited:List.of(api,worker))try(var c=limited.pool().getConnection();var s=c.createStatement()) {
+                assertThrows(java.sql.SQLException.class,()->s.execute("UPDATE pf.space_storage SET object_limit_bytes=object_limit_bytes+1"));
+                assertThrows(java.sql.SQLException.class,()->s.execute("UPDATE pf.space_storage SET status='ACTIVE'"));
+            }
+        }
+    }
     @BeforeEach void setup() throws Exception {
         sql("TRUNCATE pf.app_user CASCADE");
         sql("UPDATE pf.workspace_capacity SET reserved_bytes=0,reserved_slots=0,next_project_id=200001");

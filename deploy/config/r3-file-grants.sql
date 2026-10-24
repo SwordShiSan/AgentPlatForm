@@ -1,5 +1,9 @@
 -- Apply after V13 and existing workspace/environment grants, using the protected owner role.
 GRANT USAGE ON SCHEMA pf TO ap_api,ap_worker,ap_runner;
+-- Quota reservation/settlement also takes SELECT FOR UPDATE on this existing row.
+-- Remove any historical table-wide UPDATE before granting only the counters/version.
+REVOKE UPDATE ON pf.space_storage FROM ap_api,ap_worker;
+GRANT UPDATE(reserved_bytes,committed_bytes,version) ON pf.space_storage TO ap_api,ap_worker;
 GRANT SELECT ON pf.file_transfer_slot TO ap_api,ap_worker,ap_runner;
 GRANT UPDATE(owner_id,object_key_hash,process_role,process_id,started_at,revision) ON pf.file_transfer_slot TO ap_api,ap_worker,ap_runner;
 GRANT SELECT,INSERT ON pf.file_transfer_release TO ap_api,ap_worker,ap_runner;
