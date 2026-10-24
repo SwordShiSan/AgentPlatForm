@@ -246,6 +246,53 @@ class FilePostgresTest {
             assertEquals(0,count("SELECT count(*) FROM pf.file_version"));assertEquals(5,files.usage(alice,workspace).reservedBytes());
         }
     }
+    @Test void realBrokerConfirmDeliveredButFrameworkCallbackLostRetainsOutboxAndDeduplicatesRetry() throws Exception {
+        Assumptions.assumeTrue(System.getenv("R33_TEST_MQ_PORT")!=null,"R33 actual RabbitMQ not selected; NOT_RUN");
+        var dropped=new java.util.concurrent.atomic.AtomicInteger();
+        var loss=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory("127.0.0.1",15702);
+        loss.setUsername("r33");loss.setPassword(Files.readString(Path.of(System.getenv("R33_TEST_MQ_PASSWORD_FILE"))).strip());loss.setVirtualHost("/agentplatform");
+        loss.setPublisherConfirmType(org.springframework.amqp.rabbit.connection.CachingConnectionFactory.ConfirmType.CORRELATED);loss.setPublisherReturns(true);
+        // Official framework seam: the real broker's ACK reaches this callback but not its correlation future.
+        loss.setPublisherChannelFactory((channel,executor)->new org.springframework.amqp.rabbit.connection.PublisherCallbackChannelImpl(channel,executor){
+            @Override public void handleAck(long tag,boolean multiple){dropped.incrementAndGet();}
+        });
+        try(var broker=fileBroker();var normal=new com.agentplatform.infrastructure.workspace.SpringFileMessaging(broker.connection(),files);
+            var unconfirmed=new com.agentplatform.infrastructure.workspace.SpringFileMessaging(loss,files)) {
+            var publication=queuedFilePublication();var executions=new java.util.concurrent.atomic.AtomicInteger();var deliveries=new CountDownLatch(2);
+            normal.start(new com.agentplatform.infrastructure.workspace.SpringFileMessaging.Handoff(){
+                final UUID owner=UUID.randomUUID();
+                public Command claim(Publication item){try{return files.claim(item,owner);}finally{deliveries.countDown();}}
+                public void execute(Command command){executions.incrementAndGet();}
+            });
+            var unknown=assertThrows(FileFailure.class,()->unconfirmed.publish(publication));assertEquals("FILE_DISPATCH_UNCONFIRMED",unknown.getMessage());
+            assertTrue(dropped.get()>0,"real broker confirm must actually reach the controlled callback");
+            files.published(publication,false);var retried=files.publications(UUID.randomUUID()).getFirst();
+            assertEquals(publication.id(),retried.id());assertEquals(publication.operationId(),retried.operationId());
+            normal.publish(retried);files.published(retried,true);assertTrue(deliveries.await(15,TimeUnit.SECONDS));
+            assertEquals(1,executions.get());assertEquals(1,count("SELECT count(*) FROM pf.file_inbox"));
+            assertEquals(1,count("SELECT count(*) FROM pf.workspace_file_lease WHERE status='ACTIVE'"));
+            assertEquals(1,count("SELECT count(*) FROM pf.file_outbox WHERE status='PUBLISHED'"));
+            assertEquals(0,count("SELECT count(*) FROM pf.file_version"));assertEquals(5,files.usage(alice,workspace).reservedBytes());
+        }finally{loss.destroy();}
+    }
+    @Test void realBrokerMandatoryReturnNeverMarksOutboxPublishedAndOriginalPublicationCanRecover() throws Exception {
+        try(var broker=fileBroker();var messaging=new com.agentplatform.infrastructure.workspace.SpringFileMessaging(broker.connection(),files)) {
+            var admin=new org.springframework.amqp.rabbit.core.RabbitAdmin(broker.connection());
+            var exchange=new org.springframework.amqp.core.DirectExchange(com.agentplatform.infrastructure.workspace.SpringFileMessaging.EXCHANGE,true,false);
+            var queue=org.springframework.amqp.core.QueueBuilder.durable(com.agentplatform.infrastructure.workspace.SpringFileMessaging.QUEUE).build();
+            var binding=org.springframework.amqp.core.BindingBuilder.bind(queue).to(exchange).with(com.agentplatform.infrastructure.workspace.SpringFileMessaging.ROUTE);
+            var publication=queuedFilePublication();admin.removeBinding(binding);
+            try {
+                var rejected=assertThrows(FileFailure.class,()->messaging.publish(publication));assertEquals("FILE_DISPATCH_UNCONFIRMED",rejected.getMessage());
+                files.published(publication,false);assertEquals(1,count("SELECT count(*) FROM pf.file_outbox WHERE status='PENDING'"));
+                assertEquals(0,count("SELECT count(*) FROM pf.file_inbox"));assertEquals(5,files.usage(alice,workspace).reservedBytes());
+            }finally{admin.declareBinding(binding);}
+            var again=files.publications(UUID.randomUUID()).getFirst();assertEquals(publication.id(),again.id());
+            messaging.publish(again);files.published(again,true);assertEquals(1,count("SELECT count(*) FROM pf.file_outbox WHERE status='PUBLISHED'"));
+            admin.purgeQueue(queue.getName());
+        }
+    }
+
     @Test void uploadReservationAndIdempotencyDoNotCreateSandbox() throws Exception {
         UUID request=UUID.randomUUID();var body=new UploadRequest("hello.txt",6,"a".repeat(64),null,null,null);
         var first=files.create(alice,workspace,request,"b".repeat(64),body);
