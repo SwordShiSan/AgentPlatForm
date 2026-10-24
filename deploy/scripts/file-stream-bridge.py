@@ -43,6 +43,11 @@ def parent_fd(root, parts):
             os.close(fd)
             fd = child
         return fd
+    except OSError as failure:
+        os.close(fd)
+        if failure.errno in (errno.ENOENT, errno.ENOTDIR, errno.ELOOP, errno.EACCES):
+            raise Rejected("FILE_PATH_REJECTED") from None
+        raise
     except BaseException:
         os.close(fd)
         raise
@@ -76,6 +81,12 @@ def hash_regular(parent, name):
         fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC, dir_fd=parent)
     except FileNotFoundError:
         return None
+    except OSError as failure:
+        if failure.errno in (errno.ELOOP, errno.ENOTDIR):
+            raise Rejected("FILE_KIND_REJECTED") from None
+        if failure.errno == errno.EACCES:
+            raise Rejected("FILE_PATH_REJECTED") from None
+        raise
     try:
         before = os.fstat(fd)
         if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1:
@@ -210,6 +221,10 @@ def apply(header, source, root="/workspace", require_device=False):
             raise Rejected("FILE_RESULT_UNKNOWN") from None
         if failure.errno in (errno.ENOSPC, errno.EDQUOT):
             raise Rejected("FILE_STORAGE_FULL") from None
+        raise
+    except Rejected:
+        if renamed:
+            raise Rejected("FILE_RESULT_UNKNOWN") from None
         raise
     finally:
         if temporary_exists:

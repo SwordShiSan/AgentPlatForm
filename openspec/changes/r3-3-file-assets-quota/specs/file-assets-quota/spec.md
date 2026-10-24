@@ -24,6 +24,9 @@ The platform SHALL reserve object bytes atomically and freeze an idempotent uplo
 #### Scenario: Insufficient temporary replacement capacity
 - **WHEN** the checked workspace directory has insufficient available blocks or inodes for the new temporary file
 - **THEN** the helper rejects before writing, retains the old file and version, and never counts a prospective overwrite as reclaimed capacity
+#### Scenario: Definitive path rejection and post-rename uncertainty
+- **WHEN** a parent is missing or a link is rejected before any effect, or a verification failure occurs after rename
+- **THEN** the pre-effect case reports definitive rejection, while every post-rename case remains UNKNOWN without refunds or a second write
 ### Requirement: Explicit optimistic replacement
 The platform SHALL reject implicit overwrite and SHALL require fileId, baseVersionId and If-Match for explicit replacement under an exclusive workspace lease.
 #### Scenario: Concurrent replacement

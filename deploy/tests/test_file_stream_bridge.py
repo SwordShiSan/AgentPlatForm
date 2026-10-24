@@ -16,6 +16,27 @@ spec.loader.exec_module(bridge)
 
 
 class StreamBridgeTests(unittest.TestCase):
+    def test_missing_or_link_parent_is_a_definitive_pre_effect_path_rejection(self):
+        with tempfile.TemporaryDirectory() as root:
+            Path(root,'directory').mkdir();os.symlink('directory',Path(root,'link'))
+            for path in ['missing/file.txt','link/file.txt']:
+                with self.subTest(path=path), self.assertRaisesRegex(bridge.Rejected,'FILE_PATH_REJECTED'):
+                    bridge.apply(self.header(b'new',path=path),io.BytesIO(b'new'),root)
+            self.assertEqual(list(Path(root,'directory').iterdir()),[])
+
+    def test_final_kind_rejection_after_rename_is_unknown_not_no_effect(self):
+        with tempfile.TemporaryDirectory() as root:
+            original=bridge.hash_regular;checks=0
+            def fail_final(parent,name):
+                nonlocal checks
+                checks+=1
+                if checks==3:raise bridge.Rejected('FILE_KIND_REJECTED')
+                return original(parent,name)
+            with patch.object(bridge,'hash_regular',side_effect=fail_final):
+                with self.assertRaisesRegex(bridge.Rejected,'FILE_RESULT_UNKNOWN'):
+                    bridge.apply(self.header(b'new'),io.BytesIO(b'new'),root)
+            self.assertEqual(Path(root,'a.txt').read_bytes(),b'new')
+
     def test_insufficient_temporary_blocks_or_inodes_preserve_original_without_reading_content(self):
         for available in [SimpleNamespace(f_frsize=4096, f_bsize=4096, f_bavail=0, f_favail=100),
                           SimpleNamespace(f_frsize=4096, f_bsize=4096, f_bavail=100, f_favail=0)]:
