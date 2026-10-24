@@ -72,3 +72,8 @@ Final no-credential SSH inventory verified original R2 ten exact containers/rest
 ## Authenticated restoration gate resolved
 
 The user explicitly approved encrypted SSH verification. The final browser passed through a fixed local-forward to remote127.0.0.1:80; a browser-only hostname map preserved the original permitted Host/Origin without querying or changing DNS. API checks used browser-page fetch because Playwright APIRequestContext has an independent HTTP stack. All login credentials remained on loopback plus encrypted SSH, with no public HTTP fallback; the tunnel was closed in finally. Login, existing committed history/refresh, two-user task isolation, themes/layout/keyboard, recovery/reconciliation read-only projections, private endpoint404 and immediate logout passed. Provider calls0. Receipt: evidence/r33/r2AuthenticatedResult.json; source transport summary in deploy/r3.3-acceptance.json. The earlier automatic rejection remains historical and was not bypassed. Whole acceptance now PASS_PENDING_PROTECTED_PROMOTION; VERIFIED/archive remain gated on actual PR promotion and delivery.
+
+
+## Verified implementation promotion and protected closure
+
+Protected PR89/90 merged implementation main ef5a0afec7a90d231c8fe37b9524e449f8674e4f; main/phase content trees match. All mandatory gates PASS, provider0, R2 remains online. Protected pre-closure body/evidence hash copies passed in two local locations and cloud; raw secrets/SQL/logs excluded. This archive and record-only closure uses normal protected PRs; final branch sync and clean-checkout delivery receipts are generated afterwards and separately identify final main, without relabeling component images or changing runtime. R3.3 VERIFIED, R3 3/4 NOT RELEASED; R3.4 not started.

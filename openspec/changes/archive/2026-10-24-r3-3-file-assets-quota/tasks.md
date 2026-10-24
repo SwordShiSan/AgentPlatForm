@@ -19,5 +19,5 @@
 - [x] 4.4 Final >=1800s observation and exact R2 instance/mount/restart restoration, vendor calls0.
 - [x] 4.5 Final authenticated R2 login/history read-only verification via explicitly approved SSH loopback forwarding; login/history/isolation/logout/readiness/private endpoints passed, no new supplier calls. Original rejected public HTTP action was never executed.
 ## 5. Closure
-- [ ] 5.1 Exact-source evidence and protected step->phase->main, phase sync.
-- [ ] 5.2 Archive, canonical ledgers/ADR/Skill and protected delivery hash copies; all fixture profiles stopped.
+- [x] 5.1 Exact-source evidence and protected step->phase->main, phase sync.
+- [x] 5.2 Archive, canonical ledgers/ADR/Skill and protected delivery hash copies; all fixture profiles stopped.
