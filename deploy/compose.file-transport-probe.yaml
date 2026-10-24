@@ -1,0 +1,45 @@
+name: agentplatform-r33-transport
+x-weed: &weed
+  image: chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+  user: "10001:10001"
+  restart: "no"
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  environment: {GOMEMLIMIT: 48MiB, GOMAXPROCS: "1"}
+  networks: [transport]
+  logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+services:
+  master:
+    <<: *weed
+    mem_limit: 128m
+    memswap_limit: 128m
+    environment: {GOMEMLIMIT: 96MiB, GOMAXPROCS: "1"}
+    command: [master, -ip=master, -mdir=/data, -volumeSizeLimitMB=256, -defaultReplication=000]
+    volumes: ["${R33_PROBE_ROOT:?Set independent probe root}/master:/data"]
+  volume:
+    <<: *weed
+    mem_limit: 128m
+    memswap_limit: 128m
+    environment: {GOMEMLIMIT: 96MiB, GOMAXPROCS: "1"}
+    command: [volume, -ip=volume, -master=master:9333, -dir=/data, -max=2]
+    volumes: ["${R33_PROBE_ROOT}/volume:/data"]
+    depends_on: [master]
+  filer:
+    <<: *weed
+    mem_limit: 128m
+    memswap_limit: 128m
+    environment: {GOMEMLIMIT: 96MiB, GOMAXPROCS: "1"}
+    command: [filer, -ip=filer, -master=master:9333, -defaultStoreDir=/data]
+    volumes: ["${R33_PROBE_ROOT}/filer:/data"]
+    depends_on: [volume]
+  s3:
+    <<: *weed
+    mem_limit: 256m
+    memswap_limit: 256m
+    environment: {GOMEMLIMIT: 192MiB, GOMAXPROCS: "1", WEED_S3_SSE_KEK_PASSPHRASE: "${R33_PROBE_KEK:?Set protected fixture KEK}"}
+    command: [s3, -ip.bind=0.0.0.0, -filer=filer:8888, -config=/etc/seaweedfs/s3.json, -iam=false]
+    volumes: ["${R33_PROBE_ROOT}/s3.json:/etc/seaweedfs/s3.json:ro"]
+    ports: ["127.0.0.1:${R33_S3_PORT:?Set an inspected free local port}:8333"]
+    depends_on: [filer]
+networks:
+  transport: {}

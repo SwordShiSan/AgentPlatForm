@@ -80,6 +80,7 @@ public final class MyBatisEnvironmentUseRepository implements EnvironmentUseRepo
             return new Admission(command(previous),false);
         }
         var slot=environments.lockSlot();var operation=environments.operation(environment.operationId());
+        if(workspaces.fileDataPlaneBusy(actor.spaceId(),workspace))throw new WorkspaceFailure(423,"WORKSPACE_BUSY");
         if(!"READY".equals(environment.state())||!"COMMITTED".equals(operation.status())||!"PREPARE".equals(operation.kind())
                 ||!environment.id().equals(slot.environmentId())||!Objects.equals(slot.generation(),environment.generation()))
             throw new WorkspaceFailure(409,"ENVIRONMENT_NOT_READY");

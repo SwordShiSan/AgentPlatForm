@@ -1,0 +1,62 @@
+package com.agentplatform.infrastructure.dao.files;
+
+import com.agentplatform.domain.files.FileData.*;
+import com.agentplatform.infrastructure.dao.po.FileRows.Storage;
+import java.util.List;
+import java.util.UUID;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+@Mapper
+public interface FileMapper {
+    Storage lockStorage(@Param("space") UUID space);
+    int reserve(@Param("space") UUID space, @Param("bytes") long bytes);
+    Upload request(@Param("actor") Actor actor, @Param("request") UUID request);
+    Upload upload(@Param("id") UUID id);
+    Upload lockUpload(@Param("id") UUID id);
+    void insertAsset(@Param("row") Upload row);
+    void insertUpload(@Param("row") Upload row);
+    void insertReservation(@Param("row") Upload row);
+    int beginTransfer(@Param("id") UUID id, @Param("owner") UUID owner);
+    int transferVerified(@Param("id") UUID id, @Param("owner") UUID owner);
+    int transferUncertain(@Param("id") UUID id, @Param("owner") UUID owner);
+    Entry file(@Param("id") UUID id);
+    Entry path(@Param("space") UUID space, @Param("workspace") UUID workspace, @Param("path") String path);
+    List<Entry> list(@Param("space") UUID space, @Param("workspace") UUID workspace, @Param("parent") String parent,
+            @Param("after") String after, @Param("limit") int limit);
+    Version version(@Param("space") UUID space, @Param("file") UUID file, @Param("version") UUID version);
+    Usage usage(@Param("space") UUID space, @Param("workspace") UUID workspace);
+    void insertOperation(@Param("row") Operation row);
+    int queueUpload(@Param("id") UUID id, @Param("operation") UUID operation);
+    void insertOutbox(@Param("id") UUID id, @Param("row") Operation row);
+    Operation operation(@Param("id") UUID id);
+    Operation lockOperation(@Param("id") UUID id);
+    void ensureLease(@Param("space") UUID space, @Param("workspace") UUID workspace);
+    Lease lockLease(@Param("space") UUID space, @Param("workspace") UUID workspace);
+    boolean unresolvedEnvironmentUse(@Param("workspace") UUID workspace);
+    int takeLease(@Param("row") Operation row, @Param("owner") UUID owner, @Param("fence") long fence);
+    int claim(@Param("id") UUID id, @Param("owner") UUID owner, @Param("fence") long fence);
+    List<Publication> publications(@Param("owner") UUID owner);
+    int published(@Param("item") Publication item, @Param("success") boolean success);
+    boolean knownPublication(@Param("item") Publication item);
+    int inbox(@Param("item") Publication item);
+    boolean current(@Param("command") Command command);
+    int renew(@Param("command") Command command);
+    int renewLease(@Param("command") Command command);
+    int beforeCall(@Param("command") Command command);
+    Receipt receipt(@Param("command") Command command);
+    int uncertain(@Param("command") Command command, @Param("code") String code);
+    int blockLease(@Param("command") Command command);
+    void insertFile(@Param("entry") Entry entry);
+    void insertVersion(@Param("row") Upload upload, @Param("operation") UUID operation);
+    int commitFile(@Param("row") Upload upload);
+    int availableAsset(@Param("row") Upload upload);
+    int settleReservation(@Param("row") Upload upload);
+    void reference(@Param("row") Upload upload);
+    int settleSpace(@Param("row") Upload upload);
+    int commitUpload(@Param("row") Upload upload);
+    int completeOperation(@Param("command") Command command);
+    int releaseLease(@Param("command") Command command);
+    boolean committedOwned(@Param("command") Command command);
+    void event(@Param("id") UUID id, @Param("row") Upload upload, @Param("revision") long revision, @Param("json") String json);
+}

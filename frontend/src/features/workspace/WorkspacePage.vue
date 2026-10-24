@@ -9,9 +9,11 @@ import { ApiError } from '../../shared/api/request';
 import { newRequestId as requestId } from '../../shared/api/request-id';
 import type { components } from '../../shared/api/generated/http';
 import WorkspaceEnvironmentPanel from './WorkspaceEnvironmentPanel.vue';
+import WorkspaceFilesPanel from './WorkspaceFilesPanel.vue';
 
 type Workspace = components['schemas']['Workspace'];
 const environmentEnabled = import.meta.env.VITE_WORKSPACE_ENVIRONMENT_ENABLED === 'true';
+const filesEnabled = import.meta.env.VITE_WORKSPACE_FILES_ENABLED === 'true';
 const queryClient = useQueryClient();
 const router = useRouter();
 const route = useRoute();
@@ -100,7 +102,7 @@ const stateLabel = (state: Workspace['state']) => ({ PROVISIONING: '正在准备
 <template>
   <main id="main-content" class="workspace-page" tabindex="-1">
     <header class="workspace-heading"><div><p class="eyebrow">个人空间</p><h1>工作区</h1></div><NButton type="primary" @click="open = true">创建工作区</NButton></header>
-    <p class="intro">{{ environmentEnabled ? '工作区保存独立的项目文件。存储就绪后，可在详情中准备和查看独立环境；文件与终端功能尚未开放。' : '工作区保存独立的项目文件。当前阶段仅准备存储，执行环境尚未开放。' }}</p>
+    <p class="intro">{{ filesEnabled ? '存储就绪后，可浏览、上传、显式替换和下载确认版本。文件功能不要求启动执行环境。' : environmentEnabled ? '工作区保存独立的项目文件。存储就绪后，可在详情中准备和查看独立环境；文件与终端功能尚未开放。' : '工作区保存独立的项目文件。当前阶段仅准备存储，执行环境尚未开放。' }}</p>
     <RouterLink v-if="selectedId" to="/app/workspaces">返回工作区列表</RouterLink>
     <p v-if="me.isError.value || (selectedId ? detail.isError.value : workspaces.isError.value)" role="alert">工作区暂时不可用，请检查连接和访问权限。<NButton @click="selectedId ? detail.refetch() : workspaces.refetch()">重新读取</NButton></p>
     <p v-else-if="me.isPending.value || (selectedId ? detail.isPending.value : workspaces.isPending.value)" role="status">正在读取工作区…</p>
@@ -114,6 +116,7 @@ const stateLabel = (state: Workspace['state']) => ({ PROVISIONING: '正在准备
         <p v-if="workspace.errorCode">原因编号：{{ workspace.errorCode }}</p>
         <NButton v-if="workspace.state === 'ERROR'" :disabled="busy" @click="retry(workspace)">重试准备</NButton>
         <WorkspaceEnvironmentPanel v-if="environmentEnabled && selectedId && me.data.value && space" :workspace-id="workspace.id" :user-id="me.data.value.id" :space-id="space" :storage-ready="workspace.state === 'READY'" />
+        <WorkspaceFilesPanel v-if="filesEnabled && selectedId && me.data.value && space" :workspace-id="workspace.id" :user-id="me.data.value.id" :space-id="space" :storage-ready="workspace.state === 'READY'" />
       </li>
     </ul>
     <NModal v-model:show="open" preset="card" title="创建工作区" style="width:min(32rem,calc(100vw - 2rem))" :mask-closable="!pending && !busy" :close-on-esc="!pending && !busy" :closable="!pending && !busy">
