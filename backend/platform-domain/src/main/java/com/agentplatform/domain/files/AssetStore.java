@@ -12,5 +12,7 @@ public interface AssetStore extends AutoCloseable {
     Content open(String key, Long first, Long last);
     Identity inspect(String key);
     void deleteUncommitted(String key);
+    /** Retry only this living adapter's already confirmed transport-release fact. */
+    default void flushStoppedTransfers() {}
     @Override default void close() {}
 }

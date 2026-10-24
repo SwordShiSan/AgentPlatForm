@@ -61,3 +61,12 @@ The production runner SHALL send exact-length payloads with an explicit validate
 #### Scenario: Missing or corrupt trailer
 - **WHEN** a v2 payload has a truncated or mismatched trailer
 - **THEN** the helper rejects before rename and preserves the existing file
+
+### Requirement: Positive-only recovery of staged upload metadata
+The worker SHALL reconcile the original object by bounded authorized reads and revision CAS. It SHALL NOT infer absence, stop or refund from elapsed time, repeat content upload, or automatically queue filesystem execution.
+#### Scenario: Object completed but upload metadata commit failed
+- **WHEN** the original staged object has the exact length and full hash, its transport admission is available and the fenced upload remains current
+- **THEN** the same upload becomes VERIFIED without another object write, reservation change or filesystem command
+#### Scenario: Missing object or unconfirmed transport
+- **WHEN** an object is missing, differs, the transport is still held or close is unconfirmed
+- **THEN** metadata and reservation remain pending without replay or release based on expiry

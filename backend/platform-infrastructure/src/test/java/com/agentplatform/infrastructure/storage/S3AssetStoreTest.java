@@ -17,6 +17,20 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class S3AssetStoreTest {
+    @Test void sdkFailureHasAStableUnknownCodeAndNeverLogsItsMessageOrObjectIdentity() throws Exception {
+        var client=mock(S3Client.class);String sentinel="sentinel-private-key-and-endpoint";
+        var sdk=software.amazon.awssdk.core.exception.SdkClientException.create(sentinel);
+        when(client.createMultipartUpload(org.mockito.ArgumentMatchers.<Consumer<CreateMultipartUploadRequest.Builder>>any())).thenThrow(sdk);
+        var logger=(ch.qos.logback.classic.Logger)org.slf4j.LoggerFactory.getLogger(S3AssetStore.class);
+        var appender=new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();appender.start();logger.addAppender(appender);
+        try {
+            var failure=assertThrows(FileFailure.class,()->new S3AssetStore(client,"private").put("private-object-name",1,hash(new byte[]{1}),new ByteArrayInputStream(new byte[]{1})));
+            assertEquals(503,failure.status());assertEquals("FILE_OBJECT_WRITE_UNKNOWN",failure.getMessage());assertSame(sdk,failure.getCause());
+            String logs=appender.list.stream().map(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage).collect(java.util.stream.Collectors.joining());
+            assertTrue(logs.contains("stage=CREATE_MULTIPART"));assertFalse(logs.contains(sentinel));assertFalse(logs.contains("private-object-name"));
+            assertTrue(appender.list.stream().allMatch(event->event.getThrowableProxy()==null));
+        }finally{logger.detachAppender(appender);appender.stop();}
+    }
     private static String hash(byte[] value) throws Exception {
         return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value));
     }

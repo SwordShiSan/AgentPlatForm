@@ -41,17 +41,23 @@ public class FileMessagingConfiguration {
         return new FileReconciliation(repository,runner,assets);
     }
     @Bean @Profile("workspace-worker") FileStagingCleanup fileStagingCleanup(FileRepository repository,AssetStore assets){return new FileStagingCleanup(repository,assets);}
+    @Bean @Profile("workspace-worker") UploadReconciliation uploadReconciliation(FileRepository repository,AssetStore assets){return new UploadReconciliation(repository,assets);}
     @Bean SmartLifecycle fileLifecycle(FileRepository repository,SpringFileMessaging messaging,@Qualifier("fileTimers")ThreadPoolTaskScheduler timers,
             ObjectProvider<FileExecution> execution,ObjectProvider<FileReconciliation> reconciliation,ObjectProvider<FileStagingCleanup> cleanup,
-            Environment selected,WorkspaceEffectBoundary barrier) {
+            Environment selected,WorkspaceEffectBoundary barrier,AssetStore assets,ObjectProvider<UploadReconciliation> uploads) {
         return new SmartLifecycle() {
             private volatile boolean running;
             private java.util.concurrent.ScheduledFuture<?> relay;
             private java.util.concurrent.ScheduledFuture<?> reconciliationPoll;
             private java.util.concurrent.ScheduledFuture<?> cleanupPoll;
+            private java.util.concurrent.ScheduledFuture<?> uploadPoll;
+            private java.util.concurrent.ScheduledFuture<?> releasePoll;
             private final UUID owner=Uuid7.next();
             @Override public void start() {
                 running=true;
+                releasePoll=timers.scheduleWithFixedDelay(()->{
+                    try{assets.flushStoppedTransfers();}catch(RuntimeException pending){ /* Same-instance confirmed release only; no expiry takeover. */ }
+                },Duration.ofSeconds(2));
                 relay=timers.scheduleWithFixedDelay(()->{
                     try {
                         repository.blockExpired();
@@ -64,6 +70,9 @@ public class FileMessagingConfiguration {
                     }catch(RuntimeException unavailable){ /* No direct DB execution or unproven resource release. */ }
                 },Duration.ofMillis(500));
                 if(selected.acceptsProfiles(Profiles.of("workspace-worker"))) {
+                    uploadPoll=timers.scheduleWithFixedDelay(()->{
+                        try{uploads.getObject().runOne();}catch(RuntimeException pending){ /* Keep metadata/reservation; no automatic content write. */ }
+                    },Duration.ofSeconds(2));
                     cleanupPoll=timers.scheduleWithFixedDelay(()->{
                         try{cleanup.getObject().runOne();}catch(RuntimeException pending){ /* Keep tombstone/reservation until absence is confirmed. */ }
                     },Duration.ofSeconds(10));
@@ -80,7 +89,7 @@ public class FileMessagingConfiguration {
                     });
                 }
             }
-            @Override public void stop(){running=false;if(relay!=null)relay.cancel(false);if(reconciliationPoll!=null)reconciliationPoll.cancel(false);if(cleanupPoll!=null)cleanupPoll.cancel(false);execution.ifAvailable(FileExecution::close);messaging.close();}
+            @Override public void stop(){running=false;if(relay!=null)relay.cancel(false);if(reconciliationPoll!=null)reconciliationPoll.cancel(false);if(cleanupPoll!=null)cleanupPoll.cancel(false);if(uploadPoll!=null)uploadPoll.cancel(false);if(releasePoll!=null)releasePoll.cancel(false);execution.ifAvailable(FileExecution::close);messaging.close();}
             @Override public boolean isRunning(){return running;}
         };
     }

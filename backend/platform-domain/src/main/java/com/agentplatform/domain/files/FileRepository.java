@@ -13,6 +13,10 @@ public interface FileRepository {
     void transferUncertain(Actor actor, UUID id, UUID owner);
     void transferRejected(Actor actor, UUID id, UUID owner);
     void guardTransfer(Actor actor, UUID id, UUID owner);
+    List<Upload> uploadReconciliations(UUID after);
+    Upload fenceUploadReconciliation(Upload observed);
+    void guardUploadReconciliation(Upload fenced);
+    void confirmRecoveredUpload(Upload fenced);
     Operation completeUpload(Actor actor, UUID uploadId);
     List<Entry> list(Actor actor, UUID workspace, String parent, String after, int limit);
     Entry file(Actor actor, UUID fileId);

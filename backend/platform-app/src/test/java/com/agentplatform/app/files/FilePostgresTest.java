@@ -93,8 +93,18 @@ class FilePostgresTest {
                 var body=new UploadRequest(applied?"role-success.bin":"role-no-effect.bin",8,"a".repeat(64),null,null,null);
                 var upload=api.repository().create(alice,workspace,UUID.randomUUID(),"c".repeat(64),body);
                 assertEquals(8,api.repository().usage(alice,workspace).reservedBytes());
-                var transfer=UUID.randomUUID();api.repository().beginTransfer(alice,upload.id(),transfer);
-                api.repository().transferVerified(alice,upload.id(),transfer);var operation=api.repository().completeUpload(alice,upload.id());
+                var transfer=UUID.randomUUID();var active=api.repository().beginTransfer(alice,upload.id(),transfer);
+                if(applied)api.repository().transferVerified(alice,upload.id(),transfer);
+                else {
+                    sql("UPDATE pf.upload_session SET transfer_until=clock_timestamp()-interval '1 second' WHERE id='"+upload.id()+"'");
+                    var fenced=worker.repository().fenceUploadReconciliation(active);
+                    assertEquals(409,assertThrows(FileFailure.class,()->api.repository().guardTransfer(alice,upload.id(),transfer)).status());
+                    // Models a completed independently verified object; no S3 claim in this DB-only test.
+                    worker.repository().confirmRecoveredUpload(fenced);
+                    assertEquals(8,api.repository().usage(alice,workspace).reservedBytes());
+                    assertEquals(0,count("SELECT count(*) FROM pf.file_outbox"));
+                }
+                var operation=api.repository().completeUpload(alice,upload.id());
                 var publication=worker.repository().publications(UUID.randomUUID()).stream()
                         .filter(item->item.operationId().equals(operation.id())).findFirst().orElseThrow();
                 var command=worker.repository().claim(publication,UUID.randomUUID());assertNotNull(command);
@@ -117,6 +127,32 @@ class FilePostgresTest {
                 assertThrows(java.sql.SQLException.class,()->s.execute("UPDATE pf.space_storage SET status='ACTIVE'"));
             }
         }
+    }
+    @Test void expiredUploadFencingCannotReleaseAnActiveTransportOrPublishAFile() throws Exception {
+        var upload=create(8);var owner=UUID.randomUUID();var active=files.beginTransfer(alice,upload.id(),owner);
+        var transport=transfers.acquire(upload.objectKey());
+        assertTrue(files.uploadReconciliations(null).isEmpty());
+        sql("UPDATE pf.upload_session SET transfer_until=clock_timestamp()-interval '1 second' WHERE id='"+upload.id()+"'");
+        var observed=files.uploadReconciliations(null).getFirst();var fenced=files.fenceUploadReconciliation(observed);
+        assertEquals("VERIFYING",fenced.status());assertNull(fenced.transferOwner());
+        assertEquals(409,assertThrows(FileFailure.class,()->files.guardTransfer(alice,upload.id(),owner)).status());
+        assertEquals(423,assertThrows(FileFailure.class,()->files.confirmRecoveredUpload(fenced)).status());
+        assertThrows(FileFailure.class,()->transfers.acquire("another-transfer"));
+        assertEquals(8,files.usage(alice,workspace).reservedBytes());assertEquals(0,count("SELECT count(*) FROM pf.file_operation"));
+        transfers.release(transport); // Models a confirmed close, never a lease-expiry release.
+        files.confirmRecoveredUpload(fenced);assertEquals("VERIFIED",files.upload(alice,upload.id()).status());
+        assertEquals(8,files.usage(alice,workspace).reservedBytes());assertEquals(0,count("SELECT count(*) FROM pf.file_outbox"));
+        assertEquals(409,assertThrows(FileFailure.class,()->files.confirmRecoveredUpload(fenced)).status());
+    }
+    @Test void liveUploadCannotBeFencedAndChangedRevisionCannotBeRecovered() throws Exception {
+        var upload=create(8);var owner=UUID.randomUUID();var active=files.beginTransfer(alice,upload.id(),owner);
+        assertTrue(files.uploadReconciliations(null).isEmpty());
+        assertEquals(409,assertThrows(FileFailure.class,()->files.fenceUploadReconciliation(active)).status());
+        files.guardTransfer(alice,upload.id(),owner);files.transferUncertain(alice,upload.id(),owner);
+        assertEquals(409,assertThrows(FileFailure.class,()->files.fenceUploadReconciliation(active)).status());
+        var fenced=files.fenceUploadReconciliation(files.upload(alice,upload.id()));
+        files.confirmRecoveredUpload(fenced);assertEquals("VERIFIED",files.upload(alice,upload.id()).status());
+        assertEquals(0,count("SELECT count(*) FROM pf.file_operation"));assertEquals(8,files.usage(alice,workspace).reservedBytes());
     }
     @BeforeEach void setup() throws Exception {
         sql("TRUNCATE pf.app_user CASCADE");

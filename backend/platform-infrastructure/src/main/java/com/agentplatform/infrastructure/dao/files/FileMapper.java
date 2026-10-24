@@ -9,6 +9,10 @@ import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface FileMapper {
+    List<Upload> uploadReconciliations(@Param("after") UUID after);
+    int fenceExpiredUpload(@Param("id") UUID id,@Param("revision") long revision);
+    int recoverVerifiedUpload(@Param("id") UUID id,@Param("revision") long revision);
+    boolean lockTransferIdle();
     java.time.Instant databaseTime();
     Storage lockStorage(@Param("space") UUID space);
     int reserve(@Param("space") UUID space, @Param("bytes") long bytes);

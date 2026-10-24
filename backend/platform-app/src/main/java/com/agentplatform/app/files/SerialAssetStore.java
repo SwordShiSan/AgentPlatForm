@@ -14,9 +14,12 @@ public final class SerialAssetStore implements AssetStore {
     public SerialAssetStore(AssetStore delegate,FileTransferPermit permits){this(delegate,permits,false);}
     public SerialAssetStore(AssetStore delegate,FileTransferPermit permits,boolean requireRunnerReceipt){this.delegate=delegate;this.permits=permits;this.requireRunnerReceipt=requireRunnerReceipt;}
     private UUID admit(String key) {
+        flushStoppedTransfers();
+        return permits.acquire(key);
+    }
+    @Override public void flushStoppedTransfers() {
         var pending=stoppedPendingRelease.get();
         if(pending!=null){permits.release(pending);stoppedPendingRelease.compareAndSet(pending,null);}
-        return permits.acquire(key);
     }
     private void releaseStopped(UUID owner) {
         try{permits.release(owner);}

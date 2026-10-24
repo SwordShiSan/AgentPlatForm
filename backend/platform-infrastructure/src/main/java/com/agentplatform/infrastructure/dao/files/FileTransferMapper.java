@@ -4,6 +4,7 @@ import java.util.UUID;
 import org.apache.ibatis.annotations.*;
 
 @Mapper public interface FileTransferMapper {
+    Long lockSlot();
     int acquire(@Param("owner")UUID owner,@Param("hash")String hash,@Param("role")String role,@Param("process")UUID process);
     int release(@Param("owner")UUID owner);
     boolean released(@Param("owner")UUID owner);

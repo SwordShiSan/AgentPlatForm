@@ -120,6 +120,8 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
                 ||Instant.parse(stop.finishedAt()).isAfter(stop.observedAt()))throw stale();
     }
     @Override public void recordResult(Command command,UUID observer,FileRuntime.Result result) {
+        // Result persistence may release a transport. Take that capacity row before workspace locks.
+        tx();if(transfers.lockSlot()==null)throw stale();
         var physical=observation(command,observer);
         boolean original=physical.runnerInstanceId().equals(observer);
         if(!original&&!"UNKNOWN".equals(result.state()))throw stale();

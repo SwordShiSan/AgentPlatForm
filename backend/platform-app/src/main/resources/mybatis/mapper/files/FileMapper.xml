@@ -5,6 +5,19 @@
     <select id="lockStorage" resultType="com.agentplatform.infrastructure.dao.po.FileRows$Storage">SELECT object_limit_bytes,reserved_bytes,committed_bytes,version,status FROM pf.space_storage WHERE space_id=#{space} FOR UPDATE</select>
     <update id="reserve">UPDATE pf.space_storage SET reserved_bytes=reserved_bytes+#{bytes},version=version+1 WHERE space_id=#{space} AND status='ACTIVE' AND #{bytes}&lt;=object_limit_bytes-reserved_bytes-committed_bytes</update>
     <sql id="uploadColumns">u.id,u.space_id,u.workspace_id,u.actor_id,u.request_id,u.request_hash,u.relative_path,u.mode,u.file_id,u.base_version_id,u.expected_revision,u.version_id,u.asset_id,a.object_key,u.size_bytes,u.sha256,u.status,u.transfer_owner,u.transfer_until,u.operation_id,u.expires_at,u.revision</sql>
+    <select id="uploadReconciliations" resultType="com.agentplatform.domain.files.FileData$Upload">
+        SELECT <include refid="uploadColumns"/> FROM pf.upload_session u
+        JOIN pf.asset_object a ON a.space_id=u.space_id AND a.id=u.asset_id
+        JOIN pf.app_user actor ON actor.id=u.actor_id AND actor.status='ACTIVE'
+        JOIN pf.membership member ON member.space_id=u.space_id AND member.user_id=u.actor_id AND member.status='ACTIVE'
+        WHERE (u.status='VERIFYING' OR(u.status='UPLOADING' AND u.transfer_until&lt;=clock_timestamp()))
+        AND u.operation_id IS NULL AND a.status='STAGING'
+        <if test="after != null">AND u.id&gt;#{after}</if>
+        ORDER BY u.id LIMIT 10
+    </select>
+    <update id="fenceExpiredUpload">UPDATE pf.upload_session SET status='VERIFYING',transfer_owner=NULL,transfer_until=NULL,revision=revision+1 WHERE id=#{id} AND revision=#{revision} AND status='UPLOADING' AND transfer_until&lt;=clock_timestamp() AND operation_id IS NULL</update>
+    <update id="recoverVerifiedUpload">UPDATE pf.upload_session SET status='VERIFIED',revision=revision+1 WHERE id=#{id} AND revision=#{revision} AND status='VERIFYING' AND transfer_owner IS NULL AND transfer_until IS NULL AND operation_id IS NULL</update>
+    <select id="lockTransferIdle" resultType="boolean">SELECT owner_id IS NULL FROM pf.file_transfer_slot WHERE id=1 FOR UPDATE</select>
     <select id="request" resultType="com.agentplatform.domain.files.FileData$Upload">SELECT <include refid="uploadColumns"/> FROM pf.upload_session u JOIN pf.asset_object a ON a.space_id=u.space_id AND a.id=u.asset_id WHERE u.space_id=#{actor.spaceId} AND u.actor_id=#{actor.userId} AND u.request_id=#{request}</select>
     <select id="upload" resultType="com.agentplatform.domain.files.FileData$Upload">SELECT <include refid="uploadColumns"/> FROM pf.upload_session u JOIN pf.asset_object a ON a.space_id=u.space_id AND a.id=u.asset_id WHERE u.id=#{id}</select>
     <select id="lockUpload" resultType="com.agentplatform.domain.files.FileData$Upload">SELECT <include refid="uploadColumns"/> FROM pf.upload_session u JOIN pf.asset_object a ON a.space_id=u.space_id AND a.id=u.asset_id WHERE u.id=#{id} FOR UPDATE OF u</select>

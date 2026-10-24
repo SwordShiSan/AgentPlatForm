@@ -12,3 +12,5 @@ R3.2 verified preparation and private data-plane probes. Users need real file br
 ### Modified Capabilities
 ## Impact
 Six-module DDD, contracts, MyBatis/XML/Spring transactions, Spring AMQP, AWS SDK2, runner/docker-java, Vue Query. No vendor calls, R3 production deployment or new AgentScope tool registration; R2 stays production.
+
+Upload metadata recovery reads only the original object and requires complete integrity/current revision; it never retries content writes, automatically refunds or queues filesystem effects. Public SDK write uncertainty uses a stable non-retryable Problem code; internal diagnostics are fixed-category only.

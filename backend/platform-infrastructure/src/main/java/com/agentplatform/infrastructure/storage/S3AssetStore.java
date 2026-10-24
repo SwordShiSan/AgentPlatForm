@@ -17,6 +17,7 @@ import software.amazon.awssdk.services.s3.model.*;
 
 /** Managed SDK client; exactly one bounded multipart transfer, never a full-file buffer. */
 public final class S3AssetStore implements AssetStore {
+    private static final org.slf4j.Logger LOG=org.slf4j.LoggerFactory.getLogger(S3AssetStore.class);
     public static final long MAX_BYTES = 100L * 1024 * 1024;
     private static final int PART_BYTES = 8 * 1024 * 1024;
     private final S3Client client;
@@ -33,14 +34,15 @@ public final class S3AssetStore implements AssetStore {
             throw new FileFailure(400, "INVALID_FILE_CONTENT_IDENTITY");
         if (!transfer.tryAcquire()) throw new FileFailure(423, "FILE_TRANSFER_BUSY");
         String multipart = null;
+        String stage="VALIDATE_CONTENT";
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             if (bytes == 0) {
                 if (content.read() != -1 || !HexFormat.of().formatHex(digest.digest()).equals(expectedSha256))
                     throw new FileFailure(400, "FILE_CONTENT_MISMATCH");
-                client.putObject(b -> b.bucket(bucket).key(key).metadata(Map.of("sha256", expectedSha256)), RequestBody.empty());
+                stage="PUT_EMPTY";client.putObject(b -> b.bucket(bucket).key(key).metadata(Map.of("sha256", expectedSha256)), RequestBody.empty());
             } else {
-                multipart = client.createMultipartUpload(b -> b.bucket(bucket).key(key).metadata(Map.of("sha256", expectedSha256))).uploadId();
+                stage="CREATE_MULTIPART";multipart = client.createMultipartUpload(b -> b.bucket(bucket).key(key).metadata(Map.of("sha256", expectedSha256))).uploadId();
                 byte[] buffer = new byte[PART_BYTES];
                 List<CompletedPart> parts = new ArrayList<>();
                 long remaining = bytes;
@@ -57,7 +59,7 @@ public final class S3AssetStore implements AssetStore {
                     digest.update(buffer, 0, length);
                     String uploadId = multipart;
                     int partNumber = number++;
-                    var response = client.uploadPart(b -> b.bucket(bucket).key(key).uploadId(uploadId).partNumber(partNumber),
+                    stage="UPLOAD_PART";var response = client.uploadPart(b -> b.bucket(bucket).key(key).uploadId(uploadId).partNumber(partNumber),
                             RequestBody.fromInputStream(new java.io.ByteArrayInputStream(buffer, 0, length), length));
                     parts.add(CompletedPart.builder().partNumber(partNumber).eTag(response.eTag()).build());
                     remaining -= length;
@@ -65,11 +67,11 @@ public final class S3AssetStore implements AssetStore {
                 if (content.read() != -1 || !HexFormat.of().formatHex(digest.digest()).equals(expectedSha256))
                     throw new FileFailure(400, "FILE_CONTENT_MISMATCH");
                 String uploadId = multipart;
-                client.completeMultipartUpload(b -> b.bucket(bucket).key(key).uploadId(uploadId)
+                stage="COMPLETE_MULTIPART";client.completeMultipartUpload(b -> b.bucket(bucket).key(key).uploadId(uploadId)
                         .multipartUpload(CompletedMultipartUpload.builder().parts(parts).build()));
                 multipart = null;
             }
-            var identity = inspect(key);
+            stage="VERIFY_METADATA";var identity = inspect(key);
             if (identity.bytes() != bytes || !expectedSha256.equals(identity.sha256()))
                 throw new FileFailure(503, "ASSET_IDENTITY_MISMATCH");
             return identity;
@@ -77,14 +79,32 @@ public final class S3AssetStore implements AssetStore {
             throw new FileFailure(400, "FILE_STREAM_INTERRUPTED");
         } catch (NoSuchAlgorithmException impossible) {
             throw new IllegalStateException(impossible);
+        } catch(software.amazon.awssdk.core.exception.SdkException unavailable) {
+            throw unavailable(stage,unavailable);
         } finally {
             try {
                 if (multipart != null) {
                     String uploadId = multipart;
-                    client.abortMultipartUpload(b -> b.bucket(bucket).key(key).uploadId(uploadId));
+                    try{client.abortMultipartUpload(b -> b.bucket(bucket).key(key).uploadId(uploadId));}
+                    catch(software.amazon.awssdk.core.exception.SdkException unavailable){throw unavailable("ABORT_MULTIPART",unavailable);}
                 }
             } finally { transfer.release(); }
         }
+    }
+
+    private static FileFailure unavailable(String stage,software.amazon.awssdk.core.exception.SdkException failure) {
+        Throwable root=failure;for(int i=0;i<8&&root.getCause()!=null&&root.getCause()!=root;i++)root=root.getCause();
+        String text=String.valueOf(failure.getMessage()).toLowerCase(java.util.Locale.ROOT);
+        String category=text.contains("timeout")||text.contains("timed out")?"TIMEOUT":
+                text.contains("connect")?"CONNECTION":text.contains("xml")||text.contains("unmarshall")||text.contains("parse")?"CODEC":
+                text.contains("checksum")||text.contains("digest")?"CHECKSUM":text.contains("credential")?"CREDENTIAL":
+                text.contains("sign")||text.contains("hash")?"SIGNING":text.contains("length")?"LENGTH":"OTHER_CLIENT";
+        String frames=java.util.Arrays.stream(failure.getStackTrace()).filter(f->f.getClassName().startsWith("software.amazon.awssdk."))
+                .limit(4).map(f->f.getClassName()+"#"+f.getMethodName()).collect(java.util.stream.Collectors.joining(","));
+        // Only fixed stages/categories and code identities: never log messages, keys, URLs, headers or bodies.
+        LOG.warn("fileObjectFailure stage={} category={} sdkType={} causeType={} sdkFrames={}",stage,category,
+                failure.getClass().getSimpleName(),root.getClass().getSimpleName(),frames);
+        var result=new FileFailure(503,"FILE_OBJECT_WRITE_UNKNOWN");result.initCause(failure);return result;
     }
 
     @Override public Identity inspect(String key) {

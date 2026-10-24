@@ -111,6 +111,31 @@ public final class MyBatisFileRepository implements FileRepository {
         if(!"UPLOADING".equals(row.status())||!owner.equals(row.transferOwner())||row.transferUntil()==null
                 ||!row.transferUntil().isAfter(now)||!row.expiresAt().isAfter(now))throw new FileFailure(409,"UPLOAD_TRANSFER_OWNER_EXPIRED");
     }
+    @Override public List<Upload> uploadReconciliations(UUID after){tx();return files.uploadReconciliations(after);}
+    @Override public Upload fenceUploadReconciliation(Upload observed) {
+        var actor=new Actor(observed.actorId(),observed.spaceId());storage(actor);workspace(actor,observed.workspaceId(),true);
+        var current=ownedUpload(actor,observed.id(),true);
+        if(current.revision()!=observed.revision()||!Input.freeze(current).equals(Input.freeze(observed))||current.operationId()!=null)
+            throw new FileFailure(409,"UPLOAD_RECONCILIATION_CHANGED");
+        if("UPLOADING".equals(current.status())) {
+            // This only fences metadata. It neither releases the transport nor proves a stop.
+            one(files.fenceExpiredUpload(current.id(),current.revision()));current=files.upload(current.id());
+        }
+        var fenced=current;guardUploadReconciliation(fenced);onCommit(()->guardUploadReconciliation(fenced));return fenced;
+    }
+    @Override public void guardUploadReconciliation(Upload fenced) {
+        var current=ownedUpload(new Actor(fenced.actorId(),fenced.spaceId()),fenced.id(),false);
+        if(!"VERIFYING".equals(current.status())||current.revision()!=fenced.revision()||current.transferOwner()!=null
+                ||current.transferUntil()!=null||current.operationId()!=null||!Input.freeze(current).equals(Input.freeze(fenced)))
+            throw new FileFailure(409,"UPLOAD_RECONCILIATION_CHANGED");
+    }
+    @Override public void confirmRecoveredUpload(Upload fenced) {
+        var actor=new Actor(fenced.actorId(),fenced.spaceId());storage(actor);
+        if(!files.lockTransferIdle())throw new FileFailure(423,"FILE_TRANSFER_BUSY");
+        workspace(actor,fenced.workspaceId(),true);
+        ownedUpload(actor,fenced.id(),true);guardUploadReconciliation(fenced);
+        one(files.recoverVerifiedUpload(fenced.id(),fenced.revision()));onCommit(()->authorized(actor));
+    }
     @Override public Operation completeUpload(Actor actor, UUID id) {
         // Inspect identity without taking a lower-order upload lock first.
         var before = ownedUpload(actor, id, false);storage(actor);workspace(actor, before.workspaceId(), true);

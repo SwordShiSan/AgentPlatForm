@@ -42,8 +42,15 @@ class SerialAssetStoreTest {
     @Test void runnerStreamCloseCannotReleaseWithoutPersistedHelperStopReceipt()throws Exception {
         var delegate=mock(AssetStore.class);var permits=mock(FileTransferPermit.class);var owner=UUID.randomUUID();
         when(permits.acquire("key")).thenReturn(owner);when(delegate.open("key",null,null)).thenReturn(new AssetStore.Content(new ByteArrayInputStream(new byte[0]),0,0));
-        var content=new SerialAssetStore(delegate,permits,true).open("key",null,null);content.close();content.close();
+        var store=new SerialAssetStore(delegate,permits,true);var content=store.open("key",null,null);content.close();content.close();store.flushStoppedTransfers();
         verify(permits,never()).release(any());
+    }
+    @Test void timerCanRetryOnlyItsOwnAlreadyStoppedReleaseWithoutAnotherObjectRequest() {
+        var delegate=mock(AssetStore.class);var permits=mock(FileTransferPermit.class);var owner=UUID.randomUUID();
+        when(permits.acquire("key")).thenReturn(owner);doThrow(new FileFailure(503,"DB_DOWN")).doNothing().when(permits).release(owner);
+        var store=new SerialAssetStore(delegate,permits);assertThrows(FileFailure.class,()->store.inspect("key"));
+        store.flushStoppedTransfers();store.flushStoppedTransfers();
+        verify(delegate,times(1)).inspect("key");verify(permits,times(1)).acquire("key");verify(permits,times(2)).release(owner);
     }
     @Test void closeWaitsForTheActualReaderToExitBeforeReleasing()throws Exception {
         var delegate=mock(AssetStore.class);var permits=mock(FileTransferPermit.class);var owner=UUID.randomUUID();
