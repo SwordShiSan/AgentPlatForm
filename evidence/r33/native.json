@@ -1,0 +1,215 @@
+{
+  "status": "PASS_NATIVE_SUBSET_PENDING_FINAL_REVIEW",
+  "source": "85d1812866496e2c5a7ddd7962ed77c8f37d4542",
+  "scope": "R33 unchanged-candidate observation, compatibility and concurrency subset; prior matrix gates explicitly reused",
+  "serverResultSha256": "a45a4be0d0f88949f872c78598f2f3475f6db687ccd207bcbac7c1a0c8953e4f",
+  "assertions": [
+    "V13-runtime1-existing-isolated-workspace-READY-no-duplicate-allocation",
+    "exact-component-proof-reuses-native-browser-dependency-gates-with-original-failure-disclosed",
+    "real-public-missing-parent-definite-no-effect-refund-no-workspace-brick",
+    "native-fixed-helper-process-exits-before-and-after-rename-target-hash-orphan-stop-confirmed-no-replay",
+    "prior-verified-R32-program-auth-workspace-readiness-over-additive-V13-and-back-to-current",
+    "two-actual-worker-processes-one-winning-version-and-one-runner-command-for-concurrent-replacement",
+    "final-candidate-at-least1800seconds-upload-download-replace-resource-sampling"
+  ],
+  "reusedGates": {
+    "source": "4f8f02f065302d20a6f2fb87bba7c5959927bc0f",
+    "serverResultSha256": "45064b4532e7bcecb1dafe1e0645fab05b3179a5f669793303c8fa13a66b8299",
+    "originalWindowStatus": "FAIL",
+    "assertions": [
+      "V13-runtime1-existing-isolated-workspace-READY-no-duplicate-allocation",
+      "zero-byte-public-upload-MQ-runner-helper-commit",
+      "100MiB-public-stream-MQ-signed-runner-dockerJava-helper-hash",
+      "immutable-private-S3-download-fullhash-and-single-range",
+      "explicit-versioned-atomic-replacement-old-version-readback",
+      "one-charge-per-version-no-environment-no-held-transport",
+      "real-completed-S3-object-failed-metadata-positive-read-only-recovery-one-explicit-completion",
+      "native-byte-and-inode-independent-quota-rejection-full-temp-admission-cleanup-missing-mount-denial-remount-hash",
+      "trusted-fixed-gVisor-canary-read-public-upload-write666-same-XFS-no-public-tools",
+      "real-browser-upload-replace-conflict-refresh-lost-response-permissions-responsive-theme-keyboard",
+      "real-broker-queued-outbox-resume-once-S3-restart-hash-DB-fail-closed-recovery"
+    ],
+    "applicationAndHelperInputsUnchanged": true,
+    "previousPartialObservationNotReused": true
+  },
+  "observation": {
+    "status": "PASS",
+    "elapsedSeconds": 1800.4362601414323,
+    "cycles": 30,
+    "sampledOnly": true,
+    "supplierCalls": 0
+  },
+  "nativeGates": {
+    "native-process-crash-boundaries": {
+      "sha256": "28a1bffbf9160bc3e4847ae669e07aea5f9ce3494bd8992e935ddb8bb8c0ab26",
+      "summary": {
+        "status": "PASS",
+        "scope": "native helper filesystem crash boundaries only; not a platform recovery receipt",
+        "cases": [
+          {
+            "point": "before-rename",
+            "childExitCode": 71,
+            "childStopped": true,
+            "targetSha256": "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+            "originalOperationReplayed": false,
+            "orphanTemporaryCountBeforeCleanup": 1
+          },
+          {
+            "point": "after-rename",
+            "childExitCode": 72,
+            "childStopped": true,
+            "targetSha256": "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+            "originalOperationReplayed": false,
+            "orphanTemporaryCountBeforeCleanup": 0
+          }
+        ],
+        "containerId": "7a6125a3ab0c0de86a3e6ecf6d963021b038c97046d732307c05574dde6b8790",
+        "imageId": "sha256:74242668466747543b1f41917bf034329cd147dcdfc797ac1924e1b684756c2f",
+        "finishedAt": "2026-10-24T12:03:13.517655004Z"
+      }
+    },
+    "old-program-over-V13": {
+      "sha256": "229b5bd169c66890bf0f0d1fb46fb1113fc3988636c79f614d4b5329b78ea5ba",
+      "summary": {
+        "status": "PASS",
+        "source": "19d3f5229cd32ae070ddf1c87741b35adebbcbf9",
+        "image": "sha256:60741be1d9cf125a5c9f99902128ce1f5de1bd8cdeb9524db7aece2f5027bb82",
+        "runtimeBaseline": 1,
+        "migrationVersion": 13,
+        "existingSessionReadable": true
+      }
+    },
+    "two-real-worker-replacement": {
+      "sha256": "5b49e442cfefa2bc8002b9abad222f480bef0f05b0d42fb8e24210787e02967f",
+      "summary": {
+        "status": "PASS",
+        "workerContainers": [
+          "56f88e5886d7fbc325759b9c5863ae77e8c6f0cc77532cb155be52640b7e48cd",
+          "13d4d91c09aae56e814f0fb88130f18cebf723d6d87a4061f72db09584f805e0"
+        ],
+        "attemptStatuses": [
+          202,
+          202
+        ],
+        "terminalStates": [
+          "COMMITTED",
+          "FAILED"
+        ],
+        "newVersions": 1,
+        "newRunnerCommands": 1,
+        "transientCaps": {
+          "apiMiB": 384,
+          "rabbitmqMiB": 256,
+          "workerMiBEach": 384,
+          "includingOneHelperMiB": 2848
+        },
+        "warmUsedMiBBefore": {
+          "api": 292.5,
+          "rabbitmq": 107.8
+        }
+      }
+    },
+    "last-operation-terminal": {
+      "sha256": "bcda4bc105d1a702e103254d7220ead4aaf948e58206d579e1a20300460b1390",
+      "summary": {
+        "id": "01a16dcc-7b48-79b6-8b1f-baea29c47ce4",
+        "workspaceId": "01a16d03-4d24-773b-a247-304904bfc0f7",
+        "uploadId": "01a16dcc-79c3-7528-8704-96ef461a6bb3",
+        "state": "FAILED",
+        "revision": 2,
+        "errorCode": "FILE_VERSION_CONFLICT",
+        "allowedActions": [
+          "READ"
+        ]
+      }
+    }
+  },
+  "reusedNativeGates": {
+    "native-capacity-bytes": {
+      "sha256": "e725eaec1fc095c81a72b4157cdbdaec10f9d0e0cacf557731ec4282cba48933",
+      "summary": {
+        "status": "PASS",
+        "action": "bytes",
+        "quotaRejected": true,
+        "quotaErrno": 28,
+        "projectAvailableBytes": 24576,
+        "projectAvailableInodes": 99987,
+        "allocatedBytes": 2130632704,
+        "replacementRejectedBeforeRead": true,
+        "originalHashPreserved": true,
+        "temporaryEntries": 0,
+        "createdInodeCount": 2,
+        "globalAvailableBytesBefore": 4112834560
+      }
+    },
+    "native-capacity-inodes": {
+      "sha256": "74522d26177be32a3110ab5a63faf0f0c2f77db458600c0e5626252711a1dd05",
+      "summary": {
+        "status": "PASS",
+        "action": "inodes",
+        "quotaRejected": true,
+        "quotaErrno": 28,
+        "projectAvailableBytes": 2126860288,
+        "projectAvailableInodes": 0,
+        "allocatedBytes": 16777216,
+        "replacementRejectedBeforeRead": true,
+        "originalHashPreserved": true,
+        "temporaryEntries": 0,
+        "createdInodeCount": 99989,
+        "globalAvailableBytesBefore": 4112834560
+      }
+    },
+    "missing-mount": {
+      "sha256": "815cbcd07d07a3fb66f340bda7e7e13b8fe2f75c306069089207f28c2dfc1f07",
+      "summary": {
+        "status": "PASS",
+        "writesToUnderlyingDirectory": false,
+        "containerId": "325a79493fa15d03e4224dae0c35cffe3e988060f795eabefcb5a0f0cfee2152",
+        "finishedAt": "2026-10-24T11:02:45.318818307Z"
+      }
+    },
+    "same-source-canary": {
+      "sha256": "992f42c8d9578ad2b2ded1c714860d71b23ceb56e9b1bb47456fe2a6a0f30c84",
+      "summary": {
+        "status": "PASS",
+        "publicFileRead": true,
+        "value": "666",
+        "canarySha256": "c7e616822f366fb1b5e0756af498cc11d2c0862edcb32ca65882f622ff39de1b"
+      }
+    },
+    "browser-result": {
+      "sha256": "f27afa153d5c0bb5402007b58cd5ee1928822939215253489200ca4cb32bca9c",
+      "summary": {
+        "status": "PASS",
+        "source": "4f8f02f065302d20a6f2fb87bba7c5959927bc0f",
+        "scope": "Actual native file API/browser via private SSH; screenshots and CSS200 scale, not vendor traffic",
+        "assertions": [
+          "public-ui-upload-preview-download-refresh",
+          "public-ui-explicit-replacement-and-historical-read",
+          "public-ui-stale-replacement-retains-selection",
+          "lost-create-response-refresh-reuses-original-request",
+          "double-user-admin-all-file-entry-isolation",
+          "network-feedback-responsive-theme-keyboard",
+          "private-endpoints-and-exit-cleanup"
+        ],
+        "supplierCalls": 0
+      }
+    }
+  },
+  "r2Restored": true,
+  "legacyStopped": true,
+  "originalProductionUuidUnchanged": true,
+  "publicHostReadiness": "200",
+  "supplierCalls": 0,
+  "sampledOnly": {
+    "count": 155,
+    "minAvailableBytes": 1497202688,
+    "minRootFreeBytes": 5575884800,
+    "maxActiveContainerLimitBytes": 2986344448,
+    "maxDatabaseConnections": 9,
+    "maxMainProcessThreads": 51,
+    "retiredNullableThreadSamples": 4,
+    "swapUsedBytesFirst": 186400768,
+    "swapUsedBytesLast": 186089472
+  }
+}

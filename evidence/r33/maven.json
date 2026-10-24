@@ -1,0 +1,23 @@
+{
+  "status": "PASS",
+  "exitCode": 0,
+  "sourceBase": "87cda46efaa265ca81afa753c7541b3e7c350bb4",
+  "workingTreeClean": true,
+  "supplierCalls": 0,
+  "commands": [
+    {
+      "name": "atomic-move-preflight",
+      "exitCode": 0,
+      "elapsedSeconds": 1.21,
+      "log": ".cache\\r33-local\\final-maven-01\\atomic-move-preflight.log",
+      "sha256": "57a409a51776452ce778b506fd4834076a5a5176297084df23308a164f344201"
+    },
+    {
+      "name": "maven-verify",
+      "exitCode": 0,
+      "elapsedSeconds": 158.68,
+      "log": ".cache\\r33-local\\final-maven-01\\maven-verify.log",
+      "sha256": "3d323653a1f6452f04d3a9d8bcd4b07f38cae6a2bd45f94047f95dad6c242523"
+    }
+  ]
+}
