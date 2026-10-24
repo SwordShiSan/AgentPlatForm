@@ -5,6 +5,7 @@
 ## 2. Persistence and storage
 - [ ] 2.1 Additive V13 and typed Mapper/PO/XML, scoped constraints and quota admission.
 - [ ] 2.2 Managed S3 streaming, multipart failure handling, hash/range and exact reservations.
+  - Include cold non-empty multipart admission with metadata and asset collections; HEAD alone is not data-plane readiness.
 - [ ] 2.3 Upload lifecycle, positive-only staged-object recovery, immutable versions, signed runner and query-only reconciliation.
 - [ ] 2.4 Shared workspace lease/auxiliary stop facts independent of environment.
 ## 3. Public product

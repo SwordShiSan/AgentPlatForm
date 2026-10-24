@@ -76,6 +76,7 @@ services:
     environment:
       GOMEMLIMIT: 96MiB
       GOMAXPROCS: "1"
+      WEED_MASTER_VOLUME_GROWTH_COPY_1: "1"
     networks:
       - control
     logging:
@@ -118,7 +119,7 @@ services:
       - -ip=volume
       - -master=master:9333
       - -dir=/data
-      - -max=2
+      - -max=4
       - -minFreeSpace=5GiB
     volumes:
       - ${R33_ROOT}/volume:/data

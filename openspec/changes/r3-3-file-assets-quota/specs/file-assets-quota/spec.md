@@ -18,6 +18,9 @@ The platform SHALL reserve object bytes atomically and freeze an idempotent uplo
 #### Scenario: Interrupted content
 - **WHEN** streaming ends early or exceeds the declared size
 - **THEN** no file version is published and incomplete multipart data is bounded and reconciled
+#### Scenario: Cold metadata and asset collection allocation
+- **WHEN** the bounded storage server holds filer metadata and accepts a non-empty multipart asset
+- **THEN** official volume-growth configuration leaves assignable asset capacity while preserving disk and memory admission; HEAD or an empty object alone does not prove this capability
 ### Requirement: Explicit optimistic replacement
 The platform SHALL reject implicit overwrite and SHALL require fileId, baseVersionId and If-Match for explicit replacement under an exclusive workspace lease.
 #### Scenario: Concurrent replacement
