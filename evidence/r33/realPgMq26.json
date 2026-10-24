@@ -1,0 +1,33 @@
+{
+  "status": "PASS",
+  "supplierCalls": 0,
+  "scope": "real PG/managed AMQP handoff; DB-only workspace prerequisite; no filesystem claim",
+  "stopped": true,
+  "commands": [
+    {
+      "name": "precompile",
+      "exitCode": 0,
+      "sha256": "e91fb4d2460da6c7f6505dbc5e19a7588825f96c2a860276e04e411073752485"
+    },
+    {
+      "name": "config",
+      "exitCode": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "start",
+      "exitCode": 0,
+      "sha256": "a44c12cca6335f40ae578e3f13d8773e40ea383c4961a257273b033b1c2c38d0"
+    },
+    {
+      "name": "tests",
+      "exitCode": 0,
+      "sha256": "f2a9dbd16bf5919a53b574f6341fe1a045a22fb9b935d6fc4dc854e42ab93012"
+    },
+    {
+      "name": "stop",
+      "exitCode": 0,
+      "sha256": "0531640d78cadc1a6b74a77ab55b9105c51cf9011817da4e79b9b56c1fc05689"
+    }
+  ]
+}

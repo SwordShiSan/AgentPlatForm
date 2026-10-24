@@ -8,6 +8,7 @@
     <project.build.outputTimestamp>2026-10-13T00:00:00Z</project.build.outputTimestamp>
     <archunit.version>1.4.1</archunit.version>
     <agentscope.version>2.0.4</agentscope.version>
+    <aws-sdk.version>2.57.3</aws-sdk.version>
     <tomcat.version>11.0.25</tomcat.version>
     <jackson-2-bom.version>2.21.7</jackson-2-bom.version>
     <jackson-bom.version>3.1.7</jackson-bom.version>
@@ -17,6 +18,7 @@
     <module>platform-types</module><module>platform-domain</module><module>platform-api</module><module>platform-infrastructure</module><module>platform-trigger</module><module>platform-app</module>
   </modules>
   <dependencyManagement><dependencies>
+    <dependency><groupId>software.amazon.awssdk</groupId><artifactId>bom</artifactId><version>${aws-sdk.version}</version><type>pom</type><scope>import</scope></dependency>
     <dependency><groupId>org.apache.commons</groupId><artifactId>commons-compress</artifactId><version>1.28.0</version></dependency>
     <dependency><groupId>commons-io</groupId><artifactId>commons-io</artifactId><version>2.21.0</version></dependency>
     <dependency><groupId>org.bouncycastle</groupId><artifactId>bcprov-jdk18on</artifactId><version>1.83</version></dependency>

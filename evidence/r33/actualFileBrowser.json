@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "source": "4f8f02f065302d20a6f2fb87bba7c5959927bc0f",
+  "scope": "Actual native file API/browser via private SSH; screenshots and CSS200 scale, not vendor traffic",
+  "assertions": [
+    "public-ui-upload-preview-download-refresh",
+    "public-ui-explicit-replacement-and-historical-read",
+    "public-ui-stale-replacement-retains-selection",
+    "lost-create-response-refresh-reuses-original-request",
+    "double-user-admin-all-file-entry-isolation",
+    "network-feedback-responsive-theme-keyboard",
+    "private-endpoints-and-exit-cleanup"
+  ],
+  "supplierCalls": 0
+}

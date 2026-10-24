@@ -49,7 +49,10 @@ public class EnvironmentConfiguration {
             if(!environment.policyHash().equals(policy.hash()))throw new IllegalStateException("Frozen environment policy mismatch");
             return policy;
         }
-        @Bean(destroyMethod="close") SandboxRuntime sandboxRuntime(SandboxPolicy policy,WorkspaceFixtureBarrier barrier) {return new DockerSandboxRuntime(policy,barrier);}
+        @Bean(destroyMethod="close") SandboxRuntime sandboxRuntime(SandboxPolicy policy,WorkspaceFixtureBarrier barrier,
+                java.util.UUID runnerInstanceNonce,AuxiliaryContainerSlot auxiliaryContainerSlot) {
+            return new DockerSandboxRuntime(policy,barrier,runnerInstanceNonce,auxiliaryContainerSlot);
+        }
         @Bean EnvironmentRunnerApi environmentRunnerApi(EnvironmentExecutionRepository repository,RunnerSignatures signatures,SandboxRuntime runtime,EnvironmentProperties properties,WorkspaceFixtureBarrier barrier) {
             return new EnvironmentRunnerService(repository,signatures,runtime,properties.imageId(),properties.policyHash(),runtime.runnerInstance(),barrier);
         }

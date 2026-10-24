@@ -32,15 +32,20 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
     private final DockerClient docker;
     private final SandboxPolicy policy;
     private final com.agentplatform.domain.workspace.WorkspaceEffectBoundary boundary;
-    private final UUID instanceId=UUID.randomUUID();
+    private final UUID instanceId;
     private final ConcurrentMap<UUID, Capture> active = new ConcurrentHashMap<>();
     private final ConcurrentMap<UUID, Capture> helperActive = new ConcurrentHashMap<>();
-    private final AuxiliaryContainerSlot helperSlot=new AuxiliaryContainerSlot();
+    private final AuxiliaryContainerSlot helperSlot;
 
     public DockerSandboxRuntime(SandboxPolicy policy) {
         this(policy,com.agentplatform.domain.workspace.WorkspaceEffectBoundary.NONE);
     }
     public DockerSandboxRuntime(SandboxPolicy policy,com.agentplatform.domain.workspace.WorkspaceEffectBoundary boundary) {
+        this(policy,boundary,UUID.randomUUID(),new AuxiliaryContainerSlot());
+    }
+    public DockerSandboxRuntime(SandboxPolicy policy,com.agentplatform.domain.workspace.WorkspaceEffectBoundary boundary,
+            UUID instanceId,AuxiliaryContainerSlot helperSlot) {
+        this.instanceId=Objects.requireNonNull(instanceId);this.helperSlot=Objects.requireNonNull(helperSlot);
         this.policy = policy;this.boundary=boundary;
         var config = DefaultDockerClientConfig.createDefaultConfigBuilder()
                 .withDockerHost("unix:///var/run/docker.sock").withApiVersion("1.45").build();

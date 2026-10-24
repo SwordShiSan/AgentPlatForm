@@ -1,0 +1,12 @@
+{
+  "status": "PASS",
+  "scope": "Actual fixed gateway/Vue bundle; controlled HTTP projections for empty/loading/network/permission/UNKNOWN UI only, not backend evidence",
+  "gates": [
+    "loading-empty",
+    "permission-feedback",
+    "offline-feedback",
+    "unknown-read-only-no-replay"
+  ],
+  "mutations": 0,
+  "supplierCalls": 0
+}

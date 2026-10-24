@@ -29,7 +29,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--write', action='store_true')
 args = parser.parse_args()
 if args.write:
-    path.write_text(json.dumps(lock, indent=2) + '\n', encoding='utf-8')
+    path.write_text(json.dumps(lock, indent=2) + '\n', encoding='utf-8', newline='\n')
 elif json.loads(path.read_text()) != lock:
     raise SystemExit('Resolved Maven artifact drift; do not overwrite accepted hashes')
 print('Resolved Maven artifact hashes:', len(artifacts))

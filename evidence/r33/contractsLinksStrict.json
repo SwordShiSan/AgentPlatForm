@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "source": "87cda46efaa265ca81afa753c7541b3e7c350bb4",
+  "commands": [
+    {
+      "name": "contracts-check",
+      "exitCode": 0,
+      "sha256": "347d966427f256ee3b642071bed0945d1eb5b7887bdec278ae5300c42e81c80e"
+    },
+    {
+      "name": "contracts-negative",
+      "exitCode": 0,
+      "sha256": "347d966427f256ee3b642071bed0945d1eb5b7887bdec278ae5300c42e81c80e"
+    },
+    {
+      "name": "links",
+      "exitCode": 0,
+      "sha256": "49c40bc2ba3f2a9977670fd1a489c00080fc2664b5f3e264379ce87ea58e205f"
+    },
+    {
+      "name": "strict",
+      "exitCode": 0,
+      "sha256": "d776f1d4c689e72d9e23507183f5458b26aab25e0c641a3b423eae1e34cdafdc"
+    }
+  ]
+}

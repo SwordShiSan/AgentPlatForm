@@ -10,6 +10,7 @@ import type { components } from '../../shared/api/generated/http';
 import { environmentRequestScope, loadEnvironmentRequest, saveEnvironmentRequest, type PendingEnvironmentRequest } from './environment-requests';
 
 const props = defineProps<{ workspaceId: string; userId: string; spaceId: string; storageReady: boolean }>();
+const filesEnabled = import.meta.env.VITE_WORKSPACE_FILES_ENABLED === 'true';
 type Environment = components['schemas']['WorkspaceEnvironment'];
 const queryClient = useQueryClient();
 const scope = computed(() => environmentRequestScope(props.userId, props.spaceId, props.workspaceId));
@@ -83,7 +84,7 @@ async function submit() {
     </template>
     <p v-if="!storageReady">请等待工作区存储就绪，再准备环境。</p>
     <p>没有活动操作后，环境将在空闲 60 秒后释放；工作区文件和磁盘额度保留。</p>
-    <p>文件管理、终端和模型工具尚未开放。环境准备不代表这些功能已经可用。</p>
+    <p>{{ filesEnabled ? '文件管理独立于执行环境；终端和模型工具尚未开放。' : '文件管理、终端和模型工具尚未开放。环境准备不代表这些功能已经可用。' }}</p>
     <p v-if="pending">原请求尚未确认，请先读取最新状态。确认原请求会使用相同编号和版本。</p>
     <div class="environment-actions">
       <NButton v-if="action && storageReady && !query.isError.value" type="primary" :disabled="busy || query.isPending.value" @click="submit">

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.agentplatform.infrastructure.dao.workspace.WorkspaceMapper">
+    <select id="fileDataPlaneBusy" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.workspace_file_lease WHERE space_id=#{spaceId} AND workspace_id=#{workspaceId} AND status&lt;&gt;'FREE')</select>
     <sql id="workspaceColumns">id,space_id,actor_id,name,state,environment_state,quota_bytes,quota_inodes,project_id,version,operation_id,error_code,created_at</sql>
     <select id="lockCapacity" resultType="com.agentplatform.infrastructure.dao.po.WorkspaceRows$CapacityRow">SELECT reserved_bytes,reserved_slots,next_project_id FROM pf.workspace_capacity WHERE id=1 FOR UPDATE</select>
     <select id="actorLock" resultType="java.lang.Object" flushCache="true">SELECT pg_advisory_xact_lock(#{key})</select>

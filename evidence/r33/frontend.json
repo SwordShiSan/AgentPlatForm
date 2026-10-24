@@ -1,0 +1,57 @@
+{
+  "status": "BUILT_LOCAL_SMOKE_PASS_NOT_DEPLOYED",
+  "source": "ca9ecadb0e46bb8ad5e268d73e25e97f8cdbfcb7",
+  "tag": "agentplatform-gateway:r33-files-ca9ecadb0e46",
+  "localId": "sha256:563f25b85f206e604dcadf1224244d880547c1e72f4de17412eef93ab3806ee2",
+  "flags": {
+    "VITE_CHAT_ENABLED": "false",
+    "VITE_WORKSPACE_ENABLED": "true",
+    "VITE_WORKSPACE_ENVIRONMENT_ENABLED": "true",
+    "VITE_WORKSPACE_FILES_ENABLED": "true"
+  },
+  "commands": [
+    {
+      "name": "frozen-install",
+      "exitCode": 0,
+      "sha256": "6bd6181d1718b729d4e5418f55324ef927cda95aa7e2115526c48a210c4e87f0"
+    },
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "sha256": "87b43cf0030ae95d6d9d9f38b14b674965bcedb47878219a35625e9925d2872c"
+    },
+    {
+      "name": "test",
+      "exitCode": 0,
+      "sha256": "2b76d1e3640a57f137dc56f4005927cb2cc9adb3df352afcd78298201e463dd0"
+    },
+    {
+      "name": "contracts-check",
+      "exitCode": 0,
+      "sha256": "06aeb2cfe5a0c772345e1f6f3b47f6c6fa8fb8b69bc477284ac6df4ee5e983f5"
+    },
+    {
+      "name": "contracts-test",
+      "exitCode": 0,
+      "sha256": "bdc9a4f92dda07541badab1858102b7672e13e890ba30ddcf351ec5c13780b8f"
+    },
+    {
+      "name": "links-check",
+      "exitCode": 0,
+      "sha256": "4304f1287daa3c00807b4d073544200c3ec706c9ae705c62eb7039ee8034bcd4"
+    },
+    {
+      "name": "build",
+      "exitCode": 0,
+      "sha256": "bdfbf0d9854b81159668bc042d23499a09d16bf4f1f854984902c9c7bc9bd81b"
+    },
+    {
+      "name": "image-build",
+      "exitCode": 0,
+      "sha256": "8c5614f9615799591b4b42720297cfbe1d667a3a3a39fa1d72bcefba30e421f4"
+    }
+  ],
+  "readonlyGatewayStarted": true,
+  "fixtureStopped": true,
+  "sourceArchiveSha256": "295ea43e6b6d5139658e35a577c3f7e7007903f2dcfc93d7a88a3ae97583a5da"
+}

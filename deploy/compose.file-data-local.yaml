@@ -1,0 +1,24 @@
+name: agentplatform-r33-local
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.1-pg17-trixie@sha256:137f044b0efe3d57f39b972b9b53641b1f2045b99d879e298bbf514a25787dcf
+    restart: "no"
+    mem_limit: 320m
+    memswap_limit: 320m
+    cpus: 1
+    environment:
+      POSTGRES_DB: file_test
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    ports: ["127.0.0.1:15450:5432"]
+    volumes: ["file-data:/var/lib/postgresql/data"]
+    networks: [data]
+    healthcheck: {test: [CMD-SHELL, pg_isready -U postgres -d file_test], interval: 2s, timeout: 3s, retries: 30}
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+secrets:
+  postgres_password:
+    file: ${R33_ROOT:?Set independent protected R33 root}/postgres-password
+volumes:
+  file-data: {}
+networks:
+  data: {}
