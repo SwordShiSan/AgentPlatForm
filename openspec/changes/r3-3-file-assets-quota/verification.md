@@ -22,3 +22,8 @@ Signed file runner, immutable physical intent/stop receipt, Spring AMQP confirms
 Framing: official docker-java3.7.1/HttpClient5 loopback101 must pass zero/100MiB without EOF; helper tests must reject missing/bad trailer before rename. Actual Engine and XFS remain separate mandatory evidence.
 
 2026-10-24 framing batch: official SDK core/HC5 zero+100MiB loopback101 PASS (host, 6.526s test);15 Linux helper tests PASS. Raw restricted-loopback permission failure preserved separately. Latest protocol consumption/projection refinements await affected regression before candidate build.
+
+
+## Native pilot1 (2026-10-24): retained FAIL
+Source48b81df artifacts built/exported/imported with config/hash verification. Independent V13 install, runtime1, private PG/MQ/S3 and runner started, but the new file gateway failed because fastcgi_temp_path defaulted to read-only /var/cache/nginx. File operations were NOT_RUN. Exact original R2 ten-service restoration and production UUID preservation passed; test resources stopped. Do not replace this failure with later passing evidence.
+Correction reuses established nginx profile temp paths, adds a reusable read-only/no-network32MiB gateway start smoke and verifies the actual VITE_WORKSPACE_FILES_ENABLED flag in the output bundle. Earlier candidate build incorrectly set VITE_FILES_ENABLED; frontend source was unaffected, but that artifact must not be claimed as the file UI. Backend/helper48b81df trees can be reused when unchanged; every gateway artifact records its own exact source and build flags. Native file chain and all remaining mandatory gates are still pending.
