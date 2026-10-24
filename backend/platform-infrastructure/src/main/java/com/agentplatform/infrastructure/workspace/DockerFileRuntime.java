@@ -133,7 +133,7 @@ public final class DockerFileRuntime implements FileRuntime {
             var row=docker.inspectContainerCmd(created.getId()).exec();
             if(!Boolean.TRUE.equals(row.getState().getRunning()))throw new FileFailure(503,"FILE_HELPER_START_UNCONFIRMED");
             authority.started(row.getState().getStartedAt());authority.check();exact(command,authority.physical());
-            var header=new LinkedHashMap<String,Object>();header.put("protocol",scan?"file-scan-v1":"file-stream-v1");header.put("operationId",command.operation().id());
+            var header=new LinkedHashMap<String,Object>();header.put("protocol",scan?"file-scan-v1":"file-stream-v2");header.put("operationId",command.operation().id());
             header.put("filesystemDevice",List.of(7,Integer.parseInt(policy.quotaDevice().substring("/dev/loop".length()))));
             if(scan) {
                 header.put("parent",command.operation().scanParent());header.put("cursor",command.operation().scanCursor());
@@ -145,7 +145,9 @@ public final class DockerFileRuntime implements FileRuntime {
             String exec=docker.execCreateCmd(created.getId()).withAttachStdin(true).withAttachStdout(true).withAttachStderr(true).withTty(false)
                     .withCmd("python3",scan?"/opt/platform/file-scan-bridge.py":"/opt/platform/file-stream-bridge.py").exec().getId();
             authority.exec(exec);authority.check();
-            input=new TrackedInput(new SequenceInputStream(new ByteArrayInputStream(metadata),content));capture.input=input;active.put(command.operation().commandId(),capture);
+            InputStream payload=scan?content:new SequenceInputStream(content,
+                    new ByteArrayInputStream(HexFormat.of().parseHex(command.upload().sha256())));
+            input=new TrackedInput(new SequenceInputStream(new ByteArrayInputStream(metadata),payload));capture.input=input;active.put(command.operation().commandId(),capture);
             execInvoked=true;
             docker.execStartCmd(exec).withDetach(false).withTty(false).withStdIn(input).exec(capture);
             long until=System.nanoTime()+TimeUnit.SECONDS.toNanos(120);

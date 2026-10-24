@@ -234,7 +234,7 @@ class FilePostgresTest {
         }
         var items=files.publications(UUID.randomUUID());var c=files.claim(items.getFirst(),UUID.randomUUID());files.beforeCall(c);
         var instance=instance();runner.register(instance);runner.accept(c,instance,"e".repeat(64));
-        var json=JsonMapper.builder().build().writeValueAsString(Map.of("protocol","file-stream-v1","operationId",c.operation().id(),"state","APPLIED","bytes",8,"sha256","a".repeat(64)));
+        var json=JsonMapper.builder().build().writeValueAsString(Map.of("protocol","file-stream-v2","operationId",c.operation().id(),"state","APPLIED","bytes",8,"sha256","a".repeat(64)));
         runner.recordResult(c,instance.id(),physicalResult(c,instance,"APPLIED",json));files.commitProjection(c,runner.receipt(c));
         assertEquals(1,count("SELECT count(*) FROM pf.file_version"));assertEquals(1,count("SELECT count(*) FROM pf.asset_reference"));
         assertEquals(8,files.usage(alice,workspace).committedBytes());assertEquals(8,files.usage(alice,workspace).reservedBytes());

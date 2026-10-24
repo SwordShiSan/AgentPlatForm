@@ -15,7 +15,7 @@ public record FileRuntimePolicy(String image,String quotaImage,String workspaceR
     }
     public String hash() {
         return RunnerSignatures.sha256(("file-stream-policy-v1|"+image+"|"+quotaImage+"|"+workspaceRoot+"|"+mountUuid+"|"+quotaDevice
-                +"|uid10001|runc-trusted-file-only|ro|net-none|caps-none|no-devices|no-socket|memory64m-swap64m|cpu1|pids32|tmpfs8m|raw64k|header64k|nfc|nofollow|sha256|single-work-bind|scan-v1-100entries-28k|create-noreplace|require-loop-device")
+                +"|uid10001|runc-trusted-file-only|ro|net-none|caps-none|no-devices|no-socket|memory64m-swap64m|cpu1|pids32|tmpfs8m|raw64k|header64k|nfc|nofollow|sha256|single-work-bind|scan-v1-100entries-28k|create-noreplace|require-loop-device|file-stream-v2-sha256-trailer32")
                 .getBytes(StandardCharsets.UTF_8));
     }
     public String work(Command command) {return workspaceRoot+"/"+command.operation().spaceId()+"/"+command.operation().workspaceId()+"/work";}

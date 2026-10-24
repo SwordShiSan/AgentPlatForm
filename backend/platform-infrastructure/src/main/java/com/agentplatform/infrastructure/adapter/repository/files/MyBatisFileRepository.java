@@ -231,7 +231,7 @@ public final class MyBatisFileRepository implements FileRepository {
         }
         if(!"APPLIED".equals(stored.resultState()))throw new FileFailure(409,"FILE_RESULT_RECONCILIATION_REQUIRED");
         var result = JSON.readValue(stored.resultText(), Applied.class);
-        if (!"file-stream-v1".equals(result.protocol()) || !result.operationId().equals(command.operation().id())
+        if (!("file-stream-v1".equals(result.protocol()) || "file-stream-v2".equals(result.protocol())) || !result.operationId().equals(command.operation().id())
                 || !"APPLIED".equals(result.state()) || result.bytes() != upload.sizeBytes() || !result.sha256().equals(upload.sha256()))
             throw new FileFailure(503, "FILE_RECEIPT_MISMATCH");
         if ("CREATE".equals(upload.mode())) {

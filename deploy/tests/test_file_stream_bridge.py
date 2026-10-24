@@ -15,6 +15,32 @@ spec.loader.exec_module(bridge)
 
 
 class StreamBridgeTests(unittest.TestCase):
+    def test_v2_completes_without_reading_for_transport_eof(self):
+        class OpenFrame(io.BytesIO):
+            def read(self, size=-1):
+                if self.tell() == len(self.getvalue()):
+                    raise AssertionError("must not wait for transport EOF")
+                return super().read(min(size, 7))  # Partial reads are legal.
+        for content in [b"", "中文😀".encode(), b"a" * 131073]:
+            with self.subTest(size=len(content)), tempfile.TemporaryDirectory() as root:
+                header=self.header(content);header["protocol"]="file-stream-v2"
+                wire=OpenFrame(content+hashlib.sha256(content).digest())
+                result=bridge.apply(header,wire,root)
+                self.assertEqual(result["state"],"APPLIED")
+                self.assertEqual(Path(root,"a.txt").read_bytes(),content)
+
+    def test_v2_missing_or_corrupt_trailer_preserves_original(self):
+        content=b"new"
+        for trailer in [b"", b"a"*31, b"a"*32]:
+            with self.subTest(trailer=len(trailer)), tempfile.TemporaryDirectory() as root:
+                Path(root,"a.txt").write_bytes(b"old")
+                header=self.header(content,previous=hashlib.sha256(b"old").hexdigest())
+                header["protocol"]="file-stream-v2"
+                with self.assertRaisesRegex(bridge.Rejected,"FILE_CONTENT_MISMATCH"):
+                    bridge.apply(header,io.BytesIO(content+trailer),root)
+                self.assertEqual(Path(root,"a.txt").read_bytes(),b"old")
+                self.assertEqual(len(list(Path(root).iterdir())),1)
+
     def header(self, content, path="a.txt", previous=None):
         return {"protocol": "file-stream-v1", "operationId": str(uuid.uuid4()), "path": path,
                 "bytes": len(content), "sha256": hashlib.sha256(content).hexdigest(), "expectedSha256": previous}

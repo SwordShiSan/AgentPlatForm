@@ -1,4 +1,4 @@
-"""Fixed trusted file-stream v1 protocol: bounded JSON header followed by exact raw bytes.
+"""Fixed trusted file-stream protocol: bounded header and exact raw bytes.
 
 This program is only installed in the pinned non-networked file helper. It is
 not a user shell or a public executable. The runner persists intent/ownership
@@ -113,7 +113,7 @@ def apply(header, source, root="/workspace", require_device=False):
     fields = {"protocol", "operationId", "path", "bytes", "sha256", "expectedSha256"}
     if isinstance(header, dict) and "filesystemDevice" in header:
         fields.add("filesystemDevice")
-    if not isinstance(header, dict) or set(header) != fields or header["protocol"] != "file-stream-v1":
+    if not isinstance(header, dict) or set(header) != fields or header["protocol"] not in ("file-stream-v1", "file-stream-v2"):
         raise Rejected("FILE_PROTOCOL_REJECTED")
     import uuid
     try:
@@ -160,7 +160,20 @@ def apply(header, source, root="/workspace", require_device=False):
                     written = os.write(fd, view)
                     view = view[written:]
                 remaining -= len(chunk)
-            if source.read(1) or digest.hexdigest() != header["sha256"]:
+            if header["protocol"] == "file-stream-v2":
+                # Docker SDK stdin does not promise a half-close. Validate a finite
+                # frame instead of waiting for EOF after the declared payload.
+                trailer = bytearray()
+                while len(trailer) < 32:
+                    chunk = source.read(32 - len(trailer))
+                    if not chunk:
+                        raise Rejected("FILE_CONTENT_MISMATCH")
+                    trailer.extend(chunk)
+                if bytes(trailer) != bytes.fromhex(header["sha256"]):
+                    raise Rejected("FILE_CONTENT_MISMATCH")
+            elif source.read(1):
+                raise Rejected("FILE_CONTENT_MISMATCH")
+            if digest.hexdigest() != header["sha256"]:
                 raise Rejected("FILE_CONTENT_MISMATCH")
             os.fsync(fd)
         finally:
@@ -180,7 +193,7 @@ def apply(header, source, root="/workspace", require_device=False):
         committed = hash_regular(parent, parts[-1])
         if committed is None or committed["bytes"] != size or committed["sha256"] != header["sha256"]:
             raise Rejected("FILE_RESULT_UNKNOWN")
-        return {"protocol": "file-stream-v1", "operationId": header["operationId"],
+        return {"protocol": header["protocol"], "operationId": header["operationId"],
                 "state": "APPLIED", "bytes": committed["bytes"], "sha256": committed["sha256"]}
     except OSError as failure:
         if renamed:

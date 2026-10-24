@@ -52,3 +52,12 @@ The stage SHALL pass engineering, real PG/MQ/S3, native XFS/helper faults, brows
 #### Scenario: Incomplete evidence
 - **WHEN** any mandatory gate fails or is unrun
 - **THEN** the stage remains implementing and does not deploy R3 or claim VERIFIED
+
+### Requirement: Bounded SDK stdin framing
+The production runner SHALL send exact-length payloads with an explicit validated trailer through the existing official Docker SDK. Helper completion SHALL NOT depend on a transport half-close or an assumed EOF.
+#### Scenario: Open transport after valid payload
+- **WHEN** the declared bytes and matching trailer arrive while the input transport remains open
+- **THEN** the helper validates and completes without reading beyond that frame
+#### Scenario: Missing or corrupt trailer
+- **WHEN** a v2 payload has a truncated or mismatched trailer
+- **THEN** the helper rejects before rename and preserves the existing file
