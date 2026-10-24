@@ -68,4 +68,14 @@ class RunnerSignaturesTest {
         wrongAlgorithm.sign(new com.nimbusds.jose.crypto.RSASSASigner(control));
         assertThrows(WorkspaceFailure.class,()->runner(CLOCK).authenticate(wrongAlgorithm.serialize()));
     }
+    @Test void versionedFileCommandsAndQueriesRetainExactBodyAndOperationScope() {
+        var file=new RunnerSignatures.Binding("POST","/internal/file-operations/v1",binding.commandId(),binding.operationId(),binding.spaceId(),binding.workspaceId(),1,7);
+        byte[] body="{\"kind\":\"APPLY_UPLOAD\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        runner(CLOCK).verify(control(CLOCK).sign(file,body),file,body);
+        var query=new RunnerSignatures.Binding("GET",file.path()+"/"+file.operationId(),file.commandId(),file.operationId(),file.spaceId(),file.workspaceId(),1,7);
+        assertEquals(query,runner(CLOCK).verifiedQuery(control(CLOCK).sign(query,new byte[0]),query.path()));
+        assertThrows(WorkspaceFailure.class,()->runner(CLOCK).verify(control(CLOCK).sign(file,body),file,"{ }".getBytes()));
+        assertThrows(IllegalArgumentException.class,()->new RunnerSignatures.Binding("GET","/internal/file-operations/v1/"+UUID.randomUUID(),
+                file.commandId(),file.operationId(),file.spaceId(),file.workspaceId(),1,7));
+    }
 }

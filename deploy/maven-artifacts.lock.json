@@ -237,6 +237,7 @@
       "sha256": "070d75f261fe4c5b8202508366715f7f2d4660f88c8ef7e6d3575e48c9683b66",
       "modules": {
         "platform-app": "compile",
+        "platform-domain": "test",
         "platform-infrastructure": "compile",
         "platform-trigger": "compile"
       }
@@ -309,6 +310,382 @@
         "platform-app": "compile",
         "platform-infrastructure": "compile",
         "platform-trigger": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:s3:jar:2.57.3",
+      "sha256": "f09a188394c900081c53a76845121ed2a28976770ae0b89f54f159a7d5b19237",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:aws-xml-protocol:jar:2.57.3",
+      "sha256": "0b4a80dcd2cb504c9f56023eb39b8f9578b0883b30ff158507e1b2db83ccc372",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:aws-query-protocol:jar:2.57.3",
+      "sha256": "0e8b5b6ca54162248dfa430f9fe9f98c36049fb0f8de7e1cf16cbf388cfd9598",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:protocol-core:jar:2.57.3",
+      "sha256": "cbba9c31acd3a0c2d1424160775a8b6357e80add4d92920b971819cd0f2dfe0d",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:arns:jar:2.57.3",
+      "sha256": "c2fd909df91a86016b514ed473a9a0fbe17aa646374c6d8c933970413717d755",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:profiles:jar:2.57.3",
+      "sha256": "580759c088f92279cc41c9a9d3000bf05fd89636933f2301fd176a9000c7550d",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:crt-core:jar:2.57.3",
+      "sha256": "46b9d59aad3c5622179ea0e7d6554e87304129f31ed824f5d1d259eb0723d3dd",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:http-auth:jar:2.57.3",
+      "sha256": "286c880eb0e497e250fbb9890f805ed4b8ef388a211da7b2532ff4f65177af1a",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:identity-spi:jar:2.57.3",
+      "sha256": "52c23241d021e6bcd562a3861f3ac1dee870748da3c746c9705cd632c9db37ba",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:http-auth-spi:jar:2.57.3",
+      "sha256": "58c7109749bd2ee343ae6f27e7a83393515590d6fa8e015d1c8082a9d1ceebbc",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:http-auth-aws:jar:2.57.3",
+      "sha256": "35bbeb7d5b0e29b1ad860d253c84c560aea940db0762a06fc483a9b3881eba4b",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:checksums:jar:2.57.3",
+      "sha256": "6f91f35dbc66f3f7421a75e302a26c2c98e4a75c3e342b29784a4b7fb581c041",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:checksums-spi:jar:2.57.3",
+      "sha256": "2239d08f649a1995fd604576bdb630d696d450ccd1089bed658f2d7d9ec399fd",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:retries-spi:jar:2.57.3",
+      "sha256": "b7c1b8a3ddb2605136de7bd090968d8f893718d7906b873567c2ae6800a3151d",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:sdk-core:jar:2.57.3",
+      "sha256": "720788f97ed2be929a9bbcc5cf9bc01683d17edcb76212a3a2ea39a95be362f7",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:retries:jar:2.57.3",
+      "sha256": "995ca319bad6ed944595a463afd6aed4c50b1ee8f475625e1f792e32fea69a53",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:auth:jar:2.57.3",
+      "sha256": "7966cc0348dd7305816faeeab79134e10da1c7728a910216e49c5f20706ab629",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:http-auth-aws-eventstream:jar:2.57.3",
+      "sha256": "95fe1ecdefe126ea994c15d9249c9874449d5c7f624a6c85d8e0e55a9cf8a8a2",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:eventstream:jar:2.57.3",
+      "sha256": "17517852d41e527b7f787ce9d7090bd73cc3763aae5bc9b9aa31f45752d4f0e0",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:http-client-spi:jar:2.57.3",
+      "sha256": "1fc77076839014fc416874936a1a21ef2d5ab07c21e1e14700f6ca508dafffc9",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:regions:jar:2.57.3",
+      "sha256": "89c9e70b16d4b482bcee821f6f3dd8b38483c6fb5928b5d549c7b907cbe72ccd",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:annotations:jar:2.57.3",
+      "sha256": "3dee0006eb10176d718cdd877d926ba86a6673fe0dcbab5788f62ea64e4b24a2",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:utils:jar:2.57.3",
+      "sha256": "0ced56cf81e52c16ebb110de7cd9b6b4e3976a52d82712dd3da0ee620e0def52",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:aws-core:jar:2.57.3",
+      "sha256": "e53a3dcc896002fefccd56e83804b2becdd9bbf3d384a2c4a8cb72ca0a636417",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:utils-lite:jar:2.57.3",
+      "sha256": "38e69acc0409e2b96f0164dd394e72becb895cc68fff24b2608c3ba07929e9d9",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:metrics-spi:jar:2.57.3",
+      "sha256": "741a0892a10f6600ed4d07201dad124eaac0ff9af159ee8d091192d4822aaf01",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:json-utils:jar:2.57.3",
+      "sha256": "b4d0a6e408cf79d265e5dba6ba45e9e0396c4696918645e6c5757bfc30709ffd",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:third-party-jackson-core:jar:2.57.3",
+      "sha256": "c1fc6cc0982b94d6b220bbc52b9244f3b8a2008ccab688c57195b695d6858af1",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:endpoints-spi:jar:2.57.3",
+      "sha256": "8a5098abdca50041d8f9d5513b2b49f2123ad9e827e8632af60261a2e1005fa9",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:apache5-client:jar:2.57.3",
+      "sha256": "219c40dbfbde3d0f728c3b905593d626ea282ed08ee714986d59107008261333",
+      "modules": {
+        "platform-app": "runtime",
+        "platform-infrastructure": "runtime"
+      }
+    },
+    {
+      "coordinate": "org.apache.httpcomponents.core5:httpcore5:jar:5.3.6",
+      "sha256": "8fb4528d3e970aca440523a1bd698a389fa710ecfea4c5c6096698b86d1669ce",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:netty-nio-client:jar:2.57.3",
+      "sha256": "ef3548dbcd5fbad33ab04f646345990800dfba3dcb79efae28667049ea166972",
+      "modules": {
+        "platform-app": "runtime",
+        "platform-infrastructure": "runtime"
+      }
+    },
+    {
+      "coordinate": "io.netty:netty-codec-http:jar:4.2.17.Final",
+      "sha256": "a5bde91ac82ab90579df6559c0bd7ea6ae37460e3f18116ab4122194283b3669",
+      "modules": {
+        "platform-app": "runtime",
+        "platform-infrastructure": "runtime"
+      }
+    },
+    {
+      "coordinate": "io.netty:netty-codec-base:jar:4.2.17.Final",
+      "sha256": "3b92bc3b7d231fa6f4889b2b9281cae6b634428b8121fb1b9b5fccba1543d352",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.netty:netty-codec-compression:jar:4.2.17.Final",
+      "sha256": "425b287a1f36986a5c8edd76379a49decdf99d284f3454f3fa607a073bfb2c18",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.netty:netty-codec-http2:jar:4.2.17.Final",
+      "sha256": "450af97424cf58d2d72ad4d476d9e290f2fdf69fa181c289a6e6dd176bb86a7b",
+      "modules": {
+        "platform-app": "runtime",
+        "platform-infrastructure": "runtime"
+      }
+    },
+    {
+      "coordinate": "io.netty:netty-codec:jar:4.2.17.Final",
+      "sha256": "ac76f972446a2f72818441f746d0e73c58519a4687bf680d2b687d7dc5e28e2e",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.netty:netty-codec-protobuf:jar:4.2.17.Final",
+      "sha256": "44b2fcc4bc1d6c01edafe6ae6c8a7de7c3c5bad59697a93b6b879a45a78a5387",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.netty:netty-codec-marshalling:jar:4.2.17.Final",
+      "sha256": "ee5ffed638da6b7e2b4567559bd5f78b18f635cdaa4f3b6d23aa27ccf6cb57c2",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.netty:netty-transport:jar:4.2.17.Final",
+      "sha256": "d2409ce3a735cbab4188d0ea5d82abed823a6a07a8389f49af4a9e1243a562bc",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.netty:netty-common:jar:4.2.17.Final",
+      "sha256": "502aae2a6680e9bca3558a3fa098f06dc4d87340b8b714e925a6d690871c092a",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.netty:netty-buffer:jar:4.2.17.Final",
+      "sha256": "0d249178ec0204b35a6ad3e5ac8a6c2ecb3eb496c6cdae40b8eca4fa3cb6a0c7",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.netty:netty-handler:jar:4.2.17.Final",
+      "sha256": "4df11c7520b556c5e2c84b939182699d48fcbb09e97a6bb5e1c0b6835227d126",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.netty:netty-transport-native-unix-common:jar:4.2.17.Final",
+      "sha256": "e01aa467b9104de54a57c08c290f70b22e53ec97cf5583c87c112170ef5832cc",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "io.netty:netty-transport-classes-epoll:jar:4.2.17.Final",
+      "sha256": "4e21d8a2e3429d9de967a716d58119f57585786bd2f7213bf5b27770425269de",
+      "modules": {
+        "platform-app": "runtime",
+        "platform-infrastructure": "runtime"
+      }
+    },
+    {
+      "coordinate": "io.netty:netty-resolver:jar:4.2.17.Final",
+      "sha256": "7a4b599b9c0c29a505d3b7311f142df883fb27d0f67495a7cbaf533b0e456623",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
+      }
+    },
+    {
+      "coordinate": "software.amazon.awssdk:url-connection-client:jar:2.57.3",
+      "sha256": "92305291ccb0170a8adfa1ae7346cc8dda7f0681a43fa64824a6aa24e756a21a",
+      "modules": {
+        "platform-app": "compile",
+        "platform-infrastructure": "compile"
       }
     },
     {
@@ -435,94 +812,6 @@
     {
       "coordinate": "com.rabbitmq:amqp-client:jar:5.27.1",
       "sha256": "0869bc05f025f959e627f0bd8a4443fafd82c89007e926110069f631a6278f69",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
-      "coordinate": "io.netty:netty-transport:jar:4.2.17.Final",
-      "sha256": "d2409ce3a735cbab4188d0ea5d82abed823a6a07a8389f49af4a9e1243a562bc",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
-      "coordinate": "io.netty:netty-common:jar:4.2.17.Final",
-      "sha256": "502aae2a6680e9bca3558a3fa098f06dc4d87340b8b714e925a6d690871c092a",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
-      "coordinate": "io.netty:netty-buffer:jar:4.2.17.Final",
-      "sha256": "0d249178ec0204b35a6ad3e5ac8a6c2ecb3eb496c6cdae40b8eca4fa3cb6a0c7",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
-      "coordinate": "io.netty:netty-resolver:jar:4.2.17.Final",
-      "sha256": "7a4b599b9c0c29a505d3b7311f142df883fb27d0f67495a7cbaf533b0e456623",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
-      "coordinate": "io.netty:netty-codec:jar:4.2.17.Final",
-      "sha256": "ac76f972446a2f72818441f746d0e73c58519a4687bf680d2b687d7dc5e28e2e",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
-      "coordinate": "io.netty:netty-codec-base:jar:4.2.17.Final",
-      "sha256": "3b92bc3b7d231fa6f4889b2b9281cae6b634428b8121fb1b9b5fccba1543d352",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
-      "coordinate": "io.netty:netty-codec-compression:jar:4.2.17.Final",
-      "sha256": "425b287a1f36986a5c8edd76379a49decdf99d284f3454f3fa607a073bfb2c18",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
-      "coordinate": "io.netty:netty-codec-protobuf:jar:4.2.17.Final",
-      "sha256": "44b2fcc4bc1d6c01edafe6ae6c8a7de7c3c5bad59697a93b6b879a45a78a5387",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
-      "coordinate": "io.netty:netty-codec-marshalling:jar:4.2.17.Final",
-      "sha256": "ee5ffed638da6b7e2b4567559bd5f78b18f635cdaa4f3b6d23aa27ccf6cb57c2",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
-      "coordinate": "io.netty:netty-handler:jar:4.2.17.Final",
-      "sha256": "4df11c7520b556c5e2c84b939182699d48fcbb09e97a6bb5e1c0b6835227d126",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
-      "coordinate": "io.netty:netty-transport-native-unix-common:jar:4.2.17.Final",
-      "sha256": "e01aa467b9104de54a57c08c290f70b22e53ec97cf5583c87c112170ef5832cc",
       "modules": {
         "platform-app": "compile",
         "platform-infrastructure": "compile"
@@ -711,14 +1000,6 @@
     {
       "coordinate": "org.apache.httpcomponents.client5:httpclient5:jar:5.5.2",
       "sha256": "5aec3f3447ec816e593e380b59fbe3e42083318af6b215bc177386f7742f6146",
-      "modules": {
-        "platform-app": "compile",
-        "platform-infrastructure": "compile"
-      }
-    },
-    {
-      "coordinate": "org.apache.httpcomponents.core5:httpcore5:jar:5.3.6",
-      "sha256": "8fb4528d3e970aca440523a1bd698a389fa710ecfea4c5c6096698b86d1669ce",
       "modules": {
         "platform-app": "compile",
         "platform-infrastructure": "compile"
@@ -1353,6 +1634,7 @@
       "sha256": "784b65815f479a0c99a9d3a573b142e2a525efb6025d97f751b19e72f90aeda3",
       "modules": {
         "platform-app": "test",
+        "platform-domain": "test",
         "platform-infrastructure": "test"
       }
     },
@@ -1361,6 +1643,7 @@
       "sha256": "d655d7e6f0c7ae07f10a2f3bbaaebb6d30e9b26204a068ad9e9b3950aa28792c",
       "modules": {
         "platform-app": "test",
+        "platform-domain": "test",
         "platform-infrastructure": "test"
       }
     },
@@ -1369,6 +1652,7 @@
       "sha256": "48e2df636cab6563ced64dcdff8abb2355627cb236ef0bf37598682ddf742f1b",
       "modules": {
         "platform-app": "test",
+        "platform-domain": "test",
         "platform-infrastructure": "test"
       }
     },
@@ -1377,6 +1661,7 @@
       "sha256": "39f262d09c3d52719fe0b77f080e90a3695e285d779a41b232e17963ae5da200",
       "modules": {
         "platform-app": "test",
+        "platform-domain": "test",
         "platform-infrastructure": "test"
       }
     },
@@ -1385,6 +1670,7 @@
       "sha256": "b509448ac506d607319f182537f0b35d71007582ec741832a1f111e5b5b70b38",
       "modules": {
         "platform-app": "test",
+        "platform-domain": "test",
         "platform-infrastructure": "test"
       }
     },
@@ -1393,6 +1679,7 @@
       "sha256": "cf2947e2302b9f8c8a059259a277881c1cadae8fbc2514c16a925cfeb7beb2e5",
       "modules": {
         "platform-app": "test",
+        "platform-domain": "test",
         "platform-infrastructure": "test"
       }
     },
@@ -1401,6 +1688,7 @@
       "sha256": "1e2fab61ad27ea08fc7c70dd9677cf8c6d1ae5434d42dcfdd633b12c7e7c04d0",
       "modules": {
         "platform-app": "test",
+        "platform-domain": "test",
         "platform-infrastructure": "test"
       }
     },
@@ -1409,6 +1697,7 @@
       "sha256": "491e9e4f745f161b8a8e4186a1a7c6a450ea12c70930c9aedae427215301d947",
       "modules": {
         "platform-app": "test",
+        "platform-domain": "test",
         "platform-infrastructure": "test"
       }
     },

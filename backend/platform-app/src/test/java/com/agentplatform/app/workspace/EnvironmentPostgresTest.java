@@ -50,7 +50,7 @@ class EnvironmentPostgresTest {
         flyway("10").migrate();
         assertEquals(10,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         flyway(null).migrate();
-        assertEquals(12,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
+        assertEquals(13,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
     }
     private static void sql(String text) throws Exception {
@@ -196,9 +196,9 @@ class EnvironmentPostgresTest {
         assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment WHERE state='PREPARING'"));
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
     }
-    @Test void freshInstallReachesV12AndPreservesRuntimeBaseline() throws Exception {
+    @Test void freshInstallReachesCurrentMigrationAndPreservesRuntimeBaseline() throws Exception {
         flyway(null).clean();flyway(null).migrate();
-        assertEquals(12,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
+        assertEquals(13,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
         assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NULL"));
     }

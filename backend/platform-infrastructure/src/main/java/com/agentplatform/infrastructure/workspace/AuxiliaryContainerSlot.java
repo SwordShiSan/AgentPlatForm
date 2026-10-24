@@ -4,7 +4,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 /** One auxiliary container allowance. Retention never authorizes another execution. */
-final class AuxiliaryContainerSlot {
+public final class AuxiliaryContainerSlot {
     static final class Permit {
         private Permit() {}
     }

@@ -1,0 +1,8 @@
+{
+  "status": "PASS",
+  "exitCode": 0,
+  "source": "85d1812866496e2c5a7ddd7962ed77c8f37d4542",
+  "logSha256": "f567cf6e5e8ba3aa4992fb705fc709fe64aa5c1d64cc71a19ecfb7005075f2dc",
+  "scriptBlobSha256": "1853979b2cffddfb82d215a2cbc250b82d3ae18701fd212dedae4ff9b1458873",
+  "scope": "pure observer lifecycle/required-service/error/null-metric rules; no native observation substitution"
+}

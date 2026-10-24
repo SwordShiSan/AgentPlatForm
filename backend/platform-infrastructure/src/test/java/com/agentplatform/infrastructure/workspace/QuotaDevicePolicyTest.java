@@ -18,10 +18,10 @@ class QuotaDevicePolicyTest {
         assertNull(DockerWorkspaceAllocator.fixedQuotaDevice(null));
         assertNull(DockerWorkspaceAllocator.fixedQuotaDevice(""));
     }
-    @Test void storageAndSandboxAcceptTheSameApprovedR32Root() {
+    @Test void storageAndSandboxAcceptTheApprovedStageRoots() {
         for(String root:new String[]{"/srv/agentplatform/workspaces","/srv/agentplatform/acceptance/r31-old-fixture/workspaces",
-                "/srv/agentplatform/acceptance/r32-local-242c33332861/workspaces"})assertEquals(root,DockerWorkspaceAllocator.fixedWorkspaceRoot(root));
-        for(String root:new String[]{"/","/home/user/workspaces","/srv/agentplatform/acceptance/r33-future/workspaces",
+                "/srv/agentplatform/acceptance/r32-local-242c33332861/workspaces","/srv/agentplatform/acceptance/r33-local/workspaces"})assertEquals(root,DockerWorkspaceAllocator.fixedWorkspaceRoot(root));
+        for(String root:new String[]{"/","/home/user/workspaces","/srv/agentplatform/acceptance/r34-future/workspaces",
                 "/srv/agentplatform/acceptance/r32-fixture/../other/workspaces","/srv/agentplatform/acceptance/r32-fixture_1/workspaces",
                 "/srv/agentplatform/acceptance/r32-FIXTURE/workspaces","/srv/agentplatform/acceptance/r32-fixture/workspaces/","/srv/agentplatform/workspaces/../secrets"})
             assertThrows(IllegalArgumentException.class,()->DockerWorkspaceAllocator.fixedWorkspaceRoot(root));

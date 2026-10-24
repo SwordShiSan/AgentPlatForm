@@ -1,0 +1,22 @@
+{
+  "status": "PARTIAL_PASS_NOT_STAGE_VERIFIED",
+  "applicationSource": "d39ef0d6107814dbca6f6cc786255a56fc1a73b4",
+  "configurationSource": "d5b5148",
+  "httpTransport": {
+    "status": "PASS",
+    "bytes": [
+      0,
+      104857600
+    ],
+    "resultSha256": "7e494f1e748fb87d964cdfac2ba37b0a04ac718a52d6ad584058894c4621556d",
+    "scope": "Real HTTP/PG/MQ/S3 upload transport only; workspace metadata is an explicit DB fixture, no XFS/runner acceptance"
+  },
+  "nativeZeroByte": "PASS_ON_PREVIOUS_COMPONENT_BATCH; whole pilot7 FAIL retained",
+  "remaining": [
+    "native large-file/replace and faults",
+    "browser",
+    "1800-second final observation",
+    "protected promotion and delivery"
+  ],
+  "supplierCalls": 0
+}

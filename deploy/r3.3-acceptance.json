@@ -1,0 +1,282 @@
+{
+  "stage": "R3.3",
+  "status": "ACCEPTANCE_PASS_PENDING_PROTECTED_PROMOTION",
+  "testSource": "87cda46efaa265ca81afa753c7541b3e7c350bb4",
+  "evidenceSource": "7ae9809a3f2428c48245b52eda5b35d8d9b5c499",
+  "applicationSource": "d39ef0d6107814dbca6f6cc786255a56fc1a73b4",
+  "images": [
+    {
+      "component": "api",
+      "source": "d39ef0d6107814dbca6f6cc786255a56fc1a73b4",
+      "localId": "sha256:686c495be10f0b84b429f2f471615fe2922496b3e41d155e1d9c010cb0837295",
+      "indexDigest": "sha256:686c495be10f0b84b429f2f471615fe2922496b3e41d155e1d9c010cb0837295",
+      "manifestDigest": "sha256:e211cef75aeffbc554f7e1abc9b6f0044984b1d0dd583af72714053327f39903",
+      "configId": "sha256:5355340020e40975630cceb3a837d2913b327f7992df777bf72b8df7f0fd2f70",
+      "platform": "linux/amd64",
+      "archiveSha256": "3993ca0882db23c3534cedad8c58d316f091139fa4b1d93d11e2ed64d323be52",
+      "archiveBytes": 192193020
+    },
+    {
+      "component": "gateway",
+      "source": "ca9ecadb0e46bb8ad5e268d73e25e97f8cdbfcb7",
+      "localId": "sha256:563f25b85f206e604dcadf1224244d880547c1e72f4de17412eef93ab3806ee2",
+      "indexDigest": "sha256:563f25b85f206e604dcadf1224244d880547c1e72f4de17412eef93ab3806ee2",
+      "manifestDigest": "sha256:0fc4f4c478e3c18d401bca44267bc620a266ed71c84962924d038742f9cd1f01",
+      "configId": "sha256:46e92ef41305d9a7d1c413e0e50f1c38e04b2f12feef917c3059070377fbf2d0",
+      "platform": "linux/amd64",
+      "archiveSha256": "1b785094a28918f5b0516414d14153597e8c4cb597c7e9c9861d8c7a61e8b9b4",
+      "archiveBytes": 25626508
+    },
+    {
+      "component": "file-helper",
+      "source": "4f8f02f065302d20a6f2fb87bba7c5959927bc0f",
+      "localId": "sha256:db82164521f078820a5396a6a8526ec70cc1089c69bf41df0eaf60aecc6b3c12",
+      "indexDigest": "sha256:db82164521f078820a5396a6a8526ec70cc1089c69bf41df0eaf60aecc6b3c12",
+      "manifestDigest": "sha256:438e910ea0ce8a6d3aabf9668231db047c23a94e159e9e91bd73a040acc26463",
+      "configId": "sha256:74242668466747543b1f41917bf034329cd147dcdfc797ac1924e1b684756c2f",
+      "platform": "linux/amd64",
+      "archiveSha256": "2ec7757745421409081c24789e677ac2d75f16696af68f4c181a6fd6ff36d9c5",
+      "archiveBytes": 42960885
+    }
+  ],
+  "schema": 13,
+  "runtimeBaseline": 1,
+  "migrationsV1ToV12Unchanged": true,
+  "v13GitBlobSha256": "6421930cae7ef37a13b91b2aac86a7c85975ec341fa36ec266c673c802ac12a9",
+  "gates": {
+    "maven": {
+      "status": "PASS",
+      "sourceReceipt": ".cache/r33-local/final-maven-01/result.json",
+      "receiptSha256": "aecc3bc7024153ff4444d0d6c81e6f5a63a08f861b30a74d265468cee358f84b",
+      "scope": "See original receipt and assertions",
+      "commands": [
+        {
+          "name": "atomic-move-preflight",
+          "exitCode": 0,
+          "elapsedSeconds": 1.21,
+          "log": ".cache\\r33-local\\final-maven-01\\atomic-move-preflight.log",
+          "sha256": "57a409a51776452ce778b506fd4834076a5a5176297084df23308a164f344201"
+        },
+        {
+          "name": "maven-verify",
+          "exitCode": 0,
+          "elapsedSeconds": 158.68,
+          "log": ".cache\\r33-local\\final-maven-01\\maven-verify.log",
+          "sha256": "3d323653a1f6452f04d3a9d8bcd4b07f38cae6a2bd45f94047f95dad6c242523"
+        }
+      ]
+    },
+    "contractsLinksStrict": {
+      "status": "PASS",
+      "sourceReceipt": ".cache/r33-local/final-static-01/result.json",
+      "receiptSha256": "5986185e6cf50101500e4835fe5050d764cfa18bf7677efed4c049acd9359ad2",
+      "scope": "See original receipt and assertions",
+      "commands": [
+        {
+          "name": "contracts-check",
+          "exitCode": 0,
+          "sha256": "347d966427f256ee3b642071bed0945d1eb5b7887bdec278ae5300c42e81c80e"
+        },
+        {
+          "name": "contracts-negative",
+          "exitCode": 0,
+          "sha256": "347d966427f256ee3b642071bed0945d1eb5b7887bdec278ae5300c42e81c80e"
+        },
+        {
+          "name": "links",
+          "exitCode": 0,
+          "sha256": "49c40bc2ba3f2a9977670fd1a489c00080fc2664b5f3e264379ce87ea58e205f"
+        },
+        {
+          "name": "strict",
+          "exitCode": 0,
+          "sha256": "d776f1d4c689e72d9e23507183f5458b26aab25e0c641a3b423eae1e34cdafdc"
+        }
+      ]
+    },
+    "realPgMq26": {
+      "status": "PASS",
+      "sourceReceipt": ".cache/r33-local/pg-mq-1792845682689777700/result.json",
+      "receiptSha256": "e80df0c60897b8a4c31ff3477b310cf724381a5cca2c2a0cf0554226f261b97a",
+      "scope": "real PG/managed AMQP handoff; DB-only workspace prerequisite; no filesystem claim",
+      "commands": [
+        {
+          "name": "precompile",
+          "exitCode": 0,
+          "sha256": "e91fb4d2460da6c7f6505dbc5e19a7588825f96c2a860276e04e411073752485"
+        },
+        {
+          "name": "config",
+          "exitCode": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "start",
+          "exitCode": 0,
+          "sha256": "a44c12cca6335f40ae578e3f13d8773e40ea383c4961a257273b033b1c2c38d0"
+        },
+        {
+          "name": "tests",
+          "exitCode": 0,
+          "sha256": "f2a9dbd16bf5919a53b574f6341fe1a045a22fb9b935d6fc4dc854e42ab93012"
+        },
+        {
+          "name": "stop",
+          "exitCode": 0,
+          "sha256": "0531640d78cadc1a6b74a77ab55b9105c51cf9011817da4e79b9b56c1fc05689"
+        }
+      ]
+    },
+    "frontend": {
+      "status": "PASS",
+      "sourceReceipt": ".cache/r33-local/gateway-files-01/result.json",
+      "receiptSha256": "7649388383369ba32462a6dc20fb669f09a25b5f206bc28bfb230e92ec1da057",
+      "scope": "See original receipt and assertions",
+      "commands": [
+        {
+          "name": "frozen-install",
+          "exitCode": 0,
+          "sha256": "6bd6181d1718b729d4e5418f55324ef927cda95aa7e2115526c48a210c4e87f0"
+        },
+        {
+          "name": "typecheck",
+          "exitCode": 0,
+          "sha256": "87b43cf0030ae95d6d9d9f38b14b674965bcedb47878219a35625e9925d2872c"
+        },
+        {
+          "name": "test",
+          "exitCode": 0,
+          "sha256": "2b76d1e3640a57f137dc56f4005927cb2cc9adb3df352afcd78298201e463dd0"
+        },
+        {
+          "name": "contracts-check",
+          "exitCode": 0,
+          "sha256": "06aeb2cfe5a0c772345e1f6f3b47f6c6fa8fb8b69bc477284ac6df4ee5e983f5"
+        },
+        {
+          "name": "contracts-test",
+          "exitCode": 0,
+          "sha256": "bdc9a4f92dda07541badab1858102b7672e13e890ba30ddcf351ec5c13780b8f"
+        },
+        {
+          "name": "links-check",
+          "exitCode": 0,
+          "sha256": "4304f1287daa3c00807b4d073544200c3ec706c9ae705c62eb7039ee8034bcd4"
+        },
+        {
+          "name": "build",
+          "exitCode": 0,
+          "sha256": "bdfbf0d9854b81159668bc042d23499a09d16bf4f1f854984902c9c7bc9bd81b"
+        },
+        {
+          "name": "image-build",
+          "exitCode": 0,
+          "sha256": "8c5614f9615799591b4b42720297cfbe1d667a3a3a39fa1d72bcefba30e421f4"
+        }
+      ]
+    },
+    "helper19": {
+      "status": "PASS",
+      "sourceReceipt": ".cache/r33-local/bridge-effect-boundary-01/result.json",
+      "receiptSha256": "978487d7c80f6f908da782e0c19d80792696043445c76a5f14e16b0e381f4035",
+      "scope": "Linux helper unit logic only; no XFS/runner claim",
+      "commands": []
+    },
+    "observer5": {
+      "status": "PASS",
+      "sourceReceipt": ".cache/r33-local/observer-unit-evidence/result.json",
+      "receiptSha256": "8b88443143192dc77893243483d20c0f0bf8c8ecbe512cb95a5e0b8659488e4f",
+      "scope": "pure observer lifecycle/required-service/error/null-metric rules; no native observation substitution",
+      "commands": []
+    },
+    "native": {
+      "status": "PASS_WITH_EXPLICIT_SCOPE",
+      "sourceReceipt": ".cache/r33-local/observation2-redacted-proof.json",
+      "receiptSha256": "a000dcacb7a34567bd6464a7ed9c82b237fe54f341b4a467cfdc4b7ff4cfb66e",
+      "scope": "R33 unchanged-candidate observation, compatibility and concurrency subset; prior matrix gates explicitly reused",
+      "commands": [],
+      "observation": {
+        "status": "PASS",
+        "elapsedSeconds": 1800.4362601414323,
+        "cycles": 30,
+        "sampledOnly": true,
+        "supplierCalls": 0
+      },
+      "sampledOnly": {
+        "count": 155,
+        "minAvailableBytes": 1497202688,
+        "minRootFreeBytes": 5575884800,
+        "maxActiveContainerLimitBytes": 2986344448,
+        "maxDatabaseConnections": 9,
+        "maxMainProcessThreads": 51,
+        "retiredNullableThreadSamples": 4,
+        "swapUsedBytesFirst": 186400768,
+        "swapUsedBytesLast": 186089472
+      },
+      "reusedGates": {
+        "source": "4f8f02f065302d20a6f2fb87bba7c5959927bc0f",
+        "serverResultSha256": "45064b4532e7bcecb1dafe1e0645fab05b3179a5f669793303c8fa13a66b8299",
+        "originalWindowStatus": "FAIL",
+        "assertions": [
+          "V13-runtime1-existing-isolated-workspace-READY-no-duplicate-allocation",
+          "zero-byte-public-upload-MQ-runner-helper-commit",
+          "100MiB-public-stream-MQ-signed-runner-dockerJava-helper-hash",
+          "immutable-private-S3-download-fullhash-and-single-range",
+          "explicit-versioned-atomic-replacement-old-version-readback",
+          "one-charge-per-version-no-environment-no-held-transport",
+          "real-completed-S3-object-failed-metadata-positive-read-only-recovery-one-explicit-completion",
+          "native-byte-and-inode-independent-quota-rejection-full-temp-admission-cleanup-missing-mount-denial-remount-hash",
+          "trusted-fixed-gVisor-canary-read-public-upload-write666-same-XFS-no-public-tools",
+          "real-browser-upload-replace-conflict-refresh-lost-response-permissions-responsive-theme-keyboard",
+          "real-broker-queued-outbox-resume-once-S3-restart-hash-DB-fail-closed-recovery"
+        ],
+        "applicationAndHelperInputsUnchanged": true,
+        "previousPartialObservationNotReused": true
+      }
+    },
+    "actualFileBrowser": {
+      "status": "PASS",
+      "sourceReceipt": ".cache/r33-local/native-20261024t072259z/files-browser-1792839820662/result.json",
+      "receiptSha256": "f27afa153d5c0bb5402007b58cd5ee1928822939215253489200ca4cb32bca9c",
+      "scope": "Actual native file API/browser via private SSH; screenshots and CSS200 scale, not vendor traffic",
+      "commands": []
+    },
+    "controlledUiStates": {
+      "status": "PASS",
+      "sourceReceipt": ".cache/r33-local/ui-states-1792846734606761300/browser/result.json",
+      "receiptSha256": "75639eaefbb5cb77aea56d8444e91f64da2877fb674a0e3f67ff2f056848d8d2",
+      "scope": "Actual fixed gateway/Vue bundle; controlled HTTP projections for empty/loading/network/permission/UNKNOWN UI only, not backend evidence",
+      "commands": []
+    },
+    "r2InstancesReadiness": {
+      "status": "PASS",
+      "sourceReceipt": ".cache/r33-local/final-r2-live-check.json",
+      "receiptSha256": "2792118df7788d71e2e7506e5145852c5bf0bc45d94a0deb91ac2e5118b9ab3c",
+      "scope": "Read-only SSH instance/restart/migration/mount checks plus HTTP page/readiness only; authenticated browser pending approval",
+      "commands": []
+    },
+    "r2AuthenticatedResult": {
+      "status": "PASS",
+      "sourceReceipt": ".cache/r33-local/final-r2-browser-1792852657792903700/result.json",
+      "receiptSha256": "932458a3f053bdb94e5df42fb2a0a7f68918be20974a37831323c6961bab0e84",
+      "scope": "See original receipt and assertions",
+      "commands": []
+    },
+    "r2AuthenticatedBrowser": {
+      "status": "PASS",
+      "receiptSha256": "932458a3f053bdb94e5df42fb2a0a7f68918be20974a37831323c6961bab0e84",
+      "scope": "Authenticated restored R2 browser via approved SSH local forward to server loopback80; browser-only hostname mapping preserves Host/Origin, API reads use page fetch, no direct HTTP fallback"
+    }
+  },
+  "supplierCalls": 0,
+  "r3Released": false,
+  "r3Deployed": false,
+  "cloudProductionTag": "production-r2-9ee7aadfe242",
+  "limitations": [
+    "Native child-process crash proof is filesystem-only; platform recovery receipt tests are separate.",
+    "Controlled UI projections do not prove backend behavior.",
+    "Original failed pilot/matrix windows retained; partial intervals never combined.",
+    "Resource values are samples, not absolute peaks or higher-concurrency capacity.",
+    "Historical files, edit/move/delete/restore/batch UI remain R5."
+  ]
+}

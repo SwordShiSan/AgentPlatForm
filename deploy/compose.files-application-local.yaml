@@ -1,0 +1,464 @@
+name: agentplatform-r33-local
+x-app:
+  image: ${R33_APP_IMAGE:?Use a frozen local/cloud-imported config ID}
+  user: 10001:10001
+  read_only: true
+  restart: no
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  pids_limit: 128
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001,mode=700
+  networks:
+    - control
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+x-storage:
+  PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/file_runtime?connectTimeout=2&socketTimeout=5
+x-environment:
+  PLATFORM_WORKSPACE_ENABLED: "true"
+  PLATFORM_WORKSPACE_ENVIRONMENT_ENABLED: "true"
+  PLATFORM_WORKSPACE_ENVIRONMENT_IMAGE_ID: ${R33_SANDBOX_IMAGE:?Set pinned sandbox config ID}
+  PLATFORM_WORKSPACE_ENVIRONMENT_POLICY_HASH: ${R33_POLICY_HASH:?Set independently calculated policy hash}
+x-messaging:
+  PLATFORM_WORKSPACE_MESSAGING_HOST: rabbitmq
+  PLATFORM_WORKSPACE_MESSAGING_PORT: "5672"
+  PLATFORM_WORKSPACE_MESSAGING_USER: r33
+  PLATFORM_WORKSPACE_MESSAGING_PASSWORD_FILE: /run/secrets/mq_password
+x-control:
+  PLATFORM_WORKSPACE_CONTROL_RUNNER_BASE: http://runner:8080
+  PLATFORM_WORKSPACE_CONTROL_PRIVATE_KEY_FILE: /run/secrets/control_private_key
+  PLATFORM_WORKSPACE_CONTROL_RUNNER_PUBLIC_KEY_FILE: /run/secrets/runner_public_key
+  PLATFORM_WORKSPACE_CONTROL_KEY_ID: r33-control-1
+  PLATFORM_WORKSPACE_CONTROL_RUNNER_KEY_ID: r33-runner-1
+services:
+  api:
+    image: ${R33_APP_IMAGE:?Use a frozen local/cloud-imported config ID}
+    user: 10001:10001
+    read_only: true
+    restart: no
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001,mode=700
+    networks:
+      - control
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    profiles:
+      - application
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1
+    entrypoint:
+      - java
+      - -Xms32m
+      - -Xmx160m
+      - -jar
+      - /app/platform.jar
+    environment:
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/file_runtime?connectTimeout=2&socketTimeout=5
+      PLATFORM_WORKSPACE_ENABLED: "true"
+      PLATFORM_WORKSPACE_ENVIRONMENT_ENABLED: "true"
+      PLATFORM_WORKSPACE_ENVIRONMENT_IMAGE_ID: ${R33_SANDBOX_IMAGE:?Set pinned sandbox config ID}
+      PLATFORM_WORKSPACE_ENVIRONMENT_POLICY_HASH: ${R33_POLICY_HASH:?Set independently calculated policy hash}
+      PLATFORM_WORKSPACE_MESSAGING_HOST: rabbitmq
+      PLATFORM_WORKSPACE_MESSAGING_PORT: "5672"
+      PLATFORM_WORKSPACE_MESSAGING_USER: r33
+      PLATFORM_WORKSPACE_MESSAGING_PASSWORD_FILE: /run/secrets/mq_password
+      SPRING_PROFILES_ACTIVE: identity-local,workspace-api
+      PLATFORM_STORAGE_USER: ap_api
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/api_password
+      PLATFORM_IDENTITY_ORIGINS: http://127.0.0.1:18095,http://localhost:18095
+      PLATFORM_IDENTITY_SECURE_COOKIE: "false"
+      SERVER_TOMCAT_THREADS_MAX: "16"
+      PLATFORM_WORKSPACE_FILES_ENABLED: "true"
+      PLATFORM_WORKSPACE_FILES_HELPER_IMAGE: ${R33_FILE_HELPER_IMAGE:?Use pinned file helper config ID}
+      PLATFORM_WORKSPACE_FILES_POLICY_HASH: ${R33_FILE_POLICY_HASH:?Freeze the independent file policy hash}
+      PLATFORM_FILES_ASSETS_ENDPOINT: http://s3:8333
+      PLATFORM_FILES_ASSETS_BUCKET: r33-assets
+      PLATFORM_FILES_ASSETS_ACCESS_KEY_FILE: /run/secrets/file_s3_access
+      PLATFORM_FILES_ASSETS_SECRET_KEY_FILE: /run/secrets/file_s3_secret
+    secrets:
+      - api_password
+      - mq_password
+      - source: file_api_access
+        target: file_s3_access
+      - source: file_api_secret
+        target: file_s3_secret
+    healthcheck:
+      test:
+        - CMD
+        - java
+        - -Xms8m
+        - -Xmx16m
+        - -cp
+        - /app/health
+        - HttpHealthcheck
+        - http://127.0.0.1:8080/api/v1/readiness
+      interval: 5s
+      timeout: 4s
+      retries: 24
+      start_period: 20s
+  worker:
+    image: ${R33_APP_IMAGE:?Use a frozen local/cloud-imported config ID}
+    user: 10001:10001
+    read_only: true
+    restart: no
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001,mode=700
+    networks:
+      - control
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    profiles:
+      - application
+    mem_limit: 384m
+    memswap_limit: 384m
+    cpus: 1
+    entrypoint:
+      - java
+      - -Xms32m
+      - -Xmx128m
+      - -jar
+      - /app/platform.jar
+    environment:
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/file_runtime?connectTimeout=2&socketTimeout=5
+      PLATFORM_WORKSPACE_ENABLED: "true"
+      PLATFORM_WORKSPACE_ENVIRONMENT_ENABLED: "true"
+      PLATFORM_WORKSPACE_ENVIRONMENT_IMAGE_ID: ${R33_SANDBOX_IMAGE:?Set pinned sandbox config ID}
+      PLATFORM_WORKSPACE_ENVIRONMENT_POLICY_HASH: ${R33_POLICY_HASH:?Set independently calculated policy hash}
+      PLATFORM_WORKSPACE_MESSAGING_HOST: rabbitmq
+      PLATFORM_WORKSPACE_MESSAGING_PORT: "5672"
+      PLATFORM_WORKSPACE_MESSAGING_USER: r33
+      PLATFORM_WORKSPACE_MESSAGING_PASSWORD_FILE: /run/secrets/mq_password
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_BASE: http://runner:8080
+      PLATFORM_WORKSPACE_CONTROL_PRIVATE_KEY_FILE: /run/secrets/control_private_key
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_PUBLIC_KEY_FILE: /run/secrets/runner_public_key
+      PLATFORM_WORKSPACE_CONTROL_KEY_ID: r33-control-1
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_KEY_ID: r33-runner-1
+      SPRING_PROFILES_ACTIVE: workspace-worker
+      PLATFORM_STORAGE_USER: ap_worker
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/worker_password
+      PLATFORM_WORKSPACE_FILES_ENABLED: "true"
+      PLATFORM_WORKSPACE_FILES_HELPER_IMAGE: ${R33_FILE_HELPER_IMAGE:?Use pinned file helper config ID}
+      PLATFORM_WORKSPACE_FILES_POLICY_HASH: ${R33_FILE_POLICY_HASH:?Freeze the independent file policy hash}
+      PLATFORM_FILES_ASSETS_ENDPOINT: http://s3:8333
+      PLATFORM_FILES_ASSETS_BUCKET: r33-assets
+      PLATFORM_FILES_ASSETS_ACCESS_KEY_FILE: /run/secrets/file_s3_access
+      PLATFORM_FILES_ASSETS_SECRET_KEY_FILE: /run/secrets/file_s3_secret
+    secrets:
+      - worker_password
+      - mq_password
+      - control_private_key
+      - runner_public_key
+      - source: file_worker_access
+        target: file_s3_access
+      - source: file_worker_secret
+        target: file_s3_secret
+  worker-2:
+    image: ${R33_APP_IMAGE:?Use a frozen local/cloud-imported config ID}
+    user: 10001:10001
+    read_only: true
+    restart: no
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001,mode=700
+    networks:
+      - control
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    profiles:
+      - competition
+    mem_limit: 384m
+    memswap_limit: 384m
+    cpus: 1
+    entrypoint:
+      - java
+      - -Xms32m
+      - -Xmx128m
+      - -jar
+      - /app/platform.jar
+    environment:
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/file_runtime?connectTimeout=2&socketTimeout=5
+      PLATFORM_WORKSPACE_ENABLED: "true"
+      PLATFORM_WORKSPACE_ENVIRONMENT_ENABLED: "true"
+      PLATFORM_WORKSPACE_ENVIRONMENT_IMAGE_ID: ${R33_SANDBOX_IMAGE:?Set pinned sandbox config ID}
+      PLATFORM_WORKSPACE_ENVIRONMENT_POLICY_HASH: ${R33_POLICY_HASH:?Set independently calculated policy hash}
+      PLATFORM_WORKSPACE_MESSAGING_HOST: rabbitmq
+      PLATFORM_WORKSPACE_MESSAGING_PORT: "5672"
+      PLATFORM_WORKSPACE_MESSAGING_USER: r33
+      PLATFORM_WORKSPACE_MESSAGING_PASSWORD_FILE: /run/secrets/mq_password
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_BASE: http://runner:8080
+      PLATFORM_WORKSPACE_CONTROL_PRIVATE_KEY_FILE: /run/secrets/control_private_key
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_PUBLIC_KEY_FILE: /run/secrets/runner_public_key
+      PLATFORM_WORKSPACE_CONTROL_KEY_ID: r33-control-1
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_KEY_ID: r33-runner-1
+      SPRING_PROFILES_ACTIVE: workspace-worker
+      PLATFORM_STORAGE_USER: ap_worker
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/worker_password
+      PLATFORM_WORKSPACE_FILES_ENABLED: "true"
+      PLATFORM_WORKSPACE_FILES_HELPER_IMAGE: ${R33_FILE_HELPER_IMAGE:?Use pinned file helper config ID}
+      PLATFORM_WORKSPACE_FILES_POLICY_HASH: ${R33_FILE_POLICY_HASH:?Freeze the independent file policy hash}
+      PLATFORM_FILES_ASSETS_ENDPOINT: http://s3:8333
+      PLATFORM_FILES_ASSETS_BUCKET: r33-assets
+      PLATFORM_FILES_ASSETS_ACCESS_KEY_FILE: /run/secrets/file_s3_access
+      PLATFORM_FILES_ASSETS_SECRET_KEY_FILE: /run/secrets/file_s3_secret
+    secrets:
+      - worker_password
+      - mq_password
+      - control_private_key
+      - runner_public_key
+      - source: file_worker_access
+        target: file_s3_access
+      - source: file_worker_secret
+        target: file_s3_secret
+  runner:
+    image: ${R33_APP_IMAGE:?Use a frozen local/cloud-imported config ID}
+    user: 10001:10001
+    read_only: true
+    restart: no
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001,mode=700
+    networks:
+      - control
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    profiles:
+      - application
+    labels:
+      ap.role: runner
+    group_add:
+      - ${R33_DOCKER_GID:?Inspect the actual daemon socket GID}
+    mem_limit: 384m
+    memswap_limit: 384m
+    cpus: 1
+    entrypoint:
+      - java
+      - -Xms32m
+      - -Xmx112m
+      - -jar
+      - /app/platform.jar
+    environment:
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/file_runtime?connectTimeout=2&socketTimeout=5
+      PLATFORM_WORKSPACE_ENABLED: "true"
+      PLATFORM_WORKSPACE_ENVIRONMENT_ENABLED: "true"
+      PLATFORM_WORKSPACE_ENVIRONMENT_IMAGE_ID: ${R33_SANDBOX_IMAGE:?Set pinned sandbox config ID}
+      PLATFORM_WORKSPACE_ENVIRONMENT_POLICY_HASH: ${R33_POLICY_HASH:?Set independently calculated policy hash}
+      SPRING_PROFILES_ACTIVE: workspace-runner
+      PLATFORM_STORAGE_USER: ap_runner
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/runner_password
+      PLATFORM_WORKSPACE_RUNNER_PRIVATE_KEY_FILE: /run/secrets/runner_private_key
+      PLATFORM_WORKSPACE_RUNNER_CONTROL_PUBLIC_KEY_FILE: /run/secrets/control_public_key
+      PLATFORM_WORKSPACE_RUNNER_KEY_ID: r33-runner-1
+      PLATFORM_WORKSPACE_RUNNER_CONTROL_KEY_ID: r33-control-1
+      PLATFORM_WORKSPACE_RUNNER_HELPER_IMAGE: ${R33_HELPER_IMAGE:?Set pinned quota helper config ID}
+      PLATFORM_WORKSPACE_RUNNER_WORKSPACE_ROOT: ${R33_WORKSPACE_ROOT:?Use the isolated server-derived workspace root}
+      PLATFORM_WORKSPACE_RUNNER_MOUNT_UUID: ${R33_MOUNT_UUID:?Use independently checked XFS UUID}
+      PLATFORM_WORKSPACE_RUNNER_QUOTA_DEVICE: ${R33_QUOTA_DEVICE:?Use verified exact loop mapping}
+      PLATFORM_WORKSPACE_ENVIRONMENT_RUNTIME_ATTESTATION_FILE: /run/fixture/runtime.json
+      SERVER_TOMCAT_THREADS_MAX: "8"
+      PLATFORM_WORKSPACE_FILES_ENABLED: "true"
+      PLATFORM_WORKSPACE_FILES_HELPER_IMAGE: ${R33_FILE_HELPER_IMAGE:?Use pinned file helper config ID}
+      PLATFORM_WORKSPACE_FILES_POLICY_HASH: ${R33_FILE_POLICY_HASH:?Freeze the independent file policy hash}
+      PLATFORM_FILES_ASSETS_ENDPOINT: http://s3:8333
+      PLATFORM_FILES_ASSETS_BUCKET: r33-assets
+      PLATFORM_FILES_ASSETS_ACCESS_KEY_FILE: /run/secrets/file_s3_access
+      PLATFORM_FILES_ASSETS_SECRET_KEY_FILE: /run/secrets/file_s3_secret
+    secrets:
+      - runner_password
+      - runner_private_key
+      - control_public_key
+      - source: file_runner_access
+        target: file_s3_access
+      - source: file_runner_secret
+        target: file_s3_secret
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${R33_ROOT}/runtime-attestation.json
+        target: /run/fixture/runtime.json
+        read_only: true
+        bind:
+          create_host_path: false
+  gateway:
+    image: ${R33_GATEWAY_IMAGE:?Use frozen feature-enabled gateway config ID}
+    profiles:
+      - application
+    user: 101:101
+    read_only: true
+    restart: no
+    mem_limit: 32m
+    memswap_limit: 32m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=8m
+    networks:
+      - control
+      - local-access
+    ports:
+      - 127.0.0.1:18095:8080
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+  operator:
+    image: ${R33_APP_IMAGE:?Use a frozen local/cloud-imported config ID}
+    user: 10001:10001
+    read_only: true
+    restart: no
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001,mode=700
+    networks:
+      - control
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    profiles:
+      - operator
+    mem_limit: 320m
+    memswap_limit: 320m
+    entrypoint:
+      - java
+      - -Xms16m
+      - -Xmx112m
+      - -jar
+      - /app/platform.jar
+    environment:
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/file_runtime?connectTimeout=2&socketTimeout=5
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      PLATFORM_STORAGE_USER: postgres
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+  fixture:
+    image: ${R33_APP_IMAGE:?Use a frozen local/cloud-imported config ID}
+    user: 10001:10001
+    read_only: true
+    restart: no
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001,mode=700
+    networks:
+      - control
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    profiles:
+      - fixture
+    mem_limit: 256m
+    memswap_limit: 256m
+    entrypoint:
+      - java
+      - -Xms16m
+      - -Xmx112m
+      - -jar
+      - /app/platform.jar
+    environment:
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/file_runtime?connectTimeout=2&socketTimeout=5
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_BASE: http://runner:8080
+      PLATFORM_WORKSPACE_CONTROL_PRIVATE_KEY_FILE: /run/secrets/control_private_key
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_PUBLIC_KEY_FILE: /run/secrets/runner_public_key
+      PLATFORM_WORKSPACE_CONTROL_KEY_ID: r33-control-1
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_KEY_ID: r33-runner-1
+      SPRING_PROFILES_ACTIVE: workspace-environment-fixture
+      PLATFORM_WORKSPACE_ENVIRONMENT_FIXTURE_ENABLED: "true"
+      PLATFORM_WORKSPACE_ENVIRONMENT_IMAGE_ID: ${R33_SANDBOX_IMAGE}
+      PLATFORM_WORKSPACE_ENVIRONMENT_POLICY_HASH: ${R33_POLICY_HASH}
+      PLATFORM_STORAGE_USER: ap_worker
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/worker_password
+    secrets:
+      - worker_password
+      - control_private_key
+      - runner_public_key
+volumes:
+  environment-data:
+    name: agentplatform-r33-local-${R33_DATASET:?Select a new isolated runtime
+      dataset}-pg
+  environment-mq:
+    name: agentplatform-r33-local-${R33_DATASET}-mq
+secrets:
+  api_password:
+    file: ${R33_ROOT}/api-password
+  worker_password:
+    file: ${R33_ROOT}/worker-password
+  runner_password:
+    file: ${R33_ROOT}/runner-password
+  mq_password:
+    file: ${R33_ROOT}/mq-password
+  control_private_key:
+    file: ${R33_ROOT}/control-private.pem
+  control_public_key:
+    file: ${R33_ROOT}/control-public.pem
+  runner_private_key:
+    file: ${R33_ROOT}/runner-private.pem
+  runner_public_key:
+    file: ${R33_ROOT}/runner-public.pem
+  file_api_access:
+    file: ${R33_ROOT}/file-api-access
+  file_api_secret:
+    file: ${R33_ROOT}/file-api-secret
+  file_worker_access:
+    file: ${R33_ROOT}/file-worker-access
+  file_worker_secret:
+    file: ${R33_ROOT}/file-worker-secret
+  file_runner_access:
+    file: ${R33_ROOT}/file-runner-access
+  file_runner_secret:
+    file: ${R33_ROOT}/file-runner-secret

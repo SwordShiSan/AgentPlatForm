@@ -11,11 +11,13 @@ final class WorkspaceFixtureBarrier implements com.agentplatform.domain.workspac
             "environment-started-before-readiness","environment-readiness-before-receipt","environment-receipt-before-response",
             "use-output-before-result","use-result-before-response","file-helper-before-exec-start");
     private final String selected;
+    private static final Set<String> FILE_POINTS=Set.of("file-claim-after-commit-before-ack","file-ack-before-runner");
     private WorkspaceFixtureBarrier(String selected){this.selected=selected;}
     static WorkspaceFixtureBarrier none(){return new WorkspaceFixtureBarrier(null);}
     static WorkspaceFixtureBarrier configured(String selected,String stage,boolean fixtureProfile,boolean productionProfile) {
         if(selected==null||selected.isBlank())return none();
-        boolean allowed="r31".equals(stage)&&POINTS.contains(selected)||"r32".equals(stage)&&(POINTS.contains(selected)||ENVIRONMENT_POINTS.contains(selected));
+        boolean allowed="r31".equals(stage)&&POINTS.contains(selected)||"r32".equals(stage)&&(POINTS.contains(selected)||ENVIRONMENT_POINTS.contains(selected))
+                ||"r33".equals(stage)&&(POINTS.contains(selected)||ENVIRONMENT_POINTS.contains(selected)||FILE_POINTS.contains(selected));
         if(!allowed||!fixtureProfile||productionProfile)
             throw new IllegalStateException("Workspace fault barrier requires explicit isolated fixture composition");
         return new WorkspaceFixtureBarrier(selected);
