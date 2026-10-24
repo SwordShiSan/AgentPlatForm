@@ -16,4 +16,3 @@ Six-module DDD, contracts, MyBatis/XML/Spring transactions, Spring AMQP, AWS SDK
 Upload metadata recovery reads only the original object and requires complete integrity/current revision; it never retries content writes, automatically refunds or queues filesystem effects. Public SDK write uncertainty uses a stable non-retryable Problem code; internal diagnostics are fixed-category only.
 # Runtime configuration clarification
 Use official bounded SeaweedFS volume-growth settings so filer metadata does not exhaust all slots before asset data can be assigned. This is fixture/deployment configuration within the approved stack; no third-party rebuild, permission expansion or public-contract change.
-
