@@ -17,7 +17,7 @@
 - [x] 4.2 Real PG/MQ/S3 faults, concurrency, accounting and duplicate delivery.
 - [x] 4.3 Real XFS/helper boundary/stop/rebuild and scoped browser matrix.
 - [x] 4.4 Final >=1800s observation and exact R2 instance/mount/restart restoration, vendor calls0.
-- [ ] 4.5 Final authenticated R2 login/history read-only verification; public HTTP credential action rejected by automatic approval, encrypted SSH tunnel approval pending. Page/readiness200 alone is insufficient.
+- [x] 4.5 Final authenticated R2 login/history read-only verification via explicitly approved SSH loopback forwarding; login/history/isolation/logout/readiness/private endpoints passed, no new supplier calls. Original rejected public HTTP action was never executed.
 ## 5. Closure
 - [ ] 5.1 Exact-source evidence and protected step->phase->main, phase sync.
 - [ ] 5.2 Archive, canonical ledgers/ADR/Skill and protected delivery hash copies; all fixture profiles stopped.

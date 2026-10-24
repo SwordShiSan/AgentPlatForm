@@ -1,6 +1,6 @@
 {
   "stage": "R3.3",
-  "testSource": "87cda46efaa265ca81afa753c7541b3e7c350bb4",
+  "testSource": "7ae9809a3f2428c48245b52eda5b35d8d9b5c499",
   "receipts": {
     "maven": {
       "path": "evidence/r33/maven.json",
@@ -51,12 +51,17 @@
       "path": "evidence/r33/r2InstancesReadiness.json",
       "sha256": "2792118df7788d71e2e7506e5145852c5bf0bc45d94a0deb91ac2e5118b9ab3c",
       "originalSha256": "2792118df7788d71e2e7506e5145852c5bf0bc45d94a0deb91ac2e5118b9ab3c"
+    },
+    "r2AuthenticatedResult": {
+      "path": "evidence/r33/r2AuthenticatedResult.json",
+      "sha256": "9a3236ad142826871163224755b84815076a404a34a4746cdb162cfb40a3ff99",
+      "originalSha256": "932458a3f053bdb94e5df42fb2a0a7f68918be20974a37831323c6961bab0e84"
     }
   },
   "componentInputProof": {
     "api": {
       "source": "d39ef0d6107814dbca6f6cc786255a56fc1a73b4",
-      "unchangedAt": "87cda46efaa265ca81afa753c7541b3e7c350bb4",
+      "unchangedAt": "7ae9809a3f2428c48245b52eda5b35d8d9b5c499",
       "files": {
         "backend/platform-api/pom.xml": "897a1294c975ac62cf2e126f366f15ec6a68cdfc83c5aa2ee0f76e5662089966",
         "backend/platform-api/src/main/java/com/agentplatform/api/chat/ChatApi.java": "7105cc8cc5c1b675664fbda62dc61b6a0d32b010d6c9bbaca3b92ed098fe90bd",
@@ -362,7 +367,7 @@
     },
     "gateway": {
       "source": "ca9ecadb0e46bb8ad5e268d73e25e97f8cdbfcb7",
-      "unchangedAt": "87cda46efaa265ca81afa753c7541b3e7c350bb4",
+      "unchangedAt": "7ae9809a3f2428c48245b52eda5b35d8d9b5c499",
       "files": {
         "deploy/gateway.Dockerfile": "eea117e8c9a85f54a31f69e8a3a4b1576530345b4a8fcfcd938660fd81ea3518",
         "frontend/.npmrc": "2421febef445a76babc0ee7ae760b4eac0e0849304d8b208c9cacddd9fe8073e",
@@ -443,7 +448,7 @@
     },
     "file-helper": {
       "source": "4f8f02f065302d20a6f2fb87bba7c5959927bc0f",
-      "unchangedAt": "87cda46efaa265ca81afa753c7541b3e7c350bb4",
+      "unchangedAt": "7ae9809a3f2428c48245b52eda5b35d8d9b5c499",
       "files": {
         "deploy/file-helper.Dockerfile": "08f7eb21c6d81ac211a4c35dc69d2d7445469ca0014927b7c047226be008145f",
         "deploy/scripts/file-helper-entrypoint.py": "c71879fa9754223895a3cc9bbde072dc80be10c3df3ea1ad330847d574eccb6d",

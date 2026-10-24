@@ -1,7 +1,8 @@
 {
   "stage": "R3.3",
-  "status": "IMPLEMENTING_FINAL_REVIEW",
+  "status": "ACCEPTANCE_PASS_PENDING_PROTECTED_PROMOTION",
   "testSource": "87cda46efaa265ca81afa753c7541b3e7c350bb4",
+  "evidenceSource": "7ae9809a3f2428c48245b52eda5b35d8d9b5c499",
   "applicationSource": "d39ef0d6107814dbca6f6cc786255a56fc1a73b4",
   "images": [
     {
@@ -254,9 +255,17 @@
       "scope": "Read-only SSH instance/restart/migration/mount checks plus HTTP page/readiness only; authenticated browser pending approval",
       "commands": []
     },
+    "r2AuthenticatedResult": {
+      "status": "PASS",
+      "sourceReceipt": ".cache/r33-local/final-r2-browser-1792852657792903700/result.json",
+      "receiptSha256": "932458a3f053bdb94e5df42fb2a0a7f68918be20974a37831323c6961bab0e84",
+      "scope": "See original receipt and assertions",
+      "commands": []
+    },
     "r2AuthenticatedBrowser": {
-      "status": "NOT_RUN_APPROVAL_PENDING",
-      "reason": "Direct public HTTP credential transmission rejected; explicit encrypted-tunnel approval requested. No workaround executed."
+      "status": "PASS",
+      "receiptSha256": "932458a3f053bdb94e5df42fb2a0a7f68918be20974a37831323c6961bab0e84",
+      "scope": "Authenticated restored R2 browser via approved SSH local forward to server loopback80; browser-only hostname mapping preserves Host/Origin, API reads use page fetch, no direct HTTP fallback"
     }
   },
   "supplierCalls": 0,
