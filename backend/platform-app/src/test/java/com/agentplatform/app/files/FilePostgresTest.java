@@ -189,6 +189,63 @@ class FilePostgresTest {
         return files.create(alice,workspace,UUID.randomUUID(),UUID.randomUUID().toString().replace("-","")+"0".repeat(32),
                 new UploadRequest("hello.txt",bytes,"a".repeat(64),null,null,null));
     }
+    private record FileBroker(org.springframework.amqp.rabbit.connection.CachingConnectionFactory connection) implements AutoCloseable {
+        @Override public void close(){connection.destroy();}
+    }
+    private FileBroker fileBroker() throws Exception {
+        String selected=System.getenv("R33_TEST_MQ_PORT");
+        Assumptions.assumeTrue(selected!=null,"R33 actual RabbitMQ not selected; NOT_RUN");
+        assertEquals("15702",selected);
+        var connection=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory("127.0.0.1",15702);
+        connection.setUsername("r33");connection.setPassword(Files.readString(Path.of(System.getenv("R33_TEST_MQ_PASSWORD_FILE"))).strip());
+        connection.setVirtualHost("/agentplatform");connection.setPublisherConfirmType(org.springframework.amqp.rabbit.connection.CachingConnectionFactory.ConfirmType.CORRELATED);
+        connection.setPublisherReturns(true);
+        var admin=new org.springframework.amqp.rabbit.core.RabbitAdmin(connection);
+        var exchange=new org.springframework.amqp.core.DirectExchange(com.agentplatform.infrastructure.workspace.SpringFileMessaging.EXCHANGE,true,false);
+        var queue=org.springframework.amqp.core.QueueBuilder.durable(com.agentplatform.infrastructure.workspace.SpringFileMessaging.QUEUE).build();
+        admin.declareExchange(exchange);admin.declareQueue(queue);
+        admin.declareBinding(org.springframework.amqp.core.BindingBuilder.bind(queue).to(exchange).with(com.agentplatform.infrastructure.workspace.SpringFileMessaging.ROUTE));
+        admin.purgeQueue(queue.getName());return new FileBroker(connection);
+    }
+    private Publication queuedFilePublication() {
+        var upload=create(5);UUID transfer=UUID.randomUUID();files.beginTransfer(alice,upload.id(),transfer);files.transferVerified(alice,upload.id(),transfer);
+        files.completeUpload(alice,upload.id());return files.publications(UUID.randomUUID()).getFirst();
+    }
+    @Test void managedRealMqDuplicateDeliveryAndTwoConsumersHaveOneDurableOwner() throws Exception {
+        try(var broker=fileBroker();var first=new com.agentplatform.infrastructure.workspace.SpringFileMessaging(broker.connection(),files);
+            var second=new com.agentplatform.infrastructure.workspace.SpringFileMessaging(broker.connection(),files)) {
+            var publication=queuedFilePublication();var executed=new java.util.concurrent.atomic.AtomicInteger();
+            var deliveries=new CountDownLatch(2);var completed=new CountDownLatch(1);
+            java.util.function.Supplier<com.agentplatform.infrastructure.workspace.SpringFileMessaging.Handoff> listener=()->{
+                UUID owner=UUID.randomUUID();return new com.agentplatform.infrastructure.workspace.SpringFileMessaging.Handoff(){
+                    public Command claim(Publication item){try{return files.claim(item,owner);}finally{deliveries.countDown();}}
+                    public void execute(Command command){executed.incrementAndGet();completed.countDown();}
+                };
+            };
+            first.start(listener.get());second.start(listener.get());first.publish(publication);second.publish(publication);
+            assertTrue(deliveries.await(15,TimeUnit.SECONDS));assertTrue(completed.await(5,TimeUnit.SECONDS));assertEquals(1,executed.get());
+            assertEquals(1,count("SELECT count(*) FROM pf.file_inbox"));assertEquals(1,count("SELECT count(*) FROM pf.workspace_file_lease WHERE status='ACTIVE'"));
+            assertEquals(0,count("SELECT count(*) FROM pf.file_version"));assertEquals(5,files.usage(alice,workspace).reservedBytes());
+        }
+    }
+    @Test void managedRealMqAckLossAfterCommittedHandoffDoesNotExecuteOrCreateAnotherOwner() throws Exception {
+        try(var broker=fileBroker();var messaging=new com.agentplatform.infrastructure.workspace.SpringFileMessaging(broker.connection(),files)) {
+            var publication=queuedFilePublication();var deliveries=new java.util.concurrent.atomic.AtomicInteger();
+            var redelivered=new CountDownLatch(1);var executed=new java.util.concurrent.atomic.AtomicInteger();
+            messaging.start(new com.agentplatform.infrastructure.workspace.SpringFileMessaging.Handoff(){
+                public Command claim(Publication item){
+                    var command=files.claim(item,UUID.randomUUID());
+                    if(deliveries.incrementAndGet()==1){assertNotNull(command);throw new IllegalStateException("fixture committed handoff before ACK");}
+                    assertNull(command);redelivered.countDown();return command;
+                }
+                public void execute(Command command){executed.incrementAndGet();}
+            });
+            messaging.publish(publication);assertTrue(redelivered.await(20,TimeUnit.SECONDS));
+            assertEquals(0,executed.get());assertEquals(1,count("SELECT count(*) FROM pf.file_inbox"));
+            assertEquals(1,count("SELECT count(*) FROM pf.workspace_file_lease WHERE status='ACTIVE'"));
+            assertEquals(0,count("SELECT count(*) FROM pf.file_version"));assertEquals(5,files.usage(alice,workspace).reservedBytes());
+        }
+    }
     @Test void uploadReservationAndIdempotencyDoNotCreateSandbox() throws Exception {
         UUID request=UUID.randomUUID();var body=new UploadRequest("hello.txt",6,"a".repeat(64),null,null,null);
         var first=files.create(alice,workspace,request,"b".repeat(64),body);
