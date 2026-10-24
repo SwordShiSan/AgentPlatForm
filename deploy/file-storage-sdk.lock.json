@@ -1,0 +1,134 @@
+{
+  "sdkVersion": "2.57.3",
+  "scope": "Resolved AWS SDK jars; full six-module transitive lock must be refreshed before promotion",
+  "artifacts": [
+    {
+      "coordinate": "software.amazon.awssdk:annotations:2.57.3",
+      "sha256": "3dee0006eb10176d718cdd877d926ba86a6673fe0dcbab5788f62ea64e4b24a2"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:apache5-client:2.57.3",
+      "sha256": "219c40dbfbde3d0f728c3b905593d626ea282ed08ee714986d59107008261333"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:arns:2.57.3",
+      "sha256": "c2fd909df91a86016b514ed473a9a0fbe17aa646374c6d8c933970413717d755"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:auth:2.57.3",
+      "sha256": "7966cc0348dd7305816faeeab79134e10da1c7728a910216e49c5f20706ab629"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:aws-core:2.57.3",
+      "sha256": "e53a3dcc896002fefccd56e83804b2becdd9bbf3d384a2c4a8cb72ca0a636417"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:aws-query-protocol:2.57.3",
+      "sha256": "0e8b5b6ca54162248dfa430f9fe9f98c36049fb0f8de7e1cf16cbf388cfd9598"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:aws-xml-protocol:2.57.3",
+      "sha256": "0b4a80dcd2cb504c9f56023eb39b8f9578b0883b30ff158507e1b2db83ccc372"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:checksums:2.57.3",
+      "sha256": "6f91f35dbc66f3f7421a75e302a26c2c98e4a75c3e342b29784a4b7fb581c041"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:checksums-spi:2.57.3",
+      "sha256": "2239d08f649a1995fd604576bdb630d696d450ccd1089bed658f2d7d9ec399fd"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:crt-core:2.57.3",
+      "sha256": "46b9d59aad3c5622179ea0e7d6554e87304129f31ed824f5d1d259eb0723d3dd"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:endpoints-spi:2.57.3",
+      "sha256": "8a5098abdca50041d8f9d5513b2b49f2123ad9e827e8632af60261a2e1005fa9"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:eventstream:2.57.3",
+      "sha256": "17517852d41e527b7f787ce9d7090bd73cc3763aae5bc9b9aa31f45752d4f0e0"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:http-auth:2.57.3",
+      "sha256": "286c880eb0e497e250fbb9890f805ed4b8ef388a211da7b2532ff4f65177af1a"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:http-auth-aws:2.57.3",
+      "sha256": "35bbeb7d5b0e29b1ad860d253c84c560aea940db0762a06fc483a9b3881eba4b"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:http-auth-aws-eventstream:2.57.3",
+      "sha256": "95fe1ecdefe126ea994c15d9249c9874449d5c7f624a6c85d8e0e55a9cf8a8a2"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:http-auth-spi:2.57.3",
+      "sha256": "58c7109749bd2ee343ae6f27e7a83393515590d6fa8e015d1c8082a9d1ceebbc"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:http-client-spi:2.57.3",
+      "sha256": "1fc77076839014fc416874936a1a21ef2d5ab07c21e1e14700f6ca508dafffc9"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:identity-spi:2.57.3",
+      "sha256": "52c23241d021e6bcd562a3861f3ac1dee870748da3c746c9705cd632c9db37ba"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:json-utils:2.57.3",
+      "sha256": "b4d0a6e408cf79d265e5dba6ba45e9e0396c4696918645e6c5757bfc30709ffd"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:metrics-spi:2.57.3",
+      "sha256": "741a0892a10f6600ed4d07201dad124eaac0ff9af159ee8d091192d4822aaf01"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:netty-nio-client:2.57.3",
+      "sha256": "ef3548dbcd5fbad33ab04f646345990800dfba3dcb79efae28667049ea166972"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:profiles:2.57.3",
+      "sha256": "580759c088f92279cc41c9a9d3000bf05fd89636933f2301fd176a9000c7550d"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:protocol-core:2.57.3",
+      "sha256": "cbba9c31acd3a0c2d1424160775a8b6357e80add4d92920b971819cd0f2dfe0d"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:regions:2.57.3",
+      "sha256": "89c9e70b16d4b482bcee821f6f3dd8b38483c6fb5928b5d549c7b907cbe72ccd"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:retries:2.57.3",
+      "sha256": "995ca319bad6ed944595a463afd6aed4c50b1ee8f475625e1f792e32fea69a53"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:retries-spi:2.57.3",
+      "sha256": "b7c1b8a3ddb2605136de7bd090968d8f893718d7906b873567c2ae6800a3151d"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:s3:2.57.3",
+      "sha256": "f09a188394c900081c53a76845121ed2a28976770ae0b89f54f159a7d5b19237"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:sdk-core:2.57.3",
+      "sha256": "720788f97ed2be929a9bbcc5cf9bc01683d17edcb76212a3a2ea39a95be362f7"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:third-party-jackson-core:2.57.3",
+      "sha256": "c1fc6cc0982b94d6b220bbc52b9244f3b8a2008ccab688c57195b695d6858af1"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:url-connection-client:2.57.3",
+      "sha256": "92305291ccb0170a8adfa1ae7346cc8dda7f0681a43fa64824a6aa24e756a21a"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:utils:2.57.3",
+      "sha256": "0ced56cf81e52c16ebb110de7cd9b6b4e3976a52d82712dd3da0ee620e0def52"
+    },
+    {
+      "coordinate": "software.amazon.awssdk:utils-lite:2.57.3",
+      "sha256": "38e69acc0409e2b96f0164dd394e72becb895cc68fff24b2608c3ba07929e9d9"
+    }
+  ]
+}

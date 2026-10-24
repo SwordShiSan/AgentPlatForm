@@ -824,6 +824,286 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/EnvironmentSubmission" }
         default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/workspaces/{id}/files:
+    get:
+      operationId: listWorkspaceFiles
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: parent
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+      responses:
+        "200":
+          description: Authorized durable file projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FilePage"
+        default:
+          $ref: "#/components/responses/IdentityProblem"
+  /api/v1/files/{id}:
+    get:
+      operationId: getWorkspaceFile
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Authorized durable file projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileItem"
+        default:
+          $ref: "#/components/responses/IdentityProblem"
+  /api/v1/files/{id}/content:
+    get:
+      operationId: downloadFileVersion
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: versionId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: Range
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Authorized immutable binary; safe attachment filename
+          headers:
+            ETag:
+              schema:
+                type: string
+            Accept-Ranges:
+              schema:
+                const: bytes
+                type: string
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "206":
+          description: Single byte range
+          headers:
+            Content-Range:
+              schema:
+                type: string
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        default:
+          $ref: "#/components/responses/IdentityProblem"
+  /api/v1/workspaces/{id}/uploads:
+    post:
+      operationId: createFileUpload
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - name: If-Match
+          in: header
+          required: false
+          schema:
+            type: string
+            pattern: ^"[1-9][0-9]*"$
+      responses:
+        "201":
+          description: Authorized durable file projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileUpload"
+        default:
+          $ref: "#/components/responses/IdentityProblem"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFileUpload"
+      description: Replacement requires fileId,baseVersionId and If-Match; no implicit overwrite.
+  /api/v1/uploads/{id}:
+    get:
+      operationId: getFileUpload
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Authorized durable file projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileUpload"
+        default:
+          $ref: "#/components/responses/IdentityProblem"
+  /api/v1/uploads/{id}/content:
+    put:
+      operationId: transferFileUpload
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/CsrfToken"
+        - name: Content-Length
+          in: header
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 104857600
+      responses:
+        "200":
+          description: Authorized durable file projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileUpload"
+        default:
+          $ref: "#/components/responses/IdentityProblem"
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      description: Exact declared bytes and SHA256 frozen in upload; uploadId is the content identity.
+        Uncertain transfer is queried, not automatically resent.
+  /api/v1/uploads/{id}/complete:
+    post:
+      operationId: completeFileUpload
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/CsrfToken"
+      responses:
+        "202":
+          description: Authorized durable file projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileOperation"
+        default:
+          $ref: "#/components/responses/IdentityProblem"
+  /api/v1/file-operations/{id}:
+    get:
+      operationId: getFileOperation
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Authorized durable file projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileOperation"
+        default:
+          $ref: "#/components/responses/IdentityProblem"
+  /api/v1/workspaces/{id}/storage-usage:
+    get:
+      operationId: getFileStorageUsage
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Authorized durable file projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileStorageUsage"
+        default:
+          $ref: "#/components/responses/IdentityProblem"
 components:
   securitySchemes:
     session:
@@ -867,6 +1147,267 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
   schemas:
+    CreateFileUpload:
+      type: object
+      additionalProperties: false
+      required:
+        - path
+        - bytes
+        - sha256
+      properties:
+        path:
+          type: string
+          minLength: 1
+          maxLength: 4096
+        bytes:
+          type: integer
+          minimum: 0
+          maximum: 104857600
+        sha256:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        fileId:
+          type: string
+          format: uuid
+        baseVersionId:
+          type: string
+          format: uuid
+    FileUpload:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspaceId
+        - fileId
+        - versionId
+        - path
+        - bytes
+        - sha256
+        - state
+        - operationId
+        - revision
+        - expiresAt
+        - allowedActions
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        fileId:
+          type: string
+          format: uuid
+        versionId:
+          type: string
+          format: uuid
+        path:
+          type: string
+        bytes:
+          type: integer
+          minimum: 0
+          maximum: 104857600
+        sha256:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        state:
+          type: string
+          enum:
+            - CREATED
+            - UPLOADING
+            - VERIFYING
+            - VERIFIED
+            - QUEUED
+            - COMMITTED
+            - ABORTED
+            - EXPIRED
+            - UNKNOWN
+        operationId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        expiresAt:
+          type: string
+          format: date-time
+        allowedActions:
+          type: array
+          items:
+            type: string
+            enum:
+              - UPLOAD
+              - COMPLETE
+              - READ
+    FileItem:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspaceId
+        - path
+        - parent
+        - name
+        - kind
+        - versionId
+        - collectionState
+        - revision
+        - sha256
+        - bytes
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        path:
+          type: string
+        parent:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+            - FILE
+            - DIRECTORY
+        versionId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        collectionState:
+          type: string
+          enum:
+            - PENDING
+            - CONFIRMED
+            - CHANGED
+            - BLOCKED
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        sha256:
+          type:
+            - string
+            - "null"
+          pattern: ^[a-f0-9]{64}$
+        bytes:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+          maximum: 104857600
+    FilePage:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+        - nextCursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FileItem"
+          maxItems: 100
+        nextCursor:
+          type:
+            - string
+            - "null"
+    FileOperation:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspaceId
+        - uploadId
+        - state
+        - revision
+        - errorCode
+        - allowedActions
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        uploadId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        state:
+          type: string
+          enum:
+            - PENDING
+            - CLAIMED
+            - RUNNING
+            - COMMITTED
+            - FAILED
+            - UNKNOWN
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        errorCode:
+          type:
+            - string
+            - "null"
+          pattern: ^[A-Z_]{1,64}$
+        allowedActions:
+          type: array
+          items:
+            type: string
+            enum:
+              - READ
+    FileStorageUsage:
+      type: object
+      additionalProperties: false
+      required:
+        - objectLimitBytes
+        - reservedBytes
+        - committedBytes
+        - workspaceQuotaBytes
+        - workspaceQuotaInodes
+        - measuredBytes
+        - measuredInodes
+        - measuredAt
+      properties:
+        objectLimitBytes:
+          type: integer
+          minimum: 0
+        reservedBytes:
+          type: integer
+          minimum: 0
+        committedBytes:
+          type: integer
+          minimum: 0
+        workspaceQuotaBytes:
+          type: integer
+          minimum: 0
+        workspaceQuotaInodes:
+          type: integer
+          minimum: 0
+        measuredBytes:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+        measuredInodes:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+        measuredAt:
+          type:
+            - string
+            - "null"
+          format: date-time
     LoginRequest:
       type: object
       additionalProperties: false

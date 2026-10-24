@@ -39,7 +39,8 @@ export type PlatformEvent = {
     | "automation.occurrence_changed"
     | "task.children_changed"
     | "context.updated"
-    | "verification.updated";
+    | "verification.updated"
+    | "file.version.created";
   occurredAt: string;
   entityVersion: number;
   payload: {

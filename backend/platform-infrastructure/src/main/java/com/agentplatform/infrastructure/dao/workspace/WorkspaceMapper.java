@@ -12,6 +12,7 @@ public interface WorkspaceMapper {
     CapacityRow lockCapacity();
     void actorLock(@Param("key") long key);
     boolean authorized(@Param("actor") Actor actor);
+    boolean fileDataPlaneBusy(@Param("spaceId") UUID spaceId, @Param("workspaceId") UUID workspaceId);
     RequestRow request(@Param("actor") Actor actor, @Param("requestId") UUID requestId);
     WorkspaceRow workspace(@Param("spaceId") UUID spaceId, @Param("id") UUID id);
     WorkspaceRow lockWorkspace(@Param("spaceId") UUID spaceId, @Param("id") UUID id);

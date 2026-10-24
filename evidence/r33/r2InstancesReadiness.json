@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "time": 1792847105.4703016,
+  "newRunning": 10,
+  "legacyRunning": 0,
+  "runningR33TestResources": 0,
+  "productionMigration": 9,
+  "originalXfsUuid": "fe8f72e3-4958-4048-a091-b1933d4195da",
+  "restartPoliciesUnchanged": true,
+  "httpIpHostChecks": {
+    "124.222.55.140/login": 200,
+    "124.222.55.140/api/v1/readiness": 200,
+    "agentplatform.lailihao.cloud/login": 200,
+    "agentplatform.lailihao.cloud/api/v1/readiness": 200
+  },
+  "dnsChanged": false,
+  "r3Deployed": false,
+  "supplierCallsByVerification": 0,
+  "rootFreeBytes": 5590204416,
+  "scope": "Read-only SSH instance/restart/migration/mount checks plus HTTP page/readiness only; authenticated browser pending approval"
+}

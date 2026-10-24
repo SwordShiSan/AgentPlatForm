@@ -1,0 +1,45 @@
+{
+  "status": "PASS",
+  "taskId": "01a15c70-0367-7625-b001-b36a7147e9bc",
+  "homepageLoginChat": true,
+  "refreshHistory": true,
+  "dualContextIsolation": true,
+  "adminBypass": false,
+  "layouts": [
+    {
+      "theme": "light",
+      "width": 375,
+      "horizontalOverflow": false
+    },
+    {
+      "theme": "light",
+      "width": 768,
+      "horizontalOverflow": false
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "horizontalOverflow": false
+    },
+    {
+      "theme": "dark",
+      "width": 375,
+      "horizontalOverflow": false
+    },
+    {
+      "theme": "dark",
+      "width": 768,
+      "horizontalOverflow": false
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "horizontalOverflow": false
+    }
+  ],
+  "zoom200": true,
+  "keyboard": true,
+  "logoutImmediate": true,
+  "newSupplierCalls": 0,
+  "dnsTested": false
+}

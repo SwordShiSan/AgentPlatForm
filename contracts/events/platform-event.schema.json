@@ -82,7 +82,8 @@
         "automation.occurrence_changed",
         "task.children_changed",
         "context.updated",
-        "verification.updated"
+        "verification.updated",
+        "file.version.created"
       ]
     },
     "occurredAt": {
@@ -361,7 +362,8 @@
           "type": {
             "enum": [
               "workspace.state_changed",
-              "workspace.environment_changed"
+              "workspace.environment_changed",
+              "file.version.created"
             ]
           }
         },
@@ -514,6 +516,51 @@
                   "null"
                 ],
                 "pattern": "^[A-Z_]{1,64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "file.version.created"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "workspaceId",
+              "fileId",
+              "versionId",
+              "revision"
+            ],
+            "properties": {
+              "workspaceId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "fileId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "versionId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
               }
             }
           }
