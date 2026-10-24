@@ -8,6 +8,7 @@ import unittest
 import uuid
 from unittest.mock import patch
 import errno
+from types import SimpleNamespace
 
 spec = importlib.util.spec_from_file_location("bridge", Path(__file__).parents[1] / "scripts/file-stream-bridge.py")
 bridge = importlib.util.module_from_spec(spec)
@@ -15,6 +16,29 @@ spec.loader.exec_module(bridge)
 
 
 class StreamBridgeTests(unittest.TestCase):
+    def test_insufficient_temporary_blocks_or_inodes_preserve_original_without_reading_content(self):
+        for available in [SimpleNamespace(f_frsize=4096, f_bsize=4096, f_bavail=0, f_favail=100),
+                          SimpleNamespace(f_frsize=4096, f_bsize=4096, f_bavail=100, f_favail=0)]:
+            with self.subTest(available=available), tempfile.TemporaryDirectory() as root:
+                target=Path(root, "a.txt");target.write_bytes(b"old")
+                content=io.BytesIO(b"new")
+                with patch.object(bridge.os,"fstatvfs",return_value=available):
+                    with self.assertRaisesRegex(bridge.Rejected,"FILE_STORAGE_FULL"):
+                        bridge.apply(self.header(b"new",previous=hashlib.sha256(b"old").hexdigest()),content,root)
+                self.assertEqual(content.tell(),0)
+                self.assertEqual(target.read_bytes(),b"old")
+                self.assertEqual([p.name for p in Path(root).iterdir()],["a.txt"])
+
+    def test_replacement_requires_entire_new_temporary_file_and_rounds_up_blocks(self):
+        with tempfile.TemporaryDirectory() as root:
+            original=b"a"*8192;Path(root,"a.txt").write_bytes(original)
+            content=b"b"*4097
+            available=SimpleNamespace(f_frsize=4096,f_bsize=4096,f_bavail=1,f_favail=100)
+            with patch.object(bridge.os,"fstatvfs",return_value=available):
+                with self.assertRaisesRegex(bridge.Rejected,"FILE_STORAGE_FULL"):
+                    bridge.apply(self.header(content,previous=hashlib.sha256(original).hexdigest()),io.BytesIO(content),root)
+            self.assertEqual(Path(root,"a.txt").read_bytes(),original)
+
     def test_v2_completes_without_reading_for_transport_eof(self):
         class OpenFrame(io.BytesIO):
             def read(self, size=-1):

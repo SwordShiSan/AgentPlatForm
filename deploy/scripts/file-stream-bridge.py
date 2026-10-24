@@ -109,6 +109,15 @@ def rename_new(parent, temporary, name):
         raise OSError(failure, os.strerror(failure))
 
 
+def admit_temporary(parent, size):
+    available = os.fstatvfs(parent)
+    block = available.f_frsize or available.f_bsize
+    # The old version stays allocated until rename. Never subtract its size.
+    blocks = max(1, (size + block - 1) // block) if block > 0 else None
+    if blocks is None or available.f_bavail < blocks or available.f_favail < 1:
+        raise Rejected("FILE_STORAGE_FULL")
+
+
 def apply(header, source, root="/workspace", require_device=False):
     fields = {"protocol", "operationId", "path", "bytes", "sha256", "expectedSha256"}
     if isinstance(header, dict) and "filesystemDevice" in header:
@@ -144,6 +153,7 @@ def apply(header, source, root="/workspace", require_device=False):
                 raise Rejected("FILE_NAME_CONFLICT")
         elif original is None or original["sha256"] != header["expectedSha256"]:
             raise Rejected("FILE_VERSION_CONFLICT")
+        admit_temporary(parent, size)
         fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC,
                      0o600, dir_fd=parent)
         temporary_exists = True
