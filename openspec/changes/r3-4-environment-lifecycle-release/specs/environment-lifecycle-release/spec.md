@@ -55,6 +55,9 @@ The browser SHALL display actual lifecycle, ETag/allowed actions and original op
 - **THEN** current membership is checked, the original stable operation metadata is returned, and unrelated request/space identities return404 without physical paths or container data
 ### Requirement: Verified and released are distinct
 R3 SHALL be released only after protected local promotion and same-artifact cloud integration, observation, consistent restore and R2 rollback tests pass.
+#### Scenario: Candidate keeps delivered HTTP capabilities
+- **WHEN** the gateway candidate is built and configured for R3
+- **THEN** chat/workspace/environment/file UI flags are explicitly enabled,100MiB uploads remain streamed, SSE buffering stays disabled with a timeout covering the task window, and internal endpoints are not routed publicly
 #### Scenario: Successful release
 - **WHEN** all mandatory gates pass and the exact R3 candidate restarts after rollback rehearsal
 - **THEN** production-r3 tag binds artifacts/configuration and R3 is RELEASED with legacy stopped
