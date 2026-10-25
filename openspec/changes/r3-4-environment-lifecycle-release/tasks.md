@@ -3,8 +3,8 @@
 - [x] 1.2 Canonical Plan/ADR/contracts and five artifacts; strict before implementation.
 - [x] 1.3 Read-only tool/Docker/SSH/resource preflight; independent fixture and immutable identities.
 ## 2. Resource feasibility first
-- [ ] 2.1 Whole profile cold start, login,100MiB stream and trusted canary under capped budgets.
-- [ ] 2.2 Preserve actual limits/heap/OOM/host/disk evidence; correct only proven issues.
+- [x] 2.1 Whole profile cold start, login,100MiB stream and trusted canary under capped budgets.
+- [x] 2.2 Preserve actual limits/heap/OOM/host/disk evidence; correct only proven issues.
 ## 3. Persistent lifecycle
 - [ ] 3.1 Additive V14, typed Mapper/PO/XML, transaction admission and live authorization.
 - [ ] 3.2 Intent/fence/idempotency and prepare/sleep/wake/delete/retry projections.
