@@ -107,8 +107,18 @@ class Window:
    import_data['exchanges'].append({'name':exchange,'vhost':'/agentplatform','type':'direct','durable':True,'auto_delete':False,'internal':False,'arguments':{}})
    import_data['queues'].append({'name':queue,'vhost':'/agentplatform','durable':True,'auto_delete':False,'arguments':{}})
    import_data['bindings'].append({'source':exchange,'vhost':'/agentplatform','destination':queue,'destination_type':'queue','routing_key':route,'arguments':{}})
-  path=self.folder/'mq-r3.private.json';path.write_text(json.dumps(import_data))
+  # Broker boot imports the mounted definitions again. Persist the same exact
+  # permissions/topology, rather than repairing only the in-memory broker.
+  complete=json.loads((self.folder/'backup-r2/rabbitmq-definitions.json').read_text())
+  for key,values in import_data.items():
+   fields={'permissions':['user','vhost'],'exchanges':['name','vhost'],'queues':['name','vhost'],'bindings':['source','vhost','destination','destination_type','routing_key']}[key]
+   replacements={tuple(x[n] for n in fields):x for x in values}
+   merged={tuple(x[n] for n in fields):x for x in complete.get(key,[])};merged.update(replacements);complete[key]=list(merged.values())
+  path=self.folder/'mq-r3.private.json';path.write_text(json.dumps(complete))
   os.chown(path,999,999);path.chmod(0o400)
+  target=ROOT/'config/rabbitmq-definitions.json'
+  with target.open('w') as stream:stream.write(path.read_text())
+  os.chown(target,999,999);target.chmod(0o400)
   self.run(['docker','cp','-a',str(path),self.by['rabbitmq']['Id']+':/tmp/r3-permissions.json'])
   self.run(['docker','exec',self.by['rabbitmq']['Id'],'rabbitmqctl','import_definitions','/tmp/r3-permissions.json'])
  def activate(self,receipt='activate'):
@@ -159,11 +169,14 @@ class Window:
   self.run(self.base+['--profile','*','stop'],timeout=240)
   backup=self.folder/'backup-r2'
   if backup.exists():
-   # S3 configuration only; database remains at additive schema14.
+   # Restore both boot-time dependency configurations; database stays additive.
    import tarfile
    with tarfile.open(backup/'cold.tgz') as archive:
-    stream=archive.extractfile('config/s3.json');assert stream is not None
-    with (ROOT/'config/s3.json').open('wb') as target:shutil.copyfileobj(stream,target)
+    for name in ['config/s3.json','config/rabbitmq-definitions.json']:
+     member=archive.getmember(name);stream=archive.extractfile(member);assert stream is not None
+     target=ROOT/name
+     with target.open('wb') as destination:shutil.copyfileobj(stream,destination)
+     os.chown(target,member.uid,member.gid);target.chmod(member.mode)
   for name in ['postgres','rabbitmq','redis','master','volume','filer','s3']:
    row=self.by[name];host=row['HostConfig']
    self.run(['docker','update','--memory',str(host['Memory']),'--memory-swap',str(host['MemorySwap']),row['Id']])
@@ -179,16 +192,18 @@ class Window:
   else:raise RuntimeError('R2 readiness did not recover')
   return {'status':'PASS','exactR2ContainersRetained':True,'originalCapsRestored':True,'migration':int(self.sql('SELECT max(version::int) FROM pf.flyway_schema_history WHERE success;')),'supplierCalls':0}
 def main():
- p=argparse.ArgumentParser();p.add_argument('action',choices=['start','backup-r2','activate','backup-r3','rollback','rollback-drill','redeploy','retry-activation']);p.add_argument('folder',type=Path);a=p.parse_args();os.umask(0o077);w=Window(a.folder)
+ p=argparse.ArgumentParser();p.add_argument('action',choices=['start','backup-r2','activate','backup-r3','backup-r3-retry','rollback','rollback-drill','redeploy','retry-activation','repair-mq']);p.add_argument('folder',type=Path);a=p.parse_args();os.umask(0o077);w=Window(a.folder)
  with (ROOT/'operations/platform-switch/switch.lock').open('a') as lock:
   fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
   try:
    assert not (w.folder/(a.action+'.json')).exists(),'Inspect original action before retry'
    if a.action=='start':w.backup('r2');w.activate();w.receipt('start',{'status':'PASS','supplierCalls':0})
+   elif a.action=='backup-r3-retry':w.backup('r3');w.receipt(a.action,{'status':'PASS'})
    elif a.action.startswith('backup-'):w.backup(a.action.removeprefix('backup-'))
-   elif a.action in ['activate','redeploy','retry-activation']:
-    if a.action in ['redeploy','retry-activation']:
+   elif a.action in ['activate','redeploy','retry-activation','repair-mq']:
+    if a.action in ['redeploy','retry-activation','repair-mq']:
      if a.action=='redeploy':assert (w.folder/'rollback-drill.json').exists() and (w.folder/'restore.json').exists()
+     elif a.action=='repair-mq':assert (w.folder/'failure-backup-r3-restoration.json').exists()
      else:assert (w.folder/'failure-restoration.json').exists() and not (w.folder/'activate.json').exists()
      w.stop_r2_apps()
      for name in ['s3','filer','volume','master','redis','rabbitmq','postgres']:w.run(['docker','stop','-t','60',w.by[name]['Id']])
