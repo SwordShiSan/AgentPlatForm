@@ -1,0 +1,103 @@
+# environment-lifecycle-release Specification
+
+## Purpose
+TBD - created by archiving change r3-4-environment-lifecycle-release. Update Purpose after archive.
+## Requirements
+### Requirement: Durable authorized lifecycle
+The platform SHALL accept versioned idempotent sleep, wake and environment-only deletion through the existing persistent queue chain, with current identity and space authorization.
+#### Scenario: Sleep and wake
+- **WHEN** an authorized user sleeps a ready environment and later explicitly wakes it
+- **THEN** sleep confirms stopping/removal, wake creates one new generation and READY requires real mount/canary evidence
+#### Scenario: Duplicate or stale request
+- **WHEN** an original request is repeated, its content changes or its version is stale
+- **THEN** the same request returns the original operation, changed content is rejected409 and stale versions412 without another physical command
+#### Scenario: Foreign administrator
+- **WHEN** an administrator targets another user's environment
+- **THEN** access is denied without container or path disclosure
+
+### Requirement: Environment deletion preserves user storage
+Deleting an environment SHALL preserve workspace identity, directory, project quota, file versions, object references and their accounting.
+#### Scenario: Delete and recreate
+- **WHEN** deletion completes and the user prepares again
+- **THEN** a new environment generation reads the same current files and immutable versions with unchanged storage reservations
+#### Scenario: File operation in progress
+- **WHEN** a file helper holds an exclusive write lease
+- **THEN** lifecycle cannot steal it or delete its helper, and no concurrent workspace write is admitted
+
+### Requirement: Stop and cleanup are facts
+The platform SHALL persist exact stopped execution facts before cleanup/admission release and SHALL retain unresolved ownership without replay.
+#### Scenario: Lost stop response
+- **WHEN** runner stops but its response is lost
+- **THEN** reconciliation queries the original command and settles its receipt once without replaying it
+#### Scenario: Cleanup failure
+- **WHEN** removal fails after the stop receipt commits
+- **THEN** durable cleanup state remains observable and exact cleanup can converge without another business effect
+#### Scenario: Unproven termination
+- **WHEN** only lease expiry, transport close or Docker404 is known
+- **THEN** the environment remains BLOCKED with retained ownership until exact stop evidence or valid host proof is available
+
+### Requirement: Signed protocol compatibility
+ENVIRONMENT_V3 SHALL bind intent and physical identity without weakening historical V2 validation or old migration bytes.
+#### Scenario: Forged or old owner
+- **WHEN** an algorithm, audience, body, policy, generation or fence is wrong
+- **THEN** runner refuses execution and result submission
+#### Scenario: Additive upgrade
+- **WHEN** V13 upgrades to V14
+- **THEN** previous files/runtime baseline and supported old-program read paths remain valid without changing V1-V13
+
+### Requirement: Whole-stack bounded resources
+The platform SHALL validate the complete cold-start and active sandbox/file profile within2887MiB total ceilings,768MiB host reserve and5GiB disk margin.
+#### Scenario: Concurrent required capabilities
+- **WHEN** login,100MiB bounded streaming and trusted sandbox canary execute in the admitted profile
+- **THEN** required services stay alive and every helper/runtime budget is counted
+#### Scenario: Insufficient resources
+- **WHEN** required functionality cannot fit or a floor fails
+- **THEN** startup/release stops with FAIL evidence, without swap expansion or weakened isolation
+
+### Requirement: Truthful lifecycle interface
+The browser SHALL display actual lifecycle, ETag/allowed actions and original operation status without treating storage READY as environment readiness.
+#### Scenario: Refresh and unknown result
+- **WHEN** a response is lost or an operation is BLOCKED
+- **THEN** refresh queries the original operation and no blind retry or automatic wake occurs
+#### Scenario: Another browser advances the environment
+- **WHEN** the caller reads its original request or operation under the workspace after another accepted operation changes the current version
+- **THEN** current membership is checked, the original stable operation metadata is returned, and unrelated request/space identities return404 without physical paths or container data
+
+### Requirement: Verified and released are distinct
+R3 SHALL be released only after protected local promotion and same-artifact cloud integration, observation, consistent restore and R2 rollback tests pass.
+#### Scenario: Candidate keeps delivered HTTP capabilities
+- **WHEN** the gateway candidate is built and configured for R3
+- **THEN** chat/workspace/environment/file UI flags are explicitly enabled,100MiB uploads remain streamed, SSE buffering stays disabled with a timeout covering the task window, and internal endpoints are not routed publicly
+#### Scenario: Successful release
+- **WHEN** all mandatory gates pass and the exact R3 candidate restarts after rollback rehearsal
+- **THEN** production-r3 tag binds artifacts/configuration and R3 is RELEASED with legacy stopped
+#### Scenario: Cloud failure
+- **WHEN** a cloud gate fails
+- **THEN** original R2 is restored, failures remain, and no R3 production tag is created
+
+### Requirement: Consistent maintenance freeze
+The platform SHALL explicitly close new background scan admission in a protected maintenance profile before draining and freezing a workspace backup or fault snapshot, while preserving original reliable execution and reconciliation.
+#### Scenario: Normal full-profile operation
+- **WHEN** no maintenance override is supplied
+- **THEN** periodic scans remain enabled alongside delivered chat/workspace/file capabilities
+#### Scenario: Protected drainer
+- **WHEN** scan admission is false with the explicit workspace-maintenance profile and the public API/gateway are closed
+- **THEN** no new scan is scheduled, original outbox/MQ handoff and query-only reconciliation continue, and backup starts only after factual quiescence
+#### Scenario: Accidental disable outside maintenance
+- **WHEN** scan admission is configured false without the maintenance profile
+- **THEN** startup rejects that configuration instead of silently disabling an existing capability
+#### Scenario: Unknown remains unresolved
+- **WHEN** an existing operation lacks a valid terminal receipt or stop proof
+- **THEN** the snapshot remains blocked, all unknown facts and reservations are retained, and no command is replayed or manually reset
+
+### Requirement: Durable proof of never accepted file work
+The runner SHALL distinguish an expired UNKNOWN file operation that never crossed durable runner acceptance from an accepted operation with an unknown physical result. This is query-only reconciliation, not execution recovery or a stopped-process inference from404.
+#### Scenario: Never accepted and permanently fenced
+- **WHEN** a signed original-command query locks its workspace/lease/operation, current authorization holds, both database lease and deadline have expired, the operation remains UNKNOWN under its original fence, and no immutable runner acceptance exists
+- **THEN** the registered observer atomically records a negative command observation and NOT_APPLIED never-started receipt, invokes no filesystem/container/S3 execution, and the existing projection path may fail that original operation and release its unused reservation exactly once
+#### Scenario: Acceptance or uncertainty exists
+- **WHEN** any acceptance/physical fact exists, the deadline or lease remains live, authorization fails, or the original identity/fence differs
+- **THEN** the never-accepted proof is refused and existing UNKNOWN/stop-proof rules remain unchanged
+#### Scenario: Concurrent or late delivery
+- **WHEN** two original queries race or an old POST arrives after the negative observation
+- **THEN** the original operation lock and immutable receipt permit one negative fact only, the expired UNKNOWN/terminal fence cannot execute, and no new physical invocation is made

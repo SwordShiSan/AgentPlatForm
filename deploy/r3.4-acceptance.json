@@ -1,7 +1,7 @@
 {
   "status": "VERIFIED",
   "stage": "R3.4",
-  "releaseStatus": "CLOUD_GATES_PASS_AWAITING_PROTECTED_EVIDENCE_PROMOTION_AND_TAG",
+  "releaseStatus": "RELEASED",
   "r3VerifiedStages": "4/4",
   "backendSource": "b8dd176a763b4ecae7a8599baa8cd7695098220b",
   "frontendSource": "fd2aa8a30ad6a907702e446b2bceafa8118090df",
@@ -19,5 +19,14 @@
   "actionsEnabled": false,
   "evidence": "../evidence/r34/production-functional-recovery.json",
   "historicalAndNotRunScope": "See production-functional-recovery.json. Latest user requested functional-first closure; failures remain preserved.",
-  "productionTag": "Created only on protected main after evidence promotion; final tag receipt is separately recorded."
+  "productionTag": "production-r3-95ffaf3b7137",
+  "productionMain": "95ffaf3b71373a8c5d1628febbcc15c3cbd49322",
+  "promotionPullRequests": [
+    94,
+    95,
+    96,
+    97,
+    98,
+    99
+  ]
 }
