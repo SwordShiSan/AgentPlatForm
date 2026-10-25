@@ -1,0 +1,82 @@
+{
+  "stage": "R3.4",
+  "status": "SCHEMA_AND_CLEANUP_UNIT_BATCH_PASS",
+  "stageVerified": false,
+  "supplierCalls": 0,
+  "sourceBase": "34e6eb6643ae172457a7735fd89d2ec4eabbf381",
+  "sourceFiles": {
+    "backend/platform-app/src/main/resources/db/migration/V14__environment_lifecycle.sql": "589831bf6ef258d360a527469e09c84dfe6f16b3d1398dd26c755bac9b910c8c",
+    "backend/platform-app/src/test/java/com/agentplatform/app/workspace/EnvironmentPostgresTest.java": "7050e29cc18e4e12fc3eed90238383a44d116faa8dae3ab585ea110211c9d9bb",
+    "backend/platform-domain/src/main/java/com/agentplatform/domain/workspace/SandboxRuntime.java": "002bfb85a43f0f1130054c3f61be225bf76c88db035db8461d2344c143820b66",
+    "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/workspace/DockerSandboxRuntime.java": "e6c5e47921746e07289a3ffb87100f41c4adb70b062dde0a2b48feddf94cf426",
+    "backend/platform-infrastructure/src/test/java/com/agentplatform/infrastructure/workspace/SandboxRemovalTest.java": "f8f29a7dc400ab9c6cd49fbeefe8cb99b3d564d98b29bddd6f28845e77d932fc"
+  },
+  "tests": [
+    {
+      "suite": "com.agentplatform.app.workspace.EnvironmentPostgresTest",
+      "tests": 42,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 4
+    },
+    {
+      "suite": "com.agentplatform.infrastructure.workspace.SandboxRemovalTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "com.agentplatform.infrastructure.workspace.SandboxPolicyTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "commands": [
+    {
+      "scope": "V14/old-V2/real-PG/least-privilege roles",
+      "commands": [
+        {
+          "name": "atomic-move",
+          "exitCode": 0,
+          "elapsedSeconds": 1.383,
+          "sha256": "e716e6d014eaba3d2c59c7ebbb68ee25f55ce8b3dccc8d7d2e45a74c51b533f0"
+        },
+        {
+          "name": "environment-postgres",
+          "exitCode": 0,
+          "elapsedSeconds": 55.144,
+          "sha256": "301203c9adb9027dcdcf86a6d7cbd8687fed1e45768146c2eef9aaf80b4d30dd"
+        }
+      ]
+    },
+    {
+      "scope": "mocked Docker exact cleanup/old policy; native lifecycle NOT_RUN",
+      "commands": [
+        {
+          "name": "atomic-move",
+          "exitCode": 0,
+          "elapsedSeconds": 1.134,
+          "sha256": "49af0bd0a020d2b8f3a8d5bc80dbbe5d66e8f8b1937f017138f4d9f8155e89b7"
+        },
+        {
+          "name": "sandbox-removal-unit",
+          "exitCode": 0,
+          "elapsedSeconds": 30.591,
+          "sha256": "2aaebeaf4d12946f368d3a87442d78090519b17a90842b2596baa5574bf780a3"
+        }
+      ]
+    }
+  ],
+  "notRun": [
+    "four MQ tests not selected in this PG-only batch",
+    "V3 lifecycle repositories and managed dispatch",
+    "public lifecycle HTTP and Vue",
+    "native cleanup/crash/race integration",
+    "final candidate30-minute observation",
+    "protected PR promotion",
+    "production R3 backup/restore/rollback/release"
+  ]
+}

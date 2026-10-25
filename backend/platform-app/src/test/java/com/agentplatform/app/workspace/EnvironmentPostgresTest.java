@@ -41,16 +41,17 @@ class EnvironmentPostgresTest {
         return configuration.load();
     }
     @BeforeAll static void migrate() throws Exception {
-        url = System.getenv("R32_TEST_JDBC_URL");
+        boolean r34="1".equals(System.getenv("R34_ACCEPTANCE"));
+        url = System.getenv(r34?"R34_TEST_JDBC_URL":"R32_TEST_JDBC_URL");
         Assumptions.assumeTrue(url != null,"R32 PostgreSQL not selected; NOT_RUN");
-        assertEquals("1",System.getenv("R32_ACCEPTANCE"));
-        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15449/environment_test?"));
-        password = Files.readString(Path.of(System.getenv("R32_TEST_PASSWORD_FILE"))).strip();
+        assertEquals("1",System.getenv(r34?"R34_ACCEPTANCE":"R32_ACCEPTANCE"));
+        assertTrue(url.startsWith(r34?"jdbc:postgresql://127.0.0.1:25434/environment_test?":"jdbc:postgresql://127.0.0.1:15449/environment_test?"));
+        password = Files.readString(Path.of(System.getenv(r34?"R34_TEST_PASSWORD_FILE":"R32_TEST_PASSWORD_FILE"))).strip();
         flyway(null).clean();
         flyway("10").migrate();
         assertEquals(10,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         flyway(null).migrate();
-        assertEquals(13,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
+        assertEquals(14,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
     }
     private static void sql(String text) throws Exception {
@@ -198,7 +199,7 @@ class EnvironmentPostgresTest {
     }
     @Test void freshInstallReachesCurrentMigrationAndPreservesRuntimeBaseline() throws Exception {
         flyway(null).clean();flyway(null).migrate();
-        assertEquals(13,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
+        assertEquals(14,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
         assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NULL"));
     }
@@ -206,6 +207,30 @@ class EnvironmentPostgresTest {
         UUID workspace=storage(true);prepare(workspace,UUID.randomUUID(),0,false);
         var publication=executions.publications(UUID.randomUUID()).getFirst();
         return executions.claim(publication,UUID.randomUUID());
+    }
+
+    @Test void v13UpgradePreservesAcceptedV2IdentityWithoutInventingLifecycleFacts() throws Exception {
+        flyway(null).clean();flyway("13").migrate();
+        var identity=IdentityPersistenceFixture.create(pool);
+        UUID user=identity.provision(UUID.randomUUID(),"upgrade-user","upgrade-user","not-a-login-password",false);
+        var actor=new Actor(user,identity.spaces(user).getFirst().id());
+        UUID workspace=workspaces.create(actor,UUID.randomUUID(),hash("upgrade-storage"),"V13 storage fixture").id();
+        sql("UPDATE pf.workspace_operation SET status='COMMITTED',effect_state='ALLOCATED' WHERE workspace_id='"+workspace+"'");
+        sql("UPDATE pf.workspace SET state='READY' WHERE id='"+workspace+"'");
+        environments.prepare(actor,workspace,UUID.randomUUID(),hash("historical-v2"),0,false);
+        var command=executions.claim(executions.publications(UUID.randomUUID()).getFirst(),UUID.randomUUID());
+        executions.registerRunner(runner);
+        assertNull(executions.accept(command,hash("historical-v2-command"),runner.id()));
+        flyway(null).migrate();
+        assertEquals(14,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
+        assertEquals(command,executions.lookup(command.operationId()));
+        assertEquals("ENVIRONMENT_V2",command.protocol());
+        assertEquals(1,count("SELECT count(*) FROM pf.app_user WHERE id='"+user+"'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace WHERE id='"+workspace+"'"));
+        assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_cleanup"));
+        assertThrows(java.sql.SQLException.class,()->sql("UPDATE pf.workspace_environment_operation SET protocol='ENVIRONMENT_V3' WHERE id='"+command.operationId()+"'"));
+        assertEquals(command,executions.lookup(command.operationId()));
     }
     private com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt ready(com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command) {
         // Synthetic trusted-runner fact for transaction tests; native runtime is tested separately.

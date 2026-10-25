@@ -56,7 +56,7 @@ class FilePostgresTest {
         assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15450/file_test?"));
         password=Files.readString(Path.of(System.getenv("R33_TEST_PASSWORD_FILE"))).strip();
         flyway(null).clean();flyway("12").migrate();assertEquals(12,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
-        flyway(null).migrate();assertEquals(13,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
+        flyway(null).migrate();assertEquals(14,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
     }
     private static void sql(String text) throws Exception {

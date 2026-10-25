@@ -38,7 +38,7 @@ class WorkspacePostgresTest {
         flyway.clean();
         Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").target("9").load().migrate();
         assertEquals(9,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
-        flyway.migrate();assertEquals(13,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
+        flyway.migrate();assertEquals(14,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
     }
     private static void sql(String text) throws Exception {
@@ -201,7 +201,7 @@ class WorkspacePostgresTest {
             flyway.migrate();
             try(var connection=DriverManager.getConnection(fresh,"postgres",password);var statement=connection.createStatement()) {
                 try(var result=statement.executeQuery("SELECT schema_version FROM pf.baseline_version WHERE id=1")){assertTrue(result.next());assertEquals(1,result.getInt(1));}
-                try(var result=statement.executeQuery("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success")){assertTrue(result.next());assertEquals(13,result.getInt(1));}
+                try(var result=statement.executeQuery("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success")){assertTrue(result.next());assertEquals(14,result.getInt(1));}
             }
         }finally{administrativeSql("DROP DATABASE "+database);}
     }
