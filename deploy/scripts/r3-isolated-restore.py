@@ -5,7 +5,7 @@ ROOT=Path('/srv/agentplatform');MIB=1024**2
 def main():
  p=argparse.ArgumentParser();p.add_argument('folder',type=Path);a=p.parse_args();folder=a.folder.resolve(strict=True)
  assert re.fullmatch(r'/srv/agentplatform/operations/r3-release-[a-f0-9]{7,40}-\d{8}',str(folder))
- spec=importlib.util.spec_from_file_location('release',folder/'r3-release-control-v6.py');mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod);window=mod.Window(folder)
+ spec=importlib.util.spec_from_file_location('release',folder/'r3-release-control-v7.py');mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod);window=mod.Window(folder)
  os.umask(0o077)
  with (ROOT/'operations/platform-switch/switch.lock').open('a') as lock:
   fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)

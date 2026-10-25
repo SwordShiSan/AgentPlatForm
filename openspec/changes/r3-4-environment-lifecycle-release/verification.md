@@ -98,3 +98,10 @@ Maintenance freeze amendment: native cleanup window9 refused nonterminal file wo
 
 
 Maintenance implementation:4 targeted tests PASS,0 skips; log SHA2565bbb193c34917a1fb8007eec09d4b55558c6d65b2863849ce8f43fba592327c2. Actual Boot binding proves absent setting defaults enabled and malformed setting rejects. Actual managed lifecycle tests prove normal scans, protected scan-disable retaining original publication/transfer release, and wrong-profile rejection before scheduling. Real maintenance draining and new immutable candidate remain NOT_RUN; old37c evidence is historical.
+
+
+## 2026-10-26 final cloud functional and recovery conclusion
+
+Backend b8dd176a763b (API config556f88c5), unchanged frontend fd2aa8a30ad6 (gateway431f32c4). Clean Maven verify PASS;38 targeted real PG/concurrency tests PASS. Durable NEVER_ACCEPTED proof resolved the original missing-acceptance SCAN without manual reset or physical replay. Mounted broker definitions survive restart; actual new upload and three version hashes PASS. Serial consistent backup/independent restore verifies database fingerprints, credential decryption, objects, workspace, actual byte/inode quota refusal and readiness. Source UUID unchanged. Original R2 rollback and authenticated login/history PASS; same immutable R3 redeploy and final authenticated files/isolation/logout PASS. Final eleven services healthy, noOOM,2880MiB including reserves; root9.24GB, available1.61GB sampled.
+
+Historical1806.66s resource sample is scoped to its original candidate. No claim of a new final-source mixed30min window; repeated local/final narrow-change soak and extended three crash windows NOT_RUN under latest user functional-first closure. Failure reports retained. R3-aware switch installation/status/dry-run PASS; actual reverse legacy switch NOT_RUN. No supplier calls. Protected evidence promotion/tag and archival delivery are the remaining metadata operations.
