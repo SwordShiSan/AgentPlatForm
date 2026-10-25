@@ -1,0 +1,34 @@
+{
+  "status": "PASS",
+  "runtimeSource": "fd2aa8a30ad6a907702e446b2bceafa8118090df",
+  "deploymentSource": "761be19bfb1b6eb6649eaf7c9f44b0e397150094",
+  "scope": "Core file/environment/browser functional acceptance; restricted scan admission and original MQ drain",
+  "assertions": [
+    "retained-R34-upgrade-result-V14-runtime1-reopened-with-same-files",
+    "restricted-api-scan-admission-and-original-mq-drain",
+    "actual-browser-files-lifecycle-isolation-and-layout"
+  ],
+  "browser": {
+    "status": "PASS",
+    "source": "fd2aa8a30ad6a907702e446b2bceafa8118090df",
+    "scope": "Actual native lifecycle and file API/browser via private SSH; screenshots/CSS200 scale; no vendor traffic",
+    "assertions": [
+      "public-ui-environment-lifecycle-retained-files",
+      "public-ui-upload-preview-download-refresh",
+      "public-ui-explicit-replacement-and-historical-read",
+      "public-ui-stale-replacement-retains-selection",
+      "lost-create-response-refresh-reuses-original-request",
+      "double-user-admin-all-file-entry-isolation",
+      "network-feedback-responsive-theme-keyboard",
+      "private-endpoints-and-exit-cleanup"
+    ],
+    "supplierCalls": 0
+  },
+  "rawWindowSha256": "2935d4690420ce4b9d2ce6f92406645a67966618f31640b51efa7e3ff7b96d7a",
+  "rawScopeLabel": "Historical driver label is stale; only listed executed assertions apply. Native crash matrix and 1800s NOT_RUN.",
+  "r2Restored": true,
+  "legacyStopped": true,
+  "productionUuidUnchanged": true,
+  "supplierCalls": 0,
+  "release": "NOT_RUN"
+}

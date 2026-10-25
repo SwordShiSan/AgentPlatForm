@@ -4,6 +4,8 @@
 
 Prioritize functional correctness and proven bugs. Do not expand the exhaustive crash/fault matrix during closure. Preserve historical failures and mark unexecuted extended scenarios NOT_RUN, separately from core functional evidence. Core checks remain identity/permissions, files and immutable versions, environment lifecycle/data retention, actual browser behavior, resource admission and release backup/restore/rollback. A confirmed API scan permission defect requires only workspace_id column access; private operation bodies remain denied. Reuse unchanged immutable runtime artifacts and bind deployment/test changes separately.
 
+Current result: core functional gate PASS, production release NOT_RUN. See evidence/r34/scoped-scan-regression.json (104 real PG/MQ tests, no skips) and functional-acceptance.json (actual native/browser, original scan admitted/drained once, exact R2 restored). Runtime remains fd2aa8a; only deployment column grant and regression tests changed. Browser verified environment lifecycle/data retention, upload/replacement/history, conflict retention, refresh, double-user/admin isolation, responsive/theme/keyboard and internal endpoints. The raw controller reused a stale crash-matrix scope label: its listed executed assertions are authoritative; it did not execute that matrix. Extended crash matrix and duplicate local1800s observation NOT_RUN; production observation and serial recovery remain required. Supplier calls0.
+
 Status: PREPARING. All implementation/runtime/release gates NOT_RUN. Supplier calls must remain0. Prior R3.3 PASS records are prerequisites only.
 
 ## Resource window1: retained FAIL, original R2 restored

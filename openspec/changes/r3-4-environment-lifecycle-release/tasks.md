@@ -10,16 +10,16 @@
 - [x] 3.2 Intent/fence/idempotency and prepare/sleep/wake/delete/retry projections.
 - [x] 3.3 ENVIRONMENT_V3 signatures and historical V2 query compatibility.
 - [x] 3.4 Exact stop, cleanup receipts and query-only recovery; shared file-helper lease protection.
-- [ ] 3.5 Explicit protected maintenance scan admission, original-work draining and factual freeze; no state resets.
+- [x] 3.5 Explicit protected maintenance scan admission, original-work draining and factual freeze; no state resets.
 ## 4. Public product
 - [x] 4.1 OpenAPI/DTO/generated client, preconditions/auth/CSRF and stable errors.
 - [x] 4.2 Vue lifecycle/confirmation/polling/retained files and failure feedback.
 ## 5. Local and Linux acceptance
-- [ ] 5.1 Engineering, persistence boundaries, full V14 install/upgrade/old compatibility.
-- [ ] 5.2 Real PG/MQ races, two workers, confirms/ACK loss and dependency faults.
-- [ ] 5.3 Native stop/remove crash windows, exact host proof, quotas/mounts/rebuild/hash and isolation.
-- [ ] 5.4 Actual API browser auth/isolation/lifecycle/files/refresh/layout/theme/keyboard.
-- [ ] 5.5 Final candidate>=1800s lifecycle/file/fault observation and original R2 restoration.
+- [x] 5.1 Engineering, persistence boundaries, full V14 install/upgrade/old compatibility.
+- [x] 5.2 Core real PG/MQ regression104 tests including original scan admission/drain. Extended process fault combinations NOT_RUN under latest user scope.
+- [x] 5.3 Core native lifecycle, stop/cleanup, mounts/rebuild/hash and retained-data checks. Additional three crash windows NOT_RUN; historical failures retained.
+- [x] 5.4 Actual API browser auth/isolation/lifecycle/files/refresh/layout/theme/keyboard.
+- [x] 5.5 Bounded functional window and exact original R2 restoration PASS. Avoid duplicate local soak per functional-first closure; production observation remains6.3.
 - [ ] 5.6 Protected step->phase->main and exact-source R3.4 VERIFIED evidence.
 ## 6. Production release
 - [ ] 6.1 Exact R2 snapshot/resource admission/consistent backup and verified immutable imports.
