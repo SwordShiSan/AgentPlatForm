@@ -797,6 +797,27 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/EnvironmentSubmission" }
         default: { $ref: "#/components/responses/IdentityProblem" }
+    delete:
+      security: [{ session: [] }]
+      operationId: deleteWorkspaceEnvironment
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/EnvironmentMatch"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmptyEnvironmentCommand" }
+      responses:
+        "202":
+          description: Remove only the execution environment; retain workspace, hard quota, files and immutable versions
+          headers:
+            ETag: { schema: { type: string }, description: Quoted environment revision }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvironmentSubmission" }
+        default: { $ref: "#/components/responses/IdentityProblem" }
   /api/v1/workspaces/{id}/environment/retry:
     post:
       security: [{ session: [] }]
@@ -823,6 +844,84 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnvironmentSubmission" }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/workspaces/{id}/environment/sleep:
+    post:
+      security: [{ session: [] }]
+      operationId: sleepWorkspaceEnvironment
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/EnvironmentMatch"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmptyEnvironmentCommand" }
+      responses:
+        "202":
+          description: Stop and remove the execution environment; workspace/files/quota are retained
+          headers:
+            ETag: { schema: { type: string }, description: Quoted environment revision }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvironmentSubmission" }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/workspaces/{id}/environment/wake:
+    post:
+      security: [{ session: [] }]
+      operationId: wakeWorkspaceEnvironment
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/EnvironmentMatch"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmptyEnvironmentCommand" }
+      responses:
+        "202":
+          description: Prepare a new generation after confirmed stop; preserve workspace/files/quota
+          headers:
+            ETag: { schema: { type: string }, description: Quoted environment revision }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvironmentSubmission" }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/workspaces/{id}/environment/operations/{operationId}:
+    get:
+      security: [{ session: [] }]
+      operationId: getEnvironmentOperation
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: operationId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Authorized original operation metadata without host/container identities
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvironmentOperation" }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/workspaces/{id}/environment/requests/{requestId}:
+    get:
+      security: [{ session: [] }]
+      operationId: getEnvironmentRequest
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: requestId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Resolve only this caller's original idempotency request after response loss
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvironmentOperation" }
         default: { $ref: "#/components/responses/IdentityProblem" }
   /api/v1/workspaces/{id}/files:
     get:
@@ -2091,16 +2190,26 @@ components:
               operationId: { type: "null" }
               errorCode: { type: "null" }
               allowedActions: { type: array, items: { const: PREPARE } }
-        - if: { properties: { state: { enum: [PREPARING, READY, BLOCKED] } }, required: [state] }
+        - if: { properties: { phase: { enum: [PREPARING, STOPPING, DELETING, BLOCKED] } }, required: [phase] }
           then: { properties: { allowedActions: { type: array, maxItems: 0 } } }
+        - if: { properties: { state: { const: READY } }, required: [state] }
+          then: { properties: { allowedActions: { type: array, items: { enum: [SLEEP, DELETE] } } } }
         - if: { properties: { state: { const: ERROR } }, required: [state] }
           then: { properties: { allowedActions: { type: array, items: { const: RETRY } } } }
         - if: { properties: { state: { const: STOPPED } }, required: [state] }
-          then: { properties: { allowedActions: { type: array, items: { const: PREPARE } } } }
+          then: { properties: { allowedActions: { type: array, items: { enum: [PREPARE, WAKE, DELETE] } } } }
+        - if: { properties: { state: { const: DELETED } }, required: [state] }
+          then: { properties: { phase: { const: DELETED }, allowedActions: { type: array, maxItems: 1, items: { const: PREPARE } } } }
+        - if: { properties: { state: { not: { const: NOT_CREATED } } }, required: [state] }
+          then:
+            properties:
+              generation: { type: integer, minimum: 1 }
+              version: { type: integer, minimum: 1 }
+              operationId: { type: string, format: uuid }
       properties:
         workspaceId: { type: string, format: uuid }
-        state: { type: string, enum: [NOT_CREATED, PREPARING, READY, STOPPED, ERROR, BLOCKED] }
-        phase: { type: string, enum: [NONE, PREPARING, READY, STOPPING, STOPPED, ERROR, BLOCKED] }
+        state: { type: string, enum: [NOT_CREATED, PREPARING, READY, STOPPING, STOPPED, DELETING, DELETED, ERROR, BLOCKED] }
+        phase: { type: string, enum: [NONE, PREPARING, READY, STOPPING, STOPPED, DELETING, DELETED, ERROR, BLOCKED] }
         generation: { type: integer, minimum: 0, maximum: 9007199254740991 }
         version: { type: integer, minimum: 0, maximum: 9007199254740991 }
         operationId: { type: [string, "null"], format: uuid }
@@ -2108,8 +2217,20 @@ components:
         allowedActions:
           type: array
           uniqueItems: true
-          maxItems: 1
-          items: { type: string, enum: [PREPARE, RETRY] }
+          maxItems: 2
+          items: { type: string, enum: [PREPARE, RETRY, SLEEP, WAKE, DELETE] }
+    EnvironmentOperation:
+      type: object
+      additionalProperties: false
+      required: [operationId, workspaceId, intent, status, generation, revision, errorCode]
+      properties:
+        operationId: { type: string, format: uuid }
+        workspaceId: { type: string, format: uuid }
+        intent: { type: string, enum: [PREPARE, WAKE, STOP, SLEEP, DELETE] }
+        status: { type: string, enum: [DRAINING, PENDING, CLAIMED, RUNNING, COMMITTED, FAILED, UNKNOWN] }
+        generation: { type: integer, minimum: 1, maximum: 9007199254740991 }
+        revision: { type: integer, minimum: 1, maximum: 9007199254740991 }
+        errorCode: { type: [string, "null"], pattern: '^[A-Z_]{1,64}$' }
     EnvironmentSubmission:
       type: object
       additionalProperties: false
@@ -2162,7 +2283,7 @@ components:
             - BLOCKED
         environmentState:
           type: string
-          enum: [NOT_CREATED, PREPARING, READY, STOPPED, ERROR, BLOCKED]
+          enum: [NOT_CREATED, PREPARING, READY, STOPPING, STOPPED, DELETING, DELETED, ERROR, BLOCKED]
         quotaBytes:
           type: integer
           const: 2147483648

@@ -29,6 +29,24 @@ class SandboxPolicyTest {
     private static final String HELPER = "sha256:" + "b".repeat(64);
     private static final UUID MOUNT = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
+    @Test void independentR34AcceptanceRootIsAllowedWithoutOpeningArbitraryNamespaces() {
+        String root = "/srv/agentplatform/acceptance/r34-full-20261025t030104z/workspaces";
+        var sandbox = new SandboxPolicy(IMAGE, HELPER, root, MOUNT, "/dev/loop1", Path.of("attestation.json"));
+        assertEquals(root, sandbox.workspaceRoot());
+        assertEquals(root, DockerWorkspaceAllocator.fixedWorkspaceRoot(root));
+        assertEquals(root, new FileRuntimePolicy(IMAGE, HELPER, root, MOUNT, "/dev/loop1").workspaceRoot());
+        for (String rejected : new String[]{
+                "/srv/agentplatform/acceptance/r35-unauthorized/workspaces",
+                "/srv/agentplatform/acceptance/r34-/workspaces",
+                root + "/extra", root + "/../workspaces",
+                "/srv/agentplatform/acceptance/r34-case/../workspaces",
+                "/srv/agentplatform/acceptance/r340-lookalike/workspaces"}) {
+            assertThrows(IllegalArgumentException.class, () -> new SandboxPolicy(IMAGE, HELPER,
+                    rejected, MOUNT, "/dev/loop1", Path.of("attestation.json")));
+            assertThrows(IllegalArgumentException.class, () -> DockerWorkspaceAllocator.fixedWorkspaceRoot(rejected));
+        }
+    }
+
     @Test void mutableImageAndArbitraryRootOrDeviceAreRejected() {
         for (String image : new String[]{"sandbox:latest", "sandbox:fixed", "", "sha256:bad"}) {
             assertThrows(IllegalArgumentException.class, () -> new SandboxPolicy(image, HELPER,

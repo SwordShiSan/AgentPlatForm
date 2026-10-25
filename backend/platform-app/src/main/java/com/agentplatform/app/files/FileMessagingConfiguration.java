@@ -20,6 +20,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 @Configuration(proxyBeanMethods=false) @Profile({"workspace-api","workspace-worker"})
 @ConditionalOnProperty(name={"platform.workspace.enabled","platform.workspace.files.enabled"},havingValue="true")
+@org.springframework.boot.context.properties.EnableConfigurationProperties(FileMaintenanceProperties.class)
 public class FileMessagingConfiguration {
     @Bean ThreadPoolTaskScheduler fileTimers() {
         var timers=new ThreadPoolTaskScheduler();timers.setPoolSize(4);timers.setThreadNamePrefix("file-control-");
@@ -44,7 +45,9 @@ public class FileMessagingConfiguration {
     @Bean @Profile("workspace-worker") UploadReconciliation uploadReconciliation(FileRepository repository,AssetStore assets){return new UploadReconciliation(repository,assets);}
     @Bean SmartLifecycle fileLifecycle(FileRepository repository,SpringFileMessaging messaging,@Qualifier("fileTimers")ThreadPoolTaskScheduler timers,
             ObjectProvider<FileExecution> execution,ObjectProvider<FileReconciliation> reconciliation,ObjectProvider<FileStagingCleanup> cleanup,
-            Environment selected,WorkspaceEffectBoundary barrier,AssetStore assets,ObjectProvider<UploadReconciliation> uploads) {
+            Environment selected,WorkspaceEffectBoundary barrier,AssetStore assets,ObjectProvider<UploadReconciliation> uploads,
+            FileMaintenanceProperties maintenance) {
+        boolean admitScans=maintenance.scanAdmission(selected.acceptsProfiles(Profiles.of("workspace-maintenance")));
         return new SmartLifecycle() {
             private volatile boolean running;
             private java.util.concurrent.ScheduledFuture<?> relay;
@@ -61,7 +64,7 @@ public class FileMessagingConfiguration {
                 relay=timers.scheduleWithFixedDelay(()->{
                     try {
                         repository.blockExpired();
-                        repository.scheduleScan();
+                        if(admitScans)repository.scheduleScan();
                         for(var item:repository.publications(owner)) {
                             boolean confirmed=false;
                             try{messaging.publish(item);confirmed=true;}catch(RuntimeException unconfirmed){ /* Retain outbox. */ }

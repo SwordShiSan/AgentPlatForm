@@ -51,14 +51,15 @@ public final class MyBatisEnvironmentMaintenanceRepository implements Environmen
         if(!row.id().equals(slot.environmentId())||!Objects.equals(row.generation(),slot.generation()))throw new WorkspaceFailure(503,"ENVIRONMENT_CAPACITY_INCONSISTENT");
         // An unresolved data-plane owner must converge with its own stop barrier or
         // trusted host proof. A fresh controller cannot assert that owner's callbacks stopped.
-        if(environments.unresolvedUse(row.id()))return 0;
+        if(environments.unresolvedUse(row.id())||environments.lifecycleBusy(row.spaceId(),row.workspaceId())
+                ||workspaces.fileDataPlaneBusy(row.spaceId(),row.workspaceId())||mapper.fileOperationBusy(row.spaceId(),row.workspaceId()))return 0;
         boolean live=workspaces.authorized(new Actor(command.actorId(),command.spaceId()));
         if(live&&!mapper.idle(row.id()))return 0;
         var operation=Uuid7.next();long fence=Math.addExact(row.fence(),1);
         mapper.insertStop(command,operation,Uuid7.next(),fence);
         if(mapper.selectStop(command,operation,fence,row.fence())!=1)throw new WorkspaceFailure(409,"ENVIRONMENT_CONCURRENT_CHANGE");
         row=environments.environment(command.spaceId(),command.workspaceId());
-        environments.insertOutbox(Uuid7.next(),row);execution.projectWorkspace(command,"READY");event(row);
+        environments.insertOutbox(Uuid7.next(),row);execution.projectWorkspace(command,row.state());event(row);
         return 1;
     }
 }

@@ -4,6 +4,7 @@
 !deploy/*.Dockerfile
 !deploy/nginx.conf
 !deploy/nginx.files-local.conf
+!deploy/nginx.production.conf
 !deploy/probes/**
 !deploy/scripts/workspace-quota-helper.py
 !deploy/scripts/file-helper-entrypoint.py

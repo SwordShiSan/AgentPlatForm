@@ -23,6 +23,7 @@ public interface SandboxRuntime extends AutoCloseable {
                   boolean truncated, boolean timedOut, boolean cancelled, Stop stopReceipt) {}
     record Stop(String containerId, String image, String startedAt, String finishedAt,
                 boolean execStopped, boolean callbacksStopped, Instant observedAt) {}
+    record Removal(String containerId, String image, String startedAt, String finishedAt, Instant observedAt) {}
     enum Probe { PYTHON_666, NODE_CROSS_READ, WAIT_FOR_CANCEL, OUTPUT_BOUND,
         CPU_BOUND, PID_BOUND, MEMORY_BOUND, NETWORK_BOUND, TMP_BOUND, BYTE_QUOTA, INODE_QUOTA }
     enum FileAction { READ, WRITE, LIST }
@@ -72,5 +73,11 @@ public interface SandboxRuntime extends AutoCloseable {
     Stop stop(Identity identity);
     /** Only after the application has durably stored this exact stop receipt. */
     void removeStopped(Identity identity, Stop receipt);
+    /** V3 only: caller must first durably commit this exact stop receipt.
+     * A missing container without that receipt is never termination evidence.
+     * Legacy probe adapters must opt in; they cannot synthesize cleanup success. */
+    default Removal confirmRemoval(Identity identity, Stop committedStop) {
+        throw new UnsupportedOperationException("Exact removal confirmation is not supported by this adapter");
+    }
     @Override void close() throws Exception;
 }

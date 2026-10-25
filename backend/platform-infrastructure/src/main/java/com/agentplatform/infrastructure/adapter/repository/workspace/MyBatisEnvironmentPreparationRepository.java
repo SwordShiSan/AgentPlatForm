@@ -45,11 +45,13 @@ public final class MyBatisEnvironmentPreparationRepository implements Environmen
         boolean fileBusy=workspaces.fileDataPlaneBusy(spaceId,workspaceId);
         if (environment == null) return new Snapshot(null, workspaceId, "NOT_CREATED", 0, 0, null, null, null, null,storageReady&&!fileBusy&&slot.environmentId()==null,false);
         var operation = mapper.operation(environment.operationId());
-        boolean quiet=storageReady&&!fileBusy&&!mapper.unresolvedUse(environment.id())&&(slot.environmentId()==null||slot.environmentId().equals(environment.id()));
-        boolean stopped="STOPPED".equals(environment.state())&&"STOP".equals(operation.kind())&&"COMMITTED".equals(operation.status())
-                &&"STOPPED".equals(operation.effectState())&&mapper.confirmedStop(operation.id());
+        boolean quiet=storageReady&&!fileBusy&&!mapper.lifecycleBusy(spaceId,workspaceId)&&!mapper.unresolvedUse(environment.id())&&(slot.environmentId()==null||slot.environmentId().equals(environment.id()));
+        boolean stopped=("STOPPED".equals(environment.state())&&java.util.Set.of("STOP","SLEEP").contains(operation.kind())
+                ||"DELETED".equals(environment.state())&&"DELETE".equals(operation.kind()))&&"COMMITTED".equals(operation.status())
+                &&"STOPPED".equals(operation.effectState())&&mapper.confirmedStop(operation.id())&&mapper.cleanupSatisfied(operation.id());
         boolean failed="ERROR".equals(environment.state())&&"FAILED".equals(operation.status())
-                &&("PREPARE".equals(operation.kind())&&"NOT_STARTED".equals(operation.effectState())||mapper.confirmedStop(operation.id()));
+                &&(java.util.Set.of("PREPARE","WAKE").contains(operation.kind())&&"NOT_STARTED".equals(operation.effectState())
+                    ||mapper.confirmedStop(operation.id())&&mapper.cleanupSatisfied(operation.id()));
         return new Snapshot(environment.id(), workspaceId, environment.state(), environment.generation(), environment.version(),
                 environment.operationId(), operation.kind(), operation.status(), environment.errorCode(),quiet&&stopped,quiet&&failed);
     }
@@ -77,15 +79,18 @@ public final class MyBatisEnvironmentPreparationRepository implements Environmen
         if (!"READY".equals(workspace.state())) throw new WorkspaceFailure(409, "WORKSPACE_STORAGE_NOT_READY");
         if (workspaces.fileDataPlaneBusy(actor.spaceId(),workspaceId)) throw new WorkspaceFailure(423,"WORKSPACE_DATA_PLANE_BUSY");
         if (version != (environment == null ? 0 : environment.version())) throw new WorkspaceFailure(412, "VERSION_CONFLICT");
+        if (mapper.lifecycleBusy(actor.spaceId(),workspaceId)) throw new WorkspaceFailure(423,"ENVIRONMENT_LIFECYCLE_BUSY");
         if (environment == null) {
             if (retry) throw new WorkspaceFailure(409, "ENVIRONMENT_RETRY_UNSAFE");
         } else {
             var operation = mapper.operation(environment.operationId());
-            boolean stopped = "STOPPED".equals(environment.state()) && "STOP".equals(operation.kind())
+            boolean stopped = ("STOPPED".equals(environment.state()) && java.util.Set.of("STOP","SLEEP").contains(operation.kind())
+                    ||"DELETED".equals(environment.state())&&"DELETE".equals(operation.kind()))
                     && "COMMITTED".equals(operation.status()) && "STOPPED".equals(operation.effectState())
-                    && mapper.confirmedStop(operation.id());
+                    && mapper.confirmedStop(operation.id())&&mapper.cleanupSatisfied(operation.id());
             boolean failed = "ERROR".equals(environment.state()) && "FAILED".equals(operation.status())
-                    && ("PREPARE".equals(operation.kind())&&"NOT_STARTED".equals(operation.effectState()) || mapper.confirmedStop(operation.id()));
+                    && (java.util.Set.of("PREPARE","WAKE").contains(operation.kind())&&"NOT_STARTED".equals(operation.effectState())
+                        || mapper.confirmedStop(operation.id())&&mapper.cleanupSatisfied(operation.id()));
             if (!(retry ? failed : stopped) || mapper.unresolvedUse(environment.id())) {
                 throw new WorkspaceFailure(409, "ENVIRONMENT_RETRY_UNSAFE");
             }

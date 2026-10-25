@@ -41,6 +41,8 @@ class FilePostgresTest {
     private FileTransferMapper transferMapper;
     private TransactionTemplate transactionBoundary;
     private WorkspaceRepository workspaces;
+    private com.agentplatform.domain.workspace.EnvironmentPreparationRepository environmentPreparations;
+    private com.agentplatform.domain.workspace.EnvironmentLifecycleRepository lifecycles;
     private Actor alice, bob;
     private UUID workspace;
     private static Flyway flyway(String target) {
@@ -50,13 +52,14 @@ class FilePostgresTest {
         return configuration.load();
     }
     @BeforeAll static void migrate() throws Exception {
-        url=System.getenv("R33_TEST_JDBC_URL");
+        boolean r34="1".equals(System.getenv("R34_ACCEPTANCE"));
+        url=System.getenv(r34?"R34_TEST_JDBC_URL":"R33_TEST_JDBC_URL");
         Assumptions.assumeTrue(url!=null,"R33 actual PostgreSQL not selected; NOT_RUN");
-        assertEquals("1",System.getenv("R33_ACCEPTANCE"));
-        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15450/file_test?"));
-        password=Files.readString(Path.of(System.getenv("R33_TEST_PASSWORD_FILE"))).strip();
+        assertEquals("1",System.getenv(r34?"R34_ACCEPTANCE":"R33_ACCEPTANCE"));
+        assertTrue(url.startsWith(r34?"jdbc:postgresql://127.0.0.1:25434/environment_test?":"jdbc:postgresql://127.0.0.1:15450/file_test?"));
+        password=Files.readString(Path.of(System.getenv(r34?"R34_TEST_PASSWORD_FILE":"R33_TEST_PASSWORD_FILE"))).strip();
         flyway(null).clean();flyway("12").migrate();assertEquals(12,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
-        flyway(null).migrate();assertEquals(13,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
+        flyway(null).migrate();assertEquals(14,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
     }
     private static void sql(String text) throws Exception {
@@ -82,6 +85,22 @@ class FilePostgresTest {
         var tx=new TransactionTemplate(new JdbcTransactionManager(limitedPool));
         return new ScopedFiles(limitedPool,new TransactionalFileRepository(new MyBatisFileRepository(session.getMapper(FileMapper.class),
                 session.getMapper(WorkspaceMapper.class),session.getMapper(EnvironmentPreparationMapper.class),"sha256:"+"a".repeat(64),"b".repeat(64)),tx));
+    }
+    @Test void apiScanAdmissionUsesScopedColumnsAndCannotReadPrivateUseBodies() throws Exception {
+        for(String role:List.of("ap_migration","ap_api","ap_worker","ap_runner","ap_workspace_ops"))
+            sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='"+role+"') THEN CREATE ROLE "+role+" NOLOGIN;END IF;END $$");
+        for(String name:List.of("r1-runtime-grants.sql","r2-runtime-grants.sql","r3-workspace-grants.sql","r3-environment-grants.sql","r3-file-grants.sql"))
+            sql(Files.readString(Path.of("../../deploy/config",name)));
+        try(var api=scopedFiles("ap_api")) {
+            api.repository().scheduleScan();
+            api.repository().scheduleScan();
+            assertEquals(1,count("SELECT count(*) FROM pf.file_operation WHERE kind='SCAN'"));
+            assertEquals(1,count("SELECT count(*) FROM pf.file_outbox"));
+            try(var connection=api.pool().getConnection();var statement=connection.createStatement()) {
+                assertThrows(java.sql.SQLException.class,()->statement.executeQuery("SELECT request_text FROM pf.workspace_environment_use"));
+                assertThrows(java.sql.SQLException.class,()->statement.executeQuery("SELECT * FROM pf.workspace_environment_use_result"));
+            }
+        }
     }
     @Test void realApiAndWorkerRolesReserveRefundAndSettleWithoutQuotaAdministration() throws Exception {
         for(String role:List.of("ap_migration","ap_api","ap_worker","ap_runner","ap_workspace_ops"))
@@ -157,6 +176,9 @@ class FilePostgresTest {
     @BeforeEach void setup() throws Exception {
         sql("TRUNCATE pf.app_user CASCADE");
         sql("UPDATE pf.workspace_capacity SET reserved_bytes=0,reserved_slots=0,next_project_id=200001");
+        // TRUNCATE ... CASCADE clears the singleton even when its scoped columns
+        // were NULL. Cross-feature fixtures must restore it just like environment tests.
+        sql("INSERT INTO pf.workspace_sandbox_slot(id) VALUES(1) ON CONFLICT(id) DO UPDATE SET space_id=NULL,workspace_id=NULL,environment_id=NULL,generation=NULL");
         var config=new HikariConfig();config.setJdbcUrl(url);config.setUsername("postgres");config.setPassword(password);
         config.setMaximumPoolSize(4);config.setMinimumIdle(1);pool=new HikariDataSource(config);
         var factory=new SqlSessionFactoryBean();factory.setDataSource(pool);
@@ -168,6 +190,13 @@ class FilePostgresTest {
         transferMapper=session.getMapper(FileTransferMapper.class);transactionBoundary=transactions;
         var workspaceMapper=session.getMapper(WorkspaceMapper.class);
         workspaces=new TransactionalWorkspaceRepository(new MyBatisWorkspaceRepository(workspaceMapper),transactions);
+        environmentPreparations=new com.agentplatform.app.workspace.TransactionalEnvironmentPreparationRepository(
+                new com.agentplatform.infrastructure.adapter.repository.workspace.MyBatisEnvironmentPreparationRepository(
+                        session.getMapper(EnvironmentPreparationMapper.class),workspaceMapper,"sha256:"+"a".repeat(64),"b".repeat(64)),transactions);
+        lifecycles=new com.agentplatform.app.workspace.TransactionalEnvironmentLifecycleRepository(
+                new com.agentplatform.infrastructure.adapter.repository.workspace.MyBatisEnvironmentLifecycleRepository(
+                        session.getMapper(EnvironmentLifecycleMapper.class),session.getMapper(EnvironmentPreparationMapper.class),
+                        workspaceMapper,"sha256:"+"a".repeat(64),"b".repeat(64)),transactions);
         files=new TransactionalFileRepository(new MyBatisFileRepository(session.getMapper(FileMapper.class),workspaceMapper,
                 session.getMapper(EnvironmentPreparationMapper.class),"sha256:"+"a".repeat(64),"b".repeat(64)),transactions);
         runner=new TransactionalFileRunnerRepository(new MyBatisFileRunnerRepository(session.getMapper(FileRunnerMapper.class),session.getMapper(FileMapper.class),
@@ -185,6 +214,21 @@ class FilePostgresTest {
         sql("UPDATE pf.workspace_operation SET status='COMMITTED',effect_state='ALLOCATED' WHERE workspace_id='"+workspace+"'");
     }
     @AfterEach void close() { if(pool!=null)pool.close(); }
+    @Test void lifecycleClosesNewFileMutationsButPreservesUploadReservationAndReadUsage() throws Exception {
+        var upload=create(8);UUID transfer=UUID.randomUUID();files.beginTransfer(alice,upload.id(),transfer);files.transferVerified(alice,upload.id(),transfer);
+        var actor=new com.agentplatform.domain.workspace.WorkspaceData.Actor(alice.userId(),alice.spaceId());
+        var prepared=environmentPreparations.prepare(actor,workspace,UUID.randomUUID(),"c".repeat(64),0,false);
+        // Synthetic environment facts for transaction gating only; no physical runtime is claimed.
+        sql("UPDATE pf.workspace_environment SET state='READY',container_id='"+"d".repeat(64)
+                +"',container_started_at='2026-10-25T00:00:00Z',readiness_hash='"+"e".repeat(64)+"' WHERE workspace_id='"+workspace+"'");
+        sql("UPDATE pf.workspace_environment_operation SET status='COMMITTED',effect_state='READY' WHERE id='"+prepared.operationId()+"'");
+        lifecycles.admit(actor,workspace,UUID.randomUUID(),"f".repeat(64),1,com.agentplatform.domain.workspace.EnvironmentLifecycleRepository.Intent.SLEEP);
+        assertEquals(423,assertThrows(FileFailure.class,()->files.completeUpload(alice,upload.id())).status());
+        assertEquals(423,assertThrows(FileFailure.class,()->create(4)).status());
+        assertEquals(8,files.usage(alice,workspace).reservedBytes());
+        assertEquals("VERIFIED",files.upload(alice,upload.id()).status());
+        assertEquals(0,count("SELECT count(*) FROM pf.file_operation"));
+    }
     private Upload create(long bytes) {
         return files.create(alice,workspace,UUID.randomUUID(),UUID.randomUUID().toString().replace("-","")+"0".repeat(32),
                 new UploadRequest("hello.txt",bytes,"a".repeat(64),null,null,null));
@@ -193,11 +237,12 @@ class FilePostgresTest {
         @Override public void close(){connection.destroy();}
     }
     private FileBroker fileBroker() throws Exception {
-        String selected=System.getenv("R33_TEST_MQ_PORT");
+        boolean r34="1".equals(System.getenv("R34_ACCEPTANCE"));
+        String selected=System.getenv(r34?"R34_FILE_MQ_PORT":"R33_TEST_MQ_PORT");
         Assumptions.assumeTrue(selected!=null,"R33 actual RabbitMQ not selected; NOT_RUN");
-        assertEquals("15702",selected);
-        var connection=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory("127.0.0.1",15702);
-        connection.setUsername("r33");connection.setPassword(Files.readString(Path.of(System.getenv("R33_TEST_MQ_PASSWORD_FILE"))).strip());
+        assertEquals(r34?"25436":"15702",selected);
+        var connection=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory("127.0.0.1",r34?25436:15702);
+        connection.setUsername(r34?"r34-file":"r33");connection.setPassword(Files.readString(Path.of(System.getenv(r34?"R34_FILE_MQ_PASSWORD_FILE":"R33_TEST_MQ_PASSWORD_FILE"))).strip());
         connection.setVirtualHost("/agentplatform");connection.setPublisherConfirmType(org.springframework.amqp.rabbit.connection.CachingConnectionFactory.ConfirmType.CORRELATED);
         connection.setPublisherReturns(true);
         var admin=new org.springframework.amqp.rabbit.core.RabbitAdmin(connection);
@@ -247,10 +292,12 @@ class FilePostgresTest {
         }
     }
     @Test void realBrokerConfirmDeliveredButFrameworkCallbackLostRetainsOutboxAndDeduplicatesRetry() throws Exception {
-        Assumptions.assumeTrue(System.getenv("R33_TEST_MQ_PORT")!=null,"R33 actual RabbitMQ not selected; NOT_RUN");
+        boolean r34="1".equals(System.getenv("R34_ACCEPTANCE"));
+        Assumptions.assumeTrue(System.getenv(r34?"R34_FILE_MQ_PORT":"R33_TEST_MQ_PORT")!=null,"Actual isolated RabbitMQ not selected; NOT_RUN");
+        if(r34)assertEquals("25436",System.getenv("R34_FILE_MQ_PORT"));
         var dropped=new java.util.concurrent.atomic.AtomicInteger();
-        var loss=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory("127.0.0.1",15702);
-        loss.setUsername("r33");loss.setPassword(Files.readString(Path.of(System.getenv("R33_TEST_MQ_PASSWORD_FILE"))).strip());loss.setVirtualHost("/agentplatform");
+        var loss=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory("127.0.0.1",r34?25436:15702);
+        loss.setUsername(r34?"r34-file":"r33");loss.setPassword(Files.readString(Path.of(System.getenv(r34?"R34_FILE_MQ_PASSWORD_FILE":"R33_TEST_MQ_PASSWORD_FILE"))).strip());loss.setVirtualHost("/agentplatform");
         loss.setPublisherConfirmType(org.springframework.amqp.rabbit.connection.CachingConnectionFactory.ConfirmType.CORRELATED);loss.setPublisherReturns(true);
         // Official framework seam: the real broker's ACK reaches this callback but not its correlation future.
         loss.setPublisherChannelFactory((channel,executor)->new org.springframework.amqp.rabbit.connection.PublisherCallbackChannelImpl(channel,executor){

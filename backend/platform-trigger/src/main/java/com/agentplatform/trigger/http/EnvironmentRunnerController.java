@@ -13,17 +13,18 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController @Profile("workspace-runner")
 @ConditionalOnProperty(name="platform.workspace.environment.enabled",havingValue="true")
-@RequestMapping("/internal/operations/v2/environments")
+@RequestMapping({"/internal/operations/v2/environments","/internal/operations/v3/environments"})
 public final class EnvironmentRunnerController {
     private final EnvironmentRunnerApi service;
     public EnvironmentRunnerController(EnvironmentRunnerApi service) {this.service=service;}
     @PostMapping(consumes=MediaType.APPLICATION_JSON_VALUE)
     ResponseEntity<byte[]> operate(@AuthenticationPrincipal Jwt jwt,@RequestBody byte[] body,HttpServletRequest request) {
-        route(request);return result(service.operate(jwt.getTokenValue(),body));
+        route(request);return result(v3(request)?service.operateV3(jwt.getTokenValue(),body):service.operate(jwt.getTokenValue(),body));
     }
     @GetMapping("/{id}") ResponseEntity<byte[]> query(@AuthenticationPrincipal Jwt jwt,@PathVariable("id") String id,HttpServletRequest request) {
-        route(request);return result(service.query(jwt.getTokenValue(),id));
+        route(request);return result(v3(request)?service.queryV3(jwt.getTokenValue(),id):service.query(jwt.getTokenValue(),id));
     }
+    private static boolean v3(HttpServletRequest request) {return request.getRequestURI().startsWith("/internal/operations/v3/environments");}
     private static void route(HttpServletRequest request) {
         if(request.getQueryString()!=null)throw new WorkspaceFailure(400,"INVALID_RUNNER_ROUTE");
     }

@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "exitCode": 0,
+  "elapsedSeconds": 52.52150949998759,
+  "logSha256": "5bbb193c34917a1fb8007eec09d4b55558c6d65b2863849ce8f43fba592327c2",
+  "sourceBase": "a6e6f2dae90ec8800a84bdd3cae6d7bb300134db",
+  "workingTreeClean": false,
+  "supplierCalls": 0,
+  "stageStatus": "IMPLEMENTING",
+  "tests": 4,
+  "skipped": 0,
+  "scope": "Boot-bound maintenance scan-admission and preserved managed relay; native drain NOT_RUN",
+  "files": {
+    "backend/platform-app/src/main/java/com/agentplatform/app/files/FileMaintenanceProperties.java": "f6d2e5ebd47d6480ce7b9272693b8da8fc40492d",
+    "backend/platform-app/src/main/java/com/agentplatform/app/files/FileMessagingConfiguration.java": "2fee9d57270aaf72ac9aecb77ec87bc789e4b2e2",
+    "backend/platform-app/src/test/java/com/agentplatform/app/files/FileMaintenanceAdmissionTest.java": "14ebe17d123d585336d9ab2559b0f6121d9cac82"
+  },
+  "previousCandidate": "37c400aaa154d909f70a6b503f13b0c31cd23a33",
+  "newCandidateBuilt": false
+}

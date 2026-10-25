@@ -15,6 +15,7 @@ class EnvironmentProfileTest {
         return new ApplicationContextRunner().withUserConfiguration(EnvironmentConfiguration.class,EnvironmentConfiguration.RuntimeConfiguration.class)
                 .withBean(EnvironmentExecutionMapper.class,()->mock(EnvironmentExecutionMapper.class))
                 .withBean(EnvironmentPreparationMapper.class,()->mock(EnvironmentPreparationMapper.class))
+                .withBean(EnvironmentLifecycleMapper.class,()->mock(EnvironmentLifecycleMapper.class))
                 .withBean(EnvironmentMaintenanceMapper.class,()->mock(EnvironmentMaintenanceMapper.class))
                 .withBean(EnvironmentUseMapper.class,()->mock(EnvironmentUseMapper.class))
                 .withBean(FileHelperMapper.class,()->mock(FileHelperMapper.class))
@@ -37,6 +38,8 @@ class EnvironmentProfileTest {
         context("workspace-api").withPropertyValues("platform.workspace.enabled=true","platform.workspace.environment.enabled=true").run(selected->assertNotNull(selected.getStartupFailure()));
         context("workspace-api","identity-local").withPropertyValues("platform.workspace.enabled=true","platform.workspace.environment.enabled=true").run(selected->{
             assertNull(selected.getStartupFailure());assertEquals(1,selected.getBeansOfType(WorkspaceEnvironmentApi.class).size());assertTrue(selected.getBeansOfType(SandboxRuntime.class).isEmpty());
+            assertSame(selected.getBean(com.agentplatform.domain.workspace.EnvironmentPreparationRepository.class),
+                    selected.getBean(com.agentplatform.domain.workspace.EnvironmentLifecycleRepository.class));
         });
         context("workspace-worker").withPropertyValues("platform.workspace.enabled=true","platform.workspace.environment.enabled=true").run(selected->{
             assertNull(selected.getStartupFailure());assertTrue(selected.getBeansOfType(WorkspaceEnvironmentApi.class).isEmpty());assertTrue(selected.getBeansOfType(SandboxRuntime.class).isEmpty());

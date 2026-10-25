@@ -434,7 +434,7 @@ export interface paths {
         get: operations["getWorkspaceEnvironment"];
         put?: never;
         post: operations["prepareWorkspaceEnvironment"];
-        delete?: never;
+        delete: operations["deleteWorkspaceEnvironment"];
         options?: never;
         head?: never;
         patch?: never;
@@ -450,6 +450,70 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["retryWorkspaceEnvironment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{id}/environment/sleep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["sleepWorkspaceEnvironment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{id}/environment/wake": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["wakeWorkspaceEnvironment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{id}/environment/operations/{operationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getEnvironmentOperation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{id}/environment/requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getEnvironmentRequest"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -942,16 +1006,29 @@ export interface components {
             /** Format: uuid */
             workspaceId: string;
             /** @enum {string} */
-            state: "NOT_CREATED" | "PREPARING" | "READY" | "STOPPED" | "ERROR" | "BLOCKED";
+            state: "NOT_CREATED" | "PREPARING" | "READY" | "STOPPING" | "STOPPED" | "DELETING" | "DELETED" | "ERROR" | "BLOCKED";
             /** @enum {string} */
-            phase: "NONE" | "PREPARING" | "READY" | "STOPPING" | "STOPPED" | "ERROR" | "BLOCKED";
+            phase: "NONE" | "PREPARING" | "READY" | "STOPPING" | "STOPPED" | "DELETING" | "DELETED" | "ERROR" | "BLOCKED";
             generation: number;
             version: number;
             /** Format: uuid */
             operationId: string | null;
             errorCode: string | null;
-            allowedActions: ("PREPARE" | "RETRY")[];
-        } & (unknown & unknown & unknown & unknown);
+            allowedActions: ("PREPARE" | "RETRY" | "SLEEP" | "WAKE" | "DELETE")[];
+        } & (unknown & unknown & unknown & unknown & unknown & unknown & unknown);
+        EnvironmentOperation: {
+            /** Format: uuid */
+            operationId: string;
+            /** Format: uuid */
+            workspaceId: string;
+            /** @enum {string} */
+            intent: "PREPARE" | "WAKE" | "STOP" | "SLEEP" | "DELETE";
+            /** @enum {string} */
+            status: "DRAINING" | "PENDING" | "CLAIMED" | "RUNNING" | "COMMITTED" | "FAILED" | "UNKNOWN";
+            generation: number;
+            revision: number;
+            errorCode: string | null;
+        };
         EnvironmentSubmission: {
             /** Format: uuid */
             operationId: string;
@@ -969,7 +1046,7 @@ export interface components {
             /** @enum {string} */
             state: "PROVISIONING" | "READY" | "ERROR" | "BLOCKED";
             /** @enum {string} */
-            environmentState: "NOT_CREATED" | "PREPARING" | "READY" | "STOPPED" | "ERROR" | "BLOCKED";
+            environmentState: "NOT_CREATED" | "PREPARING" | "READY" | "STOPPING" | "STOPPED" | "DELETING" | "DELETED" | "ERROR" | "BLOCKED";
             /** @constant */
             quotaBytes: 2147483648;
             /** @constant */
@@ -1953,6 +2030,43 @@ export interface operations {
             default: components["responses"]["IdentityProblem"];
         };
     };
+    deleteWorkspaceEnvironment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                "If-Match": components["parameters"]["EnvironmentMatch"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["EmptyEnvironmentCommand"];
+            };
+        };
+        responses: {
+            /** @description Remove only the execution environment; retain workspace, hard quota, files and immutable versions */
+            202: {
+                headers: {
+                    /** @description Quoted environment revision */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentSubmission"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
     retryWorkspaceEnvironment: {
         parameters: {
             query?: never;
@@ -1985,6 +2099,134 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EnvironmentSubmission"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    sleepWorkspaceEnvironment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                "If-Match": components["parameters"]["EnvironmentMatch"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["EmptyEnvironmentCommand"];
+            };
+        };
+        responses: {
+            /** @description Stop and remove the execution environment; workspace/files/quota are retained */
+            202: {
+                headers: {
+                    /** @description Quoted environment revision */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentSubmission"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    wakeWorkspaceEnvironment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                "If-Match": components["parameters"]["EnvironmentMatch"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["EmptyEnvironmentCommand"];
+            };
+        };
+        responses: {
+            /** @description Prepare a new generation after confirmed stop; preserve workspace/files/quota */
+            202: {
+                headers: {
+                    /** @description Quoted environment revision */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentSubmission"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getEnvironmentOperation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+                operationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized original operation metadata without host/container identities */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentOperation"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getEnvironmentRequest: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Resolve only this caller's original idempotency request after response loss */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentOperation"];
                 };
             };
             default: components["responses"]["IdentityProblem"];
