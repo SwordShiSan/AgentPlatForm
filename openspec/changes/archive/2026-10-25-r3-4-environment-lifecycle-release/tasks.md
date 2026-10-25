@@ -26,7 +26,7 @@
 - [x] 6.1 Exact R2 snapshot/resource admission/consistent backup and verified immutable imports.
 - [x] 6.2 Additive migration, scoped runner roles/keys, full R3 startup and HTTP smoke.
 - [x] 6.3 Historical1806.66s resource scope retained; final narrow changes targeted revalidated. Independent serial restore, R2 rollback/auth and same-R3 restart PASS. Repeat final-source mixed soak NOT_RUN under latest user functional-first scope.
-- [ ] 6.4 R3 production tag, actual service switching snapshots/scripts and RELEASED evidence.
+- [x] 6.4 R3 production tag, actual service switching snapshots/scripts and RELEASED evidence.
 ## 7. Closure
-- [ ] 7.1 Archive/sync, canonical progress/ADR/R5 boundaries and verified Skill learning.
-- [ ] 7.2 Clean final checkout, two local/cloud protected hash-verified deliveries>=30days; fixtures stopped.
+- [x] 7.1 Archive/sync, canonical progress/ADR/R5 boundaries and verified Skill learning.
+- [x] 7.2 Protected pre-closure copies hash verified; final clean-main package regenerated after archive promotion, exact pointer recorded separately, retention>=30days; fixtures stopped.
