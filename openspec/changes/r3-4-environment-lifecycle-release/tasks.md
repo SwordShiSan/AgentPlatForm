@@ -10,6 +10,7 @@
 - [x] 3.2 Intent/fence/idempotency and prepare/sleep/wake/delete/retry projections.
 - [x] 3.3 ENVIRONMENT_V3 signatures and historical V2 query compatibility.
 - [x] 3.4 Exact stop, cleanup receipts and query-only recovery; shared file-helper lease protection.
+- [ ] 3.5 Explicit protected maintenance scan admission, original-work draining and factual freeze; no state resets.
 ## 4. Public product
 - [x] 4.1 OpenAPI/DTO/generated client, preconditions/auth/CSRF and stable errors.
 - [x] 4.2 Vue lifecycle/confirmation/polling/retained files and failure feedback.

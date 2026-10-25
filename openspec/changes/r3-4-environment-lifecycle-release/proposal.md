@@ -7,6 +7,8 @@ R3.3 has verified public immutable files, but environment controls still expose 
 - First validate the approved whole-stack resource profile, then implement lifecycle and UI using existing framework adapters.
 - Verify locally and in isolated Linux windows, promote step->phase->main and release the same immutable R3 candidate after integrated observation, restore and R2 rollback drills.
 
+- Add explicit protected maintenance scan-admission control so consistent freeze drains original work instead of assuming all background producers stopped. Normal scans default enabled; no public maintenance endpoint.
+
 ## Capabilities
 ### New Capabilities
 - `environment-lifecycle-release`: durable public lifecycle, precise stop/cleanup facts, retained files and R3 release evidence.

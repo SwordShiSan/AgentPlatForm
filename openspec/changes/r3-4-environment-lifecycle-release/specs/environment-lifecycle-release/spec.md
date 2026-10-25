@@ -64,3 +64,18 @@ R3 SHALL be released only after protected local promotion and same-artifact clou
 #### Scenario: Cloud failure
 - **WHEN** a cloud gate fails
 - **THEN** original R2 is restored, failures remain, and no R3 production tag is created
+
+### Requirement: Consistent maintenance freeze
+The platform SHALL explicitly close new background scan admission in a protected maintenance profile before draining and freezing a workspace backup or fault snapshot, while preserving original reliable execution and reconciliation.
+#### Scenario: Normal full-profile operation
+- **WHEN** no maintenance override is supplied
+- **THEN** periodic scans remain enabled alongside delivered chat/workspace/file capabilities
+#### Scenario: Protected drainer
+- **WHEN** scan admission is false with the explicit workspace-maintenance profile and the public API/gateway are closed
+- **THEN** no new scan is scheduled, original outbox/MQ handoff and query-only reconciliation continue, and backup starts only after factual quiescence
+#### Scenario: Accidental disable outside maintenance
+- **WHEN** scan admission is configured false without the maintenance profile
+- **THEN** startup rejects that configuration instead of silently disabling an existing capability
+#### Scenario: Unknown remains unresolved
+- **WHEN** an existing operation lacks a valid terminal receipt or stop proof
+- **THEN** the snapshot remains blocked, all unknown facts and reservations are retained, and no command is replayed or manually reset
