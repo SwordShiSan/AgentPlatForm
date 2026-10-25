@@ -1,0 +1,35 @@
+{
+  "status": "LOCAL_RECOVERY_CORRECTION_PASS",
+  "runtimeSource": "b8dd176a763b4ecae7a8599baa8cd7695098220b",
+  "backendTree": "00835f676f129edf527021f9fc000a4baf8be6e1",
+  "backendJarSha256": "9efe637432626ee8bc9b0acf84e98118d91d643f77d5d5d191d88437e3d784c7",
+  "verify": {
+    "status": "PASS",
+    "exitCode": 0,
+    "elapsedSeconds": 154.5621933999937,
+    "sourceBase": "b8dd176a763b4ecae7a8599baa8cd7695098220b",
+    "workingTreeClean": true,
+    "logSha256": "bf75af1f41be9c4d9adc6db0f72778d30bd5c786dfd2457cedd1158862a46d0f",
+    "supplierCalls": 0
+  },
+  "apiImage": {
+    "configId": "sha256:556f88c54119aaf55db4fddda48d4fddf09bf502bbfc549e44cd5fa954874fc7",
+    "archiveSha256": "17cff69a1c80e31ed69ef61ab335d29cb0e75acbb4f7b0c8becf7ebd40b48757",
+    "platform": "linux/amd64",
+    "source": "b8dd176a763b4ecae7a8599baa8cd7695098220b"
+  },
+  "gatewayImage": {
+    "configId": "sha256:431f32c46d6e8dcf7ea29309db89eb6162a2eb781c58b4b47bdd0af07cd76a14",
+    "archiveSha256": "7efe330a2abc83f65c27327c39ab08d2338b1e4cdbebc258b41f40089385116b",
+    "platform": "linux/amd64",
+    "source": "fd2aa8a30ad6a907702e446b2bceafa8118090df"
+  },
+  "frontendInputsUnchanged": true,
+  "localProtectedImageCopiesVerified": true,
+  "realPgMqTargetedTests": 38,
+  "targetedLogSha256": "95b823f2eb6f21262de17268d54d8e1e17357286c0a538bc4de7f852bce45c8e",
+  "schemaChanges": false,
+  "supplierCalls": 0,
+  "productionRecovery": "NOT_RUN",
+  "release": "NOT_RELEASED"
+}

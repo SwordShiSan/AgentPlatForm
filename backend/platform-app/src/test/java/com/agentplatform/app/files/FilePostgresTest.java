@@ -102,6 +102,63 @@ class FilePostgresTest {
             }
         }
     }
+    private Command expireUnknown(Command command,boolean lease,boolean deadline) throws Exception {
+        String leaseTime=lease?"clock_timestamp()-interval '1 second'":"clock_timestamp()+interval '60 seconds'";
+        String deadlineTime=deadline?"clock_timestamp()-interval '1 second'":"clock_timestamp()+interval '120 seconds'";
+        sql("UPDATE pf.file_operation SET lease_until="+leaseTime+",deadline_at="+deadlineTime+" WHERE id='"+command.operation().id()+"';"
+                +"UPDATE pf.workspace_file_lease SET lease_until="+leaseTime+" WHERE operation_id='"+command.operation().id()+"';");
+        return runner.lookup(command.operation().spaceId(),command.operation().workspaceId(),command.operation().id());
+    }
+    @Test void neverAcceptedExpiredUploadHasNegativeReceiptAndRefundsOnlyOnce() throws Exception {
+        var command=claim(8);files.beforeCall(command);files.uncertain(command,"FILE_RESULT_UNKNOWN");
+        command=expireUnknown(command,true,true);var observer=instance();runner.register(observer);
+        assertEquals(command,files.reconciliations().getFirst());
+        var receipt=runner.observeNeverAccepted(command,observer.id(),"e".repeat(64));
+        assertEquals("NOT_APPLIED",receipt.resultState());assertTrue(receipt.resultText().contains("NEVER_ACCEPTED"));
+        var stop=JsonMapper.builder().build().readValue(receipt.stopText(),FileRuntime.Stop.class);
+        assertTrue(stop.neverStarted());assertNull(stop.containerId());assertNull(stop.startedAt());assertNull(stop.execId());
+        assertEquals(0,count("SELECT count(*) FROM pf.file_runner_command WHERE container_id IS NOT NULL OR start_requested OR exec_id IS NOT NULL"));
+        files.reconcileProjection(command,receipt);
+        assertEquals("FAILED",files.operation(alice,command.operation().id()).status());assertEquals(0,files.usage(alice,workspace).reservedBytes());
+        assertEquals(receipt,runner.observeNeverAccepted(command,observer.id(),"e".repeat(64)));
+        var frozen=command;
+        assertThrows(FileFailure.class,()->files.reconcileProjection(frozen,receipt));
+        assertThrows(FileFailure.class,()->runner.accept(frozen,observer,"e".repeat(64)));
+        assertThrows(FileFailure.class,()->runner.created(frozen,observer.id(),"a".repeat(64)));
+        assertEquals(1,count("SELECT count(*) FROM pf.file_runner_receipt"));assertEquals(0,files.usage(alice,workspace).reservedBytes());
+    }
+    @Test void neverAcceptedProofRequiresBothExpiredClocksAndCurrentAuthorization() throws Exception {
+        var c=claim(8);files.beforeCall(c);files.uncertain(c,"FILE_RESULT_UNKNOWN");var observer=instance();runner.register(observer);
+        assertNull(runner.observeNeverAccepted(c,observer.id(),"e".repeat(64)));
+        c=expireUnknown(c,true,false);assertNull(runner.observeNeverAccepted(c,observer.id(),"e".repeat(64)));
+        c=expireUnknown(c,false,true);assertNull(runner.observeNeverAccepted(c,observer.id(),"e".repeat(64)));
+        var expired=expireUnknown(c,true,true);
+        sql("UPDATE pf.app_user SET status='DISABLED' WHERE id='"+alice.userId()+"';");
+        assertThrows(FileFailure.class,()->runner.observeNeverAccepted(expired,observer.id(),"e".repeat(64)));
+        assertEquals(0,count("SELECT count(*) FROM pf.file_runner_command"));assertEquals(8,count("SELECT reserved_bytes FROM pf.space_storage WHERE space_id='"+alice.spaceId()+"'"));
+    }
+    @Test void existingAcceptanceCannotBeReclassifiedAsNeverAccepted() throws Exception {
+        var c=claim(8);files.beforeCall(c);var original=instance();runner.register(original);runner.accept(c,original,"e".repeat(64));
+        files.uncertain(c,"FILE_RESULT_UNKNOWN");var expired=expireUnknown(c,true,true);var observer=instance();runner.register(observer);
+        assertNull(runner.observeNeverAccepted(expired,observer.id(),"f".repeat(64)));
+        assertEquals(0,count("SELECT count(*) FROM pf.file_runner_receipt"));assertEquals(8,files.usage(alice,workspace).reservedBytes());
+    }
+    @Test void concurrentNeverAcceptedScanQueriesCommitOneNegativeFactWithoutExecution() throws Exception {
+        files.scheduleScan();var publication=files.publications(UUID.randomUUID()).getFirst();var c=files.claim(publication,UUID.randomUUID());
+        files.beforeCall(c);files.uncertain(c,"FILE_RESULT_UNKNOWN");var expired=expireUnknown(c,true,true);
+        var first=instance();var second=new com.agentplatform.domain.workspace.RunnerInstance(
+                UUID.randomUUID(),"d".repeat(64),first.imageId(),first.startedAt());runner.register(first);runner.register(second);
+        try(var executor=java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            var gate=new java.util.concurrent.CountDownLatch(1);
+            var one=executor.submit(()->{gate.await();return runner.observeNeverAccepted(expired,first.id(),"e".repeat(64));});
+            var two=executor.submit(()->{gate.await();return runner.observeNeverAccepted(expired,second.id(),"e".repeat(64));});gate.countDown();
+            var receipt=one.get(10,java.util.concurrent.TimeUnit.SECONDS);assertEquals(receipt,two.get(10,java.util.concurrent.TimeUnit.SECONDS));
+            files.reconcileProjection(expired,receipt);
+        }
+        assertEquals(1,count("SELECT count(*) FROM pf.file_runner_command"));assertEquals(1,count("SELECT count(*) FROM pf.file_runner_receipt"));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_file_lease WHERE status<>'FREE'"));
+        assertEquals(0,count("SELECT count(*) FROM pf.file_version"));assertEquals("FAILED",files.operation(alice,c.operation().id()).status());
+    }
     @Test void realApiAndWorkerRolesReserveRefundAndSettleWithoutQuotaAdministration() throws Exception {
         for(String role:List.of("ap_migration","ap_api","ap_worker","ap_runner","ap_workspace_ops"))
             sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='"+role+"') THEN CREATE ROLE "+role+" NOLOGIN;END IF;END $$");
@@ -504,6 +561,12 @@ class FilePostgresTest {
                     session.getMapper(WorkspaceMapper.class),session.getMapper(EnvironmentPreparationMapper.class),session.getMapper(EnvironmentExecutionMapper.class),session.getMapper(FileTransferMapper.class)),tx);
             var instance=instance();limited.register(instance);assertTrue(limited.accept(c,instance,"e".repeat(64)));limited.guard(c,instance.id());
             limited.recordResult(c,instance.id(),notStarted(c,"NOT_APPLIED"));assertEquals("NOT_APPLIED",limited.receipt(c).resultState());
+            files.commitProjection(c,limited.receipt(c));
+            var unaccepted=claim(8);files.beforeCall(unaccepted);files.uncertain(unaccepted,"FILE_RESULT_UNKNOWN");
+            var expired=expireUnknown(unaccepted,true,true);
+            var observed=limited.observeNeverAccepted(expired,instance.id(),"f".repeat(64));
+            assertEquals("NOT_APPLIED",observed.resultState());files.reconcileProjection(expired,observed);
+            assertEquals(0,files.usage(alice,workspace).reservedBytes());
             for(String denied:List.of("SELECT * FROM pf.message","SELECT * FROM pf.credential","SELECT * FROM pf_runtime.state_slot",
                     "UPDATE pf.file_operation SET owner_id=NULL","UPDATE pf.workspace_file_lease SET status='FREE'","UPDATE pf.space_storage SET reserved_bytes=0")) {
                 try(var connection=limitedPool.getConnection();var statement=connection.createStatement()) {

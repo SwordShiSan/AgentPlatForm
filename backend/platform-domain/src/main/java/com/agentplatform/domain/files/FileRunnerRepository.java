@@ -17,5 +17,7 @@ public interface FileRunnerRepository {
     boolean priorRunnerStopped(Command command,UUID observerId);
     boolean mayObserve(Command command,UUID observerId);
     Receipt receipt(Command command);
+    /** Query-only negative fact; null keeps uncertainty. Never invokes physical work. */
+    Receipt observeNeverAccepted(Command command,UUID observerId,String requestHash);
     void recordResult(Command command,UUID runnerId,FileRuntime.Result result);
 }

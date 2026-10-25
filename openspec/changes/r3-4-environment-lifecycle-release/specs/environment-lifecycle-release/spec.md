@@ -79,3 +79,15 @@ The platform SHALL explicitly close new background scan admission in a protected
 #### Scenario: Unknown remains unresolved
 - **WHEN** an existing operation lacks a valid terminal receipt or stop proof
 - **THEN** the snapshot remains blocked, all unknown facts and reservations are retained, and no command is replayed or manually reset
+
+### Requirement: Durable proof of never accepted file work
+The runner SHALL distinguish an expired UNKNOWN file operation that never crossed durable runner acceptance from an accepted operation with an unknown physical result. This is query-only reconciliation, not execution recovery or a stopped-process inference from404.
+#### Scenario: Never accepted and permanently fenced
+- **WHEN** a signed original-command query locks its workspace/lease/operation, current authorization holds, both database lease and deadline have expired, the operation remains UNKNOWN under its original fence, and no immutable runner acceptance exists
+- **THEN** the registered observer atomically records a negative command observation and NOT_APPLIED never-started receipt, invokes no filesystem/container/S3 execution, and the existing projection path may fail that original operation and release its unused reservation exactly once
+#### Scenario: Acceptance or uncertainty exists
+- **WHEN** any acceptance/physical fact exists, the deadline or lease remains live, authorization fails, or the original identity/fence differs
+- **THEN** the never-accepted proof is refused and existing UNKNOWN/stop-proof rules remain unchanged
+#### Scenario: Concurrent or late delivery
+- **WHEN** two original queries race or an old POST arrives after the negative observation
+- **THEN** the original operation lock and immutable receipt permit one negative fact only, the expired UNKNOWN/terminal fence cannot execute, and no new physical invocation is made
