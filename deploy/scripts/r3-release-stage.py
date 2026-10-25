@@ -91,6 +91,7 @@ def main():
     service['networks']['model-egress']=None
    if name=='api':env['PLATFORM_IDENTITY_ORIGINS']='http://agentplatform.lailihao.cloud,http://124.222.55.140';env['PLATFORM_IDENTITY_SECURE_COOKIE']='false'
    if name=='runner':
+    service['labels']={'ap.role':'runner'}
     env.update(PLATFORM_WORKSPACE_RUNNER_WORKSPACE_ROOT=str(ROOT/'workspaces'),PLATFORM_WORKSPACE_RUNNER_MOUNT_UUID=mount['uuid'],PLATFORM_WORKSPACE_RUNNER_QUOTA_DEVICE=loop,PLATFORM_WORKSPACE_RUNNER_CONTROL_KEY_ID='r3-control-1',PLATFORM_WORKSPACE_RUNNER_KEY_ID='r3-runner-1')
     service['volumes']=[{'type':'bind','source':'/var/run/docker.sock','target':'/var/run/docker.sock','read_only':True},{'type':'bind','source':str(attestation),'target':'/run/fixture/runtime.json','read_only':True}]
     service['group_add']=[str(Path('/var/run/docker.sock').stat().st_gid)]

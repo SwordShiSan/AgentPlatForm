@@ -84,6 +84,7 @@ class Window:
   for role,name in [('ap_runner','runner-password'),('ap_workspace_ops','ops-password')]:
    password=(private/name).read_text();assert re.fullmatch('[A-Za-z0-9_-]+',password)
    self.sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='"+role+"') THEN CREATE ROLE "+role+" LOGIN;END IF;END $$;ALTER ROLE "+role+" PASSWORD '"+password+"';")
+  self.sql('GRANT CONNECT ON DATABASE agentplatform TO ap_runner,ap_workspace_ops;')
   self.run(self.base+['run','--rm','-T','-e','SPRING_PROFILES_ACTIVE=cloud-migrate','operator'],timeout=180)
   for name in ['r1-runtime-grants.sql','r2-runtime-grants.sql','r3-workspace-grants.sql','r3-environment-grants.sql','r3-file-grants.sql']:self.sql((self.folder/'deploy/config'/name).read_text())
   assert self.sql('SELECT max(version::int) FROM pf.flyway_schema_history WHERE success;')=='14'
@@ -109,6 +110,7 @@ class Window:
   self.run(['docker','exec',self.by['rabbitmq']['Id'],'rabbitmqctl','import_definitions','/tmp/r3-permissions.json'])
  def activate(self,receipt='activate'):
   assert (self.folder/'backup-r2.json').exists();self.capacity()
+  assert json.loads((self.folder/'compose.json').read_text())['services']['runner']['labels']['ap.role']=='runner'
   for row in self.rows:assert not json.loads(self.run(['docker','inspect',row['Id']]))[0]['State']['Running'],'Original R2 must be stopped serially'
   for name,digest in json.loads((self.folder/'deploy-input-hashes.json').read_text()).items():assert self.hash(self.folder/'deploy/config'/name)==digest
   for name,limit in self.stage['middlewareCapsMiB'].items():
@@ -117,6 +119,13 @@ class Window:
   with (ROOT/'config/s3.json').open('w') as stream:stream.write((self.folder/'s3.candidate.json').read_text())
   self.start_dependencies();self.configure()
   self.run(self.base+['--profile','application','up','-d','--wait','--wait-timeout','240','runner','api','worker','gateway'],timeout=300)
+  runner=self.cid('runner')
+  for _ in range(90):
+   current=json.loads(self.run(['docker','inspect',runner]))[0];assert current['State']['Running'] and not current['State']['OOMKilled']
+   count=self.sql("SELECT count(*) FROM pf.workspace_runner_instance WHERE container_id='"+runner+"' AND image_id='"+current['Image']+"';")
+   if count=='1':break
+   time.sleep(2)
+  else:raise RuntimeError('Runner exact instance not registered')
   self.health();self.receipt(receipt,{'status':'PASS','migration':14,'runtimeBaseline':1,'supplierCalls':0})
  def health(self):
   request=urllib.request.Request('http://127.0.0.1/api/v1/readiness',headers={'Host':'agentplatform.lailihao.cloud'})
