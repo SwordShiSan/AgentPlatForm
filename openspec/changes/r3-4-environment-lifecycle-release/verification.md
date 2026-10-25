@@ -56,3 +56,14 @@ New private SandboxRuntime.confirmRemoval requires a prior committed exact stop,
 
 
 Full engineering Maven Wrapper verify on clean source1ec4fffa4679b37e31053e2450b47355b12edd35 PASS,184.841s, log SHA256a7577f57a3b653294f243a7bb323ea81036dee6dbeacea3ea3092e39df71cbd6, including DDD/Enforcer and framework regression. RealPG38 and MQ4 NOT_RUN remain separately bound to the earlier selected batch; the offline full run does not replace them. Source Git UTF-8/LF blob bindings are recorded in foundation.json. Local R34 PG stopped before the full build, volume/image retained; no cloud R3 artifact built or deployed. The stage remains IMPLEMENTING, no protected promotion or production tag.
+
+## Lifecycle ledger and signed cleanup batch: partial implementation, not stage acceptance
+
+Code0c6e08bf81716e0625a6a2209363e170684702cd implements typed short-transaction lifecycle admission, frozen V3 physical identity, drain handoff without prematurely moving the old fence, original stop provenance for deleting a stopped generation, signed V3 control with strict V2 route compatibility, and immutable stop/cleanup revision1/2. Actual restricted API/runner roles are tested; cleanup confirmation is append-only and the runner cannot project lifecycle status. File mutations close during lifecycle operations while reads/reservations remain intact.
+
+Combined actual PostgreSQL regression:84 tests,76 PASS,8 MQ NOT_RUN,0 failures/errors; log SHA2562338e954bfe7afb799e01af23c01dd81482a72deb5550774e00578943e961ef9. A real JOSE request/response test with mocked Docker proves query retries cleanup without a second stop call; this is not native Docker/Linux evidence. Exact Git blob bindings and copied JUnit hashes are in evidence/r34/lifecycle-batch.json. Full Maven Wrapper verify/DDD/Enforcer on clean0c6e08b PASS153.253s, log SHA256ebe91cfda34dfde1b3054a372be8b9e3c65bbd5faf939f9e2b163527379b0b28. Real dependency counts remain separate from the offline engineering run.
+
+Preserve failed batch6 (new Mapper against old schema) and batch10 (TRUNCATE CASCADE deleted the shared sandbox singleton). Frozen V13 SQL from stable645701b, schema restoration in finally and exact fixture singleton reset fixed the causes without changing assertions or historical migrations. Skill references updated with verified reusable lessons.
+
+NOT_DONE: assemble initial V3 prepare/retry and managed drain/reconciliation, expired-owner observation, lifecycle public API/OpenAPI/Vue, actual MQ/native/browser/final1800s and production release/restore/R2 rollback. Current R3 remains3/4 VERIFIED and NOT_RELEASED; no R4 or production R3 tag. The independent local PG container is stopped with data retained. This is not the final protected body/evidence delivery.
+
