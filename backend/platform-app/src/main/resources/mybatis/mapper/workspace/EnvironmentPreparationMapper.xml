@@ -9,10 +9,14 @@
     <select id="request" resultType="com.agentplatform.infrastructure.dao.po.EnvironmentRows$Request">SELECT request_hash,workspace_id,environment_id,operation_id FROM pf.workspace_environment_idempotency WHERE space_id=#{actor.spaceId} AND actor_id=#{actor.userId} AND request_id=#{requestId}</select>
     <select id="unresolvedUse" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.workspace_environment_use WHERE environment_id=#{environmentId} AND status IN('CLAIMED','RUNNING','UNKNOWN'))</select>
     <select id="confirmedStop" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.workspace_environment_stop_receipt WHERE operation_id=#{operationId} AND exec_stopped AND callbacks_stopped)</select>
+    <select id="cleanupSatisfied" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM pf.workspace_environment_operation WHERE id=#{operationId}
+            AND(protocol='ENVIRONMENT_V2' OR NOT cleanup_required OR cleanup_state='CONFIRMED'))
+    </select>
     <select id="lifecycleBusy" resultType="boolean">
         SELECT EXISTS(SELECT 1 FROM pf.workspace_environment e JOIN pf.workspace_environment_operation o ON o.id=e.operation_id
             WHERE e.space_id=#{spaceId} AND e.workspace_id=#{workspaceId}
-                AND(e.pending_operation_id IS NOT NULL OR(o.protocol='ENVIRONMENT_V3' AND e.state IN('PREPARING','STOPPING','DELETING'))))
+                AND(e.pending_operation_id IS NOT NULL OR(o.protocol='ENVIRONMENT_V3' AND e.state IN('PREPARING','STOPPING','DELETING','BLOCKED'))))
     </select>
     <insert id="insertEnvironment">INSERT INTO pf.workspace_environment(id,space_id,workspace_id,generation,fence,state,image_id,policy_hash,creation_command_id,creation_fence,operation_id) VALUES(#{row.id},#{row.spaceId},#{row.workspaceId},#{row.generation},#{row.fence},'PREPARING',#{row.imageId},#{row.policyHash},#{row.creationCommandId},#{row.creationFence},#{row.operationId})</insert>
     <update id="replaceGeneration">UPDATE pf.workspace_environment SET generation=#{row.generation},fence=#{row.fence},state='PREPARING',image_id=#{row.imageId},policy_hash=#{row.policyHash},creation_command_id=#{row.creationCommandId},creation_fence=#{row.creationFence},operation_id=#{row.operationId},version=version+1,error_code=NULL,container_id=NULL,container_started_at=NULL,readiness_hash=NULL,last_activity_at=clock_timestamp(),updated_at=clock_timestamp() WHERE id=#{row.id} AND space_id=#{row.spaceId} AND workspace_id=#{row.workspaceId} AND version=#{expectedVersion}</update>

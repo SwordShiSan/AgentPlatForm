@@ -6,13 +6,13 @@
 - [x] 2.1 Whole profile cold start, login,100MiB stream and trusted canary under capped budgets.
 - [x] 2.2 Preserve actual limits/heap/OOM/host/disk evidence; correct only proven issues.
 ## 3. Persistent lifecycle
-- [ ] 3.1 Additive V14, typed Mapper/PO/XML, transaction admission and live authorization.
-- [ ] 3.2 Intent/fence/idempotency and prepare/sleep/wake/delete/retry projections.
-- [ ] 3.3 ENVIRONMENT_V3 signatures and historical V2 query compatibility.
-- [ ] 3.4 Exact stop, cleanup receipts and query-only recovery; shared file-helper lease protection.
+- [x] 3.1 Additive V14, typed Mapper/PO/XML, transaction admission and live authorization.
+- [x] 3.2 Intent/fence/idempotency and prepare/sleep/wake/delete/retry projections.
+- [x] 3.3 ENVIRONMENT_V3 signatures and historical V2 query compatibility.
+- [x] 3.4 Exact stop, cleanup receipts and query-only recovery; shared file-helper lease protection.
 ## 4. Public product
-- [ ] 4.1 OpenAPI/DTO/generated client, preconditions/auth/CSRF and stable errors.
-- [ ] 4.2 Vue lifecycle/confirmation/polling/retained files and failure feedback.
+- [x] 4.1 OpenAPI/DTO/generated client, preconditions/auth/CSRF and stable errors.
+- [x] 4.2 Vue lifecycle/confirmation/polling/retained files and failure feedback.
 ## 5. Local and Linux acceptance
 - [ ] 5.1 Engineering, persistence boundaries, full V14 install/upgrade/old compatibility.
 - [ ] 5.2 Real PG/MQ races, two workers, confirms/ACK loss and dependency faults.

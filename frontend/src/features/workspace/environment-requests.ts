@@ -1,5 +1,5 @@
 // UI request identity only. Environment state remains authoritative in Query/server storage.
-export interface PendingEnvironmentRequest { key: string; version: number; action: 'PREPARE' | 'RETRY' }
+export interface PendingEnvironmentRequest { key: string; version: number; action: 'PREPARE' | 'RETRY' | 'SLEEP' | 'WAKE' | 'DELETE' }
 const prefix = 'agentplatform:environment-request:';
 export function environmentRequestScope(account: string, space: string, workspace: string) {
   return `${prefix}${account}:${space}:${workspace}`;
@@ -10,7 +10,7 @@ export function loadEnvironmentRequest(scope: string): PendingEnvironmentRequest
     if (raw.length > 512) { sessionStorage.removeItem(scope); return undefined; }
     const value = JSON.parse(raw);
     if (value && typeof value.key === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.key)
-      && Number.isSafeInteger(value.version) && value.version >= 0 && ['PREPARE', 'RETRY'].includes(value.action)) return { key: value.key, version: value.version, action: value.action };
+      && Number.isSafeInteger(value.version) && value.version >= 0 && ['PREPARE', 'RETRY', 'SLEEP', 'WAKE', 'DELETE'].includes(value.action)) return { key: value.key, version: value.version, action: value.action };
     sessionStorage.removeItem(scope);
   } catch { /* Corrupt/unavailable browser storage is not a server fact. */ }
   return undefined;

@@ -59,12 +59,18 @@ public final class EnvironmentRunnerService implements EnvironmentRunnerApi {
         }
     }
     private Receipt finishCleanup(Command command,Receipt receipt) {
+        return finishCleanup(command,receipt,false);
+    }
+    private Receipt finishCleanup(Command command,Receipt receipt,boolean observation) {
         if(receipt.stop()==null||!Set.of("COMMITTED","FAILED").contains(receipt.state()))return receipt;
         if(receipt.revision()==2)return receipt;
         try {
-            repository.checkRunner(command,instance.id());
+            if(observation)repository.checkObservedRunner(command,instance.id());else repository.checkRunner(command,instance.id());
+            boundary.await("environment-cleanup-before-remove");
             var removal=runtime.confirmRemoval(command.physicalIdentity(),receipt.stop());
-            return repository.confirmCleanup(command,removal,instance.id());
+            boundary.await("environment-cleanup-after-remove-before-receipt");
+            var result=observation?repository.confirmObservedCleanup(command,removal,instance.id()):repository.confirmCleanup(command,removal,instance.id());
+            boundary.await("environment-cleanup-after-receipt-before-response");return result;
         } catch(RuntimeException pending) {
             return new Receipt(command.commandId(),command.operationId(),command.environmentId(),command.workspaceId(),
                     command.generation(),command.fence(),"RUNNING","MAY_HAVE_STARTED","ENVIRONMENT_CLEANUP_PENDING",null,null,0);
@@ -123,8 +129,27 @@ public final class EnvironmentRunnerService implements EnvironmentRunnerApi {
     private SignedResult query(String token,String operationId,boolean v3) {
         String path=(v3?PATH_V3:PATH)+"/"+operationId;
         var request=signatures.verifiedQuery(token,path);
-        var command=repository.lookup(request.operationId());validate(command,v3);
+        var lookup=v3?repository.queryLookup(request.operationId()):new Query(repository.lookup(request.operationId()),QueryMode.EXECUTION);
+        var command=lookup.command();validate(command,v3);
         signatures.verify(token,binding(command,"GET",path),new byte[0]);
+        if(lookup.mode()==QueryMode.READ_ONLY)return signed(command,repository.committedReceipt(command),path);
+        if(lookup.mode()==QueryMode.OBSERVATION) {
+            repository.checkObservedRunner(command,instance.id());
+            var stored=repository.observedReceipt(command);
+            if("COMMITTED".equals(stored.state())&&"READY".equals(stored.effectState())) {
+                boolean present=false;
+                try {
+                    var current=runtime.verifyReady(command.physicalIdentity(),()->repository.checkObservedRunner(command,instance.id()));
+                    var previous=stored.container();
+                    present=current!=null&&previous!=null&&current.running()&&previous.id().equals(current.id())
+                            &&previous.image().equals(current.image())&&previous.startedAt().equals(current.startedAt())
+                            &&command.policyHash().equals(current.policyHash())&&previous.readinessHash().equals(current.readinessHash());
+                } catch(RuntimeException unknown) { /* This only verifies the original startup/mount proof, never prepares or stops. */ }
+                if(!present)return signed(command,new Receipt(command.commandId(),command.operationId(),command.environmentId(),command.workspaceId(),
+                        command.generation(),command.fence(),"RUNNING","MAY_HAVE_STARTED","ENVIRONMENT_OBSERVATION_UNCONFIRMED",null,null,0),path);
+            }
+            return signed(command,finishCleanup(command,stored,true),path);
+        }
         var receipt=repository.receipt(command);
         if("RUNNING".equals(receipt.state())) {
             repository.checkRunner(command,instance.id());

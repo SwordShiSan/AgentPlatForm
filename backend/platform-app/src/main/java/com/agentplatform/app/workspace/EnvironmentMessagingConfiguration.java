@@ -30,8 +30,11 @@ public class EnvironmentMessagingConfiguration {
     }
     @Bean(destroyMethod="close") @Profile("workspace-worker") EnvironmentExecution environmentExecution(EnvironmentExecutionRepository repository,EnvironmentRunnerPort runner,
             @Qualifier("workspaceTimers") ThreadPoolTaskScheduler timers) {return new EnvironmentExecution(repository,runner,timers.getScheduledExecutor());}
-    @Bean SmartLifecycle environmentLifecycle(EnvironmentExecutionRepository repository,EnvironmentMaintenanceRepository maintenance,SpringEnvironmentMessaging messaging,
-            @Qualifier("workspaceTimers") ThreadPoolTaskScheduler timers,ObjectProvider<EnvironmentExecution> execution,Environment selected,WorkspaceFixtureBarrier barrier) {
+    @Bean @Profile("workspace-worker") RunnerReconciler runnerReconciler(EnvironmentExecutionRepository repository,EnvironmentRunnerPort runner,WorkspaceFixtureBarrier barrier) {
+        return new RunnerReconciler(repository,runner,barrier);
+    }
+    @Bean SmartLifecycle environmentLifecycle(EnvironmentExecutionRepository repository,EnvironmentMaintenanceRepository maintenance,EnvironmentLifecycleRepository lifecycle,SpringEnvironmentMessaging messaging,
+            @Qualifier("workspaceTimers") ThreadPoolTaskScheduler timers,ObjectProvider<EnvironmentExecution> execution,ObjectProvider<RunnerReconciler> reconciler,Environment selected,WorkspaceFixtureBarrier barrier) {
         return new SmartLifecycle() {
             private volatile boolean running;
             private java.util.concurrent.ScheduledFuture<?> relay;
@@ -40,7 +43,8 @@ public class EnvironmentMessagingConfiguration {
                 running=true;
                 relay=timers.scheduleWithFixedDelay(()->{
                     try {
-                        maintenance.blockExpired();maintenance.scheduleStop();
+                        lifecycle.activateNext();maintenance.blockExpired();maintenance.scheduleStop();
+                        reconciler.ifAvailable(value->value.reconcile(owner));
                         for(var item:repository.publications(owner)) {
                             boolean confirmed=false;
                             try {messaging.publish(item);confirmed=true;}catch(RuntimeException unconfirmed) { /* Durable outbox is retained. */ }

@@ -12,15 +12,33 @@
     ]]></update>
     <select id="readyOperation" resultType="java.util.UUID">
         SELECT o.id FROM pf.workspace_environment e JOIN pf.workspace_environment_operation o ON o.id=e.operation_id
-        WHERE e.state='READY' AND o.status='COMMITTED' AND o.kind='PREPARE' ORDER BY e.last_activity_at LIMIT 1
+        WHERE e.state='READY' AND e.pending_operation_id IS NULL AND o.status='COMMITTED' AND o.kind IN('PREPARE','WAKE') ORDER BY e.last_activity_at LIMIT 1
     </select>
     <select id="idle" resultType="boolean"><![CDATA[
         SELECT EXISTS(SELECT 1 FROM pf.workspace_environment WHERE id=#{environmentId} AND state='READY' AND last_activity_at<=clock_timestamp()-interval '60 seconds')
     ]]></select>
-    <insert id="insertStop">INSERT INTO pf.workspace_environment_operation(id,space_id,workspace_id,environment_id,kind,initiator,actor_id,command_id,generation,fence,status)
-        VALUES(#{operationId},#{previous.spaceId},#{previous.workspaceId},#{previous.environmentId},'STOP','SYSTEM',#{previous.actorId},#{commandId},#{previous.generation},#{fence},'PENDING')
+    <select id="fileOperationBusy" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM pf.file_operation WHERE space_id=#{spaceId} AND workspace_id=#{workspaceId}
+            AND status IN('PENDING','CLAIMED','RUNNING','UNKNOWN'))
+    </select>
+    <insert id="insertStop">INSERT INTO pf.workspace_environment_operation(id,space_id,workspace_id,environment_id,kind,initiator,actor_id,command_id,generation,fence,status,
+        protocol,lifecycle_intent,target_creation_command_id,target_creation_fence,target_image_id,target_policy_hash,
+        target_project_id,target_container_id,target_container_started_at,cleanup_required,cleanup_state)
+        SELECT #{operationId},#{previous.spaceId},#{previous.workspaceId},#{previous.environmentId},'STOP','SYSTEM',#{previous.actorId},#{commandId},#{previous.generation},#{fence},'PENDING',
+            #{previous.protocol},CASE WHEN #{previous.protocol}='ENVIRONMENT_V3' THEN 'STOP' ELSE NULL END,
+            CASE WHEN #{previous.protocol}='ENVIRONMENT_V3' THEN e.creation_command_id ELSE NULL END,
+            CASE WHEN #{previous.protocol}='ENVIRONMENT_V3' THEN e.creation_fence ELSE NULL END,
+            CASE WHEN #{previous.protocol}='ENVIRONMENT_V3' THEN e.image_id ELSE NULL END,
+            CASE WHEN #{previous.protocol}='ENVIRONMENT_V3' THEN e.policy_hash ELSE NULL END,
+            CASE WHEN #{previous.protocol}='ENVIRONMENT_V3' THEN w.project_id ELSE NULL END,
+            CASE WHEN #{previous.protocol}='ENVIRONMENT_V3' THEN e.container_id ELSE NULL END,
+            CASE WHEN #{previous.protocol}='ENVIRONMENT_V3' THEN e.container_started_at ELSE NULL END,
+            #{previous.protocol}='ENVIRONMENT_V3',CASE WHEN #{previous.protocol}='ENVIRONMENT_V3' THEN 'PENDING' ELSE 'NOT_REQUIRED' END
+        FROM pf.workspace_environment e JOIN pf.workspace w ON w.space_id=e.space_id AND w.id=e.workspace_id
+        WHERE e.id=#{previous.environmentId} AND e.space_id=#{previous.spaceId} AND e.workspace_id=#{previous.workspaceId}
     </insert>
     <update id="selectStop">UPDATE pf.workspace_environment SET operation_id=#{operationId},fence=#{fence},version=version+1,updated_at=clock_timestamp()
+        ,state=CASE WHEN #{previous.protocol}='ENVIRONMENT_V3' THEN 'STOPPING' ELSE state END
         WHERE id=#{previous.environmentId} AND space_id=#{previous.spaceId} AND workspace_id=#{previous.workspaceId} AND generation=#{previous.generation} AND fence=#{currentFence}
         AND operation_id=#{previous.operationId} AND state='READY'
     </update>

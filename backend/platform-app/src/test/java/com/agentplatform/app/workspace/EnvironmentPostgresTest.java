@@ -403,6 +403,275 @@ class EnvironmentPostgresTest {
         org.mockito.Mockito.verify(runtime,org.mockito.Mockito.times(2)).confirmRemoval(command.physicalIdentity(),stop);
         assertEquals("STOPPED",environments.get(alice,command.workspaceId()).state());
     }
+    @Test void lifecycleInitialPrepareFreezesV3BeforeOutboxAndRetriesSameIdentity() throws Exception {
+        UUID workspace=storage(true),request=UUID.randomUUID();String digest=hash("initial-v3");
+        var first=lifecycle.prepare(alice,workspace,request,digest,0,false);
+        assertEquals(first.operationId(),lifecycle.prepare(alice,workspace,request,digest,0,false).operationId());
+        var operation=new EnvironmentLifecycleRepository.Admission(first.operationId(),"PREPARE","PENDING",1,1);
+        var command=claimLifecycle(operation);assertEquals("PREPARE",command.kind());
+        assertEquals(command.commandId(),command.creationCommandId());
+        executions.beforeCall(command);accept(command,hash("initial-v3-command"));
+        var receipt=ready(command);commitReceipt(command,receipt);executions.complete(command,receipt);
+        assertEquals("READY",lifecycle.get(alice,workspace).state());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_operation WHERE protocol='ENVIRONMENT_V3'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_outbox"));
+    }
+    @Test void lifecyclePrepareAfterDeletedUsesNewGenerationAndKeepsStorageReservation() throws Exception {
+        var previous=stoppedEnvironmentForLifecycle();long version=lifecycle.get(alice,previous.workspaceId()).version();
+        var deletion=claimLifecycle(lifecycle(previous.workspaceId(),UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.DELETE));
+        executions.beforeCall(deletion);accept(deletion,hash("delete-before-reprepare"));
+        var stop=executions.priorStop(deletion);commitReceipt(deletion,lifecycleStopReceipt(deletion,stop));
+        var cleared=executions.confirmCleanup(deletion,new SandboxRuntime.Removal(stop.containerId(),stop.image(),stop.startedAt(),stop.finishedAt(),java.time.Instant.now()),runner.id());
+        executions.complete(deletion,cleared);
+        var deleted=lifecycle.get(alice,previous.workspaceId());assertTrue(deleted.prepareAllowed());
+        var prepared=lifecycle.prepare(alice,previous.workspaceId(),UUID.randomUUID(),hash("prepare-after-delete"),deleted.version(),false);
+        var command=claimLifecycle(new EnvironmentLifecycleRepository.Admission(prepared.operationId(),"PREPARE","PENDING",prepared.environment().generation(),prepared.environment().version()));
+        assertEquals(previous.generation()+1,command.generation());assertEquals(command.commandId(),command.creationCommandId());
+        assertEquals("READY",workspaces.get(alice,command.workspaceId()).state());
+        assertEquals(1,count("SELECT reserved_slots FROM pf.workspace_capacity WHERE id=1"));
+    }
+    @Test void lifecycleRetryPreservesFailedWakeIntentWithoutCreatingAnotherWorkspace() throws Exception {
+        var stopped=stoppedEnvironmentForLifecycle();long version=lifecycle.get(alice,stopped.workspaceId()).version();
+        var wake=claimLifecycle(lifecycle(stopped.workspaceId(),UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.WAKE));
+        executions.beforeCall(wake);accept(wake,hash("failed-wake"));
+        var failure=new com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt(wake.commandId(),wake.operationId(),wake.environmentId(),wake.workspaceId(),
+                wake.generation(),wake.fence(),"FAILED","NOT_STARTED","SANDBOX_ADMISSION_REJECTED",null,null,1);
+        commitReceipt(wake,failure);executions.complete(wake,failure);
+        var snapshot=lifecycle.get(alice,wake.workspaceId());assertTrue(snapshot.retryAllowed());
+        var retry=lifecycle.prepare(alice,wake.workspaceId(),UUID.randomUUID(),hash("retry-failed-wake"),snapshot.version(),true);
+        var retried=claimLifecycle(new EnvironmentLifecycleRepository.Admission(retry.operationId(),"WAKE","PENDING",retry.environment().generation(),retry.environment().version()));
+        assertEquals("WAKE",retried.kind());assertEquals(wake.generation()+1,retried.generation());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace"));assertEquals(1,count("SELECT reserved_slots FROM pf.workspace_capacity WHERE id=1"));
+    }
+    private com.agentplatform.domain.workspace.EnvironmentExecutionData.Command readyV3Environment() throws Exception {
+        var command=acceptedV3Environment();
+        var receipt=ready(command);commitReceipt(command,receipt);executions.complete(command,receipt);return command;
+    }
+    private com.agentplatform.domain.workspace.EnvironmentExecutionData.Command acceptedV3Environment() throws Exception {
+        UUID workspace=storage(true);
+        var first=lifecycle.prepare(alice,workspace,UUID.randomUUID(),hash("ready-v3-fixture"),0,false);
+        var command=claimLifecycle(new EnvironmentLifecycleRepository.Admission(first.operationId(),"PREPARE","PENDING",1,1));
+        executions.beforeCall(command);accept(command,hash("ready-v3-fixture-command"));
+        return command;
+    }
+    @Test void lifecycleIdleStopUsesV3CleanupBarrierAndWakeRemainsUsable() throws Exception {
+        var original=readyV3Environment();sql("UPDATE pf.workspace_environment SET last_activity_at=clock_timestamp()-interval '61 seconds'");
+        assertEquals(1,maintenance.scheduleStop());
+        var snapshot=lifecycle.get(alice,original.workspaceId());assertEquals("STOPPING",snapshot.state());
+        var command=claimLifecycle(new EnvironmentLifecycleRepository.Admission(snapshot.operationId(),"STOP","PENDING",snapshot.generation(),snapshot.version()));
+        assertEquals("STOP",command.kind());assertEquals("SYSTEM",command.initiator());
+        assertEquals(original.physicalIdentity(),command.physicalIdentity());
+        executions.beforeCall(command);accept(command,hash("idle-v3-stop"));
+        var stop=new SandboxRuntime.Stop(command.containerId(),command.imageId(),command.containerStartedAt(),"2026-10-22T00:00:05Z",true,true,java.time.Instant.now());
+        var receipt=lifecycleStopReceipt(command,stop);commitReceipt(command,receipt);
+        assertThrows(WorkspaceFailure.class,()->executions.complete(command,receipt));
+        var cleaned=executions.confirmCleanup(command,new SandboxRuntime.Removal(stop.containerId(),stop.image(),stop.startedAt(),stop.finishedAt(),java.time.Instant.now()),runner.id());
+        executions.complete(command,cleaned);
+        var stopped=lifecycle.get(alice,command.workspaceId());
+        var wake=claimLifecycle(lifecycle(command.workspaceId(),UUID.randomUUID(),stopped.version(),EnvironmentLifecycleRepository.Intent.WAKE));
+        executions.beforeCall(wake);accept(wake,hash("wake-after-idle-v3"));
+        var awake=ready(wake);commitReceipt(wake,awake);executions.complete(wake,awake);
+        assertNotNull(uses.admit(alice,wake.workspaceId(),UUID.randomUUID(),UUID.randomUUID(),probe()).command());
+        assertEquals(original.generation()+1,wake.generation());
+    }
+    @Test void lifecycleIdleMaintenanceCannotOvertakeQueuedFileWriter() throws Exception {
+        var original=readyV3Environment();sql("UPDATE pf.workspace_environment SET last_activity_at=clock_timestamp()-interval '61 seconds'");
+        sql("INSERT INTO pf.file_operation(id,space_id,workspace_id,actor_id,kind,command_id,status,helper_image_id,helper_policy_hash,scan_parent,scan_epoch)"
+                +" VALUES('"+UUID.randomUUID()+"','"+alice.spaceId()+"','"+original.workspaceId()+"','"+alice.userId()+"','SCAN','"
+                +UUID.randomUUID()+"','PENDING','sha256:"+"a".repeat(64)+"','"+"b".repeat(64)+"','','"+UUID.randomUUID()+"')");
+        assertEquals(0,maintenance.scheduleStop());assertEquals("READY",lifecycle.get(alice,original.workspaceId()).state());
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_operation WHERE kind='STOP'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+    }
+    @Test void lifecycleRetryOfFailedDeleteKeepsDeletionAndPriorStopInsteadOfPreparing() throws Exception {
+        var original=readyV3Environment();long version=lifecycle.get(alice,original.workspaceId()).version();
+        var command=claimLifecycle(lifecycle(original.workspaceId(),UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.DELETE));
+        executions.beforeCall(command);accept(command,hash("failed-delete-v3"));
+        var stop=new SandboxRuntime.Stop(command.containerId(),command.imageId(),command.containerStartedAt(),"2026-10-22T00:00:05Z",true,true,java.time.Instant.now());
+        var failed=new com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt(command.commandId(),command.operationId(),command.environmentId(),command.workspaceId(),
+                command.generation(),command.fence(),"FAILED","STOPPED","SANDBOX_LIFECYCLE_REJECTED",null,stop,1);
+        commitReceipt(command,failed);
+        var cleaned=executions.confirmCleanup(command,new SandboxRuntime.Removal(stop.containerId(),stop.image(),stop.startedAt(),stop.finishedAt(),java.time.Instant.now()),runner.id());
+        executions.complete(command,cleaned);var snapshot=lifecycle.get(alice,command.workspaceId());assertTrue(snapshot.retryAllowed());
+        UUID key=UUID.randomUUID();String digest=hash("retry-delete-v3");
+        var retried=lifecycle.prepare(alice,command.workspaceId(),key,digest,snapshot.version(),true);
+        assertEquals(retried.operationId(),lifecycle.prepare(alice,command.workspaceId(),key,digest,snapshot.version(),true).operationId());
+        var retry=claimLifecycle(new EnvironmentLifecycleRepository.Admission(retried.operationId(),"DELETE","PENDING",retried.environment().generation(),retried.environment().version()));
+        assertEquals("DELETE",retry.kind());assertEquals(command.generation(),retry.generation());
+        assertEquals(command.creationCommandId(),retry.creationCommandId());assertNotNull(executions.priorStop(retry));
+    }
+    @Test void lifecycleActionsAndOriginalRequestLookupStayScopedAfterAnotherOperation() throws Exception {
+        UUID workspace=storage(true),request=UUID.randomUUID();
+        var submitted=lifecycle.prepare(alice,workspace,request,hash("original-public-request"),0,false);
+        var command=claimLifecycle(new EnvironmentLifecycleRepository.Admission(submitted.operationId(),"PREPARE","PENDING",1,1));
+        executions.beforeCall(command);accept(command,hash("public-projection-ready"));
+        var ready=ready(command);commitReceipt(command,ready);executions.complete(command,ready);
+        var view=lifecycle.get(alice,workspace);assertTrue(view.sleepAllowed());assertTrue(view.deleteAllowed());
+        assertFalse(view.prepareAllowed());assertFalse(view.retryAllowed());assertFalse(view.wakeAllowed());
+        lifecycle(workspace,UUID.randomUUID(),view.version(),EnvironmentLifecycleRepository.Intent.SLEEP);
+        var original=lifecycle.request(alice,workspace,request);
+        assertEquals(submitted.operationId(),original.operationId());assertEquals("COMMITTED",original.status());
+        assertEquals(original,lifecycle.operation(alice,workspace,original.operationId()));
+        assertFalse(lifecycle.get(alice,workspace).sleepAllowed());assertFalse(lifecycle.get(alice,workspace).deleteAllowed());
+        assertEquals(404,assertThrows(WorkspaceFailure.class,()->lifecycle.request(bob,workspace,request)).status());
+        assertEquals(404,assertThrows(WorkspaceFailure.class,()->lifecycle.operation(new Actor(alice.userId(),bob.spaceId()),workspace,original.operationId())).status());
+        assertEquals(404,assertThrows(WorkspaceFailure.class,()->lifecycle.request(alice,workspace,UUID.randomUUID())).status());
+        assertEquals(404,assertThrows(WorkspaceFailure.class,()->lifecycle.operation(alice,workspace,UUID.randomUUID())).status());
+    }
+    private void expireEnvironmentOwner(com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command) throws Exception {
+        sql("UPDATE pf.workspace_environment_operation SET lease_until=clock_timestamp()-interval '1 second' WHERE id='"+command.operationId()+"'");
+        assertEquals(1,maintenance.blockExpired());
+        assertEquals("BLOCKED",lifecycle.get(alice,command.workspaceId()).state());
+    }
+    @Test void lifecycleObservationHasOneOwnerCasAndDoesNotRenewOldExecution() throws Exception {
+        var command=acceptedV3Environment();var receipt=ready(command);commitReceipt(command,receipt);expireEnvironmentOwner(command);
+        com.agentplatform.domain.workspace.EnvironmentExecutionData.Observation first;
+        try(var contenders=Executors.newFixedThreadPool(2)) {
+            var left=contenders.submit(()->executions.observations(UUID.randomUUID()));
+            var right=contenders.submit(()->executions.observations(UUID.randomUUID()));
+            var granted=java.util.stream.Stream.of(left.get(15,TimeUnit.SECONDS),right.get(15,TimeUnit.SECONDS)).flatMap(List::stream).toList();
+            assertEquals(1,granted.size());first=granted.getFirst();
+        }
+        assertTrue(executions.observations(UUID.randomUUID()).isEmpty());
+        assertEquals(com.agentplatform.domain.workspace.EnvironmentExecutionData.QueryMode.OBSERVATION,executions.queryLookup(command.operationId()).mode());
+        assertEquals(receipt,executions.observedReceipt(command));
+        assertThrows(WorkspaceFailure.class,()->executions.completeObserved(
+                new com.agentplatform.domain.workspace.EnvironmentExecutionData.Observation(command,UUID.randomUUID(),first.revision()),receipt));
+        sql("UPDATE pf.workspace_environment_operation SET observation_until=clock_timestamp()-interval '1 second' WHERE id='"+command.operationId()+"'");
+        var replacement=executions.observations(UUID.randomUUID()).getFirst();assertTrue(replacement.revision()>first.revision());
+        assertThrows(WorkspaceFailure.class,()->executions.completeObserved(first,receipt));
+        executions.completeObserved(replacement,receipt);executions.completeObserved(replacement,receipt);
+        assertEquals("READY",lifecycle.get(alice,command.workspaceId()).state());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_operation WHERE id='"+command.operationId()+"' AND owner_id='"
+                +command.ownerId()+"' AND fence="+command.fence()+" AND lease_until<clock_timestamp()"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_event WHERE payload_json->>'state'='READY'"));
+        assertThrows(WorkspaceFailure.class,()->executions.renew(command));
+        assertThrows(WorkspaceFailure.class,()->executions.beforeCall(command));
+        assertEquals(com.agentplatform.domain.workspace.EnvironmentExecutionData.QueryMode.READ_ONLY,executions.queryLookup(command.operationId()).mode());
+        assertEquals(receipt,executions.committedReceipt(command));
+    }
+    @Test void lifecycleObservationWithoutCanonicalResultKeepsUnknownAndCapacity() throws Exception {
+        var command=acceptedV3Environment();expireEnvironmentOwner(command);
+        var observation=executions.observations(UUID.randomUUID()).getFirst();
+        var unknown=executions.observedReceipt(command);assertEquals("RUNNING",unknown.state());
+        assertThrows(WorkspaceFailure.class,()->executions.completeObserved(observation,unknown));
+        assertThrows(WorkspaceFailure.class,()->executions.completeObserved(observation,ready(command)));
+        assertEquals("BLOCKED",lifecycle.get(alice,command.workspaceId()).state());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_cleanup"));
+    }
+    @Test void lifecycleObservationExpiryBeforeCommitRollsBackProjection() throws Exception {
+        var command=acceptedV3Environment();var receipt=ready(command);commitReceipt(command,receipt);expireEnvironmentOwner(command);
+        var observation=executions.observations(UUID.randomUUID()).getFirst();
+        sql("UPDATE pf.workspace_environment_operation SET observation_until=clock_timestamp()+interval '5 seconds' WHERE id='"+command.operationId()+"'");
+        var projected=new java.util.concurrent.atomic.AtomicBoolean();
+        assertThrows(WorkspaceFailure.class,()->transactions.execute(status->{
+            executions.completeObserved(observation,receipt);projected.set(true);
+            // Hold the application transaction without exceeding the separate
+            // fixture socketTimeout=5s on a deliberately sleeping SQL statement.
+            try {Thread.sleep(5100);}catch(InterruptedException failure){Thread.currentThread().interrupt();throw new RuntimeException(failure);}return null;
+        }));
+        assertTrue(projected.get(),"Action must succeed before testing the commit-time lease barrier");
+        assertEquals("BLOCKED",lifecycle.get(alice,command.workspaceId()).state());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_event WHERE payload_json->>'state'='READY'"));
+    }
+    @Test void lifecycleSignedObserverCleansCommittedStopWithGetOnlyAfterExpiry() throws Exception {
+        var original=readyV3Environment();long version=lifecycle.get(alice,original.workspaceId()).version();
+        var command=claimLifecycle(lifecycle(original.workspaceId(),UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.SLEEP));
+        executions.beforeCall(command);accept(command,hash("observation-stop"));
+        var stop=new SandboxRuntime.Stop(command.containerId(),command.imageId(),command.containerStartedAt(),"2026-10-22T00:00:05Z",true,true,java.time.Instant.now());
+        commitReceipt(command,lifecycleStopReceipt(command,stop));expireEnvironmentOwner(command);
+        var controlKey=new com.nimbusds.jose.jwk.gen.RSAKeyGenerator(3072).keyID("r34-observer-control").generate();
+        var runnerKey=new com.nimbusds.jose.jwk.gen.RSAKeyGenerator(3072).keyID("r34-observer-runner").generate();
+        var control=new RunnerSignatures(controlKey,runnerKey.toPublicJWK(),"r34-control","r34-runner",java.time.Clock.systemUTC());
+        var signer=new RunnerSignatures(runnerKey,controlKey.toPublicJWK(),"r34-runner","r34-control",java.time.Clock.systemUTC());
+        var runtime=org.mockito.Mockito.mock(SandboxRuntime.class);
+        org.mockito.Mockito.when(runtime.confirmRemoval(command.physicalIdentity(),stop)).thenReturn(
+                new SandboxRuntime.Removal(stop.containerId(),stop.image(),stop.startedAt(),stop.finishedAt(),java.time.Instant.now()));
+        var service=new EnvironmentRunnerService(executions,signer,runtime,command.imageId(),command.policyHash(),runner);
+        var queries=new java.util.concurrent.atomic.AtomicInteger();
+        var port=new EnvironmentRunnerPort() {
+            @Override public com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt prepareEnvironment(
+                    com.agentplatform.domain.workspace.EnvironmentExecutionData.Command ignored) {throw new AssertionError("Observer must never POST");}
+            @Override public com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt queryEnvironment(
+                    com.agentplatform.domain.workspace.EnvironmentExecutionData.Command observed) {
+                queries.incrementAndGet();String path=EnvironmentRunnerService.PATH_V3+"/"+observed.operationId();
+                var result=service.queryV3(control.sign(EnvironmentRunnerService.binding(observed,"GET",path),new byte[0]),observed.operationId().toString());
+                control.verify(result.signature(),EnvironmentRunnerService.binding(observed,"RESPONSE",path),result.body());
+                return tools.jackson.databind.json.JsonMapper.builder().build().readValue(result.body(),com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt.class);
+            }
+        };
+        var observer=new RunnerReconciler(executions,port);observer.reconcile(UUID.randomUUID());observer.reconcile(UUID.randomUUID());
+        assertEquals(1,queries.get());assertEquals("STOPPED",lifecycle.get(alice,command.workspaceId()).state());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_cleanup WHERE command_id='"+command.commandId()+"'"));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        org.mockito.Mockito.verify(runtime,org.mockito.Mockito.times(1)).confirmRemoval(command.physicalIdentity(),stop);
+        org.mockito.Mockito.verify(runtime,org.mockito.Mockito.never()).stop(org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.verify(runtime,org.mockito.Mockito.never()).prepare(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any());
+        assertThrows(WorkspaceFailure.class,()->executions.renew(command));
+    }
+    @Test void lifecycleObservationRejectsAnotherRunnerUntilExactStoppedInstanceProof() throws Exception {
+        var command=acceptedV3Environment();commitReceipt(command,ready(command));expireEnvironmentOwner(command);
+        executions.observations(UUID.randomUUID());
+        var replacement=new RunnerInstance(UUID.randomUUID(),"4".repeat(64),runner.imageId(),"2026-10-25T00:00:00Z");
+        executions.registerRunner(replacement);
+        assertEquals("RUNNER_INSTANCE_STOP_UNPROVEN",assertThrows(WorkspaceFailure.class,
+                ()->executions.checkObservedRunner(command,replacement.id())).code());
+        var now=java.time.Instant.now();runnerProofs.record(new StoppedRunner(runner,now.minusSeconds(1),now,hash("observation-host-proof-fixture")));
+        assertDoesNotThrow(()->executions.checkObservedRunner(command,replacement.id()));
+        assertThrows(WorkspaceFailure.class,()->executions.checkObservedRunner(command,runner.id()));
+        assertEquals("BLOCKED",lifecycle.get(alice,command.workspaceId()).state());
+    }
+    @Test void lifecycleObservationCannotPublishReadyAfterMembershipRevocation() throws Exception {
+        var command=acceptedV3Environment();var receipt=ready(command);commitReceipt(command,receipt);expireEnvironmentOwner(command);
+        var observation=executions.observations(UUID.randomUUID()).getFirst();
+        sql("UPDATE pf.membership SET status='REVOKED' WHERE user_id='"+alice.userId()+"'");
+        assertEquals("ENVIRONMENT_AUTHORIZATION_REVOKED",assertThrows(WorkspaceFailure.class,
+                ()->executions.completeObserved(observation,receipt)).code());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment WHERE state='BLOCKED'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_event WHERE payload_json->>'state'='READY'"));
+    }
+    @Test void lifecycleSignedObserverRequiresReadOnlyPresenceForStoredReadyWithoutExecutingCanary() throws Exception {
+        var command=acceptedV3Environment();var receipt=ready(command);commitReceipt(command,receipt);expireEnvironmentOwner(command);
+        var controlKey=new com.nimbusds.jose.jwk.gen.RSAKeyGenerator(3072).keyID("r34-ready-control").generate();
+        var runnerKey=new com.nimbusds.jose.jwk.gen.RSAKeyGenerator(3072).keyID("r34-ready-runner").generate();
+        var control=new RunnerSignatures(controlKey,runnerKey.toPublicJWK(),"r34-control","r34-runner",java.time.Clock.systemUTC());
+        var signer=new RunnerSignatures(runnerKey,controlKey.toPublicJWK(),"r34-runner","r34-control",java.time.Clock.systemUTC());
+        var runtime=org.mockito.Mockito.mock(SandboxRuntime.class);
+        var service=new EnvironmentRunnerService(executions,signer,runtime,command.imageId(),command.policyHash(),runner);
+        var port=new EnvironmentRunnerPort() {
+            @Override public com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt prepareEnvironment(
+                    com.agentplatform.domain.workspace.EnvironmentExecutionData.Command ignored) {throw new AssertionError("Observer must never POST");}
+            @Override public com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt queryEnvironment(
+                    com.agentplatform.domain.workspace.EnvironmentExecutionData.Command observed) {
+                String path=EnvironmentRunnerService.PATH_V3+"/"+observed.operationId();
+                var result=service.queryV3(control.sign(EnvironmentRunnerService.binding(observed,"GET",path),new byte[0]),observed.operationId().toString());
+                control.verify(result.signature(),EnvironmentRunnerService.binding(observed,"RESPONSE",path),result.body());
+                return tools.jackson.databind.json.JsonMapper.builder().build().readValue(result.body(),com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt.class);
+            }
+        };
+        var observer=new RunnerReconciler(executions,port);
+        org.mockito.Mockito.when(runtime.verifyReady(org.mockito.ArgumentMatchers.eq(command.physicalIdentity()),org.mockito.ArgumentMatchers.any()))
+                .thenThrow(new WorkspaceFailure(503,"WORKSPACE_MOUNT_UNAVAILABLE"));
+        observer.reconcile(UUID.randomUUID());assertEquals("BLOCKED",lifecycle.get(alice,command.workspaceId()).state());
+        sql("UPDATE pf.workspace_environment_operation SET observation_until=clock_timestamp()-interval '1 second' WHERE id='"+command.operationId()+"'");
+        org.mockito.Mockito.when(runtime.verifyReady(org.mockito.ArgumentMatchers.eq(command.physicalIdentity()),org.mockito.ArgumentMatchers.any())).thenReturn(receipt.container());
+        observer.reconcile(UUID.randomUUID());assertEquals("READY",lifecycle.get(alice,command.workspaceId()).state());
+        org.mockito.Mockito.verify(runtime,org.mockito.Mockito.times(2)).verifyReady(org.mockito.ArgumentMatchers.eq(command.physicalIdentity()),org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.verify(runtime,org.mockito.Mockito.never()).prepare(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.verify(runtime,org.mockito.Mockito.never()).stop(org.mockito.ArgumentMatchers.any());
+    }
+    @Test void lifecycleObservationRejectsCorruptCanonicalRevisionPointer() throws Exception {
+        var command=acceptedV3Environment();var receipt=ready(command);commitReceipt(command,receipt);expireEnvironmentOwner(command);
+        var observation=executions.observations(UUID.randomUUID()).getFirst();
+        sql("UPDATE pf.workspace_environment_command SET result_revision=99 WHERE command_id='"+command.commandId()+"'");
+        assertEquals("RUNNER_RECEIPT_CORRUPT",assertThrows(WorkspaceFailure.class,()->executions.observedReceipt(command)).code());
+        assertThrows(WorkspaceFailure.class,()->executions.completeObserved(observation,receipt));
+        assertEquals("BLOCKED",lifecycle.get(alice,command.workspaceId()).state());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+    }
     @Test void absentReadAllocatesNothingAndStorageReadinessIsSeparate() throws Exception {
         UUID workspace=storage(true);
         var snapshot=environments.get(alice,workspace);

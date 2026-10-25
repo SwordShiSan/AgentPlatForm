@@ -8,6 +8,8 @@ public final class EnvironmentLifecycleRows {
     public record Target(UUID pendingOperationId, String containerId, String containerStartedAt,
                          UUID priorStopReceiptId, String protocol, String cleanupState) {}
     public record ActiveUse(UUID id, String kind, String status) {}
+    public record Workspace(UUID spaceId,UUID workspaceId) {}
+    public record ObservationLease(UUID observerId,long revision) {}
     public record Admission(UUID operationId, String intent, String status, long generation, long version) {}
     public record Plan(UUID id, UUID spaceId, UUID workspaceId, UUID environmentId, UUID actorId,
                        UUID commandId, long generation, long fence, String kind, String status,

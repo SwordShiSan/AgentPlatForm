@@ -50,6 +50,9 @@ The browser SHALL display actual lifecycle, ETag/allowed actions and original op
 #### Scenario: Refresh and unknown result
 - **WHEN** a response is lost or an operation is BLOCKED
 - **THEN** refresh queries the original operation and no blind retry or automatic wake occurs
+#### Scenario: Another browser advances the environment
+- **WHEN** the caller reads its original request or operation under the workspace after another accepted operation changes the current version
+- **THEN** current membership is checked, the original stable operation metadata is returned, and unrelated request/space identities return404 without physical paths or container data
 ### Requirement: Verified and released are distinct
 R3 SHALL be released only after protected local promotion and same-artifact cloud integration, observation, consistent restore and R2 rollback tests pass.
 #### Scenario: Successful release

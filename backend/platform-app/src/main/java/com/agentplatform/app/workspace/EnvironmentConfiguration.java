@@ -28,13 +28,13 @@ public class EnvironmentConfiguration {
             EnvironmentPreparationMapper preparation,EnvironmentExecutionMapper execution,WorkspaceMapper workspaces,TransactionTemplate transactions) {
         return new TransactionalFileHelperRepository(new MyBatisFileHelperRepository(helpers,uses,preparation,execution,workspaces),transactions);
     }
-    @Bean @Profile("workspace-api") EnvironmentPreparationRepository environmentPreparationRepository(EnvironmentPreparationMapper preparation,
+    @Bean @Profile({"workspace-api","workspace-worker"}) EnvironmentLifecycleRepository environmentLifecycleRepository(EnvironmentLifecycleMapper lifecycle,EnvironmentPreparationMapper preparation,
             WorkspaceMapper workspaces,TransactionTemplate transactions,EnvironmentProperties properties) {
-        return new TransactionalEnvironmentPreparationRepository(new MyBatisEnvironmentPreparationRepository(preparation,workspaces,properties.imageId(),properties.policyHash()),transactions);
+        return new TransactionalEnvironmentLifecycleRepository(new MyBatisEnvironmentLifecycleRepository(lifecycle,preparation,workspaces,properties.imageId(),properties.policyHash()),transactions);
     }
-    @Bean @Profile("workspace-api") WorkspaceEnvironmentApi workspaceEnvironmentApi(EnvironmentPreparationRepository repository,Environment selected) {
+    @Bean @Profile("workspace-api") WorkspaceEnvironmentApi workspaceEnvironmentApi(EnvironmentLifecycleRepository repository,Environment selected) {
         if(!selected.acceptsProfiles(Profiles.of("identity-local")))throw new IllegalStateException("Workspace environment API requires the existing identity boundary");
-        return new WorkspaceEnvironmentApplicationService(repository);
+        return new WorkspaceLifecycleService(repository);
     }
     @Bean @Profile({"workspace-api","workspace-worker"}) EnvironmentMaintenanceRepository environmentMaintenanceRepository(EnvironmentMaintenanceMapper maintenance,
             EnvironmentPreparationMapper preparation,EnvironmentExecutionMapper execution,WorkspaceMapper workspaces,TransactionTemplate transactions) {

@@ -95,6 +95,24 @@ for (const patch of [{ containerId: 'private' }, { path: '/private' }, { version
   assert(!environmentSchema({ ...environmentFixture, ...patch }), 'Unsafe environment projection accepted');
 }
 assert(!environmentSchema({ ...environmentFixture, state: 'BLOCKED', phase: 'BLOCKED', allowedActions: ['RETRY'] }), 'Unknown environments cannot expose retry');
+const existingEnvironment = { ...environmentFixture, generation: 1, version: 2, operationId: fixture.eventId };
+for (const [state, phase, allowedActions] of [['READY', 'READY', ['SLEEP', 'DELETE']], ['STOPPED', 'STOPPED', ['WAKE', 'DELETE']],
+  ['DELETED', 'DELETED', ['PREPARE']], ['DELETING', 'DELETING', []], ['STOPPING', 'STOPPING', []]]) {
+  assert(environmentSchema({ ...existingEnvironment, state, phase, allowedActions }), 'Lifecycle projection rejected');
+}
+for (const patch of [{ state: 'READY', phase: 'READY', allowedActions: ['RETRY'] },
+  { state: 'DELETING', phase: 'DELETING', allowedActions: ['DELETE'] }, { generation: 0 }, { operationId: null }]) {
+  assert(!environmentSchema({ ...existingEnvironment, state: 'READY', phase: 'READY', allowedActions: [], ...patch }), 'Unsafe lifecycle projection accepted');
+}
+const environmentOperationSchema = ajv.compile(api.components.schemas.EnvironmentOperation);
+const environmentOperation = { operationId: fixture.eventId, workspaceId: fixture.spaceId, intent: 'DELETE', status: 'DRAINING', generation: 1, revision: 1, errorCode: null };
+assert(environmentOperationSchema(environmentOperation));
+for (const patch of [{ containerId: 'private' }, { hostPath: '/private' }, { status: 'GUESS_STOPPED' }, { generation: 0 }, { intent: 'SHELL' }]) {
+  assert(!environmentOperationSchema({ ...environmentOperation, ...patch }), 'Unsafe original operation metadata accepted');
+}
+for (const state of ['STOPPING', 'DELETING', 'DELETED']) {
+  assert(validateEvent({ ...environmentEvent, payload: { ...environmentEvent.payload, state } }), 'Lifecycle event rejected');
+}
 const emptyEnvironmentCommand = ajv.compile(api.components.schemas.EmptyEnvironmentCommand);
 assert(emptyEnvironmentCommand({}));
 for (const input of [null, { image: 'mutable' }, { command: 'shell' }, { path: '/host' }]) assert(!emptyEnvironmentCommand(input));

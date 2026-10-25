@@ -82,7 +82,7 @@ public final class MyBatisEnvironmentUseRepository implements EnvironmentUseRepo
         var slot=environments.lockSlot();var operation=environments.operation(environment.operationId());
         if(environments.lifecycleBusy(actor.spaceId(),workspace))throw new WorkspaceFailure(423,"ENVIRONMENT_LIFECYCLE_BUSY");
         if(workspaces.fileDataPlaneBusy(actor.spaceId(),workspace))throw new WorkspaceFailure(423,"WORKSPACE_BUSY");
-        if(!"READY".equals(environment.state())||!"COMMITTED".equals(operation.status())||!"PREPARE".equals(operation.kind())
+        if(!"READY".equals(environment.state())||!"COMMITTED".equals(operation.status())||!Set.of("PREPARE","WAKE").contains(operation.kind())
                 ||!environment.id().equals(slot.environmentId())||!Objects.equals(slot.generation(),environment.generation()))
             throw new WorkspaceFailure(409,"ENVIRONMENT_NOT_READY");
         if(environments.unresolvedUse(environment.id()))throw new WorkspaceFailure(409,"ENVIRONMENT_USE_BUSY");

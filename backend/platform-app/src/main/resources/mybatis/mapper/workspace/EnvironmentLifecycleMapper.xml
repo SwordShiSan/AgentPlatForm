@@ -1,6 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.agentplatform.infrastructure.dao.workspace.EnvironmentLifecycleMapper">
+    <select id="nextPending" resultType="com.agentplatform.infrastructure.dao.po.EnvironmentLifecycleRows$Workspace">
+        SELECT space_id,workspace_id FROM pf.workspace_environment WHERE pending_operation_id IS NOT NULL ORDER BY updated_at,id LIMIT 1
+    </select>
+    <select id="operationView" resultType="com.agentplatform.domain.workspace.EnvironmentLifecycleRepository$Operation">
+        SELECT id AS operation_id,workspace_id,COALESCE(lifecycle_intent,kind) AS intent,status,generation,version AS revision,error_code
+        FROM pf.workspace_environment_operation WHERE id=#{operationId} AND space_id=#{actor.spaceId} AND workspace_id=#{workspaceId}
+    </select>
+    <select id="requestView" resultType="com.agentplatform.domain.workspace.EnvironmentLifecycleRepository$Operation">
+        SELECT o.id AS operation_id,o.workspace_id,COALESCE(o.lifecycle_intent,o.kind) AS intent,o.status,o.generation,o.version AS revision,o.error_code
+        FROM pf.workspace_environment_idempotency i JOIN pf.workspace_environment_operation o ON o.id=i.operation_id
+        WHERE i.space_id=#{actor.spaceId} AND i.actor_id=#{actor.userId} AND i.workspace_id=#{workspaceId} AND i.request_id=#{requestId}
+            AND o.space_id=i.space_id AND o.workspace_id=i.workspace_id
+    </select>
     <select id="target" resultType="com.agentplatform.infrastructure.dao.po.EnvironmentLifecycleRows$Target">
         SELECT e.pending_operation_id,e.container_id,e.container_started_at,
             (SELECT s.id FROM pf.workspace_environment_stop_receipt s
@@ -32,12 +45,23 @@
             actor_id,command_id,generation,fence,status,protocol,lifecycle_intent,target_creation_command_id,
             target_creation_fence,target_image_id,target_policy_hash,target_project_id,target_container_id,
             target_container_started_at,prior_stop_receipt_id,cleanup_required,cleanup_state)
-        VALUES(#{row.id},#{row.spaceId},#{row.workspaceId},#{row.environmentId},#{row.kind},'USER',#{row.actorId},
+        VALUES(#{row.id},#{row.spaceId},#{row.workspaceId},#{row.environmentId},#{row.kind},CASE WHEN #{row.kind}='STOP' THEN 'SYSTEM' ELSE 'USER' END,#{row.actorId},
             #{row.commandId},#{row.generation},#{row.fence},#{row.status},'ENVIRONMENT_V3',#{row.kind},
             #{row.creationCommandId},#{row.creationFence},#{row.imageId},#{row.policyHash},#{row.projectId},
             #{row.containerId},#{row.containerStartedAt},#{row.priorStopReceiptId},
             #{row.kind}&lt;&gt;'WAKE',CASE WHEN #{row.kind}='WAKE' THEN 'NOT_REQUIRED' ELSE 'PENDING' END)
     </insert>
+    <update id="freezeCreation">
+        UPDATE pf.workspace_environment_operation o SET protocol='ENVIRONMENT_V3',kind=#{kind},lifecycle_intent=#{kind},
+            target_creation_command_id=e.creation_command_id,target_creation_fence=e.creation_fence,
+            target_image_id=e.image_id,target_policy_hash=e.policy_hash,target_project_id=w.project_id,
+            cleanup_required=false,cleanup_state='NOT_REQUIRED'
+        FROM pf.workspace_environment e JOIN pf.workspace w ON w.id=e.workspace_id AND w.space_id=e.space_id
+        WHERE o.id=#{operationId} AND e.operation_id=o.id AND o.environment_id=e.id AND o.space_id=e.space_id
+            AND o.workspace_id=e.workspace_id AND o.kind='PREPARE' AND o.status='PENDING' AND o.owner_id IS NULL
+            AND o.protocol='ENVIRONMENT_V2' AND o.generation=e.generation AND o.fence=e.fence
+            AND #{kind} IN('PREPARE','WAKE')
+    </update>
     <select id="pending" resultType="com.agentplatform.infrastructure.dao.po.EnvironmentLifecycleRows$Plan">
         SELECT id,space_id,workspace_id,environment_id,actor_id,command_id,generation,fence,kind,status,
             target_creation_command_id AS creation_command_id,target_creation_fence AS creation_fence,

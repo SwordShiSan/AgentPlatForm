@@ -10,6 +10,15 @@ public interface EnvironmentExecutionRepository {
     void published(Publication publication, boolean confirmed);
     Command claim(Publication publication, UUID ownerId);
     Command lookup(UUID operationId);
+    default Query queryLookup(UUID operationId) {return new Query(lookup(operationId),QueryMode.EXECUTION);}
+    default List<Observation> observations(UUID observerId) {return List.of();}
+    default void checkObservation(Observation observation) {throw new UnsupportedOperationException("Observation unavailable");}
+    default void checkObservedCommand(Command command) {throw new UnsupportedOperationException("Observation unavailable");}
+    default void checkObservedRunner(Command command,UUID runnerId) {throw new UnsupportedOperationException("Observation unavailable");}
+    default Receipt observedReceipt(Command command) {throw new UnsupportedOperationException("Observation unavailable");}
+    default Receipt committedReceipt(Command command) {throw new UnsupportedOperationException("Read-only lookup unavailable");}
+    default Receipt confirmObservedCleanup(Command command,SandboxRuntime.Removal removal,UUID runnerId) {throw new UnsupportedOperationException("Observation unavailable");}
+    default void completeObserved(Observation observation,Receipt receipt) {throw new UnsupportedOperationException("Observation unavailable");}
     void check(Command command);
     void checkOwnership(Command command);
     void renew(Command command);

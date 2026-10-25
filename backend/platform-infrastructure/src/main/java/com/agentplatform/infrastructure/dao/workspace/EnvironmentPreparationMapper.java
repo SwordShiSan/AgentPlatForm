@@ -16,6 +16,7 @@ public interface EnvironmentPreparationMapper {
     boolean unresolvedUse(@Param("environmentId") UUID environmentId);
     boolean confirmedStop(@Param("operationId") UUID operationId);
     boolean lifecycleBusy(@Param("spaceId") UUID spaceId,@Param("workspaceId") UUID workspaceId);
+    boolean cleanupSatisfied(@Param("operationId") UUID operationId);
     void insertEnvironment(@Param("row") Environment row);
     int replaceGeneration(@Param("row") Environment row, @Param("expectedVersion") long expectedVersion);
     void insertOperation(@Param("row") Environment row, @Param("actorId") UUID actorId);

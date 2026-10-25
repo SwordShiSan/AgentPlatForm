@@ -6,7 +6,6 @@ import com.agentplatform.domain.workspace.EnvironmentPreparationRepository;
 import com.agentplatform.domain.workspace.WorkspaceData.Actor;
 import com.agentplatform.infrastructure.workspace.RunnerSignatures;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Set;
 
 public final class WorkspaceEnvironmentApplicationService implements WorkspaceEnvironmentApi {
@@ -15,10 +14,18 @@ public final class WorkspaceEnvironmentApplicationService implements WorkspaceEn
     private static Actor actor(WorkspaceApi.Caller caller) {
         return new Actor(WorkspaceApplicationService.id(caller.userId()),WorkspaceApplicationService.id(caller.spaceId()));
     }
-    private static View view(EnvironmentPreparationRepository.Snapshot snapshot) {
+    static View view(EnvironmentPreparationRepository.Snapshot snapshot) {
         String phase="NOT_CREATED".equals(snapshot.state())?"NONE":snapshot.state();
-        if("STOP".equals(snapshot.operationKind())&&Set.of("PENDING","CLAIMED","RUNNING").contains(snapshot.operationStatus()))phase="STOPPING";
-        var actions=snapshot.prepareAllowed()?List.of("PREPARE"):snapshot.retryAllowed()?List.of("RETRY"):List.<String>of();
+        if(Set.of("DRAINING","PENDING","CLAIMED","RUNNING").contains(snapshot.operationStatus()==null?"":snapshot.operationStatus())) {
+            if(Set.of("STOP","SLEEP").contains(snapshot.operationKind()==null?"":snapshot.operationKind()))phase="STOPPING";
+            if("DELETE".equals(snapshot.operationKind()))phase="DELETING";
+        }
+        var actions=new java.util.ArrayList<String>();
+        if(snapshot.prepareAllowed())actions.add("PREPARE");
+        if(snapshot.retryAllowed())actions.add("RETRY");
+        if(snapshot.sleepAllowed())actions.add("SLEEP");
+        if(snapshot.wakeAllowed())actions.add("WAKE");
+        if(snapshot.deleteAllowed())actions.add("DELETE");
         return new View(snapshot.workspaceId().toString(),snapshot.state(),phase,snapshot.generation(),snapshot.version(),
                 snapshot.operationId()==null?null:snapshot.operationId().toString(),snapshot.errorCode(),actions);
     }

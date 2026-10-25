@@ -22,6 +22,13 @@ describe('environment request identity across refresh and account changes', () =
       sessionStorage.setItem(scope, value); expect(loadEnvironmentRequest(scope)).toBeUndefined();
     }
   });
+  it('retains the exact lifecycle action when confirming a lost response', () => {
+    const scope = environmentRequestScope('alice', 'space', 'workspace');
+    for (const action of ['SLEEP', 'WAKE', 'DELETE'] as const) {
+      saveEnvironmentRequest(scope, { ...pending, version: 7, action });
+      expect(loadEnvironmentRequest(scope)).toEqual({ ...pending, version: 7, action });
+    }
+  });
   it('does not retain unrecognized data in request metadata', () => {
     const scope = environmentRequestScope('alice', 'space', 'workspace');
     sessionStorage.setItem(scope, JSON.stringify({ ...pending, unrelated: 'discard' }));

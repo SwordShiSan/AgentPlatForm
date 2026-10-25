@@ -436,7 +436,10 @@
                   "NOT_CREATED",
                   "PREPARING",
                   "READY",
+                  "STOPPING",
                   "STOPPED",
+                  "DELETING",
+                  "DELETED",
                   "ERROR",
                   "BLOCKED"
                 ]
@@ -491,7 +494,10 @@
                   "NOT_CREATED",
                   "PREPARING",
                   "READY",
+                  "STOPPING",
                   "STOPPED",
+                  "DELETING",
+                  "DELETED",
                   "ERROR",
                   "BLOCKED"
                 ]

@@ -49,7 +49,10 @@ class WorkspaceEnvironmentHttpTest {
                 new WorkspaceEnvironmentApi.View(WORKSPACE,"PREPARING","PREPARING",1,1,operation,null,List.of())));
     }
     private HttpResponse<String> request(String method,String body,Map<String,String> headers) throws Exception {
-        var builder=HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+PATH)).timeout(Duration.ofSeconds(10));
+        return requestAt(PATH,method,body,headers);
+    }
+    private HttpResponse<String> requestAt(String path,String method,String body,Map<String,String> headers) throws Exception {
+        var builder=HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+path)).timeout(Duration.ofSeconds(10));
         headers.forEach(builder::header);
         if(body!=null)builder.header("Content-Type","application/json");
         builder.method(method,body==null?HttpRequest.BodyPublishers.noBody():HttpRequest.BodyPublishers.ofString(body));
@@ -91,5 +94,34 @@ class WorkspaceEnvironmentHttpTest {
         }
         var crossed=writeHeaders();crossed.put("Origin","http://untrusted.invalid");assertEquals(403,request("POST","{}",crossed).statusCode());
         verifyNoInteractions(api);
+    }
+    @Test void lifecycleRoutesRequireTheSamePreconditionsAndAcceptOnlyEmptyCommands() throws Exception {
+        String operation=UUID.randomUUID().toString();
+        for(var action:WorkspaceEnvironmentApi.Action.values()) {
+            String path=PATH+(action==WorkspaceEnvironmentApi.Action.DELETE?"":"/"+action.name().toLowerCase(Locale.ROOT));
+            String method=action==WorkspaceEnvironmentApi.Action.DELETE?"DELETE":"POST";
+            String phase=switch(action) {case WAKE->"PREPARING";case DELETE->"DELETING";case SLEEP->"STOPPING";};
+            when(api.transition(eq(CALLER),eq(WORKSPACE),anyString(),eq(0L),eq(action))).thenReturn(new WorkspaceEnvironmentApi.Submission(operation,
+                    new WorkspaceEnvironmentApi.View(WORKSPACE,phase,phase,1,1,operation,null,List.of())));
+            assertEquals(202,requestAt(path,method,"{}",writeHeaders()).statusCode());
+            var noVersion=writeHeaders();noVersion.remove("If-Match");assertEquals(428,requestAt(path,method,"{}",noVersion).statusCode());
+            var noCsrf=writeHeaders();noCsrf.remove("X-CSRF-Token");assertEquals(403,requestAt(path,method,"{}",noCsrf).statusCode());
+            assertEquals(400,requestAt(path,method,"{\"workspaceDelete\":true}",writeHeaders()).statusCode());
+            verify(api).transition(eq(CALLER),eq(WORKSPACE),anyString(),eq(0L),eq(action));
+        }
+    }
+    @Test void originalRequestAndOperationReadsUseSessionScopeAndExposeOnlyMetadata() throws Exception {
+        String requestId=UUID.randomUUID().toString(),operationId=UUID.randomUUID().toString();
+        var metadata=new WorkspaceEnvironmentApi.OperationView(operationId,WORKSPACE,"DELETE","DRAINING",1,1,null);
+        when(api.request(CALLER,WORKSPACE,requestId)).thenReturn(metadata);
+        when(api.operation(CALLER,WORKSPACE,operationId)).thenReturn(metadata);
+        for(String suffix:List.of("/requests/"+requestId,"/operations/"+operationId)) {
+            var result=requestAt(PATH+suffix,"GET",null,Map.of("Cookie","ap_session=fixture-session","X-User-Id","spoofed"));
+            assertEquals(200,result.statusCode());assertTrue(result.body().contains(operationId));
+            assertFalse(result.body().contains("containerId"));assertFalse(result.body().contains("hostPath"));
+            assertEquals("no-store",result.headers().firstValue("Cache-Control").orElseThrow());
+            assertEquals(401,requestAt(PATH+suffix,"GET",null,Map.of()).statusCode());
+        }
+        verify(api).request(CALLER,WORKSPACE,requestId);verify(api).operation(CALLER,WORKSPACE,operationId);
     }
 }
