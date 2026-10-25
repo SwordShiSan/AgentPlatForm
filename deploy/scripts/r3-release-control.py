@@ -105,6 +105,7 @@ class Window:
    import_data['bindings'].append({'source':exchange,'vhost':'/agentplatform','destination':queue,'destination_type':'queue','routing_key':route,'arguments':{}})
   path=self.folder/'mq-r3.private.json';path.write_text(json.dumps(import_data))
   self.run(['docker','cp',str(path),self.by['rabbitmq']['Id']+':/tmp/r3-permissions.json'])
+  self.run(['docker','exec','--user','0',self.by['rabbitmq']['Id'],'chown','999:999','/tmp/r3-permissions.json'])
   self.run(['docker','exec',self.by['rabbitmq']['Id'],'rabbitmqctl','import_definitions','/tmp/r3-permissions.json'])
  def activate(self,receipt='activate'):
   assert (self.folder/'backup-r2.json').exists();self.capacity()
@@ -155,6 +156,10 @@ class Window:
    row=self.by[name];host=row['HostConfig']
    self.run(['docker','update','--memory',str(host['Memory']),'--memory-swap',str(host['MemorySwap']),row['Id']])
   self.start_dependencies()
+  if (backup/'rabbitmq-definitions.json').exists():
+   self.run(['docker','cp',str(backup/'rabbitmq-definitions.json'),self.by['rabbitmq']['Id']+':/tmp/r3-rollback-definitions.json'])
+   self.run(['docker','exec','--user','0',self.by['rabbitmq']['Id'],'chown','999:999','/tmp/r3-rollback-definitions.json'])
+   self.run(['docker','exec',self.by['rabbitmq']['Id'],'rabbitmqctl','import_definitions','/tmp/r3-rollback-definitions.json'])
   for name in ['api','worker','gateway']:self.run(['docker','start',self.by[name]['Id']])
   for _ in range(90):
    try:self.health();break
@@ -162,23 +167,24 @@ class Window:
   else:raise RuntimeError('R2 readiness did not recover')
   return {'status':'PASS','exactR2ContainersRetained':True,'originalCapsRestored':True,'migration':int(self.sql('SELECT max(version::int) FROM pf.flyway_schema_history WHERE success;')),'supplierCalls':0}
 def main():
- p=argparse.ArgumentParser();p.add_argument('action',choices=['start','backup-r2','activate','backup-r3','rollback','redeploy']);p.add_argument('folder',type=Path);a=p.parse_args();os.umask(0o077);w=Window(a.folder)
+ p=argparse.ArgumentParser();p.add_argument('action',choices=['start','backup-r2','activate','backup-r3','rollback','redeploy','retry-activation']);p.add_argument('folder',type=Path);a=p.parse_args();os.umask(0o077);w=Window(a.folder)
  with (ROOT/'operations/platform-switch/switch.lock').open('a') as lock:
   fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
   try:
    assert not (w.folder/(a.action+'.json')).exists(),'Inspect original action before retry'
    if a.action=='start':w.backup('r2');w.activate();w.receipt('start',{'status':'PASS','supplierCalls':0})
    elif a.action.startswith('backup-'):w.backup(a.action.removeprefix('backup-'))
-   elif a.action in ['activate','redeploy']:
-    if a.action=='redeploy':
-     assert (w.folder/'rollback.json').exists() and (w.folder/'restore.json').exists()
+   elif a.action in ['activate','redeploy','retry-activation']:
+    if a.action in ['redeploy','retry-activation']:
+     if a.action=='redeploy':assert (w.folder/'rollback.json').exists() and (w.folder/'restore.json').exists()
+     else:assert (w.folder/'failure-restoration.json').exists() and not (w.folder/'activate.json').exists()
      w.stop_r2_apps()
      for name in ['s3','filer','volume','master','redis','rabbitmq','postgres']:w.run(['docker','stop','-t','60',w.by[name]['Id']])
     w.activate(a.action)
    else:w.receipt('rollback',w.rollback())
   except BaseException:
    if a.action!='rollback':
-    try:(w.folder/'failure-restoration.json').write_text(json.dumps(w.rollback(),indent=2))
+    try:w.receipt('failure-'+a.action+'-restoration',w.rollback())
     except BaseException:(w.folder/'restoration-required').write_text('Original failure and restoration require attention')
    raise
 if __name__=='__main__':main()
