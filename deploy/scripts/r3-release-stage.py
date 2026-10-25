@@ -83,8 +83,9 @@ def main():
    env['PLATFORM_WORKSPACE_ENVIRONMENT_POLICY_HASH']=hashlib.sha256(policy.encode()).hexdigest()
    env['PLATFORM_WORKSPACE_FILES_POLICY_HASH']=hashlib.sha256(file_policy.encode()).hexdigest()
    if name in ['api','worker']:
-    env['PLATFORM_WORKSPACE_MESSAGING_USER']='mq_workspace'
-    env['PLATFORM_WORKSPACE_MESSAGING_PASSWORD_FILE']='/run/secrets/mq_password'
+    env['PLATFORM_WORKSPACE_MESSAGING_USER']=env['PLATFORM_CHAT_MQ_USER']
+    env['PLATFORM_WORKSPACE_MESSAGING_PASSWORD_FILE']=env['PLATFORM_CHAT_MQ_PASSWORD_FILE']
+    service['secrets']=[s for s in service['secrets'] if s['source']!='mq_password']
    if name=='worker':
     env['PLATFORM_WORKSPACE_CONTROL_KEY_ID']='r3-control-1';env['PLATFORM_WORKSPACE_CONTROL_RUNNER_KEY_ID']='r3-runner-1'
     service['networks']['model-egress']=None
