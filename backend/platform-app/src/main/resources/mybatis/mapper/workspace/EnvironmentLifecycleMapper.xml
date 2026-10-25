@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.workspace.EnvironmentLifecycleMapper">
+    <select id="target" resultType="com.agentplatform.infrastructure.dao.po.EnvironmentLifecycleRows$Target">
+        SELECT e.pending_operation_id,e.container_id,e.container_started_at,
+            (SELECT s.id FROM pf.workspace_environment_stop_receipt s
+             WHERE s.space_id=e.space_id AND s.workspace_id=e.workspace_id AND s.environment_id=e.id
+               AND s.generation=e.generation AND s.container_id=e.container_id AND s.image_id=e.image_id
+               AND s.container_started_at=e.container_started_at AND s.exec_stopped AND s.callbacks_stopped
+             ORDER BY s.created_at DESC,s.id DESC LIMIT 1) AS prior_stop_receipt_id,
+            o.protocol,o.cleanup_state
+        FROM pf.workspace_environment e JOIN pf.workspace_environment_operation o ON o.id=e.operation_id
+        WHERE e.id=#{environmentId}
+    </select>
+    <select id="activeUse" resultType="com.agentplatform.infrastructure.dao.po.EnvironmentLifecycleRows$ActiveUse">
+        SELECT id,kind,status FROM pf.workspace_environment_use
+        WHERE environment_id=#{environmentId} AND status IN('CLAIMED','RUNNING','UNKNOWN')
+    </select>
+    <select id="fileOperationBusy" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM pf.file_operation WHERE space_id=#{spaceId} AND workspace_id=#{workspaceId}
+            AND status IN('PENDING','CLAIMED','RUNNING','UNKNOWN'))
+    </select>
+    <select id="original" resultType="com.agentplatform.infrastructure.dao.po.EnvironmentLifecycleRows$Admission">
+        SELECT o.id AS operation_id,COALESCE(o.lifecycle_intent,o.kind) AS intent,o.status,o.generation,
+            e.version FROM pf.workspace_environment_idempotency i
+            JOIN pf.workspace_environment_operation o ON o.id=i.operation_id
+            JOIN pf.workspace_environment e ON e.id=i.environment_id
+        WHERE i.space_id=#{actor.spaceId} AND i.actor_id=#{actor.userId} AND i.request_id=#{requestId}
+    </select>
+    <insert id="insertOperation">
+        INSERT INTO pf.workspace_environment_operation(id,space_id,workspace_id,environment_id,kind,initiator,
+            actor_id,command_id,generation,fence,status,protocol,lifecycle_intent,target_creation_command_id,
+            target_creation_fence,target_image_id,target_policy_hash,target_project_id,target_container_id,
+            target_container_started_at,prior_stop_receipt_id,cleanup_required,cleanup_state)
+        VALUES(#{row.id},#{row.spaceId},#{row.workspaceId},#{row.environmentId},#{row.kind},'USER',#{row.actorId},
+            #{row.commandId},#{row.generation},#{row.fence},#{row.status},'ENVIRONMENT_V3',#{row.kind},
+            #{row.creationCommandId},#{row.creationFence},#{row.imageId},#{row.policyHash},#{row.projectId},
+            #{row.containerId},#{row.containerStartedAt},#{row.priorStopReceiptId},
+            #{row.kind}&lt;&gt;'WAKE',CASE WHEN #{row.kind}='WAKE' THEN 'NOT_REQUIRED' ELSE 'PENDING' END)
+    </insert>
+    <select id="pending" resultType="com.agentplatform.infrastructure.dao.po.EnvironmentLifecycleRows$Plan">
+        SELECT id,space_id,workspace_id,environment_id,actor_id,command_id,generation,fence,kind,status,
+            target_creation_command_id AS creation_command_id,target_creation_fence AS creation_fence,
+            target_image_id AS image_id,target_policy_hash AS policy_hash,target_project_id AS project_id,
+            target_container_id AS container_id,target_container_started_at AS container_started_at,prior_stop_receipt_id
+        FROM pf.workspace_environment_operation WHERE id=#{operationId} AND protocol='ENVIRONMENT_V3' FOR UPDATE
+    </select>
+    <update id="cancelSandboxUse">
+        UPDATE pf.workspace_environment_use SET cancel_requested=true,version=version+1
+        WHERE id=#{id} AND status IN('CLAIMED','RUNNING') AND kind NOT LIKE 'FILE_%' AND NOT cancel_requested
+    </update>
+    <update id="activate">
+        UPDATE pf.workspace_environment_operation SET fence=#{fence},status='PENDING',prior_stop_receipt_id=#{priorStopId},version=version+1
+        WHERE id=#{operationId} AND protocol='ENVIRONMENT_V3' AND status='DRAINING'
+            AND owner_id IS NULL AND kind IN('SLEEP','DELETE')
+    </update>
+    <update id="selectPending">
+        UPDATE pf.workspace_environment SET operation_id=#{row.id},pending_operation_id=NULL,fence=#{row.fence},
+            state=#{phase},version=version+1,updated_at=clock_timestamp()
+        WHERE space_id=#{row.spaceId} AND workspace_id=#{row.workspaceId} AND id=#{row.environmentId}
+            AND generation=#{row.generation} AND version=#{expectedVersion} AND pending_operation_id=#{row.id}
+    </update>
+    <update id="selectOperation">
+        UPDATE pf.workspace_environment SET state=#{phase},version=version+1,error_code=NULL,updated_at=clock_timestamp(),
+        <choose>
+            <when test="row.status == 'DRAINING'">pending_operation_id=#{row.id}</when>
+            <otherwise>operation_id=#{row.id},fence=#{row.fence},pending_operation_id=NULL</otherwise>
+        </choose>
+        WHERE id=#{row.environmentId} AND space_id=#{row.spaceId} AND workspace_id=#{row.workspaceId}
+            AND version=#{expectedVersion} AND pending_operation_id IS NULL
+    </update>
+    <update id="projectWorkspace">
+        UPDATE pf.workspace SET environment_state=#{phase},version=version+1,updated_at=clock_timestamp()
+        WHERE space_id=#{row.spaceId} AND id=#{row.workspaceId} AND state='READY'
+    </update>
+</mapper>

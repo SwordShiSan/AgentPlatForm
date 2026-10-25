@@ -45,7 +45,11 @@ public final class TransactionalEnvironmentExecutionRepository implements Enviro
     @Override public void checkRunner(Command command,UUID runnerId) {tx(null,()->{delegate.checkRunner(command,runnerId);return null;});}
     @Override public Receipt accept(Command command,String hash,UUID runnerId) {return tx(command,()->delegate.accept(command,hash,runnerId));}
     @Override public Receipt receipt(Command command) {return tx(null,()->delegate.receipt(command));}
+    @Override public SandboxRuntime.Stop priorStop(Command command) {return tx(null,()->delegate.priorStop(command));}
     @Override public void commitReceipt(Command command,Receipt receipt,UUID runnerId) {tx(command,()->{delegate.commitReceipt(command,receipt,runnerId);return null;});}
+    @Override public Receipt confirmCleanup(Command command,SandboxRuntime.Removal removal,UUID runnerId) {
+        return tx(command,()->delegate.confirmCleanup(command,removal,runnerId));
+    }
     @Override public void complete(Command command,Receipt receipt) {tx(command,()->{delegate.complete(command,receipt);return null;});}
     @Override public void uncertain(Command command,String code) {tx(command,()->{delegate.uncertain(command,code);return null;});}
     @Override public void quarantine(UUID id,String reason,String hash) {tx(null,()->{delegate.quarantine(id,reason,hash);return null;});}

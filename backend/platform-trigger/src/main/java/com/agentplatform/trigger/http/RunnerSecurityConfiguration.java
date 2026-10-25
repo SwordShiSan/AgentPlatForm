@@ -16,6 +16,7 @@ public class RunnerSecurityConfiguration {
                 .sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(access->access.requestMatchers("/internal/operations","/internal/operations/*",
                         "/internal/operations/v2/environments","/internal/operations/v2/environments/*",
+                        "/internal/operations/v3/environments","/internal/operations/v3/environments/*",
                         "/internal/workspace-uses/v1","/internal/workspace-uses/v1/*",
                         "/internal/file-operations/v1","/internal/file-operations/v1/*").authenticated().anyRequest().denyAll())
                 .oauth2ResourceServer(resource->resource.jwt(jwt->jwt.decoder(decoder)));
@@ -23,7 +24,8 @@ public class RunnerSecurityConfiguration {
             @Override protected void doFilterInternal(jakarta.servlet.http.HttpServletRequest request,
                     jakarta.servlet.http.HttpServletResponse response,jakarta.servlet.FilterChain chain)
                     throws java.io.IOException,jakarta.servlet.ServletException {
-                boolean environment="/internal/operations/v2/environments".equals(request.getRequestURI());
+                boolean environment="/internal/operations/v2/environments".equals(request.getRequestURI())
+                        ||"/internal/operations/v3/environments".equals(request.getRequestURI());
                 long bound=environment?16384:65536;
                 if("POST".equals(request.getMethod())&&("/internal/operations".equals(request.getRequestURI())||environment||"/internal/workspace-uses/v1".equals(request.getRequestURI())||"/internal/file-operations/v1".equals(request.getRequestURI()))
                         &&(request.getContentLengthLong()<0||request.getContentLengthLong()>bound)) {

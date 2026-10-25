@@ -30,7 +30,9 @@ public final class MyBatisEnvironmentExecutionRepository implements EnvironmentE
         return row;
     }
     private boolean authorized(Command command) {
-        return "STOP".equals(command.kind()) || command.actorId()!=null && workspaces.authorized(new Actor(command.actorId(),command.spaceId()));
+        return "STOP".equals(command.kind())
+                || "ENVIRONMENT_V3".equals(command.protocol()) && Set.of("SLEEP", "DELETE").contains(command.kind())
+                || command.actorId()!=null && workspaces.authorized(new Actor(command.actorId(),command.spaceId()));
     }
     private void event(Environment row) {
         var payload=new LinkedHashMap<String,Object>();payload.put("workspaceId",row.workspaceId().toString());payload.put("state",row.state());
@@ -102,14 +104,20 @@ public final class MyBatisEnvironmentExecutionRepository implements EnvironmentE
         if(!row.contentHash().equals(RunnerSignatures.sha256(row.resultJson().getBytes(java.nio.charset.StandardCharsets.UTF_8))))throw new WorkspaceFailure(503,"RUNNER_RECEIPT_CORRUPT");
         var result=JSON.readValue(row.resultJson(),Receipt.class);validate(command,result);return result;
     }
+    @Override public SandboxRuntime.Stop priorStop(Command command) {
+        guard(command,true);return mapper.priorStop(command);
+    }
     private static void validate(Command command,Receipt receipt) {
+        boolean creation=Set.of("PREPARE","WAKE").contains(command.kind());
+        boolean v3Stop="ENVIRONMENT_V3".equals(command.protocol())&&Set.of("STOP","SLEEP","DELETE").contains(command.kind());
         if(receipt==null||!command.commandId().equals(receipt.commandId())||!command.operationId().equals(receipt.operationId())
                 ||!command.environmentId().equals(receipt.environmentId())||!command.workspaceId().equals(receipt.workspaceId())
-                ||command.generation()!=receipt.generation()||command.fence()!=receipt.fence()||receipt.revision()!=1
+                ||command.generation()!=receipt.generation()||command.fence()!=receipt.fence()
+                ||!(receipt.revision()==1||v3Stop&&receipt.revision()==2)
                 ||receipt.state()==null||!Set.of("COMMITTED","FAILED","UNKNOWN").contains(receipt.state())
                 ||receipt.errorCode()!=null&&!receipt.errorCode().matches("[A-Z_]{1,64}"))throw new WorkspaceFailure(409,"RUNNER_RECEIPT_MISMATCH");
         if("COMMITTED".equals(receipt.state())) {
-            if("PREPARE".equals(command.kind())) {
+            if(creation) {
                 var container=receipt.container();
                 if(!"READY".equals(receipt.effectState())||container==null||!container.running()
                         ||!container.id().matches("[0-9a-f]{64}")||!command.imageId().equals(container.image())||!command.policyHash().equals(container.policyHash())
@@ -118,7 +126,7 @@ public final class MyBatisEnvironmentExecutionRepository implements EnvironmentE
             } else if(!"STOPPED".equals(receipt.effectState())||receipt.stop()==null||receipt.container()!=null)throw new WorkspaceFailure(409,"RUNNER_STOP_MISMATCH");
         } else if("FAILED".equals(receipt.state())) {
             if(receipt.effectState()==null||!Set.of("NOT_STARTED","STOPPED").contains(receipt.effectState())||receipt.container()!=null
-                    ||"NOT_STARTED".equals(receipt.effectState())&&(!"PREPARE".equals(command.kind())||receipt.stop()!=null)
+                    ||"NOT_STARTED".equals(receipt.effectState())&&(!creation||receipt.stop()!=null)
                     ||"STOPPED".equals(receipt.effectState())&&receipt.stop()==null)throw new WorkspaceFailure(409,"RUNNER_FAILURE_UNPROVEN");
         } else if("UNKNOWN".equals(receipt.state())&&!"MAY_HAVE_STARTED".equals(receipt.effectState()))throw new WorkspaceFailure(409,"RUNNER_RECEIPT_MISMATCH");
         if(receipt.stop()!=null) {
@@ -131,6 +139,9 @@ public final class MyBatisEnvironmentExecutionRepository implements EnvironmentE
     }
     @Override public void commitReceipt(Command command,Receipt receipt,UUID runnerId) {
         guard(command,true);checkRunner(command,runnerId);validate(command,receipt);
+        if(receipt.revision()!=1)throw new WorkspaceFailure(409,"RUNNER_RECEIPT_MISMATCH");
+        var prior=mapper.priorStop(command);
+        if(prior!=null&&!prior.equals(receipt.stop()))throw new WorkspaceFailure(409,"RUNNER_STOP_PROVENANCE_MISMATCH");
         var existing=mapper.receipt(command.commandId());
         String json=JSON.writeValueAsString(receipt);String hash=RunnerSignatures.sha256(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         if(existing!=null) {
@@ -144,14 +155,46 @@ public final class MyBatisEnvironmentExecutionRepository implements EnvironmentE
             mapper.insertStop(Uuid7.next(),command,receipt,RunnerSignatures.sha256(JSON.writeValueAsBytes(receipt.stop())),runnerId,runnerId.equals(original)?null:original);
         }
     }
+    @Override public Receipt confirmCleanup(Command command,SandboxRuntime.Removal removal,UUID runnerId) {
+        guard(command,true);checkRunner(command,runnerId);
+        if(!"ENVIRONMENT_V3".equals(command.protocol())||!Set.of("STOP","SLEEP","DELETE").contains(command.kind())) {
+            throw new WorkspaceFailure(409,"ENVIRONMENT_CLEANUP_UNSUPPORTED");
+        }
+        var stopped=receipt(command);var stop=stopped.stop();
+        if(stop==null||!Set.of("COMMITTED","FAILED").contains(stopped.state())||removal==null
+                ||!stop.containerId().equals(removal.containerId())||!stop.image().equals(removal.image())
+                ||!stop.startedAt().equals(removal.startedAt())||!stop.finishedAt().equals(removal.finishedAt())
+                ||removal.observedAt()==null||removal.observedAt().isBefore(stop.observedAt())) {
+            throw new WorkspaceFailure(409,"ENVIRONMENT_CLEANUP_MISMATCH");
+        }
+        if(stopped.revision()==2) {
+            if(!mapper.cleanupConfirmed(command))throw new WorkspaceFailure(503,"ENVIRONMENT_CLEANUP_CORRUPT");
+            return stopped;
+        }
+        var stopId=mapper.stopReceiptId(command);
+        if(stopId==null)throw new WorkspaceFailure(409,"ENVIRONMENT_STOP_UNPROVEN");
+        String json=JSON.writeValueAsString(removal),hash=RunnerSignatures.sha256(JSON.writeValueAsBytes(removal));
+        mapper.insertCleanup(Uuid7.next(),command,stopId,runnerId,removal,json,hash);
+        if(mapper.commitCleanup(command,runnerId)!=1)throw new WorkspaceFailure(409,"ENVIRONMENT_CLEANUP_CONFLICT");
+        var confirmed=new Receipt(command.commandId(),command.operationId(),command.environmentId(),command.workspaceId(),
+                command.generation(),command.fence(),stopped.state(),stopped.effectState(),stopped.errorCode(),null,stop,2);
+        String receiptJson=JSON.writeValueAsString(confirmed);
+        mapper.insertReceipt(command,confirmed,receiptJson,RunnerSignatures.sha256(JSON.writeValueAsBytes(confirmed)));
+        return confirmed;
+    }
     @Override public void complete(Command command,Receipt receipt) {
         guard(command,true);validate(command,receipt);
+        if("ENVIRONMENT_V3".equals(command.protocol())&&Set.of("STOP","SLEEP","DELETE").contains(command.kind())
+                &&(receipt.revision()!=2||!mapper.cleanupConfirmed(command))) {
+            throw new WorkspaceFailure(409,"ENVIRONMENT_CLEANUP_UNCONFIRMED");
+        }
         var stored=receipt(command);
         if(!receipt.equals(stored))throw new WorkspaceFailure(409,"RUNNER_RECEIPT_MISMATCH");
-        String state="UNKNOWN".equals(receipt.state())?"BLOCKED":"FAILED".equals(receipt.state())?"ERROR":"STOP".equals(command.kind())?"STOPPED":"READY";
+        String state="UNKNOWN".equals(receipt.state())?"BLOCKED":"FAILED".equals(receipt.state())?"ERROR":
+                "DELETE".equals(command.kind())?"DELETED":Set.of("STOP","SLEEP").contains(command.kind())?"STOPPED":"READY";
         if(mapper.completeOperation(command,receipt)!=1||mapper.projectEnvironment(command,receipt,state)!=1)throw new WorkspaceFailure(409,"ENVIRONMENT_STALE_OWNER");
         mapper.projectWorkspace(command,state);
-        if("STOPPED".equals(state)||"ERROR".equals(state)&&("NOT_STARTED".equals(receipt.effectState())||receipt.stop()!=null))mapper.releaseSlot(command);
+        if(Set.of("STOPPED","DELETED").contains(state)||"ERROR".equals(state)&&("NOT_STARTED".equals(receipt.effectState())||receipt.stop()!=null))mapper.releaseSlot(command);
         event(environments.environment(command.spaceId(),command.workspaceId()));
     }
     @Override public void uncertain(Command command,String code) {

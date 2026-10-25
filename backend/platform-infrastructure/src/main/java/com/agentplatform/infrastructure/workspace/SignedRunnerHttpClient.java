@@ -86,7 +86,12 @@ public final class SignedRunnerHttpClient implements RunnerControlPort,Environme
     @Override public com.agentplatform.domain.files.FileData.Receipt queryFile(com.agentplatform.domain.files.FileData.Command command){return file(command,true);}
     private com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt environment(
             com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command,boolean query) {
-        String path="/internal/operations/v2/environments"+(query?"/"+command.operationId():"");
+        String base=switch(command.protocol()) {
+            case "ENVIRONMENT_V2" -> "/internal/operations/v2/environments";
+            case "ENVIRONMENT_V3" -> "/internal/operations/v3/environments";
+            default -> throw new WorkspaceFailure(400,"INVALID_ENVIRONMENT_COMMAND");
+        };
+        String path=base+(query?"/"+command.operationId():"");
         var requestBinding=new RunnerSignatures.Binding(query?"GET":"POST",path,command.commandId(),command.operationId(),command.spaceId(),command.workspaceId(),command.generation(),command.fence());
         var responseBinding=new RunnerSignatures.Binding("RESPONSE",path,command.commandId(),command.operationId(),command.spaceId(),command.workspaceId(),command.generation(),command.fence());
         return exchange(requestBinding,responseBinding,query?new byte[0]:JSON.writeValueAsBytes(command),query,

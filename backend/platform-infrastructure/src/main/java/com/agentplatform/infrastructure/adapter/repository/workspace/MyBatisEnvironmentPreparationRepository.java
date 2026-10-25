@@ -45,7 +45,7 @@ public final class MyBatisEnvironmentPreparationRepository implements Environmen
         boolean fileBusy=workspaces.fileDataPlaneBusy(spaceId,workspaceId);
         if (environment == null) return new Snapshot(null, workspaceId, "NOT_CREATED", 0, 0, null, null, null, null,storageReady&&!fileBusy&&slot.environmentId()==null,false);
         var operation = mapper.operation(environment.operationId());
-        boolean quiet=storageReady&&!fileBusy&&!mapper.unresolvedUse(environment.id())&&(slot.environmentId()==null||slot.environmentId().equals(environment.id()));
+        boolean quiet=storageReady&&!fileBusy&&!mapper.lifecycleBusy(spaceId,workspaceId)&&!mapper.unresolvedUse(environment.id())&&(slot.environmentId()==null||slot.environmentId().equals(environment.id()));
         boolean stopped="STOPPED".equals(environment.state())&&"STOP".equals(operation.kind())&&"COMMITTED".equals(operation.status())
                 &&"STOPPED".equals(operation.effectState())&&mapper.confirmedStop(operation.id());
         boolean failed="ERROR".equals(environment.state())&&"FAILED".equals(operation.status())
@@ -77,6 +77,7 @@ public final class MyBatisEnvironmentPreparationRepository implements Environmen
         if (!"READY".equals(workspace.state())) throw new WorkspaceFailure(409, "WORKSPACE_STORAGE_NOT_READY");
         if (workspaces.fileDataPlaneBusy(actor.spaceId(),workspaceId)) throw new WorkspaceFailure(423,"WORKSPACE_DATA_PLANE_BUSY");
         if (version != (environment == null ? 0 : environment.version())) throw new WorkspaceFailure(412, "VERSION_CONFLICT");
+        if (mapper.lifecycleBusy(actor.spaceId(),workspaceId)) throw new WorkspaceFailure(423,"ENVIRONMENT_LIFECYCLE_BUSY");
         if (environment == null) {
             if (retry) throw new WorkspaceFailure(409, "ENVIRONMENT_RETRY_UNSAFE");
         } else {

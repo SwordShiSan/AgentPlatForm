@@ -89,6 +89,25 @@ ALTER TABLE pf.workspace_environment_outbox ADD CONSTRAINT environment_outbox_ge
 
 ALTER TABLE pf.workspace_environment_stop_receipt ADD CONSTRAINT environment_stop_receipt_scope
     UNIQUE(space_id,workspace_id,environment_id,operation_id,id);
+ALTER TABLE pf.workspace_environment_stop_receipt ADD CONSTRAINT environment_stop_receipt_generation_scope
+    UNIQUE(space_id,workspace_id,environment_id,generation,id);
+-- DELETE from STOPPED references an actual earlier fact; never fabricate a new
+-- LOCAL_INSPECT receipt merely because Docker returns404 for a removed container.
+ALTER TABLE pf.workspace_environment_operation ADD COLUMN prior_stop_receipt_id uuid;
+ALTER TABLE pf.workspace_environment_operation ADD CONSTRAINT environment_prior_stop_receipt
+    FOREIGN KEY(space_id,workspace_id,environment_id,generation,prior_stop_receipt_id)
+    REFERENCES pf.workspace_environment_stop_receipt(space_id,workspace_id,environment_id,generation,id);
+ALTER TABLE pf.workspace_environment_stop_receipt
+    ADD COLUMN source_stop_receipt_id uuid,
+    DROP CONSTRAINT workspace_environment_stop_receipt_proof_kind_check;
+ALTER TABLE pf.workspace_environment_stop_receipt ADD CONSTRAINT environment_stop_proof_kind
+    CHECK(proof_kind IN('LOCAL_INSPECT','HOST_PROOF','NEVER_STARTED','PRIOR_RECEIPT'));
+ALTER TABLE pf.workspace_environment_stop_receipt ADD CONSTRAINT environment_stop_provenance
+    CHECK((proof_kind='PRIOR_RECEIPT')=(source_stop_receipt_id IS NOT NULL)
+        AND(source_stop_receipt_id IS NULL OR source_stop_receipt_id<>id));
+ALTER TABLE pf.workspace_environment_stop_receipt ADD CONSTRAINT environment_source_stop_receipt
+    FOREIGN KEY(space_id,workspace_id,environment_id,generation,source_stop_receipt_id)
+    REFERENCES pf.workspace_environment_stop_receipt(space_id,workspace_id,environment_id,generation,id);
 ALTER TABLE pf.workspace_environment_command ADD CONSTRAINT environment_command_cleanup_scope
     UNIQUE(space_id,workspace_id,environment_id,operation_id,command_id,generation,fence);
 CREATE TABLE pf.workspace_environment_cleanup (

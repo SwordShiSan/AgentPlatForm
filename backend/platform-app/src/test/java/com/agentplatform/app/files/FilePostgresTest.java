@@ -41,6 +41,8 @@ class FilePostgresTest {
     private FileTransferMapper transferMapper;
     private TransactionTemplate transactionBoundary;
     private WorkspaceRepository workspaces;
+    private com.agentplatform.domain.workspace.EnvironmentPreparationRepository environmentPreparations;
+    private com.agentplatform.domain.workspace.EnvironmentLifecycleRepository lifecycles;
     private Actor alice, bob;
     private UUID workspace;
     private static Flyway flyway(String target) {
@@ -50,11 +52,12 @@ class FilePostgresTest {
         return configuration.load();
     }
     @BeforeAll static void migrate() throws Exception {
-        url=System.getenv("R33_TEST_JDBC_URL");
+        boolean r34="1".equals(System.getenv("R34_ACCEPTANCE"));
+        url=System.getenv(r34?"R34_TEST_JDBC_URL":"R33_TEST_JDBC_URL");
         Assumptions.assumeTrue(url!=null,"R33 actual PostgreSQL not selected; NOT_RUN");
-        assertEquals("1",System.getenv("R33_ACCEPTANCE"));
-        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15450/file_test?"));
-        password=Files.readString(Path.of(System.getenv("R33_TEST_PASSWORD_FILE"))).strip();
+        assertEquals("1",System.getenv(r34?"R34_ACCEPTANCE":"R33_ACCEPTANCE"));
+        assertTrue(url.startsWith(r34?"jdbc:postgresql://127.0.0.1:25434/environment_test?":"jdbc:postgresql://127.0.0.1:15450/file_test?"));
+        password=Files.readString(Path.of(System.getenv(r34?"R34_TEST_PASSWORD_FILE":"R33_TEST_PASSWORD_FILE"))).strip();
         flyway(null).clean();flyway("12").migrate();assertEquals(12,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         flyway(null).migrate();assertEquals(14,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
@@ -157,6 +160,9 @@ class FilePostgresTest {
     @BeforeEach void setup() throws Exception {
         sql("TRUNCATE pf.app_user CASCADE");
         sql("UPDATE pf.workspace_capacity SET reserved_bytes=0,reserved_slots=0,next_project_id=200001");
+        // TRUNCATE ... CASCADE clears the singleton even when its scoped columns
+        // were NULL. Cross-feature fixtures must restore it just like environment tests.
+        sql("INSERT INTO pf.workspace_sandbox_slot(id) VALUES(1) ON CONFLICT(id) DO UPDATE SET space_id=NULL,workspace_id=NULL,environment_id=NULL,generation=NULL");
         var config=new HikariConfig();config.setJdbcUrl(url);config.setUsername("postgres");config.setPassword(password);
         config.setMaximumPoolSize(4);config.setMinimumIdle(1);pool=new HikariDataSource(config);
         var factory=new SqlSessionFactoryBean();factory.setDataSource(pool);
@@ -168,6 +174,13 @@ class FilePostgresTest {
         transferMapper=session.getMapper(FileTransferMapper.class);transactionBoundary=transactions;
         var workspaceMapper=session.getMapper(WorkspaceMapper.class);
         workspaces=new TransactionalWorkspaceRepository(new MyBatisWorkspaceRepository(workspaceMapper),transactions);
+        environmentPreparations=new com.agentplatform.app.workspace.TransactionalEnvironmentPreparationRepository(
+                new com.agentplatform.infrastructure.adapter.repository.workspace.MyBatisEnvironmentPreparationRepository(
+                        session.getMapper(EnvironmentPreparationMapper.class),workspaceMapper,"sha256:"+"a".repeat(64),"b".repeat(64)),transactions);
+        lifecycles=new com.agentplatform.app.workspace.TransactionalEnvironmentLifecycleRepository(
+                new com.agentplatform.infrastructure.adapter.repository.workspace.MyBatisEnvironmentLifecycleRepository(
+                        session.getMapper(EnvironmentLifecycleMapper.class),session.getMapper(EnvironmentPreparationMapper.class),
+                        workspaceMapper,"sha256:"+"a".repeat(64),"b".repeat(64)),transactions);
         files=new TransactionalFileRepository(new MyBatisFileRepository(session.getMapper(FileMapper.class),workspaceMapper,
                 session.getMapper(EnvironmentPreparationMapper.class),"sha256:"+"a".repeat(64),"b".repeat(64)),transactions);
         runner=new TransactionalFileRunnerRepository(new MyBatisFileRunnerRepository(session.getMapper(FileRunnerMapper.class),session.getMapper(FileMapper.class),
@@ -185,6 +198,21 @@ class FilePostgresTest {
         sql("UPDATE pf.workspace_operation SET status='COMMITTED',effect_state='ALLOCATED' WHERE workspace_id='"+workspace+"'");
     }
     @AfterEach void close() { if(pool!=null)pool.close(); }
+    @Test void lifecycleClosesNewFileMutationsButPreservesUploadReservationAndReadUsage() throws Exception {
+        var upload=create(8);UUID transfer=UUID.randomUUID();files.beginTransfer(alice,upload.id(),transfer);files.transferVerified(alice,upload.id(),transfer);
+        var actor=new com.agentplatform.domain.workspace.WorkspaceData.Actor(alice.userId(),alice.spaceId());
+        var prepared=environmentPreparations.prepare(actor,workspace,UUID.randomUUID(),"c".repeat(64),0,false);
+        // Synthetic environment facts for transaction gating only; no physical runtime is claimed.
+        sql("UPDATE pf.workspace_environment SET state='READY',container_id='"+"d".repeat(64)
+                +"',container_started_at='2026-10-25T00:00:00Z',readiness_hash='"+"e".repeat(64)+"' WHERE workspace_id='"+workspace+"'");
+        sql("UPDATE pf.workspace_environment_operation SET status='COMMITTED',effect_state='READY' WHERE id='"+prepared.operationId()+"'");
+        lifecycles.admit(actor,workspace,UUID.randomUUID(),"f".repeat(64),1,com.agentplatform.domain.workspace.EnvironmentLifecycleRepository.Intent.SLEEP);
+        assertEquals(423,assertThrows(FileFailure.class,()->files.completeUpload(alice,upload.id())).status());
+        assertEquals(423,assertThrows(FileFailure.class,()->create(4)).status());
+        assertEquals(8,files.usage(alice,workspace).reservedBytes());
+        assertEquals("VERIFIED",files.upload(alice,upload.id()).status());
+        assertEquals(0,count("SELECT count(*) FROM pf.file_operation"));
+    }
     private Upload create(long bytes) {
         return files.create(alice,workspace,UUID.randomUUID(),UUID.randomUUID().toString().replace("-","")+"0".repeat(32),
                 new UploadRequest("hello.txt",bytes,"a".repeat(64),null,null,null));

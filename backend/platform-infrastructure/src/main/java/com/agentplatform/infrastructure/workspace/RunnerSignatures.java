@@ -26,6 +26,7 @@ public final class RunnerSignatures {
             if (!List.of("GET", "POST", "RESPONSE").contains(method)
                     || !(path.equals("/internal/operations") || path.equals("/internal/operations/" + operationId)
                         || path.equals("/internal/operations/v2/environments") || path.equals("/internal/operations/v2/environments/" + operationId)
+                        || path.equals("/internal/operations/v3/environments") || path.equals("/internal/operations/v3/environments/" + operationId)
                         || path.equals("/internal/workspace-uses/v1") || path.equals("/internal/workspace-uses/v1/" + operationId)
                         || path.equals("/internal/file-operations/v1") || path.equals("/internal/file-operations/v1/"+operationId)) || path.contains("?")
                     || path.contains("#") || path.contains("..") || generation < 1 || fence < 1) {

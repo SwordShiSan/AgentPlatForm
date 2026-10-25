@@ -11,10 +11,15 @@
     <select id="knownPublication" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.workspace_environment_outbox WHERE id=#{item.id} AND operation_id=#{item.operationId} AND space_id=#{item.spaceId} AND workspace_id=#{item.workspaceId} AND environment_id=#{item.environmentId} AND generation=#{item.generation} AND fence=#{item.fence})</select>
     <insert id="inbox">INSERT INTO pf.workspace_environment_inbox(event_id,operation_id) VALUES(#{eventId},#{operationId}) ON CONFLICT(event_id) DO NOTHING</insert>
     <select id="command" resultType="com.agentplatform.domain.workspace.EnvironmentExecutionData$Command">
-        SELECT 'ENVIRONMENT_V2' AS protocol,o.kind,o.initiator,o.command_id,o.id AS operation_id,o.space_id,o.workspace_id,o.environment_id,
-            o.actor_id,o.owner_id,o.generation,o.fence,e.creation_command_id,e.creation_fence,e.image_id,e.policy_hash,w.project_id,
-            CASE WHEN o.kind='STOP' THEN e.container_id ELSE NULL END AS container_id,
-            CASE WHEN o.kind='STOP' THEN e.container_started_at ELSE NULL END AS container_started_at,o.deadline_at AS deadline
+        SELECT o.protocol,o.kind,o.initiator,o.command_id,o.id AS operation_id,o.space_id,o.workspace_id,o.environment_id,
+            o.actor_id,o.owner_id,o.generation,o.fence,
+            CASE WHEN o.protocol='ENVIRONMENT_V3' THEN o.target_creation_command_id ELSE e.creation_command_id END AS creation_command_id,
+            CASE WHEN o.protocol='ENVIRONMENT_V3' THEN o.target_creation_fence ELSE e.creation_fence END AS creation_fence,
+            CASE WHEN o.protocol='ENVIRONMENT_V3' THEN o.target_image_id ELSE e.image_id END AS image_id,
+            CASE WHEN o.protocol='ENVIRONMENT_V3' THEN o.target_policy_hash ELSE e.policy_hash END AS policy_hash,
+            CASE WHEN o.protocol='ENVIRONMENT_V3' THEN o.target_project_id ELSE w.project_id END AS project_id,
+            CASE WHEN o.protocol='ENVIRONMENT_V3' THEN o.target_container_id WHEN o.kind='STOP' THEN e.container_id ELSE NULL END AS container_id,
+            CASE WHEN o.protocol='ENVIRONMENT_V3' THEN o.target_container_started_at WHEN o.kind='STOP' THEN e.container_started_at ELSE NULL END AS container_started_at,o.deadline_at AS deadline
         FROM pf.workspace_environment_operation o JOIN pf.workspace_environment e ON e.id=o.environment_id
             JOIN pf.workspace w ON w.id=o.workspace_id WHERE o.id=#{operationId}
     </select>
@@ -34,8 +39,57 @@
     <select id="receipt" resultType="com.agentplatform.infrastructure.dao.po.WorkspaceRows$ReceiptRow">SELECT result_text AS result_json,content_hash FROM pf.workspace_environment_receipt WHERE command_id=#{commandId} ORDER BY revision DESC LIMIT 1</select>
     <update id="commitRunner">UPDATE pf.workspace_environment_command SET state=#{receipt.state},result_revision=#{receipt.revision},result_runner_instance_id=#{runnerId} WHERE command_id=#{command.commandId} AND operation_id=#{command.operationId} AND owner_id=#{command.ownerId} AND generation=#{command.generation} AND fence=#{command.fence} AND state='RUNNING' AND result_revision=0</update>
     <insert id="insertReceipt">INSERT INTO pf.workspace_environment_receipt(command_id,revision,state,result_text,result_json,content_hash) VALUES(#{command.commandId},#{receipt.revision},#{receipt.state},#{json},CAST(#{json} AS jsonb),#{hash})</insert>
-    <insert id="insertStop">INSERT INTO pf.workspace_environment_stop_receipt(id,space_id,workspace_id,environment_id,operation_id,generation,fence,owner_id,runner_instance_id,prior_runner_proof_id,proof_kind,container_id,image_id,container_started_at,container_finished_at,exec_stopped,callbacks_stopped,proof_hash,observed_at) VALUES(#{id},#{command.spaceId},#{command.workspaceId},#{command.environmentId},#{command.operationId},#{command.generation},#{command.fence},#{command.ownerId},#{runnerId},#{priorRunnerProof},'LOCAL_INSPECT',#{receipt.stop.containerId},#{receipt.stop.image},#{receipt.stop.startedAt},#{receipt.stop.finishedAt},#{receipt.stop.execStopped},#{receipt.stop.callbacksStopped},#{hash},#{receipt.stop.observedAt})</insert>
-    <update id="completeOperation">UPDATE pf.workspace_environment_operation SET status=#{receipt.state},effect_state=#{receipt.effectState},error_code=#{receipt.errorCode},version=version+1 WHERE <include refid="active"/></update>
+    <select id="priorStop" resultType="com.agentplatform.domain.workspace.SandboxRuntime$Stop">
+        SELECT s.container_id,s.image_id AS image,s.container_started_at AS started_at,
+            s.container_finished_at AS finished_at,s.exec_stopped,s.callbacks_stopped,s.observed_at
+        FROM pf.workspace_environment_operation o JOIN pf.workspace_environment_stop_receipt s ON s.id=o.prior_stop_receipt_id
+        WHERE o.id=#{command.operationId} AND o.space_id=#{command.spaceId} AND o.workspace_id=#{command.workspaceId}
+            AND o.environment_id=#{command.environmentId} AND o.generation=#{command.generation}
+            AND s.space_id=o.space_id AND s.workspace_id=o.workspace_id AND s.environment_id=o.environment_id
+            AND s.generation=o.generation AND s.container_id=#{command.containerId} AND s.image_id=#{command.imageId}
+            AND s.container_started_at=#{command.containerStartedAt} AND s.exec_stopped AND s.callbacks_stopped
+    </select>
+    <insert id="insertStop">
+        INSERT INTO pf.workspace_environment_stop_receipt(id,space_id,workspace_id,environment_id,operation_id,generation,fence,
+            owner_id,runner_instance_id,prior_runner_proof_id,proof_kind,source_stop_receipt_id,container_id,image_id,
+            container_started_at,container_finished_at,exec_stopped,callbacks_stopped,proof_hash,observed_at)
+        SELECT #{id},#{command.spaceId},#{command.workspaceId},#{command.environmentId},#{command.operationId},#{command.generation},
+            #{command.fence},#{command.ownerId},#{runnerId},#{priorRunnerProof},
+            CASE WHEN o.prior_stop_receipt_id IS NULL THEN 'LOCAL_INSPECT' ELSE 'PRIOR_RECEIPT' END,o.prior_stop_receipt_id,
+            #{receipt.stop.containerId},#{receipt.stop.image},#{receipt.stop.startedAt},#{receipt.stop.finishedAt},
+            #{receipt.stop.execStopped},#{receipt.stop.callbacksStopped},#{hash},#{receipt.stop.observedAt}
+        FROM pf.workspace_environment_operation o WHERE o.id=#{command.operationId}
+    </insert>
+    <select id="stopReceiptId" resultType="java.util.UUID">
+        SELECT id FROM pf.workspace_environment_stop_receipt WHERE space_id=#{command.spaceId}
+            AND workspace_id=#{command.workspaceId} AND environment_id=#{command.environmentId}
+            AND operation_id=#{command.operationId} AND generation=#{command.generation} AND fence=#{command.fence}
+            AND container_id=#{command.containerId} AND image_id=#{command.imageId}
+            AND container_started_at=#{command.containerStartedAt} AND exec_stopped AND callbacks_stopped
+    </select>
+    <select id="cleanupConfirmed" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM pf.workspace_environment_cleanup WHERE command_id=#{command.commandId}
+            AND operation_id=#{command.operationId} AND space_id=#{command.spaceId} AND workspace_id=#{command.workspaceId}
+            AND environment_id=#{command.environmentId} AND generation=#{command.generation} AND fence=#{command.fence}
+            AND outcome='CONFIRMED' AND container_id=#{command.containerId} AND image_id=#{command.imageId}
+            AND container_started_at=#{command.containerStartedAt})
+    </select>
+    <insert id="insertCleanup">
+        INSERT INTO pf.workspace_environment_cleanup(id,space_id,workspace_id,environment_id,operation_id,command_id,
+            generation,fence,stop_receipt_id,observer_runner_id,outcome,container_id,image_id,container_started_at,
+            container_finished_at,evidence_text,evidence_hash,observed_at)
+        VALUES(#{id},#{command.spaceId},#{command.workspaceId},#{command.environmentId},#{command.operationId},#{command.commandId},
+            #{command.generation},#{command.fence},#{stopId},#{runnerId},'CONFIRMED',#{removal.containerId},#{removal.image},
+            #{removal.startedAt},#{removal.finishedAt},#{json},#{hash},#{removal.observedAt})
+    </insert>
+    <update id="commitCleanup">
+        UPDATE pf.workspace_environment_command SET result_revision=2,result_runner_instance_id=#{runnerId}
+        WHERE command_id=#{command.commandId} AND operation_id=#{command.operationId} AND owner_id=#{command.ownerId}
+            AND generation=#{command.generation} AND fence=#{command.fence} AND result_revision=1 AND state IN('COMMITTED','FAILED')
+    </update>
+    <update id="completeOperation">UPDATE pf.workspace_environment_operation SET status=#{receipt.state},effect_state=#{receipt.effectState},error_code=#{receipt.errorCode},version=version+1,
+        cleanup_state=CASE WHEN protocol='ENVIRONMENT_V3' AND cleanup_required AND #{receipt.revision}=2 THEN 'CONFIRMED' ELSE cleanup_state END
+        WHERE <include refid="active"/></update>
     <update id="projectEnvironment">UPDATE pf.workspace_environment SET state=#{state},error_code=#{receipt.errorCode},version=version+1,updated_at=clock_timestamp(),last_activity_at=clock_timestamp()
         <if test="receipt.container != null">,container_id=#{receipt.container.id},container_started_at=#{receipt.container.startedAt},readiness_hash=#{receipt.container.readinessHash}</if>
         WHERE id=#{command.environmentId} AND space_id=#{command.spaceId} AND workspace_id=#{command.workspaceId} AND operation_id=#{command.operationId} AND generation=#{command.generation} AND fence=#{command.fence}
@@ -43,6 +97,6 @@
     <update id="projectWorkspace">UPDATE pf.workspace SET environment_state=#{state},version=version+1,updated_at=clock_timestamp() WHERE space_id=#{command.spaceId} AND id=#{command.workspaceId}</update>
     <update id="releaseSlot">UPDATE pf.workspace_sandbox_slot SET space_id=NULL,workspace_id=NULL,environment_id=NULL,generation=NULL,revision=revision+1 WHERE id=1 AND space_id=#{command.spaceId} AND workspace_id=#{command.workspaceId} AND environment_id=#{command.environmentId} AND generation=#{command.generation}</update>
     <update id="uncertain">UPDATE pf.workspace_environment_operation SET status='UNKNOWN',effect_state='MAY_HAVE_STARTED',error_code=#{code},version=version+1 WHERE <include refid="active"/></update>
-    <update id="rejectBeforeClaim">UPDATE pf.workspace_environment_operation SET status='FAILED',effect_state='NOT_STARTED',error_code='ENVIRONMENT_AUTHORIZATION_REVOKED',version=version+1 WHERE id=#{operationId} AND kind='PREPARE' AND status='PENDING' AND effect_state='NOT_STARTED'</update>
+    <update id="rejectBeforeClaim">UPDATE pf.workspace_environment_operation SET status='FAILED',effect_state='NOT_STARTED',error_code='ENVIRONMENT_AUTHORIZATION_REVOKED',version=version+1 WHERE id=#{operationId} AND kind IN('PREPARE','WAKE') AND status='PENDING' AND effect_state='NOT_STARTED'</update>
     <update id="projectRejected">UPDATE pf.workspace_environment SET state='ERROR',error_code='ENVIRONMENT_AUTHORIZATION_REVOKED',version=version+1,updated_at=clock_timestamp() WHERE id=#{environmentId}</update>
 </mapper>

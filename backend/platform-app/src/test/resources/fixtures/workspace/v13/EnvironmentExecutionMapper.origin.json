@@ -1,0 +1,6 @@
+{
+  "sourceCommit": "645701b80e4b565c0165a2aaa4af63e0e454c690",
+  "sourcePath": "backend/platform-app/src/main/resources/mybatis/mapper/workspace/EnvironmentExecutionMapper.xml",
+  "sha256": "aae0214e29d2e54ad9adb0c9769144fbabb9edabe23cf322dfd8575fbe3f18d0",
+  "scope": "Frozen V13 test mapper only; never packaged as a production adapter"
+}

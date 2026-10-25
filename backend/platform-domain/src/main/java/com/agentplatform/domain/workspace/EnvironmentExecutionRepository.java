@@ -18,7 +18,13 @@ public interface EnvironmentExecutionRepository {
     void checkRunner(Command command, UUID runnerInstanceId);
     Receipt accept(Command command, String requestHash, UUID runnerInstanceId);
     Receipt receipt(Command command);
+    /** Exact prior-generation stop provenance, not a new physical observation. */
+    default SandboxRuntime.Stop priorStop(Command command) { return null; }
     void commitReceipt(Command command, Receipt receipt, UUID runnerInstanceId);
+    /** V3 only: persist exact removal after the immutable stop receipt committed. */
+    default Receipt confirmCleanup(Command command, SandboxRuntime.Removal removal, UUID runnerInstanceId) {
+        throw new UnsupportedOperationException("Lifecycle cleanup is not supported by this adapter");
+    }
     void complete(Command command, Receipt receipt);
     void uncertain(Command command, String code);
     void quarantine(UUID id, String reason, String payloadHash);

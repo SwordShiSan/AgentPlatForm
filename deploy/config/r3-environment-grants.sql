@@ -6,7 +6,7 @@ GRANT SELECT,INSERT ON pf.workspace_environment_inbox,pf.workspace_environment_e
 GRANT SELECT ON pf.workspace_environment_command,pf.workspace_environment_receipt,
     pf.workspace_environment_stop_receipt TO ap_api,ap_worker;
 REVOKE SELECT ON pf.workspace_environment_use,pf.workspace_environment_use_result FROM ap_api;
-GRANT SELECT(id,environment_id,status) ON pf.workspace_environment_use TO ap_api;
+GRANT SELECT(id,environment_id,status,kind) ON pf.workspace_environment_use TO ap_api;
 GRANT SELECT,INSERT,UPDATE ON pf.workspace_environment_use TO ap_worker;
 GRANT SELECT ON pf.workspace_environment_use_result,pf.workspace_runner_instance,pf.workspace_runner_stop_proof TO ap_worker;
 GRANT INSERT ON pf.workspace_environment_stop_receipt TO ap_worker;
@@ -37,3 +37,7 @@ GRANT UPDATE(registered_at) ON pf.workspace_runner_instance TO ap_workspace_ops;
 GRANT INSERT ON pf.workspace_runner_stop_proof TO ap_workspace_ops;
 REVOKE INSERT,UPDATE,DELETE ON pf.workspace_runner_stop_proof FROM ap_api,ap_worker,ap_runner;
 REVOKE ALL ON pf.app_user,pf.membership,pf.credential,pf.message,pf.task,pf_runtime.state_slot FROM ap_workspace_ops;
+
+-- V14 cleanup is append-only runner evidence; lifecycle projection stays with worker.
+GRANT SELECT ON pf.workspace_environment_cleanup TO ap_api,ap_worker;
+GRANT SELECT,INSERT ON pf.workspace_environment_cleanup TO ap_runner;
