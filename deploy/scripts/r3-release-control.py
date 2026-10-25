@@ -108,6 +108,8 @@ class Window:
   self.run(['docker','exec',self.by['rabbitmq']['Id'],'rabbitmqctl','import_definitions','/tmp/r3-permissions.json'])
  def activate(self,receipt='activate'):
   assert (self.folder/'backup-r2.json').exists();self.capacity()
+  for row in self.rows:assert not json.loads(self.run(['docker','inspect',row['Id']]))[0]['State']['Running'],'Original R2 must be stopped serially'
+  for name,digest in json.loads((self.folder/'deploy-input-hashes.json').read_text()).items():assert self.hash(self.folder/'deploy/config'/name)==digest
   for name,limit in self.stage['middlewareCapsMiB'].items():
    self.run(['docker','update','--memory',str(limit)+'m','--memory-swap',str(limit)+'m',self.by[name]['Id']])
   # Preserve the original file inode for the retained S3 container bind mount.
@@ -160,12 +162,13 @@ class Window:
   else:raise RuntimeError('R2 readiness did not recover')
   return {'status':'PASS','exactR2ContainersRetained':True,'originalCapsRestored':True,'migration':int(self.sql('SELECT max(version::int) FROM pf.flyway_schema_history WHERE success;')),'supplierCalls':0}
 def main():
- p=argparse.ArgumentParser();p.add_argument('action',choices=['backup-r2','activate','backup-r3','rollback','redeploy']);p.add_argument('folder',type=Path);a=p.parse_args();os.umask(0o077);w=Window(a.folder)
+ p=argparse.ArgumentParser();p.add_argument('action',choices=['start','backup-r2','activate','backup-r3','rollback','redeploy']);p.add_argument('folder',type=Path);a=p.parse_args();os.umask(0o077);w=Window(a.folder)
  with (ROOT/'operations/platform-switch/switch.lock').open('a') as lock:
   fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
   try:
    assert not (w.folder/(a.action+'.json')).exists(),'Inspect original action before retry'
-   if a.action.startswith('backup-'):w.backup(a.action.removeprefix('backup-'))
+   if a.action=='start':w.backup('r2');w.activate();w.receipt('start',{'status':'PASS','supplierCalls':0})
+   elif a.action.startswith('backup-'):w.backup(a.action.removeprefix('backup-'))
    elif a.action in ['activate','redeploy']:
     if a.action=='redeploy':
      assert (w.folder/'rollback.json').exists() and (w.folder/'restore.json').exists()
