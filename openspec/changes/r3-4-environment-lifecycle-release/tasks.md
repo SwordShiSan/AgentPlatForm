@@ -22,6 +22,7 @@
 - [x] 5.5 Bounded functional window and exact original R2 restoration PASS. Avoid duplicate local soak per functional-first closure; production observation remains6.3.
 - [ ] 5.6 Protected step->phase->main and exact-source R3.4 VERIFIED evidence.
 ## 6. Production release
+- [ ] 6.0 Correct boot-persistent MQ permissions and runner-before-worker startup; implement query-only never-accepted proof with expiry/fence/authorization/absence and concurrency regressions. Rebuild the changed backend; do not reset UNKNOWN or replay commands.
 - [ ] 6.1 Exact R2 snapshot/resource admission/consistent backup and verified immutable imports.
 - [ ] 6.2 Additive migration, scoped runner roles/keys, full R3 startup and HTTP smoke.
 - [ ] 6.3 Cloud>=1800s observation, independent serial restore, original R2 rollback/same R3 restart.

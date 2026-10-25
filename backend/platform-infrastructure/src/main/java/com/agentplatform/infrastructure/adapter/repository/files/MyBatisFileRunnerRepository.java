@@ -102,6 +102,38 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
         return row!=null&&instances.runnerActive(observer)&&(row.runnerInstanceId().equals(observer)||runner.priorRunnerProof(command,observer));
     }
     @Override public Receipt receipt(Command command) {tx();return files.receipt(command);}
+    private void negativeObservationGuard(Command command,UUID observer) {
+        if(!instances.runnerActive(observer)||!files.projectionCurrent(command)||!runner.expiredUnknown(command)
+                ||!workspaces.authorized(new com.agentplatform.domain.workspace.WorkspaceData.Actor(
+                        command.operation().actorId(),command.operation().spaceId())))throw stale();
+    }
+    @Override public Receipt observeNeverAccepted(Command command,UUID observer,String requestHash) {
+        // Same locks as acceptance. No runtime role can delete an acceptance;
+        // absence plus the expired UNKNOWN fence proves no physical invocation.
+        tx();if(transfers.lockSlot()==null)throw stale();lock(command);
+        var previous=files.receipt(command);if(previous!=null)return previous;
+        if(runner.command(command.operation().commandId())!=null||!runner.expiredUnknown(command))return null;
+        negativeObservationGuard(command,observer);
+        one(runner.accept(command,observer,requestHash));
+        var stop=new FileRuntime.Stop(command.operation().commandId(),null,command.operation().helperImageId(),
+                null,null,null,true,true,true,files.databaseTime());
+        String stopText=JSON.writeValueAsString(stop);
+        String resultText=JSON.writeValueAsString(java.util.Map.of("protocol","file-stream-v2",
+                "operationId",command.operation().id(),"state","NOT_APPLIED","proof","NEVER_ACCEPTED"));
+        var receipt=new Receipt(command.operation().commandId(),"NOT_APPLIED",resultText,
+                RunnerSignatures.sha256(resultText.getBytes(StandardCharsets.UTF_8)),stopText,
+                RunnerSignatures.sha256(stopText.getBytes(StandardCharsets.UTF_8)),observer,null);
+        // This descriptor and terminal negative receipt commit together. It is
+        // explicitly a never-started observation, not an execution acceptance.
+        runner.receipt(command,receipt);
+        beforeCommit(()->{
+            negativeObservationGuard(command,observer);
+            var row=runner.command(command.operation().commandId());
+            if(row==null||!row.runnerInstanceId().equals(observer)||row.containerId()!=null
+                    ||row.startRequested()||row.startedAt()!=null||row.execId()!=null)throw stale();
+        });
+        return receipt;
+    }
     private Physical observation(Command command,UUID observer) {
         lock(command);var row=runner.command(command.operation().commandId());
         if(row==null||!instances.runnerActive(observer)||(!row.runnerInstanceId().equals(observer)&&!runner.priorRunnerProof(command,observer)))throw stale();

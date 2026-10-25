@@ -1,5 +1,9 @@
 # R3.4 verification
 
+## Production correction in progress (2026-10-26)
+
+R3.4 reopened for a production failure-reconciliation defect. R2 is restored, migration14 remains additive, all user files/history and the original UNKNOWN SCAN remain intact. No R3 production tag. The missing durable acceptance row plus the permanently fenced expired UNKNOWN operation can prove never accepted, but the existing query selector excludes such cases. Add the narrow signed-GET negative-observation transaction; test expired/live boundaries, accepted-row refusal, stale identity, authorization, concurrent queries and late POST no-execution. Reuse existing NOT_APPLIED projection/settlement, no manual status/lease edits. New business bytecode requires a new immutable backend artifact. Completed resource1806.66s evidence belongs to its original images/limits/configuration; record reuse boundaries, not a fresh final-config soak claim. Production MQ definition persistence requires a real restart and original-work/new-upload regression.
+
 ## Current acceptance scope (user direction, 2026-10-25)
 
 Prioritize functional correctness and proven bugs. Do not expand the exhaustive crash/fault matrix during closure. Preserve historical failures and mark unexecuted extended scenarios NOT_RUN, separately from core functional evidence. Core checks remain identity/permissions, files and immutable versions, environment lifecycle/data retention, actual browser behavior, resource admission and release backup/restore/rollback. A confirmed API scan permission defect requires only workspace_id column access; private operation bodies remain denied. Reuse unchanged immutable runtime artifacts and bind deployment/test changes separately.

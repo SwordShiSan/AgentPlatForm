@@ -5,6 +5,10 @@ No provider calls. All command output and backups stay in the private window.
 from pathlib import Path
 import argparse,fcntl,gzip,hashlib,json,os,re,shutil,subprocess,time,urllib.request
 ROOT=Path('/srv/agentplatform');MIB=1024**2
+def runner_start_identity(value):
+ match=re.fullmatch(r'(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d{1,9}))?Z',value)
+ assert match,'UTC runner start identity required'
+ return match[1]+'.'+(match[2] or '').ljust(9,'0')+'Z'
 class Window:
  def __init__(self,folder):
   self.folder=folder.resolve(strict=True);assert re.fullmatch(r'/srv/agentplatform/operations/r3-release-[a-f0-9]{7,40}-\d{8}',str(self.folder))
@@ -131,14 +135,16 @@ class Window:
   # Preserve the original file inode for the retained S3 container bind mount.
   with (ROOT/'config/s3.json').open('w') as stream:stream.write((self.folder/'s3.candidate.json').read_text())
   self.start_dependencies();self.configure()
-  self.run(self.base+['--profile','application','up','-d','--wait','--wait-timeout','240','runner','api','worker','gateway'],timeout=300)
+  self.run(self.base+['--profile','application','up','-d','runner'],timeout=120)
   runner=self.cid('runner')
   for _ in range(90):
    current=json.loads(self.run(['docker','inspect',runner]))[0];assert current['State']['Running'] and not current['State']['OOMKilled']
-   count=self.sql("SELECT count(*) FROM pf.workspace_runner_instance WHERE container_id='"+runner+"' AND image_id='"+current['Image']+"';")
-   if count=='1':break
+   starts=self.sql("SELECT started_at FROM pf.workspace_runner_instance WHERE container_id='"+runner+"' AND image_id='"+current['Image']+"';").splitlines()
+   boot=self.run(['docker','logs','--since',current['State']['StartedAt'],'--tail','50',runner])
+   if sum(runner_start_identity(value)==runner_start_identity(current['State']['StartedAt']) for value in starts)==1 and 'Started PlatformApplication' in boot:break
    time.sleep(2)
   else:raise RuntimeError('Runner exact instance not registered')
+  self.run(self.base+['--profile','application','up','-d','--wait','--wait-timeout','240','api','worker','gateway'],timeout=300)
   self.health();self.receipt(receipt,{'status':'PASS','migration':14,'runtimeBaseline':1,'supplierCalls':0})
  def health(self):
   request=urllib.request.Request('http://127.0.0.1/api/v1/readiness',headers={'Host':'agentplatform.lailihao.cloud'})

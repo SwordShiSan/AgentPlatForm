@@ -16,6 +16,11 @@ def release_profile():
 def expected_services():
  project,services,_=release_profile()
  return {('agentplatform-env',s) for s in NEW_ENV}|{(project,s) for s in services}
+
+def runner_start_identity(value):
+ match=re.fullmatch(r'(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d{1,9}))?Z',value)
+ assert match,'UTC runner start identity required'
+ return match[1]+'.'+(match[2] or '').ljust(9,'0')+'Z'
 def call(args,**kwargs):
  p=subprocess.run(args,text=True,capture_output=True,timeout=kwargs.pop('timeout',180),**kwargs)
  if p.returncode:raise RuntimeError('Command failed: '+args[0]+' '+args[1]+' (exit '+str(p.returncode)+')')
@@ -115,8 +120,8 @@ def start_new(new):
    def registered():
     state=exact(row)['State']
     if not state['Running']:return False
-    query="SELECT count(*) FROM pf.workspace_runner_instance WHERE container_id='"+row['id']+"' AND image_id='"+row['image']+"' AND started_at BETWEEN '"+state['StartedAt']+"'::timestamptz-interval '1 second' AND '"+state['StartedAt']+"'::timestamptz+interval '1 second';"
-    return new_sql(new,query)=='1'
+    query="SELECT started_at FROM pf.workspace_runner_instance WHERE container_id='"+row['id']+"' AND image_id='"+row['image']+"';"
+    return sum(runner_start_identity(value)==runner_start_identity(state['StartedAt']) for value in new_sql(new,query).splitlines())==1
    wait(registered,'exact trusted runner registration')
  wait(lambda:http('/api/v1/readiness',host='124.222.55.140')[0]==200,'selected new release public readiness')
 def start_legacy(old,policies):
