@@ -66,3 +66,12 @@ Combined actual PostgreSQL regression:84 tests,76 PASS,8 MQ NOT_RUN,0 failures/e
 Preserve failed batch6 (new Mapper against old schema) and batch10 (TRUNCATE CASCADE deleted the shared sandbox singleton). Frozen V13 SQL from stable645701b, schema restoration in finally and exact fixture singleton reset fixed the causes without changing assertions or historical migrations. Skill references updated with verified reusable lessons.
 
 NOT_DONE: assemble initial V3 prepare/retry and managed drain/reconciliation, expired-owner observation, lifecycle public API/OpenAPI/Vue, actual MQ/native/browser/final1800s and production release/restore/R2 rollback. Current R3 remains3/4 VERIFIED and NOT_RELEASED; no R4 or production R3 tag. The independent local PG container is stopped with data retained. This is not the final protected body/evidence delivery.
+
+
+## Control-plane candidate37c and real PG/MQ progress
+
+Runtime37c400aaa154d909f70a6b503f13b0c31cd23a33; backend production tree equals clean full verify14aab49 (Maven/DDD/Enforcer PASS, log7670275e9712f0b0aa86b187f7edef0bb010d799f6ae60000db3c787f2b62673). Initial V3/lifecycle API and Vue, intent-preserving retry, idle sleep, GET-only observer and precise cleanup are assembled. Vue42 tests/type/build/contracts/invalid fixtures/links PASS. Nginx actual locked image configuration tests PASS for production and local; file streaming and SSE merged. Candidate built from clean git archive with all four actual feature flags true; exported manifest/config/archive identities and two protected local copies verified; same config IDs imported on cloud without building there.
+
+Actual isolated PostgreSQL/RabbitMQ regression99 tests,0 failures/errors/skips, including prior8 MQ NOT_RUN cases. Log SHA2561f8aac10f5e20b207360136d8ff7c8ec0b2ff4f0dbf44c156d60183ebaef9dce. Test-only guarded R34 loopback MQ endpoints25435/25436 and new fixture principals, preserving legacy phase test inputs; runtime artifacts unchanged. Both suites/report hashes and exact test blobs in evidence/r34/control-plane-progress.json. Fixture stopped, volumes/images retained, supplier0.
+
+Historical batch evidence remains scoped to its original source; previous NOT_RUN results are not rewritten. Native lifecycle upgrade window is running under independent restoration watchdog; no PASS claimed yet. Actual browser/final1800s/full native fault matrix/independent restore/protected promotion/production release remain NOT_RUN. Tasks5/6/7 remain unchecked; R3.4 IMPLEMENTING, R3 3/4 VERIFIED and not RELEASED, cloud production baselineR2.

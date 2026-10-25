@@ -1,0 +1,77 @@
+{
+  "stage": "R3.4",
+  "stageStatus": "IMPLEMENTING",
+  "runtimeSource": "37c400aaa154d909f70a6b503f13b0c31cd23a33",
+  "backendVerifiedSource": "14aab49a1f8c171972f1630297d548294af4db60",
+  "backendTree": "4d7f83c7dcaefeb8b1a4047eda89637505af7c3e",
+  "supplierCalls": 0,
+  "engineering": {
+    "fullMaven": "PASS",
+    "mavenLogSha256": "7670275e9712f0b0aa86b187f7edef0bb010d799f6ae60000db3c787f2b62673",
+    "frontendUnitTests": 42,
+    "frontendTypeBuildContractsLinks": "PASS"
+  },
+  "realPgMq": {
+    "status": "PASS",
+    "tests": 99,
+    "skipped": 0,
+    "logSha256": "1f8aac10f5e20b207360136d8ff7c8ec0b2ff4f0dbf44c156d60183ebaef9dce",
+    "suites": [
+      {
+        "class": "com.agentplatform.app.workspace.EnvironmentPostgresTest",
+        "tests": 72,
+        "skipped": 0,
+        "sha256": "d96aa44edad524c5e4c5d1e0f66c607931d5e39013a0ac90eb131ccabcea267b"
+      },
+      {
+        "class": "com.agentplatform.app.files.FilePostgresTest",
+        "tests": 27,
+        "skipped": 0,
+        "sha256": "25615fa152dd9811a6417d4033b34c04dafba6fbda205d4891eba600fbd99f2f"
+      }
+    ],
+    "testSourceBlobs": {
+      "backend/platform-app/src/test/java/com/agentplatform/app/workspace/EnvironmentPostgresTest.java": "0f8fdcb08c048e5b215352cdaf33f8621d3c5d89",
+      "backend/platform-app/src/test/java/com/agentplatform/app/files/FilePostgresTest.java": "a845a08bf0d2871f71437df3cb9b70a9223bb628"
+    },
+    "fixtureStopped": true
+  },
+  "candidate": {
+    "status": "IMPORTED_NOT_RUNTIME_ACCEPTED",
+    "flags": {
+      "VITE_CHAT_ENABLED": "true",
+      "VITE_WORKSPACE_ENABLED": "true",
+      "VITE_WORKSPACE_ENVIRONMENT_ENABLED": "true",
+      "VITE_WORKSPACE_FILES_ENABLED": "true"
+    },
+    "images": {
+      "api": {
+        "source": "37c400aaa154d909f70a6b503f13b0c31cd23a33",
+        "configId": "sha256:635e4e4cf94e4d25f9a68700c471b055bd7c32642bd5bfee74be69c415806c8b",
+        "manifestDigest": "sha256:567a26c43cb9b3773bd6900531969580e7ec5eabb56f31b01ee4a802c1e92786",
+        "platform": "linux/amd64",
+        "archiveSha256": "ba161ecfd95ec3d6a99d159980867609c3aac27dc5a1b2e9f66dc25710427b3e"
+      },
+      "gateway": {
+        "source": "37c400aaa154d909f70a6b503f13b0c31cd23a33",
+        "configId": "sha256:b4df141e9bedccc939683ecbbbd5f2e597a3a70fc809eb3e0d044b106001ff22",
+        "manifestDigest": "sha256:deed5e4437fef33715855a0a12d426562f6f596ef7b9482d641fd0f9f4c7353f",
+        "platform": "linux/amd64",
+        "archiveSha256": "2f5a1fbe4ee5973f80123be1fe5d767af64c3368aef9da8b897bea48623763fb"
+      }
+    },
+    "twoProtectedLocalCopiesVerified": true
+  },
+  "implemented": [
+    "Public lifecycle API and generated client/Vue actions",
+    "Initial V3 prepare, intent-preserving retry and idle sleep",
+    "Expired-owner GET-only observer, revision/CAS/lease/auth checks",
+    "Exact stop followed by cleanup receipt before slot release",
+    "Merged 100MiB file and persistent SSE gateway routes"
+  ],
+  "limitations": [
+    "Native lifecycle window in progress; result not yet accepted",
+    "Actual browser, final candidate1800s, complete fault matrix and independent restore NOT_RUN",
+    "Protected promotion and production release NOT_RUN"
+  ]
+}

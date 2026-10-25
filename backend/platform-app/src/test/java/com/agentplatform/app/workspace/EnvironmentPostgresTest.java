@@ -953,10 +953,13 @@ class EnvironmentPostgresTest {
                 new StoppedRunner(runner,now.minusSeconds(602),now.minusSeconds(601),hash("stale")))).code());
     }
     private org.springframework.amqp.rabbit.connection.CachingConnectionFactory broker() throws Exception {
-        String file=System.getenv("R32_TEST_MQ_PASSWORD_FILE");Assumptions.assumeTrue(file!=null,"R32 real MQ not selected; NOT_RUN");
-        var connections=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory("127.0.0.1",15699);
+        boolean r34="1".equals(System.getenv("R34_ACCEPTANCE"));
+        String file=System.getenv(r34?"R34_ENVIRONMENT_MQ_PASSWORD_FILE":"R32_TEST_MQ_PASSWORD_FILE");
+        Assumptions.assumeTrue(file!=null,"Actual isolated environment MQ not selected; NOT_RUN");
+        if(r34)assertEquals("25435",System.getenv("R34_ENVIRONMENT_MQ_PORT"));
+        var connections=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory("127.0.0.1",r34?25435:15699);
         connections.setPublisherConfirmType(org.springframework.amqp.rabbit.connection.CachingConnectionFactory.ConfirmType.CORRELATED);
-        connections.setPublisherReturns(true);connections.setUsername("r32");connections.setPassword(Files.readString(Path.of(file)).strip());
+        connections.setPublisherReturns(true);connections.setUsername(r34?"r34-env":"r32");connections.setPassword(Files.readString(Path.of(file)).strip());
         connections.setVirtualHost("/agentplatform");connections.setConnectionTimeout(2000);
         var admin=new org.springframework.amqp.rabbit.core.RabbitAdmin(connections);
         var exchange=new org.springframework.amqp.core.DirectExchange(com.agentplatform.infrastructure.workspace.SpringEnvironmentMessaging.EXCHANGE,true,false);

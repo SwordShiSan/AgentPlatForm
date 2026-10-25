@@ -221,11 +221,12 @@ class FilePostgresTest {
         @Override public void close(){connection.destroy();}
     }
     private FileBroker fileBroker() throws Exception {
-        String selected=System.getenv("R33_TEST_MQ_PORT");
+        boolean r34="1".equals(System.getenv("R34_ACCEPTANCE"));
+        String selected=System.getenv(r34?"R34_FILE_MQ_PORT":"R33_TEST_MQ_PORT");
         Assumptions.assumeTrue(selected!=null,"R33 actual RabbitMQ not selected; NOT_RUN");
-        assertEquals("15702",selected);
-        var connection=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory("127.0.0.1",15702);
-        connection.setUsername("r33");connection.setPassword(Files.readString(Path.of(System.getenv("R33_TEST_MQ_PASSWORD_FILE"))).strip());
+        assertEquals(r34?"25436":"15702",selected);
+        var connection=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory("127.0.0.1",r34?25436:15702);
+        connection.setUsername(r34?"r34-file":"r33");connection.setPassword(Files.readString(Path.of(System.getenv(r34?"R34_FILE_MQ_PASSWORD_FILE":"R33_TEST_MQ_PASSWORD_FILE"))).strip());
         connection.setVirtualHost("/agentplatform");connection.setPublisherConfirmType(org.springframework.amqp.rabbit.connection.CachingConnectionFactory.ConfirmType.CORRELATED);
         connection.setPublisherReturns(true);
         var admin=new org.springframework.amqp.rabbit.core.RabbitAdmin(connection);
@@ -275,10 +276,12 @@ class FilePostgresTest {
         }
     }
     @Test void realBrokerConfirmDeliveredButFrameworkCallbackLostRetainsOutboxAndDeduplicatesRetry() throws Exception {
-        Assumptions.assumeTrue(System.getenv("R33_TEST_MQ_PORT")!=null,"R33 actual RabbitMQ not selected; NOT_RUN");
+        boolean r34="1".equals(System.getenv("R34_ACCEPTANCE"));
+        Assumptions.assumeTrue(System.getenv(r34?"R34_FILE_MQ_PORT":"R33_TEST_MQ_PORT")!=null,"Actual isolated RabbitMQ not selected; NOT_RUN");
+        if(r34)assertEquals("25436",System.getenv("R34_FILE_MQ_PORT"));
         var dropped=new java.util.concurrent.atomic.AtomicInteger();
-        var loss=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory("127.0.0.1",15702);
-        loss.setUsername("r33");loss.setPassword(Files.readString(Path.of(System.getenv("R33_TEST_MQ_PASSWORD_FILE"))).strip());loss.setVirtualHost("/agentplatform");
+        var loss=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory("127.0.0.1",r34?25436:15702);
+        loss.setUsername(r34?"r34-file":"r33");loss.setPassword(Files.readString(Path.of(System.getenv(r34?"R34_FILE_MQ_PASSWORD_FILE":"R33_TEST_MQ_PASSWORD_FILE"))).strip());loss.setVirtualHost("/agentplatform");
         loss.setPublisherConfirmType(org.springframework.amqp.rabbit.connection.CachingConnectionFactory.ConfirmType.CORRELATED);loss.setPublisherReturns(true);
         // Official framework seam: the real broker's ACK reaches this callback but not its correlation future.
         loss.setPublisherChannelFactory((channel,executor)->new org.springframework.amqp.rabbit.connection.PublisherCallbackChannelImpl(channel,executor){
