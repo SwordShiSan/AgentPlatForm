@@ -1,0 +1,201 @@
+{
+  "status": "PASS",
+  "backendSource": "b8dd176a763b4ecae7a8599baa8cd7695098220b",
+  "frontendSource": "fd2aa8a30ad6a907702e446b2bceafa8118090df",
+  "receipts": {
+    "backup-r3": {
+      "status": "PASS",
+      "hashes": {
+        "database.json": "0f202cc9fe0dda5c276f05b47cc563c278f4f1defccf00d703d0114203339af0",
+        "postgres.sql": "af79b6deb93a419ef5eb33d30a997b3ff059c7427e5b66607890c9192880f233",
+        "rabbitmq-definitions.json": "b875908b7f0a7d29961394b9ba370c752430cb7d7d34788298f1abacb07526a8",
+        "cold.tgz": "9b85ac52c6afc62cdc7626dbe0f551783a4fc33163041828496c2b979bdb9321",
+        "r3-key-hashes.json": "6785fb7ebd55cc60dcda9dbfb368d7e60f66b2ff14b09fa105258be7b3e56950",
+        "compose.json": "099f534292c5b8e84569ba0fa74915304b2d1d0fd5f9a10188aafc49514142c0",
+        "stage.json": "25573dc07a625ec9eb816ed6365af7cba07b4e8eb32180f04fcc6f213c1dc9fa",
+        "s3.candidate.json": "af412920736f7a5c130bbc446e90ed93cda5017d4c391b43017e3d402ec7958c",
+        "workspaces.xfs.gz": "29c937431aee6ee22d7f61f22541d96337c9fefa1bd986706b3fb51f2860d14a",
+        "workspace-files.json": "cdff7df83c9539e1b6c249d94ae38436fe2a0ce98df82074c98b62b46f3d71bd",
+        "quota-report.txt": "2d3fe80780b765bcafeaf2f0303768523deccc00a1a77724baee5fe196c13373"
+      },
+      "rawXfsSha256": "c2e632a575f89ee9c95280f4ef78258240244b20f07869909cc19b90811ff047",
+      "rawXfsBytes": 4294967296,
+      "uuid": "fe8f72e3-4958-4048-a091-b1933d4195da",
+      "compressed": true,
+      "recordedAt": 1792947794.6374738
+    },
+    "restore": {
+      "status": "PASS",
+      "root": "/srv/agentplatform/operations/r3-restore-20261025T170314Z",
+      "sourceUuidUnchanged": true,
+      "restoredUuid": "77d11a7f-562d-4fbe-95f7-5361d7bae227",
+      "migration": 14,
+      "runtimeBaseline": 1,
+      "databaseFingerprints": "MATCH",
+      "credentialDecryption": "PASS",
+      "immutableObjects": 3,
+      "workspaceHashes": "MATCH",
+      "byteAndInodeQuotaDenial": "PASS",
+      "missingMountRejected": true,
+      "readiness": "READY",
+      "workerStarted": false,
+      "supplierCalls": 0,
+      "restoredXfsLogicalBytes": 4294967296,
+      "sparseRestoreCopy": true,
+      "temporaryResourcesStopped": true,
+      "recordedAt": 1792947923.3797007
+    },
+    "rollback-drill": {
+      "status": "PASS",
+      "exactR2ContainersRetained": true,
+      "originalCapsRestored": true,
+      "migration": 14,
+      "supplierCalls": 0,
+      "recordedAt": 1792947998.9107227
+    },
+    "redeploy": {
+      "status": "PASS",
+      "migration": 14,
+      "runtimeBaseline": 1,
+      "supplierCalls": 0,
+      "recordedAt": 1792948521.884326
+    },
+    "rollback-browser": {
+      "status": "PASS",
+      "taskId": "01a15c70-0367-7625-b001-b36a7147e9bc",
+      "homepageLoginChat": true,
+      "refreshHistory": true,
+      "dualContextIsolation": true,
+      "adminBypass": false,
+      "layouts": [
+        {
+          "theme": "light",
+          "width": 375,
+          "horizontalOverflow": false
+        },
+        {
+          "theme": "light",
+          "width": 768,
+          "horizontalOverflow": false
+        },
+        {
+          "theme": "light",
+          "width": 1440,
+          "horizontalOverflow": false
+        },
+        {
+          "theme": "dark",
+          "width": 375,
+          "horizontalOverflow": false
+        },
+        {
+          "theme": "dark",
+          "width": 768,
+          "horizontalOverflow": false
+        },
+        {
+          "theme": "dark",
+          "width": 1440,
+          "horizontalOverflow": false
+        }
+      ],
+      "zoom200": true,
+      "keyboard": true,
+      "logoutImmediate": true,
+      "newSupplierCalls": 0,
+      "dnsTested": false
+    },
+    "mq-persistence2": {
+      "status": "PASS",
+      "supplierCalls": 0,
+      "originalOperationId": "01a1739a-45bf-7486-a833-ee92e74d7a02",
+      "originalCommandId": "01a1739a-45bf-7885-98e5-370ca3db7a3f",
+      "negativeObservation": {
+        "proof": "NEVER_ACCEPTED",
+        "state": "NOT_APPLIED",
+        "execId": null,
+        "neverStarted": true,
+        "startRequested": false,
+        "physicalContainer": null
+      },
+      "originalPhysicalInvocations": 0,
+      "originalManuallyReset": false,
+      "postRestartNewScanCommitted": true,
+      "bootDefinitionsSha256": "99f7ff6db5d6dc559e528d3381581bd20f75d85faef3c79a53c1173354575798",
+      "sameResourceLimits": true,
+      "time": 1792947295.860989
+    },
+    "observation": {
+      "status": "PASS",
+      "scope": "Production resource/readiness samples; no absolute peak or concurrency claim",
+      "supplierCalls": 0,
+      "elapsedSeconds": 1806.6615866795182,
+      "samples": 177,
+      "brokerRestart": true,
+      "minAvailableBytes": 1546608640,
+      "minRootFreeBytes": 9688780800,
+      "swapUsedFirstBytes": 188342272,
+      "swapUsedLastBytes": 187965440,
+      "maxInspectedLimits": 2348810240
+    },
+    "final-host": {
+      "status": "PASS",
+      "selectedServices": 11,
+      "legacyRunning": 0,
+      "retainedR2Running": 0,
+      "totalLimitIncludingReservedMiB": 2880,
+      "rootFreeBytes": 9241841664,
+      "availableBytes": 1612357632,
+      "sourceUuid": "fe8f72e3-4958-4048-a091-b1933d4195da",
+      "noOOM": true,
+      "readiness": "READY",
+      "switchDryRun": {
+        "status": "DRY_RUN",
+        "target": "to-legacy",
+        "newRetained": 16,
+        "legacyRetained": 10,
+        "actions": "serial graceful stop/start; exact identities/mounts; no pull/build/recreate/delete/data transfer"
+      },
+      "actualLegacySwitch": "NOT_RUN",
+      "supplierCallsByVerification": 0,
+      "configurationHashes": {
+        "/srv/agentplatform/operations/r3-release-8edf7c27cd17-20261025/compose.json": "099f534292c5b8e84569ba0fa74915304b2d1d0fd5f9a10188aafc49514142c0",
+        "/srv/agentplatform/operations/r3-release-8edf7c27cd17-20261025/stage.json": "25573dc07a625ec9eb816ed6365af7cba07b4e8eb32180f04fcc6f213c1dc9fa",
+        "/srv/agentplatform/config/s3.json": "af412920736f7a5c130bbc446e90ed93cda5017d4c391b43017e3d402ec7958c",
+        "/srv/agentplatform/config/rabbitmq-definitions.json": "99f7ff6db5d6dc559e528d3381581bd20f75d85faef3c79a53c1173354575798"
+      },
+      "switchScriptSha256": "6656b8aed3dd7e71060b730d50dc98be30b4e91151aebb53da76f8a9ac2e5bc0",
+      "recordedAt": 1792948763.2699196
+    }
+  },
+  "finalReadOnlyBrowser": {
+    "status": "PASS",
+    "assertions": [
+      "post-broker-restart-read-only-files-and-identity"
+    ],
+    "identities": {
+      "workspaceId": "01a1738f-f541-7d53-89f4-30d09d367a34",
+      "fileId": "01a17390-1204-723f-9e84-9f6fed885744",
+      "oldVersionId": "01a17390-11d0-7725-b29d-955d04be016a",
+      "currentVersionId": "01a17390-35b0-7e10-9caf-4e2607aac9c7",
+      "oldSha256": "daf49f7ec4282df1066f4c037a1ab9f33e5796662ce5cd3d6b64bdaf0014cbdf",
+      "currentSha256": "bfca4dc656297f0d968c7da3a6da283d1493c8b64051c2eb27f0d86fbde0d54c",
+      "postRestartFile": {
+        "id": "01a173ff-33c3-77b9-af23-f30d2276f2a8",
+        "versionId": "01a173ff-33c2-715d-817d-307e710f48bc",
+        "sha256": "8f4560c3f3a7ac76f9ea597cc2b859763cd52559fb0f5a2d5ba348a407d63e28"
+      }
+    },
+    "supplierCalls": 0,
+    "tunnelRequired": true
+  },
+  "supplierCalls": 0,
+  "historicalResourceScope": "1806.66s samples precede narrow query/config correction. Same resource limits and streaming/runtime components reused; changed query branch, broker persistence, actual upload, restore and final login revalidated. This is not a new final-source 30min mixed-workload claim.",
+  "notRun": [
+    "extended three native crash combinations",
+    "duplicate local 30min soak",
+    "repeat 30min after narrow query/config correction",
+    "actual R3 to legacy to R3 switch; dry-run only"
+  ],
+  "retainedFailureHistory": true
+}

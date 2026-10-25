@@ -20,12 +20,12 @@
 - [x] 5.3 Core native lifecycle, stop/cleanup, mounts/rebuild/hash and retained-data checks. Additional three crash windows NOT_RUN; historical failures retained.
 - [x] 5.4 Actual API browser auth/isolation/lifecycle/files/refresh/layout/theme/keyboard.
 - [x] 5.5 Bounded functional window and exact original R2 restoration PASS. Avoid duplicate local soak per functional-first closure; production observation remains6.3.
-- [ ] 5.6 Protected step->phase->main and exact-source R3.4 VERIFIED evidence.
+- [x] 5.6 Protected step->phase->main and exact-source R3.4 VERIFIED evidence.
 ## 6. Production release
-- [ ] 6.0 Correct boot-persistent MQ permissions and runner-before-worker startup; implement query-only never-accepted proof with expiry/fence/authorization/absence and concurrency regressions. Rebuild the changed backend; do not reset UNKNOWN or replay commands.
-- [ ] 6.1 Exact R2 snapshot/resource admission/consistent backup and verified immutable imports.
-- [ ] 6.2 Additive migration, scoped runner roles/keys, full R3 startup and HTTP smoke.
-- [ ] 6.3 Cloud>=1800s observation, independent serial restore, original R2 rollback/same R3 restart.
+- [x] 6.0 Correct boot-persistent MQ permissions and runner-before-worker startup; implement query-only never-accepted proof with expiry/fence/authorization/absence and concurrency regressions. Rebuild the changed backend; do not reset UNKNOWN or replay commands.
+- [x] 6.1 Exact R2 snapshot/resource admission/consistent backup and verified immutable imports.
+- [x] 6.2 Additive migration, scoped runner roles/keys, full R3 startup and HTTP smoke.
+- [x] 6.3 Historical1806.66s resource scope retained; final narrow changes targeted revalidated. Independent serial restore, R2 rollback/auth and same-R3 restart PASS. Repeat final-source mixed soak NOT_RUN under latest user functional-first scope.
 - [ ] 6.4 R3 production tag, actual service switching snapshots/scripts and RELEASED evidence.
 ## 7. Closure
 - [ ] 7.1 Archive/sync, canonical progress/ADR/R5 boundaries and verified Skill learning.
