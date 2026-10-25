@@ -1,5 +1,9 @@
 # R3.4 verification
 
+## Current acceptance scope (user direction, 2026-10-25)
+
+Prioritize functional correctness and proven bugs. Do not expand the exhaustive crash/fault matrix during closure. Preserve historical failures and mark unexecuted extended scenarios NOT_RUN, separately from core functional evidence. Core checks remain identity/permissions, files and immutable versions, environment lifecycle/data retention, actual browser behavior, resource admission and release backup/restore/rollback. A confirmed API scan permission defect requires only workspace_id column access; private operation bodies remain denied. Reuse unchanged immutable runtime artifacts and bind deployment/test changes separately.
+
 Status: PREPARING. All implementation/runtime/release gates NOT_RUN. Supplier calls must remain0. Prior R3.3 PASS records are prerequisites only.
 
 ## Resource window1: retained FAIL, original R2 restored

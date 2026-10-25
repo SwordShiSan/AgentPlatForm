@@ -86,6 +86,22 @@ class FilePostgresTest {
         return new ScopedFiles(limitedPool,new TransactionalFileRepository(new MyBatisFileRepository(session.getMapper(FileMapper.class),
                 session.getMapper(WorkspaceMapper.class),session.getMapper(EnvironmentPreparationMapper.class),"sha256:"+"a".repeat(64),"b".repeat(64)),tx));
     }
+    @Test void apiScanAdmissionUsesScopedColumnsAndCannotReadPrivateUseBodies() throws Exception {
+        for(String role:List.of("ap_migration","ap_api","ap_worker","ap_runner","ap_workspace_ops"))
+            sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='"+role+"') THEN CREATE ROLE "+role+" NOLOGIN;END IF;END $$");
+        for(String name:List.of("r1-runtime-grants.sql","r2-runtime-grants.sql","r3-workspace-grants.sql","r3-environment-grants.sql","r3-file-grants.sql"))
+            sql(Files.readString(Path.of("../../deploy/config",name)));
+        try(var api=scopedFiles("ap_api")) {
+            api.repository().scheduleScan();
+            api.repository().scheduleScan();
+            assertEquals(1,count("SELECT count(*) FROM pf.file_operation WHERE kind='SCAN'"));
+            assertEquals(1,count("SELECT count(*) FROM pf.file_outbox"));
+            try(var connection=api.pool().getConnection();var statement=connection.createStatement()) {
+                assertThrows(java.sql.SQLException.class,()->statement.executeQuery("SELECT request_text FROM pf.workspace_environment_use"));
+                assertThrows(java.sql.SQLException.class,()->statement.executeQuery("SELECT * FROM pf.workspace_environment_use_result"));
+            }
+        }
+    }
     @Test void realApiAndWorkerRolesReserveRefundAndSettleWithoutQuotaAdministration() throws Exception {
         for(String role:List.of("ap_migration","ap_api","ap_worker","ap_runner","ap_workspace_ops"))
             sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='"+role+"') THEN CREATE ROLE "+role+" NOLOGIN;END IF;END $$");
