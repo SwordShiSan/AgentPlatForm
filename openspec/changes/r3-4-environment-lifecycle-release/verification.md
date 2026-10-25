@@ -66,4 +66,3 @@ Combined actual PostgreSQL regression:84 tests,76 PASS,8 MQ NOT_RUN,0 failures/e
 Preserve failed batch6 (new Mapper against old schema) and batch10 (TRUNCATE CASCADE deleted the shared sandbox singleton). Frozen V13 SQL from stable645701b, schema restoration in finally and exact fixture singleton reset fixed the causes without changing assertions or historical migrations. Skill references updated with verified reusable lessons.
 
 NOT_DONE: assemble initial V3 prepare/retry and managed drain/reconciliation, expired-owner observation, lifecycle public API/OpenAPI/Vue, actual MQ/native/browser/final1800s and production release/restore/R2 rollback. Current R3 remains3/4 VERIFIED and NOT_RELEASED; no R4 or production R3 tag. The independent local PG container is stopped with data retained. This is not the final protected body/evidence delivery.
-
