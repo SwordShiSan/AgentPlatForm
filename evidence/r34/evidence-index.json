@@ -4,20 +4,20 @@
   "files": {
     "evidence/r34/control-plane-progress.json": "f680d8fac8ecbe939b94114ed08c6ffaa206d631915fdca974da97d23c045f8d",
     "evidence/r34/foundation.json": "ec388c0e7070e8000150e1465d047c59c103772dac6cc8adc4a7229d55468ed7",
-    "evidence/r34/functional-acceptance.json": "cd57dae43d37f61526828186a23ceeeae45077aa4b16294f9e72fc2ff78b10ba",
+    "evidence/r34/functional-acceptance.json": "49cf50752e74b4b2634f1bc81fb72b3adf287076f2fab3fe933445a4fd742904",
     "evidence/r34/integrated-smoke.json": "5bd446b9eac3dfa96790d09663e2c0fe560ed8d2f3afea70242cb059e3c23f51",
     "evidence/r34/lifecycle-batch.json": "22edc6b1c65322d893c79808d586ea0c7e6e61924dff0affd81c8b42ea9ed64a",
     "evidence/r34/maintenance-admission-unit.json": "53d601c24204429d2b46f6b55bd28370d15a424bdbb987dba59a41eef243e3c9",
     "evidence/r34/native-smoke-diagnostics.json": "631a3393eae64ae91467aff0ae02a32396cc6caa781e340af56f611d3c0b04f6",
-    "evidence/r34/never-accepted-regression.json": "f7e8c6ae484a9fd5b5add7d50f0216020ef1c58638d795dfa37bd1fcffb7f3a1",
+    "evidence/r34/never-accepted-regression.json": "42507a26a4db520049e41f77490263763266f3bd97c41c21b51b0f5fa3356e6b",
     "evidence/r34/preparation.json": "1bcba36690c9ad94d14166bc5468dabe86eeffb2262e2aafb887400f4db214c3",
     "evidence/r34/production-functional-recovery.json": "7aca1d39c03f4a9cece3d75180c5384490df980f635ab241a654fe3003b72933",
     "evidence/r34/production-release.json": "6b6e32e0d26872efbc661617382edfd1d2ef31e3160b8bd999a1eeaf37099f06",
-    "evidence/r34/recovery-candidate.json": "973094afedad783840f053a47d889eefc255e4429a4a5990b6f8e9fe703be01d",
-    "evidence/r34/scoped-scan-regression.json": "ac72c661123a9b13a66194076289327677a8c70f59c77b3ccd153f0f11bfb1a6"
+    "evidence/r34/recovery-candidate.json": "c2b9060c387827f3b0a9855dcea2e08f78484ac221dbdc8f08a58113f78e562a",
+    "evidence/r34/scoped-scan-regression.json": "a272507b23a20c61b9d6066b32a251fcfd125935479331e23a7c1e9eb11e7f66"
   },
   "rawSecretsSqlLogsIncluded": false,
-  "hashConvention": "UTF-8 LF Git blobs; use git show after final checkout",
+  "hashConvention": "Exact Git blob bytes (git show HEAD:path), independent of Windows checkout CRLF",
   "productionEvidenceDirectory": "/srv/agentplatform/operations/r3-release-8edf7c27cd17-20261025",
   "productionTag": "production-r3-95ffaf3b7137"
 }
