@@ -7,6 +7,7 @@ import com.agentplatform.infrastructure.adapter.repository.workspace.*;
 import com.agentplatform.infrastructure.dao.typehandler.UuidTypeHandler;
 import com.agentplatform.infrastructure.dao.workspace.*;
 import com.agentplatform.infrastructure.workspace.RunnerSignatures;
+import com.agentplatform.types.Uuid7;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.sql.DriverManager;
@@ -26,6 +27,7 @@ class EnvironmentPostgresTest {
     private com.zaxxer.hikari.HikariDataSource pool;
     private TransactionTemplate transactions;
     private EnvironmentPreparationRepository environments;
+    private EnvironmentLifecycleRepository lifecycle;
     private WorkspaceRepository workspaces;
     private EnvironmentExecutionRepository executions;
     private EnvironmentMaintenanceRepository maintenance;
@@ -41,16 +43,17 @@ class EnvironmentPostgresTest {
         return configuration.load();
     }
     @BeforeAll static void migrate() throws Exception {
-        url = System.getenv("R32_TEST_JDBC_URL");
+        boolean r34="1".equals(System.getenv("R34_ACCEPTANCE"));
+        url = System.getenv(r34?"R34_TEST_JDBC_URL":"R32_TEST_JDBC_URL");
         Assumptions.assumeTrue(url != null,"R32 PostgreSQL not selected; NOT_RUN");
-        assertEquals("1",System.getenv("R32_ACCEPTANCE"));
-        assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15449/environment_test?"));
-        password = Files.readString(Path.of(System.getenv("R32_TEST_PASSWORD_FILE"))).strip();
+        assertEquals("1",System.getenv(r34?"R34_ACCEPTANCE":"R32_ACCEPTANCE"));
+        assertTrue(url.startsWith(r34?"jdbc:postgresql://127.0.0.1:25434/environment_test?":"jdbc:postgresql://127.0.0.1:15449/environment_test?"));
+        password = Files.readString(Path.of(System.getenv(r34?"R34_TEST_PASSWORD_FILE":"R32_TEST_PASSWORD_FILE"))).strip();
         flyway(null).clean();
         flyway("10").migrate();
         assertEquals(10,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         flyway(null).migrate();
-        assertEquals(13,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
+        assertEquals(14,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
     }
     private static void sql(String text) throws Exception {
@@ -61,11 +64,20 @@ class EnvironmentPostgresTest {
     }
     private static String hash(String text) {return RunnerSignatures.sha256(text.getBytes(StandardCharsets.UTF_8));}
     private SqlSessionTemplate session(javax.sql.DataSource source) throws Exception {
+        return session(source,false);
+    }
+    private SqlSessionTemplate session(javax.sql.DataSource source,boolean legacyV13) throws Exception {
         var factory=new SqlSessionFactoryBean();factory.setDataSource(source);
         var configuration=new org.apache.ibatis.session.Configuration();configuration.setMapUnderscoreToCamelCase(true);
         configuration.setLocalCacheScope(org.apache.ibatis.session.LocalCacheScope.STATEMENT);configuration.setCacheEnabled(false);
         configuration.getTypeHandlerRegistry().register(new UuidTypeHandler());factory.setConfiguration(configuration);
-        factory.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:mybatis/mapper/workspace/*.xml"));
+        var resources=new PathMatchingResourcePatternResolver().getResources("classpath*:mybatis/mapper/workspace/*.xml");
+        if(legacyV13) {
+            for(int index=0;index<resources.length;index++)if(Set.of("EnvironmentExecutionMapper.xml","EnvironmentPreparationMapper.xml").contains(resources[index].getFilename())) {
+                resources[index]=new org.springframework.core.io.ClassPathResource("fixtures/workspace/v13/"+resources[index].getFilename());
+            }
+        }
+        factory.setMapperLocations(resources);
         return new SqlSessionTemplate(factory.getObject());
     }
     @BeforeEach void setup() throws Exception {
@@ -81,6 +93,9 @@ class EnvironmentPostgresTest {
         workspaces=new TransactionalWorkspaceRepository(new MyBatisWorkspaceRepository(mapper),transactions);
         environments=new TransactionalEnvironmentPreparationRepository(new MyBatisEnvironmentPreparationRepository(
                 session.getMapper(EnvironmentPreparationMapper.class),mapper,"sha256:"+"a".repeat(64),"b".repeat(64)),transactions);
+        lifecycle=new TransactionalEnvironmentLifecycleRepository(new MyBatisEnvironmentLifecycleRepository(
+                session.getMapper(EnvironmentLifecycleMapper.class),session.getMapper(EnvironmentPreparationMapper.class),
+                mapper,"sha256:"+"a".repeat(64),"b".repeat(64)),transactions);
         executions=new TransactionalEnvironmentExecutionRepository(new MyBatisEnvironmentExecutionRepository(
                 session.getMapper(EnvironmentExecutionMapper.class),session.getMapper(EnvironmentPreparationMapper.class),mapper),transactions);
         var useMapper=session.getMapper(EnvironmentUseMapper.class);var preparationMapper=session.getMapper(EnvironmentPreparationMapper.class);
@@ -117,6 +132,545 @@ class EnvironmentPostgresTest {
     }
     private EnvironmentPreparationRepository.Submission prepare(UUID workspace,UUID request,long version,boolean retry) {
         return environments.prepare(alice,workspace,request,hash((retry?"RETRY":"PREPARE")+"\n"+workspace+"\n"+version),version,retry);
+    }
+    private EnvironmentLifecycleRepository.Admission lifecycle(UUID workspace,UUID key,long version,EnvironmentLifecycleRepository.Intent intent) {
+        return lifecycle.admit(alice,workspace,key,hash(intent+"\n"+workspace+"\n"+version),version,intent);
+    }
+    @Test void lifecycleSleepFreezesExactTargetAndLostResponseHasOneOutbox() throws Exception {
+        var original=readyEnvironment();var version=environments.get(alice,original.workspaceId()).version();var key=UUID.randomUUID();
+        var first=lifecycle(original.workspaceId(),key,version,EnvironmentLifecycleRepository.Intent.SLEEP);
+        assertEquals(first,lifecycle(original.workspaceId(),key,version,EnvironmentLifecycleRepository.Intent.SLEEP));
+        assertEquals("PENDING",first.status());assertEquals(original.generation(),first.generation());
+        assertEquals("STOPPING",environments.get(alice,original.workspaceId()).state());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_operation WHERE protocol='ENVIRONMENT_V3' AND kind='SLEEP'"
+                +" AND target_creation_command_id='"+original.creationCommandId()+"' AND target_creation_fence="+original.creationFence()
+                +" AND target_container_id='"+"c".repeat(64)+"' AND cleanup_state='PENDING'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_outbox WHERE operation_id='"+first.operationId()+"'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        assertEquals(1,count("SELECT reserved_slots FROM pf.workspace_capacity WHERE id=1"));
+        assertEquals("IDEMPOTENCY_CONFLICT",assertThrows(WorkspaceFailure.class,()->lifecycle(original.workspaceId(),key,
+                version,EnvironmentLifecycleRepository.Intent.DELETE)).code());
+    }
+    @Test void lifecycleConcurrentSameKeyHasOneIntentAndEvent() throws Exception {
+        var original=readyEnvironment();long version=environments.get(alice,original.workspaceId()).version();UUID key=UUID.randomUUID();
+        try(var threads=Executors.newFixedThreadPool(4)) {
+            var futures=new ArrayList<Future<UUID>>();
+            for(int i=0;i<4;i++)futures.add(threads.submit(()->lifecycle(original.workspaceId(),key,version,
+                    EnvironmentLifecycleRepository.Intent.DELETE).operationId()));
+            var ids=new HashSet<UUID>();for(var future:futures)ids.add(future.get(15,TimeUnit.SECONDS));assertEquals(1,ids.size());
+        }
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_operation WHERE protocol='ENVIRONMENT_V3'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_event WHERE payload_json->>'state'='DELETING'"));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_stop_receipt"));
+        assertEquals("READY",workspaces.get(alice,original.workspaceId()).state());
+    }
+    @Test void lifecycleOuterFailureRollsBackIntentFenceSlotAndEvents() throws Exception {
+        var original=readyEnvironment();long version=environments.get(alice,original.workspaceId()).version();
+        assertThrows(IllegalStateException.class,()->transactions.execute(status->{
+            lifecycle(original.workspaceId(),UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.SLEEP);
+            throw new IllegalStateException("Injected lifecycle admission rollback");
+        }));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_operation WHERE protocol='ENVIRONMENT_V3'"));
+        assertEquals(version,environments.get(alice,original.workspaceId()).version());
+        assertEquals("READY",environments.get(alice,original.workspaceId()).state());
+        assertEquals(original.fence(),count("SELECT fence FROM pf.workspace_environment WHERE id='"+original.environmentId()+"'"));
+    }
+    @Test void lifecycleRejectsStaleVersionCrossSpaceAndUnsafeWake() throws Exception {
+        var original=readyEnvironment();long version=environments.get(alice,original.workspaceId()).version();
+        assertEquals("VERSION_CONFLICT",assertThrows(WorkspaceFailure.class,()->lifecycle(original.workspaceId(),UUID.randomUUID(),
+                version-1,EnvironmentLifecycleRepository.Intent.SLEEP)).code());
+        assertEquals("RESOURCE_NOT_FOUND",assertThrows(WorkspaceFailure.class,()->lifecycle.admit(bob,original.workspaceId(),
+                UUID.randomUUID(),hash("cross-space"),version,EnvironmentLifecycleRepository.Intent.DELETE)).code());
+        assertEquals("ENVIRONMENT_LIFECYCLE_UNSAFE",assertThrows(WorkspaceFailure.class,()->lifecycle(original.workspaceId(),
+                UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.WAKE)).code());
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_operation WHERE protocol='ENVIRONMENT_V3'"));
+    }
+    @Test void lifecycleDrainsSandboxUseWithoutAdvancingFenceOrPublishing() throws Exception {
+        var original=readyEnvironment();var active=uses.admit(alice,original.workspaceId(),UUID.randomUUID(),UUID.randomUUID(),probe()).command();
+        long version=environments.get(alice,original.workspaceId()).version();
+        var pending=lifecycle(original.workspaceId(),UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.SLEEP);
+        assertEquals("DRAINING",pending.status());
+        assertEquals(active.fence(),count("SELECT fence FROM pf.workspace_environment WHERE id='"+original.environmentId()+"'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment WHERE pending_operation_id='"+pending.operationId()+"'"
+                +" AND operation_id='"+original.operationId()+"'"));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_outbox WHERE operation_id='"+pending.operationId()+"'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        assertThrows(WorkspaceFailure.class,()->uses.admit(alice,original.workspaceId(),UUID.randomUUID(),UUID.randomUUID(),probe()));
+    }
+    @Test void lifecycleUnknownUseAndQueuedFileWorkCannotBeStolen() throws Exception {
+        var original=readyEnvironment();var active=uses.admit(alice,original.workspaceId(),UUID.randomUUID(),UUID.randomUUID(),probe()).command();
+        long version=environments.get(alice,original.workspaceId()).version();
+        sql("UPDATE pf.workspace_environment_use SET status='UNKNOWN' WHERE id='"+active.id()+"'");
+        assertEquals("WORKSPACE_DATA_PLANE_BUSY",assertThrows(WorkspaceFailure.class,()->lifecycle(original.workspaceId(),
+                UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.DELETE)).code());
+        sql("UPDATE pf.workspace_environment_use SET status='FAILED' WHERE id='"+active.id()+"'");
+        sql("INSERT INTO pf.file_operation(id,space_id,workspace_id,actor_id,kind,command_id,status,helper_image_id,helper_policy_hash,scan_parent,scan_epoch)"
+                +" VALUES('"+UUID.randomUUID()+"','"+alice.spaceId()+"','"+original.workspaceId()+"','"+alice.userId()+"','SCAN','"
+                +UUID.randomUUID()+"','PENDING','sha256:"+"a".repeat(64)+"','"+"b".repeat(64)+"','','"+UUID.randomUUID()+"')");
+        assertEquals("WORKSPACE_DATA_PLANE_BUSY",assertThrows(WorkspaceFailure.class,()->lifecycle(original.workspaceId(),
+                UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.DELETE)).code());
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_operation WHERE protocol='ENVIRONMENT_V3'"));
+    }
+    private com.agentplatform.domain.workspace.EnvironmentExecutionData.Command stoppedEnvironmentForLifecycle() throws Exception {
+        var original=readyEnvironment();sql("UPDATE pf.workspace_environment SET last_activity_at=clock_timestamp()-interval '61 seconds'");
+        assertEquals(1,maintenance.scheduleStop());
+        var snapshot=environments.get(alice,original.workspaceId());
+        var publication=executions.publications(UUID.randomUUID()).stream().filter(p->p.operationId().equals(snapshot.operationId())).findFirst().orElseThrow();
+        var command=executions.claim(publication,UUID.randomUUID());executions.beforeCall(command);accept(command,hash("lifecycle-old-stop"));
+        var stop=new SandboxRuntime.Stop("c".repeat(64),command.imageId(),command.containerStartedAt(),"2026-10-22T00:00:05Z",true,true,java.time.Instant.now());
+        var receipt=new com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt(command.commandId(),command.operationId(),command.environmentId(),command.workspaceId(),
+                command.generation(),command.fence(),"COMMITTED","STOPPED",null,null,stop,1);
+        commitReceipt(command,receipt);executions.complete(command,receipt);return command;
+    }
+    @Test void lifecycleDeleteStoppedReferencesExistingStopWithoutInventingAnother() throws Exception {
+        var stopped=stoppedEnvironmentForLifecycle();long version=environments.get(alice,stopped.workspaceId()).version();
+        var deletion=lifecycle(stopped.workspaceId(),UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.DELETE);
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_operation o JOIN pf.workspace_environment_stop_receipt s"
+                +" ON s.id=o.prior_stop_receipt_id WHERE o.id='"+deletion.operationId()+"' AND s.operation_id='"+stopped.operationId()+"'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_stop_receipt"));
+        assertEquals(1,count("SELECT reserved_slots FROM pf.workspace_capacity WHERE id=1"));
+        assertEquals("DELETING",environments.get(alice,stopped.workspaceId()).state());
+    }
+    @Test void lifecycleWakeUsesNewGenerationAndFrozenCreationIdentity() throws Exception {
+        var stopped=stoppedEnvironmentForLifecycle();long version=environments.get(alice,stopped.workspaceId()).version();
+        var wake=lifecycle(stopped.workspaceId(),UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.WAKE);
+        assertEquals(stopped.generation()+1,wake.generation());
+        assertEquals("PREPARING",environments.get(alice,stopped.workspaceId()).state());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_operation WHERE id='"+wake.operationId()+"'"
+                +" AND protocol='ENVIRONMENT_V3' AND target_creation_command_id=command_id AND target_creation_fence=fence"
+                +" AND NOT cleanup_required AND prior_stop_receipt_id IS NULL"));
+        assertEquals(1,count("SELECT reserved_slots FROM pf.workspace_capacity WHERE id=1"));
+    }
+    private com.agentplatform.domain.workspace.EnvironmentExecutionData.Command claimLifecycle(
+            EnvironmentLifecycleRepository.Admission admission) {
+        var publication=executions.publications(UUID.randomUUID()).stream()
+                .filter(item->item.operationId().equals(admission.operationId())).findFirst().orElseThrow();
+        var command=executions.claim(publication,UUID.randomUUID());assertNotNull(command);
+        assertEquals("ENVIRONMENT_V3",command.protocol());return command;
+    }
+    private com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt lifecycleStopReceipt(
+            com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command,SandboxRuntime.Stop stop) {
+        return new com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt(command.commandId(),command.operationId(),
+                command.environmentId(),command.workspaceId(),command.generation(),command.fence(),"COMMITTED","STOPPED",null,null,stop,1);
+    }
+    @Test void lifecycleStopCannotReleaseCapacityUntilExactCleanupCommits() throws Exception {
+        var ready=readyEnvironment();long version=environments.get(alice,ready.workspaceId()).version();
+        var command=claimLifecycle(lifecycle(ready.workspaceId(),UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.SLEEP));
+        executions.beforeCall(command);accept(command,hash("v3-sleep"));
+        var stop=new SandboxRuntime.Stop(command.containerId(),command.imageId(),command.containerStartedAt(),
+                "2026-10-22T00:00:05Z",true,true,java.time.Instant.now());
+        var receipt=lifecycleStopReceipt(command,stop);commitReceipt(command,receipt);
+        assertEquals("ENVIRONMENT_CLEANUP_UNCONFIRMED",assertThrows(WorkspaceFailure.class,()->executions.complete(command,receipt)).code());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        assertEquals("ENVIRONMENT_CLEANUP_MISMATCH",assertThrows(WorkspaceFailure.class,()->executions.confirmCleanup(command,
+                new SandboxRuntime.Removal("d".repeat(64),stop.image(),stop.startedAt(),stop.finishedAt(),java.time.Instant.now()),runner.id())).code());
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_cleanup"));
+        var removal=new SandboxRuntime.Removal(stop.containerId(),stop.image(),stop.startedAt(),stop.finishedAt(),java.time.Instant.now());
+        var confirmed=executions.confirmCleanup(command,removal,runner.id());assertEquals(2,confirmed.revision());
+        assertEquals(confirmed,executions.confirmCleanup(command,removal,runner.id()));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_cleanup"));
+        assertEquals(2,count("SELECT count(*) FROM pf.workspace_environment_receipt WHERE command_id='"+command.commandId()+"'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        executions.complete(command,confirmed);
+        assertEquals("STOPPED",environments.get(alice,command.workspaceId()).state());
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        assertEquals(1,count("SELECT reserved_slots FROM pf.workspace_capacity WHERE id=1"));
+    }
+    @Test void lifecycleDeleteStoppedRetainsPriorStopProvenanceThroughCleanup() throws Exception {
+        var previous=stoppedEnvironmentForLifecycle();long version=environments.get(alice,previous.workspaceId()).version();
+        var command=claimLifecycle(lifecycle(previous.workspaceId(),UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.DELETE));
+        executions.beforeCall(command);accept(command,hash("v3-delete-prior-stop"));
+        var stop=executions.priorStop(command);assertNotNull(stop);
+        var changed=new SandboxRuntime.Stop(stop.containerId(),stop.image(),stop.startedAt(),stop.finishedAt(),true,true,
+                stop.observedAt().plusSeconds(1));
+        assertEquals("RUNNER_STOP_PROVENANCE_MISMATCH",assertThrows(WorkspaceFailure.class,
+                ()->commitReceipt(command,lifecycleStopReceipt(command,changed))).code());
+        commitReceipt(command,lifecycleStopReceipt(command,stop));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_stop_receipt WHERE operation_id='"+command.operationId()
+                +"' AND proof_kind='PRIOR_RECEIPT' AND source_stop_receipt_id IS NOT NULL"));
+        var confirmed=executions.confirmCleanup(command,new SandboxRuntime.Removal(stop.containerId(),stop.image(),stop.startedAt(),
+                stop.finishedAt(),java.time.Instant.now()),runner.id());executions.complete(command,confirmed);
+        assertEquals("DELETED",environments.get(alice,command.workspaceId()).state());
+        assertEquals("READY",workspaces.get(alice,command.workspaceId()).state());
+        assertEquals(1,count("SELECT reserved_slots FROM pf.workspace_capacity WHERE id=1"));
+    }
+    @Test void lifecycleFrozenCommandDoesNotReadLaterMutablePolicy() throws Exception {
+        var ready=readyEnvironment();long version=environments.get(alice,ready.workspaceId()).version();
+        var command=claimLifecycle(lifecycle(ready.workspaceId(),UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.SLEEP));
+        sql("UPDATE pf.workspace_environment SET image_id='sha256:"+"1".repeat(64)+"',policy_hash='"+"2".repeat(64)
+                +"',container_id='"+"3".repeat(64)+"' WHERE id='"+command.environmentId()+"'");
+        assertEquals(command,executions.lookup(command.operationId()));
+        assertEquals(ready.physicalIdentity(),command.physicalIdentity());
+    }
+    @Test void lifecyclePendingHandoffWaitsForUseStopAndRetainsSlotUntilCleanup() throws Exception {
+        var use=use();startUse(use);long version=environments.get(alice,use.workspaceId()).version();
+        var pending=lifecycle(use.workspaceId(),UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.DELETE);
+        assertFalse(lifecycle.activatePending(use.spaceId(),use.workspaceId()));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_use WHERE id='"+use.id()+"' AND cancel_requested"));
+        assertEquals(use.fence(),count("SELECT fence FROM pf.workspace_environment WHERE id='"+use.environmentId()+"'"));
+        // Actual trusted stop fact, not lease expiry or Future cancellation, ends the old use.
+        uses.commitFact(use,runner.id(),stopped(use,runner.id()));uses.complete(use);
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        assertFalse(environments.get(alice,use.workspaceId()).prepareAllowed());
+        assertTrue(lifecycle.activatePending(use.spaceId(),use.workspaceId()));
+        assertFalse(lifecycle.activatePending(use.spaceId(),use.workspaceId()));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_outbox WHERE operation_id='"+pending.operationId()+"'"));
+        var command=claimLifecycle(pending);assertTrue(command.fence()>use.fence());
+        assertNotNull(executions.priorStop(command));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+    }
+    @Test void lifecyclePendingUnknownUseDoesNotActivateFromExpiredLease() throws Exception {
+        var use=use();startUse(use);long version=environments.get(alice,use.workspaceId()).version();
+        var pending=lifecycle(use.workspaceId(),UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.SLEEP);
+        sql("UPDATE pf.workspace_environment_use SET status='UNKNOWN',lease_until=clock_timestamp()-interval '1 second' WHERE id='"+use.id()+"'");
+        assertFalse(lifecycle.activatePending(use.spaceId(),use.workspaceId()));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_outbox WHERE operation_id='"+pending.operationId()+"'"));
+        assertEquals(use.fence(),count("SELECT fence FROM pf.workspace_environment WHERE id='"+use.environmentId()+"'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+    }
+    @Test void lifecycleApiAdmissionAndRunnerCleanupUseActualRestrictedRoles() throws Exception {
+        Assumptions.assumeTrue("1".equals(System.getenv("R34_ACCEPTANCE")),"R34 role/grant fixture not selected; NOT_RUN");
+        for(String role:List.of("ap_api","ap_worker","ap_runner","ap_workspace_ops"))sql("DO $$ BEGIN CREATE ROLE "+role+" NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$");
+        for(String variable:List.of("R32_WORKSPACE_GRANTS_FILE","R32_ENVIRONMENT_GRANTS_FILE","R34_FILE_GRANTS_FILE")) {
+            assertNotNull(System.getenv(variable),"Missing required scoped grant fixture: "+variable);
+            sql(Files.readString(Path.of(System.getenv(variable))));
+        }
+        var ready=readyEnvironment();long version=environments.get(alice,ready.workspaceId()).version();
+        var apiConfig=new com.zaxxer.hikari.HikariConfig();apiConfig.setJdbcUrl(url);apiConfig.setUsername("postgres");apiConfig.setPassword(password);
+        apiConfig.setMaximumPoolSize(2);apiConfig.setMinimumIdle(1);apiConfig.setConnectionInitSql("SET ROLE ap_api");
+        EnvironmentLifecycleRepository.Admission admitted;
+        try(var apiPool=new com.zaxxer.hikari.HikariDataSource(apiConfig)) {
+            var session=session(apiPool);var tx=new TransactionTemplate(new JdbcTransactionManager(apiPool));
+            var api=new TransactionalEnvironmentLifecycleRepository(new MyBatisEnvironmentLifecycleRepository(session.getMapper(EnvironmentLifecycleMapper.class),
+                    session.getMapper(EnvironmentPreparationMapper.class),session.getMapper(WorkspaceMapper.class),"sha256:"+"a".repeat(64),"b".repeat(64)),tx);
+            admitted=api.admit(alice,ready.workspaceId(),UUID.randomUUID(),hash("restricted-api-sleep"),version,EnvironmentLifecycleRepository.Intent.SLEEP);
+            try(var connection=apiPool.getConnection();var statement=connection.createStatement()) {
+                assertThrows(java.sql.SQLException.class,()->statement.executeQuery("SELECT request_text FROM pf.workspace_environment_use"));
+            }
+        }
+        var command=claimLifecycle(admitted);executions.beforeCall(command);
+        var runnerConfig=new com.zaxxer.hikari.HikariConfig();runnerConfig.setJdbcUrl(url);runnerConfig.setUsername("postgres");runnerConfig.setPassword(password);
+        runnerConfig.setMaximumPoolSize(2);runnerConfig.setMinimumIdle(1);runnerConfig.setConnectionInitSql("SET ROLE ap_runner");
+        try(var runnerPool=new com.zaxxer.hikari.HikariDataSource(runnerConfig)) {
+            var session=session(runnerPool);var tx=new TransactionTemplate(new JdbcTransactionManager(runnerPool));
+            var restricted=new TransactionalEnvironmentExecutionRepository(new MyBatisEnvironmentExecutionRepository(session.getMapper(EnvironmentExecutionMapper.class),
+                    session.getMapper(EnvironmentPreparationMapper.class),session.getMapper(WorkspaceMapper.class)),tx);
+            assertNull(restricted.accept(command,hash("restricted-runner-sleep"),runner.id()));
+            var stop=new SandboxRuntime.Stop(command.containerId(),command.imageId(),command.containerStartedAt(),"2026-10-22T00:00:05Z",true,true,java.time.Instant.now());
+            restricted.commitReceipt(command,lifecycleStopReceipt(command,stop),runner.id());
+            var confirmed=restricted.confirmCleanup(command,new SandboxRuntime.Removal(stop.containerId(),stop.image(),stop.startedAt(),stop.finishedAt(),java.time.Instant.now()),runner.id());
+            assertEquals(2,confirmed.revision());
+            try(var connection=runnerPool.getConnection();var statement=connection.createStatement()) {
+                assertThrows(java.sql.SQLException.class,()->statement.executeUpdate("UPDATE pf.workspace_environment_operation SET status='COMMITTED'"));
+                assertThrows(java.sql.SQLException.class,()->statement.executeUpdate("DELETE FROM pf.workspace_environment_cleanup"));
+            }
+            executions.complete(command,confirmed);
+        }
+        assertEquals("STOPPED",environments.get(alice,command.workspaceId()).state());
+    }
+    @Test void signedV3QueryRetriesCleanupWithoutReplayingStopAndV2RejectsV3() throws Exception {
+        var ready=readyEnvironment();long version=environments.get(alice,ready.workspaceId()).version();
+        var command=claimLifecycle(lifecycle(ready.workspaceId(),UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.SLEEP));
+        executions.beforeCall(command);
+        var controlKey=new com.nimbusds.jose.jwk.gen.RSAKeyGenerator(3072).keyID("r34-control-test").generate();
+        var runnerKey=new com.nimbusds.jose.jwk.gen.RSAKeyGenerator(3072).keyID("r34-runner-test").generate();
+        var clock=java.time.Clock.systemUTC();
+        var control=new RunnerSignatures(controlKey,runnerKey.toPublicJWK(),"r34-control","r34-runner",clock);
+        var signer=new RunnerSignatures(runnerKey,controlKey.toPublicJWK(),"r34-runner","r34-control",clock);
+        var runtime=org.mockito.Mockito.mock(SandboxRuntime.class);
+        var stop=new SandboxRuntime.Stop(command.containerId(),command.imageId(),command.containerStartedAt(),"2026-10-22T00:00:05Z",true,true,java.time.Instant.now());
+        org.mockito.Mockito.when(runtime.stop(command.physicalIdentity())).thenReturn(stop);
+        org.mockito.Mockito.when(runtime.confirmRemoval(command.physicalIdentity(),stop))
+                .thenThrow(new IllegalStateException("Injected cleanup interruption"))
+                .thenReturn(new SandboxRuntime.Removal(stop.containerId(),stop.image(),stop.startedAt(),stop.finishedAt(),java.time.Instant.now()));
+        var service=new EnvironmentRunnerService(executions,signer,runtime,command.imageId(),command.policyHash(),runner);
+        var json=tools.jackson.databind.json.JsonMapper.builder().build();byte[] body=json.writeValueAsBytes(command);
+        var post=EnvironmentRunnerService.binding(command,"POST",EnvironmentRunnerService.PATH_V3);
+        String token=control.sign(post,body);
+        assertEquals("INVALID_ENVIRONMENT_COMMAND",assertThrows(WorkspaceFailure.class,()->service.operate(token,body)).code());
+        var first=service.operateV3(token,body);
+        control.verify(first.signature(),EnvironmentRunnerService.binding(command,"RESPONSE",EnvironmentRunnerService.PATH_V3),first.body());
+        var pending=json.readValue(first.body(),com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt.class);
+        assertEquals("RUNNING",pending.state());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_stop_receipt WHERE operation_id='"+command.operationId()+"'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        String path=EnvironmentRunnerService.PATH_V3+"/"+command.operationId();
+        var result=service.queryV3(control.sign(EnvironmentRunnerService.binding(command,"GET",path),new byte[0]),command.operationId().toString());
+        control.verify(result.signature(),EnvironmentRunnerService.binding(command,"RESPONSE",path),result.body());
+        var receipt=json.readValue(result.body(),com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt.class);
+        assertEquals(2,receipt.revision());executions.complete(command,receipt);
+        org.mockito.Mockito.verify(runtime,org.mockito.Mockito.times(1)).stop(command.physicalIdentity());
+        org.mockito.Mockito.verify(runtime,org.mockito.Mockito.times(2)).confirmRemoval(command.physicalIdentity(),stop);
+        assertEquals("STOPPED",environments.get(alice,command.workspaceId()).state());
+    }
+    @Test void lifecycleInitialPrepareFreezesV3BeforeOutboxAndRetriesSameIdentity() throws Exception {
+        UUID workspace=storage(true),request=UUID.randomUUID();String digest=hash("initial-v3");
+        var first=lifecycle.prepare(alice,workspace,request,digest,0,false);
+        assertEquals(first.operationId(),lifecycle.prepare(alice,workspace,request,digest,0,false).operationId());
+        var operation=new EnvironmentLifecycleRepository.Admission(first.operationId(),"PREPARE","PENDING",1,1);
+        var command=claimLifecycle(operation);assertEquals("PREPARE",command.kind());
+        assertEquals(command.commandId(),command.creationCommandId());
+        executions.beforeCall(command);accept(command,hash("initial-v3-command"));
+        var receipt=ready(command);commitReceipt(command,receipt);executions.complete(command,receipt);
+        assertEquals("READY",lifecycle.get(alice,workspace).state());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_operation WHERE protocol='ENVIRONMENT_V3'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_outbox"));
+    }
+    @Test void lifecyclePrepareAfterDeletedUsesNewGenerationAndKeepsStorageReservation() throws Exception {
+        var previous=stoppedEnvironmentForLifecycle();long version=lifecycle.get(alice,previous.workspaceId()).version();
+        var deletion=claimLifecycle(lifecycle(previous.workspaceId(),UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.DELETE));
+        executions.beforeCall(deletion);accept(deletion,hash("delete-before-reprepare"));
+        var stop=executions.priorStop(deletion);commitReceipt(deletion,lifecycleStopReceipt(deletion,stop));
+        var cleared=executions.confirmCleanup(deletion,new SandboxRuntime.Removal(stop.containerId(),stop.image(),stop.startedAt(),stop.finishedAt(),java.time.Instant.now()),runner.id());
+        executions.complete(deletion,cleared);
+        var deleted=lifecycle.get(alice,previous.workspaceId());assertTrue(deleted.prepareAllowed());
+        var prepared=lifecycle.prepare(alice,previous.workspaceId(),UUID.randomUUID(),hash("prepare-after-delete"),deleted.version(),false);
+        var command=claimLifecycle(new EnvironmentLifecycleRepository.Admission(prepared.operationId(),"PREPARE","PENDING",prepared.environment().generation(),prepared.environment().version()));
+        assertEquals(previous.generation()+1,command.generation());assertEquals(command.commandId(),command.creationCommandId());
+        assertEquals("READY",workspaces.get(alice,command.workspaceId()).state());
+        assertEquals(1,count("SELECT reserved_slots FROM pf.workspace_capacity WHERE id=1"));
+    }
+    @Test void lifecycleRetryPreservesFailedWakeIntentWithoutCreatingAnotherWorkspace() throws Exception {
+        var stopped=stoppedEnvironmentForLifecycle();long version=lifecycle.get(alice,stopped.workspaceId()).version();
+        var wake=claimLifecycle(lifecycle(stopped.workspaceId(),UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.WAKE));
+        executions.beforeCall(wake);accept(wake,hash("failed-wake"));
+        var failure=new com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt(wake.commandId(),wake.operationId(),wake.environmentId(),wake.workspaceId(),
+                wake.generation(),wake.fence(),"FAILED","NOT_STARTED","SANDBOX_ADMISSION_REJECTED",null,null,1);
+        commitReceipt(wake,failure);executions.complete(wake,failure);
+        var snapshot=lifecycle.get(alice,wake.workspaceId());assertTrue(snapshot.retryAllowed());
+        var retry=lifecycle.prepare(alice,wake.workspaceId(),UUID.randomUUID(),hash("retry-failed-wake"),snapshot.version(),true);
+        var retried=claimLifecycle(new EnvironmentLifecycleRepository.Admission(retry.operationId(),"WAKE","PENDING",retry.environment().generation(),retry.environment().version()));
+        assertEquals("WAKE",retried.kind());assertEquals(wake.generation()+1,retried.generation());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace"));assertEquals(1,count("SELECT reserved_slots FROM pf.workspace_capacity WHERE id=1"));
+    }
+    private com.agentplatform.domain.workspace.EnvironmentExecutionData.Command readyV3Environment() throws Exception {
+        var command=acceptedV3Environment();
+        var receipt=ready(command);commitReceipt(command,receipt);executions.complete(command,receipt);return command;
+    }
+    private com.agentplatform.domain.workspace.EnvironmentExecutionData.Command acceptedV3Environment() throws Exception {
+        UUID workspace=storage(true);
+        var first=lifecycle.prepare(alice,workspace,UUID.randomUUID(),hash("ready-v3-fixture"),0,false);
+        var command=claimLifecycle(new EnvironmentLifecycleRepository.Admission(first.operationId(),"PREPARE","PENDING",1,1));
+        executions.beforeCall(command);accept(command,hash("ready-v3-fixture-command"));
+        return command;
+    }
+    @Test void lifecycleIdleStopUsesV3CleanupBarrierAndWakeRemainsUsable() throws Exception {
+        var original=readyV3Environment();sql("UPDATE pf.workspace_environment SET last_activity_at=clock_timestamp()-interval '61 seconds'");
+        assertEquals(1,maintenance.scheduleStop());
+        var snapshot=lifecycle.get(alice,original.workspaceId());assertEquals("STOPPING",snapshot.state());
+        var command=claimLifecycle(new EnvironmentLifecycleRepository.Admission(snapshot.operationId(),"STOP","PENDING",snapshot.generation(),snapshot.version()));
+        assertEquals("STOP",command.kind());assertEquals("SYSTEM",command.initiator());
+        assertEquals(original.physicalIdentity(),command.physicalIdentity());
+        executions.beforeCall(command);accept(command,hash("idle-v3-stop"));
+        var stop=new SandboxRuntime.Stop(command.containerId(),command.imageId(),command.containerStartedAt(),"2026-10-22T00:00:05Z",true,true,java.time.Instant.now());
+        var receipt=lifecycleStopReceipt(command,stop);commitReceipt(command,receipt);
+        assertThrows(WorkspaceFailure.class,()->executions.complete(command,receipt));
+        var cleaned=executions.confirmCleanup(command,new SandboxRuntime.Removal(stop.containerId(),stop.image(),stop.startedAt(),stop.finishedAt(),java.time.Instant.now()),runner.id());
+        executions.complete(command,cleaned);
+        var stopped=lifecycle.get(alice,command.workspaceId());
+        var wake=claimLifecycle(lifecycle(command.workspaceId(),UUID.randomUUID(),stopped.version(),EnvironmentLifecycleRepository.Intent.WAKE));
+        executions.beforeCall(wake);accept(wake,hash("wake-after-idle-v3"));
+        var awake=ready(wake);commitReceipt(wake,awake);executions.complete(wake,awake);
+        assertNotNull(uses.admit(alice,wake.workspaceId(),UUID.randomUUID(),UUID.randomUUID(),probe()).command());
+        assertEquals(original.generation()+1,wake.generation());
+    }
+    @Test void lifecycleIdleMaintenanceCannotOvertakeQueuedFileWriter() throws Exception {
+        var original=readyV3Environment();sql("UPDATE pf.workspace_environment SET last_activity_at=clock_timestamp()-interval '61 seconds'");
+        sql("INSERT INTO pf.file_operation(id,space_id,workspace_id,actor_id,kind,command_id,status,helper_image_id,helper_policy_hash,scan_parent,scan_epoch)"
+                +" VALUES('"+UUID.randomUUID()+"','"+alice.spaceId()+"','"+original.workspaceId()+"','"+alice.userId()+"','SCAN','"
+                +UUID.randomUUID()+"','PENDING','sha256:"+"a".repeat(64)+"','"+"b".repeat(64)+"','','"+UUID.randomUUID()+"')");
+        assertEquals(0,maintenance.scheduleStop());assertEquals("READY",lifecycle.get(alice,original.workspaceId()).state());
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_operation WHERE kind='STOP'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+    }
+    @Test void lifecycleRetryOfFailedDeleteKeepsDeletionAndPriorStopInsteadOfPreparing() throws Exception {
+        var original=readyV3Environment();long version=lifecycle.get(alice,original.workspaceId()).version();
+        var command=claimLifecycle(lifecycle(original.workspaceId(),UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.DELETE));
+        executions.beforeCall(command);accept(command,hash("failed-delete-v3"));
+        var stop=new SandboxRuntime.Stop(command.containerId(),command.imageId(),command.containerStartedAt(),"2026-10-22T00:00:05Z",true,true,java.time.Instant.now());
+        var failed=new com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt(command.commandId(),command.operationId(),command.environmentId(),command.workspaceId(),
+                command.generation(),command.fence(),"FAILED","STOPPED","SANDBOX_LIFECYCLE_REJECTED",null,stop,1);
+        commitReceipt(command,failed);
+        var cleaned=executions.confirmCleanup(command,new SandboxRuntime.Removal(stop.containerId(),stop.image(),stop.startedAt(),stop.finishedAt(),java.time.Instant.now()),runner.id());
+        executions.complete(command,cleaned);var snapshot=lifecycle.get(alice,command.workspaceId());assertTrue(snapshot.retryAllowed());
+        UUID key=UUID.randomUUID();String digest=hash("retry-delete-v3");
+        var retried=lifecycle.prepare(alice,command.workspaceId(),key,digest,snapshot.version(),true);
+        assertEquals(retried.operationId(),lifecycle.prepare(alice,command.workspaceId(),key,digest,snapshot.version(),true).operationId());
+        var retry=claimLifecycle(new EnvironmentLifecycleRepository.Admission(retried.operationId(),"DELETE","PENDING",retried.environment().generation(),retried.environment().version()));
+        assertEquals("DELETE",retry.kind());assertEquals(command.generation(),retry.generation());
+        assertEquals(command.creationCommandId(),retry.creationCommandId());assertNotNull(executions.priorStop(retry));
+    }
+    @Test void lifecycleActionsAndOriginalRequestLookupStayScopedAfterAnotherOperation() throws Exception {
+        UUID workspace=storage(true),request=UUID.randomUUID();
+        var submitted=lifecycle.prepare(alice,workspace,request,hash("original-public-request"),0,false);
+        var command=claimLifecycle(new EnvironmentLifecycleRepository.Admission(submitted.operationId(),"PREPARE","PENDING",1,1));
+        executions.beforeCall(command);accept(command,hash("public-projection-ready"));
+        var ready=ready(command);commitReceipt(command,ready);executions.complete(command,ready);
+        var view=lifecycle.get(alice,workspace);assertTrue(view.sleepAllowed());assertTrue(view.deleteAllowed());
+        assertFalse(view.prepareAllowed());assertFalse(view.retryAllowed());assertFalse(view.wakeAllowed());
+        lifecycle(workspace,UUID.randomUUID(),view.version(),EnvironmentLifecycleRepository.Intent.SLEEP);
+        var original=lifecycle.request(alice,workspace,request);
+        assertEquals(submitted.operationId(),original.operationId());assertEquals("COMMITTED",original.status());
+        assertEquals(original,lifecycle.operation(alice,workspace,original.operationId()));
+        assertFalse(lifecycle.get(alice,workspace).sleepAllowed());assertFalse(lifecycle.get(alice,workspace).deleteAllowed());
+        assertEquals(404,assertThrows(WorkspaceFailure.class,()->lifecycle.request(bob,workspace,request)).status());
+        assertEquals(404,assertThrows(WorkspaceFailure.class,()->lifecycle.operation(new Actor(alice.userId(),bob.spaceId()),workspace,original.operationId())).status());
+        assertEquals(404,assertThrows(WorkspaceFailure.class,()->lifecycle.request(alice,workspace,UUID.randomUUID())).status());
+        assertEquals(404,assertThrows(WorkspaceFailure.class,()->lifecycle.operation(alice,workspace,UUID.randomUUID())).status());
+    }
+    private void expireEnvironmentOwner(com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command) throws Exception {
+        sql("UPDATE pf.workspace_environment_operation SET lease_until=clock_timestamp()-interval '1 second' WHERE id='"+command.operationId()+"'");
+        assertEquals(1,maintenance.blockExpired());
+        assertEquals("BLOCKED",lifecycle.get(alice,command.workspaceId()).state());
+    }
+    @Test void lifecycleObservationHasOneOwnerCasAndDoesNotRenewOldExecution() throws Exception {
+        var command=acceptedV3Environment();var receipt=ready(command);commitReceipt(command,receipt);expireEnvironmentOwner(command);
+        com.agentplatform.domain.workspace.EnvironmentExecutionData.Observation first;
+        try(var contenders=Executors.newFixedThreadPool(2)) {
+            var left=contenders.submit(()->executions.observations(UUID.randomUUID()));
+            var right=contenders.submit(()->executions.observations(UUID.randomUUID()));
+            var granted=java.util.stream.Stream.of(left.get(15,TimeUnit.SECONDS),right.get(15,TimeUnit.SECONDS)).flatMap(List::stream).toList();
+            assertEquals(1,granted.size());first=granted.getFirst();
+        }
+        assertTrue(executions.observations(UUID.randomUUID()).isEmpty());
+        assertEquals(com.agentplatform.domain.workspace.EnvironmentExecutionData.QueryMode.OBSERVATION,executions.queryLookup(command.operationId()).mode());
+        assertEquals(receipt,executions.observedReceipt(command));
+        assertThrows(WorkspaceFailure.class,()->executions.completeObserved(
+                new com.agentplatform.domain.workspace.EnvironmentExecutionData.Observation(command,UUID.randomUUID(),first.revision()),receipt));
+        sql("UPDATE pf.workspace_environment_operation SET observation_until=clock_timestamp()-interval '1 second' WHERE id='"+command.operationId()+"'");
+        var replacement=executions.observations(UUID.randomUUID()).getFirst();assertTrue(replacement.revision()>first.revision());
+        assertThrows(WorkspaceFailure.class,()->executions.completeObserved(first,receipt));
+        executions.completeObserved(replacement,receipt);executions.completeObserved(replacement,receipt);
+        assertEquals("READY",lifecycle.get(alice,command.workspaceId()).state());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_operation WHERE id='"+command.operationId()+"' AND owner_id='"
+                +command.ownerId()+"' AND fence="+command.fence()+" AND lease_until<clock_timestamp()"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_event WHERE payload_json->>'state'='READY'"));
+        assertThrows(WorkspaceFailure.class,()->executions.renew(command));
+        assertThrows(WorkspaceFailure.class,()->executions.beforeCall(command));
+        assertEquals(com.agentplatform.domain.workspace.EnvironmentExecutionData.QueryMode.READ_ONLY,executions.queryLookup(command.operationId()).mode());
+        assertEquals(receipt,executions.committedReceipt(command));
+    }
+    @Test void lifecycleObservationWithoutCanonicalResultKeepsUnknownAndCapacity() throws Exception {
+        var command=acceptedV3Environment();expireEnvironmentOwner(command);
+        var observation=executions.observations(UUID.randomUUID()).getFirst();
+        var unknown=executions.observedReceipt(command);assertEquals("RUNNING",unknown.state());
+        assertThrows(WorkspaceFailure.class,()->executions.completeObserved(observation,unknown));
+        assertThrows(WorkspaceFailure.class,()->executions.completeObserved(observation,ready(command)));
+        assertEquals("BLOCKED",lifecycle.get(alice,command.workspaceId()).state());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_cleanup"));
+    }
+    @Test void lifecycleObservationExpiryBeforeCommitRollsBackProjection() throws Exception {
+        var command=acceptedV3Environment();var receipt=ready(command);commitReceipt(command,receipt);expireEnvironmentOwner(command);
+        var observation=executions.observations(UUID.randomUUID()).getFirst();
+        sql("UPDATE pf.workspace_environment_operation SET observation_until=clock_timestamp()+interval '5 seconds' WHERE id='"+command.operationId()+"'");
+        var projected=new java.util.concurrent.atomic.AtomicBoolean();
+        assertThrows(WorkspaceFailure.class,()->transactions.execute(status->{
+            executions.completeObserved(observation,receipt);projected.set(true);
+            // Hold the application transaction without exceeding the separate
+            // fixture socketTimeout=5s on a deliberately sleeping SQL statement.
+            try {Thread.sleep(5100);}catch(InterruptedException failure){Thread.currentThread().interrupt();throw new RuntimeException(failure);}return null;
+        }));
+        assertTrue(projected.get(),"Action must succeed before testing the commit-time lease barrier");
+        assertEquals("BLOCKED",lifecycle.get(alice,command.workspaceId()).state());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_event WHERE payload_json->>'state'='READY'"));
+    }
+    @Test void lifecycleSignedObserverCleansCommittedStopWithGetOnlyAfterExpiry() throws Exception {
+        var original=readyV3Environment();long version=lifecycle.get(alice,original.workspaceId()).version();
+        var command=claimLifecycle(lifecycle(original.workspaceId(),UUID.randomUUID(),version,EnvironmentLifecycleRepository.Intent.SLEEP));
+        executions.beforeCall(command);accept(command,hash("observation-stop"));
+        var stop=new SandboxRuntime.Stop(command.containerId(),command.imageId(),command.containerStartedAt(),"2026-10-22T00:00:05Z",true,true,java.time.Instant.now());
+        commitReceipt(command,lifecycleStopReceipt(command,stop));expireEnvironmentOwner(command);
+        var controlKey=new com.nimbusds.jose.jwk.gen.RSAKeyGenerator(3072).keyID("r34-observer-control").generate();
+        var runnerKey=new com.nimbusds.jose.jwk.gen.RSAKeyGenerator(3072).keyID("r34-observer-runner").generate();
+        var control=new RunnerSignatures(controlKey,runnerKey.toPublicJWK(),"r34-control","r34-runner",java.time.Clock.systemUTC());
+        var signer=new RunnerSignatures(runnerKey,controlKey.toPublicJWK(),"r34-runner","r34-control",java.time.Clock.systemUTC());
+        var runtime=org.mockito.Mockito.mock(SandboxRuntime.class);
+        org.mockito.Mockito.when(runtime.confirmRemoval(command.physicalIdentity(),stop)).thenReturn(
+                new SandboxRuntime.Removal(stop.containerId(),stop.image(),stop.startedAt(),stop.finishedAt(),java.time.Instant.now()));
+        var service=new EnvironmentRunnerService(executions,signer,runtime,command.imageId(),command.policyHash(),runner);
+        var queries=new java.util.concurrent.atomic.AtomicInteger();
+        var port=new EnvironmentRunnerPort() {
+            @Override public com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt prepareEnvironment(
+                    com.agentplatform.domain.workspace.EnvironmentExecutionData.Command ignored) {throw new AssertionError("Observer must never POST");}
+            @Override public com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt queryEnvironment(
+                    com.agentplatform.domain.workspace.EnvironmentExecutionData.Command observed) {
+                queries.incrementAndGet();String path=EnvironmentRunnerService.PATH_V3+"/"+observed.operationId();
+                var result=service.queryV3(control.sign(EnvironmentRunnerService.binding(observed,"GET",path),new byte[0]),observed.operationId().toString());
+                control.verify(result.signature(),EnvironmentRunnerService.binding(observed,"RESPONSE",path),result.body());
+                return tools.jackson.databind.json.JsonMapper.builder().build().readValue(result.body(),com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt.class);
+            }
+        };
+        var observer=new RunnerReconciler(executions,port);observer.reconcile(UUID.randomUUID());observer.reconcile(UUID.randomUUID());
+        assertEquals(1,queries.get());assertEquals("STOPPED",lifecycle.get(alice,command.workspaceId()).state());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment_cleanup WHERE command_id='"+command.commandId()+"'"));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        org.mockito.Mockito.verify(runtime,org.mockito.Mockito.times(1)).confirmRemoval(command.physicalIdentity(),stop);
+        org.mockito.Mockito.verify(runtime,org.mockito.Mockito.never()).stop(org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.verify(runtime,org.mockito.Mockito.never()).prepare(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any());
+        assertThrows(WorkspaceFailure.class,()->executions.renew(command));
+    }
+    @Test void lifecycleObservationRejectsAnotherRunnerUntilExactStoppedInstanceProof() throws Exception {
+        var command=acceptedV3Environment();commitReceipt(command,ready(command));expireEnvironmentOwner(command);
+        executions.observations(UUID.randomUUID());
+        var replacement=new RunnerInstance(UUID.randomUUID(),"4".repeat(64),runner.imageId(),"2026-10-25T00:00:00Z");
+        executions.registerRunner(replacement);
+        assertEquals("RUNNER_INSTANCE_STOP_UNPROVEN",assertThrows(WorkspaceFailure.class,
+                ()->executions.checkObservedRunner(command,replacement.id())).code());
+        var now=java.time.Instant.now();runnerProofs.record(new StoppedRunner(runner,now.minusSeconds(1),now,hash("observation-host-proof-fixture")));
+        assertDoesNotThrow(()->executions.checkObservedRunner(command,replacement.id()));
+        assertThrows(WorkspaceFailure.class,()->executions.checkObservedRunner(command,runner.id()));
+        assertEquals("BLOCKED",lifecycle.get(alice,command.workspaceId()).state());
+    }
+    @Test void lifecycleObservationCannotPublishReadyAfterMembershipRevocation() throws Exception {
+        var command=acceptedV3Environment();var receipt=ready(command);commitReceipt(command,receipt);expireEnvironmentOwner(command);
+        var observation=executions.observations(UUID.randomUUID()).getFirst();
+        sql("UPDATE pf.membership SET status='REVOKED' WHERE user_id='"+alice.userId()+"'");
+        assertEquals("ENVIRONMENT_AUTHORIZATION_REVOKED",assertThrows(WorkspaceFailure.class,
+                ()->executions.completeObserved(observation,receipt)).code());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_environment WHERE state='BLOCKED'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_event WHERE payload_json->>'state'='READY'"));
+    }
+    @Test void lifecycleSignedObserverRequiresReadOnlyPresenceForStoredReadyWithoutExecutingCanary() throws Exception {
+        var command=acceptedV3Environment();var receipt=ready(command);commitReceipt(command,receipt);expireEnvironmentOwner(command);
+        var controlKey=new com.nimbusds.jose.jwk.gen.RSAKeyGenerator(3072).keyID("r34-ready-control").generate();
+        var runnerKey=new com.nimbusds.jose.jwk.gen.RSAKeyGenerator(3072).keyID("r34-ready-runner").generate();
+        var control=new RunnerSignatures(controlKey,runnerKey.toPublicJWK(),"r34-control","r34-runner",java.time.Clock.systemUTC());
+        var signer=new RunnerSignatures(runnerKey,controlKey.toPublicJWK(),"r34-runner","r34-control",java.time.Clock.systemUTC());
+        var runtime=org.mockito.Mockito.mock(SandboxRuntime.class);
+        var service=new EnvironmentRunnerService(executions,signer,runtime,command.imageId(),command.policyHash(),runner);
+        var port=new EnvironmentRunnerPort() {
+            @Override public com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt prepareEnvironment(
+                    com.agentplatform.domain.workspace.EnvironmentExecutionData.Command ignored) {throw new AssertionError("Observer must never POST");}
+            @Override public com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt queryEnvironment(
+                    com.agentplatform.domain.workspace.EnvironmentExecutionData.Command observed) {
+                String path=EnvironmentRunnerService.PATH_V3+"/"+observed.operationId();
+                var result=service.queryV3(control.sign(EnvironmentRunnerService.binding(observed,"GET",path),new byte[0]),observed.operationId().toString());
+                control.verify(result.signature(),EnvironmentRunnerService.binding(observed,"RESPONSE",path),result.body());
+                return tools.jackson.databind.json.JsonMapper.builder().build().readValue(result.body(),com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt.class);
+            }
+        };
+        var observer=new RunnerReconciler(executions,port);
+        org.mockito.Mockito.when(runtime.verifyReady(org.mockito.ArgumentMatchers.eq(command.physicalIdentity()),org.mockito.ArgumentMatchers.any()))
+                .thenThrow(new WorkspaceFailure(503,"WORKSPACE_MOUNT_UNAVAILABLE"));
+        observer.reconcile(UUID.randomUUID());assertEquals("BLOCKED",lifecycle.get(alice,command.workspaceId()).state());
+        sql("UPDATE pf.workspace_environment_operation SET observation_until=clock_timestamp()-interval '1 second' WHERE id='"+command.operationId()+"'");
+        org.mockito.Mockito.when(runtime.verifyReady(org.mockito.ArgumentMatchers.eq(command.physicalIdentity()),org.mockito.ArgumentMatchers.any())).thenReturn(receipt.container());
+        observer.reconcile(UUID.randomUUID());assertEquals("READY",lifecycle.get(alice,command.workspaceId()).state());
+        org.mockito.Mockito.verify(runtime,org.mockito.Mockito.times(2)).verifyReady(org.mockito.ArgumentMatchers.eq(command.physicalIdentity()),org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.verify(runtime,org.mockito.Mockito.never()).prepare(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.verify(runtime,org.mockito.Mockito.never()).stop(org.mockito.ArgumentMatchers.any());
+    }
+    @Test void lifecycleObservationRejectsCorruptCanonicalRevisionPointer() throws Exception {
+        var command=acceptedV3Environment();var receipt=ready(command);commitReceipt(command,receipt);expireEnvironmentOwner(command);
+        var observation=executions.observations(UUID.randomUUID()).getFirst();
+        sql("UPDATE pf.workspace_environment_command SET result_revision=99 WHERE command_id='"+command.commandId()+"'");
+        assertEquals("RUNNER_RECEIPT_CORRUPT",assertThrows(WorkspaceFailure.class,()->executions.observedReceipt(command)).code());
+        assertThrows(WorkspaceFailure.class,()->executions.completeObserved(observation,receipt));
+        assertEquals("BLOCKED",lifecycle.get(alice,command.workspaceId()).state());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL"));
     }
     @Test void absentReadAllocatesNothingAndStorageReadinessIsSeparate() throws Exception {
         UUID workspace=storage(true);
@@ -198,7 +752,7 @@ class EnvironmentPostgresTest {
     }
     @Test void freshInstallReachesCurrentMigrationAndPreservesRuntimeBaseline() throws Exception {
         flyway(null).clean();flyway(null).migrate();
-        assertEquals(13,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
+        assertEquals(14,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
         assertEquals(1,count("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NULL"));
     }
@@ -206,6 +760,50 @@ class EnvironmentPostgresTest {
         UUID workspace=storage(true);prepare(workspace,UUID.randomUUID(),0,false);
         var publication=executions.publications(UUID.randomUUID()).getFirst();
         return executions.claim(publication,UUID.randomUUID());
+    }
+
+    @Test void v13UpgradePreservesAcceptedV2IdentityWithoutInventingLifecycleFacts() throws Exception {
+        flyway(null).clean();flyway("13").migrate();
+        com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command;
+        UUID user,workspace;
+        try {
+        var identity=IdentityPersistenceFixture.create(pool);
+        user=identity.provision(UUID.randomUUID(),"upgrade-user","upgrade-user","not-a-login-password",false);
+        var actor=new Actor(user,identity.spaces(user).getFirst().id());
+        workspace=workspaces.create(actor,UUID.randomUUID(),hash("upgrade-storage"),"V13 storage fixture").id();
+        sql("UPDATE pf.workspace_operation SET status='COMMITTED',effect_state='ALLOCATED' WHERE workspace_id='"+workspace+"'");
+        sql("UPDATE pf.workspace SET state='READY' WHERE id='"+workspace+"'");
+        // Before V14 use the immutable V13 SQL fixture, not new SQL that expects V14 columns.
+        var legacySession=session(pool,true);
+        var legacyPreparation=legacySession.getMapper(EnvironmentPreparationMapper.class);
+        var oldEnvironment=new com.agentplatform.infrastructure.dao.po.EnvironmentRows.Environment(Uuid7.next(),actor.spaceId(),workspace,
+                1,1,"PREPARING","sha256:"+"a".repeat(64),"b".repeat(64),Uuid7.next(),1,Uuid7.next(),1,null);
+        transactions.execute(status->{
+            var slot=legacyPreparation.lockSlot();legacyPreparation.insertEnvironment(oldEnvironment);
+            legacyPreparation.insertOperation(oldEnvironment,actor.userId());
+            assertEquals(1,legacyPreparation.reserveSlot(oldEnvironment,slot.revision()));
+            legacyPreparation.insertRequest(actor,UUID.randomUUID(),hash("historical-v2"),oldEnvironment);
+            legacyPreparation.insertOutbox(Uuid7.next(),oldEnvironment);return null;
+        });
+        var legacy=new TransactionalEnvironmentExecutionRepository(new MyBatisEnvironmentExecutionRepository(
+                legacySession.getMapper(EnvironmentExecutionMapper.class),legacySession.getMapper(EnvironmentPreparationMapper.class),
+                legacySession.getMapper(WorkspaceMapper.class)),transactions);
+        command=legacy.claim(legacy.publications(UUID.randomUUID()).getFirst(),UUID.randomUUID());
+        legacy.registerRunner(runner);
+        assertNull(legacy.accept(command,hash("historical-v2-command"),runner.id()));
+        } finally {
+            // A failed compatibility assertion must not leave later tests on the older schema.
+            flyway(null).migrate();
+        }
+        assertEquals(14,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
+        assertEquals(command,executions.lookup(command.operationId()));
+        assertEquals("ENVIRONMENT_V2",command.protocol());
+        assertEquals(1,count("SELECT count(*) FROM pf.app_user WHERE id='"+user+"'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace WHERE id='"+workspace+"'"));
+        assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_environment_cleanup"));
+        assertThrows(java.sql.SQLException.class,()->sql("UPDATE pf.workspace_environment_operation SET protocol='ENVIRONMENT_V3' WHERE id='"+command.operationId()+"'"));
+        assertEquals(command,executions.lookup(command.operationId()));
     }
     private com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt ready(com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command) {
         // Synthetic trusted-runner fact for transaction tests; native runtime is tested separately.
@@ -355,10 +953,13 @@ class EnvironmentPostgresTest {
                 new StoppedRunner(runner,now.minusSeconds(602),now.minusSeconds(601),hash("stale")))).code());
     }
     private org.springframework.amqp.rabbit.connection.CachingConnectionFactory broker() throws Exception {
-        String file=System.getenv("R32_TEST_MQ_PASSWORD_FILE");Assumptions.assumeTrue(file!=null,"R32 real MQ not selected; NOT_RUN");
-        var connections=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory("127.0.0.1",15699);
+        boolean r34="1".equals(System.getenv("R34_ACCEPTANCE"));
+        String file=System.getenv(r34?"R34_ENVIRONMENT_MQ_PASSWORD_FILE":"R32_TEST_MQ_PASSWORD_FILE");
+        Assumptions.assumeTrue(file!=null,"Actual isolated environment MQ not selected; NOT_RUN");
+        if(r34)assertEquals("25435",System.getenv("R34_ENVIRONMENT_MQ_PORT"));
+        var connections=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory("127.0.0.1",r34?25435:15699);
         connections.setPublisherConfirmType(org.springframework.amqp.rabbit.connection.CachingConnectionFactory.ConfirmType.CORRELATED);
-        connections.setPublisherReturns(true);connections.setUsername("r32");connections.setPassword(Files.readString(Path.of(file)).strip());
+        connections.setPublisherReturns(true);connections.setUsername(r34?"r34-env":"r32");connections.setPassword(Files.readString(Path.of(file)).strip());
         connections.setVirtualHost("/agentplatform");connections.setConnectionTimeout(2000);
         var admin=new org.springframework.amqp.rabbit.core.RabbitAdmin(connections);
         var exchange=new org.springframework.amqp.core.DirectExchange(com.agentplatform.infrastructure.workspace.SpringEnvironmentMessaging.EXCHANGE,true,false);

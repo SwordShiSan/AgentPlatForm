@@ -18,7 +18,7 @@ public final class WorkspaceEnvironmentController {
     private static WorkspaceApi.Caller caller(HttpServletRequest request) {
         var identity=RequestIdentity.caller(request);return new WorkspaceApi.Caller(identity.userId(),identity.spaceId());
     }
-    private ResponseEntity<WorkspaceEnvironmentApi.Submission> submit(HttpServletRequest request,String workspace,EmptyCommand body,boolean retry) {
+    private ResponseEntity<WorkspaceEnvironmentApi.Submission> submit(HttpServletRequest request,String workspace,EmptyCommand body,String command) {
         if(body==null&&(request.getContentLengthLong()>0||request.getHeader("Transfer-Encoding")!=null))throw new WorkspaceFailure(400,"EMPTY_ENVIRONMENT_COMMAND_REQUIRED");
         String key=request.getHeader("Idempotency-Key"),match=request.getHeader("If-Match");
         if(key==null)throw new WorkspaceFailure(428,"IDEMPOTENCY_KEY_REQUIRED");
@@ -28,7 +28,11 @@ public final class WorkspaceEnvironmentController {
             if(!match.matches("\"(0|[1-9][0-9]*)\""))throw new NumberFormatException();
             version=Long.parseLong(match.substring(1,match.length()-1));
         } catch(NumberFormatException invalid) {throw new WorkspaceFailure(400,"INVALID_VERSION");}
-        var result=service.prepare(caller(request),workspace,key,version,retry);
+        var result=switch(command) {
+            case "PREPARE" -> service.prepare(caller(request),workspace,key,version,false);
+            case "RETRY" -> service.prepare(caller(request),workspace,key,version,true);
+            default -> service.transition(caller(request),workspace,key,version,WorkspaceEnvironmentApi.Action.valueOf(command));
+        };
         return ResponseEntity.accepted().header("Cache-Control","no-store").eTag("\""+result.environment().version()+"\"").body(result);
     }
     @GetMapping ResponseEntity<WorkspaceEnvironmentApi.View> get(HttpServletRequest request,@PathVariable("id") String id) {
@@ -36,9 +40,24 @@ public final class WorkspaceEnvironmentController {
         return ResponseEntity.ok().header("Cache-Control","no-store").eTag("\""+result.version()+"\"").body(result);
     }
     @PostMapping ResponseEntity<WorkspaceEnvironmentApi.Submission> prepare(HttpServletRequest request,@PathVariable("id") String id,@RequestBody(required=false) EmptyCommand body) {
-        return submit(request,id,body,false);
+        return submit(request,id,body,"PREPARE");
     }
     @PostMapping("/retry") ResponseEntity<WorkspaceEnvironmentApi.Submission> retry(HttpServletRequest request,@PathVariable("id") String id,@RequestBody(required=false) EmptyCommand body) {
-        return submit(request,id,body,true);
+        return submit(request,id,body,"RETRY");
+    }
+    @PostMapping("/sleep") ResponseEntity<WorkspaceEnvironmentApi.Submission> sleep(HttpServletRequest request,@PathVariable("id") String id,@RequestBody(required=false) EmptyCommand body) {
+        return submit(request,id,body,"SLEEP");
+    }
+    @PostMapping("/wake") ResponseEntity<WorkspaceEnvironmentApi.Submission> wake(HttpServletRequest request,@PathVariable("id") String id,@RequestBody(required=false) EmptyCommand body) {
+        return submit(request,id,body,"WAKE");
+    }
+    @DeleteMapping ResponseEntity<WorkspaceEnvironmentApi.Submission> delete(HttpServletRequest request,@PathVariable("id") String id,@RequestBody(required=false) EmptyCommand body) {
+        return submit(request,id,body,"DELETE");
+    }
+    @GetMapping("/operations/{operationId}") ResponseEntity<WorkspaceEnvironmentApi.OperationView> operation(HttpServletRequest request,@PathVariable("id") String id,@PathVariable("operationId") String operationId) {
+        return ResponseEntity.ok().header("Cache-Control","no-store").body(service.operation(caller(request),id,operationId));
+    }
+    @GetMapping("/requests/{requestId}") ResponseEntity<WorkspaceEnvironmentApi.OperationView> original(HttpServletRequest request,@PathVariable("id") String id,@PathVariable("requestId") String requestId) {
+        return ResponseEntity.ok().header("Cache-Control","no-store").body(service.request(caller(request),id,requestId));
     }
 }

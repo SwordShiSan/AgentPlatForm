@@ -1,0 +1,147 @@
+{
+  "stage": "R3.4",
+  "status": "RESOURCE_PREREQUISITE_PASS_LIFECYCLE_NOT_IMPLEMENTED",
+  "applicationSource": "37a60f1bcce60ad31f02d38d4a6a563c938b6535",
+  "runtimeBaseline": 1,
+  "lifecycleMigrationImplemented": false,
+  "lifecycleFunctionVerified": false,
+  "releaseGate": "NOT_RUN",
+  "supplierCalls": 0,
+  "resourceEnvelopeUnit": {
+    "suite": "deploy/tests/test_resource_envelopes.py",
+    "tests": 5,
+    "exitCode": 0,
+    "outputSha256": "46a59d823d772c3809446eba836399e2612ba33924b6c71abe8e15b736b8f4b7"
+  },
+  "windows": [
+    {
+      "number": 4,
+      "status": "FAIL",
+      "resultSha256": "a1b166a0e4bcb1b6a9b46a6358ce74b5aea297ea0631812de89e6002eb25382d",
+      "r2Restored": true,
+      "assertions": [
+        "fresh-V13-runtime1-real-MQ-storage-READY"
+      ],
+      "classification": "PRESERVED_UNKNOWN_FILE_LEASE"
+    },
+    {
+      "number": 5,
+      "status": "FAIL",
+      "resultSha256": "a29229ab0a33a71c66d809627d5d63f2a20217c2533567a9057fa70a254c3dd1",
+      "r2Restored": true,
+      "assertions": [
+        "fresh-V13-runtime1-real-MQ-storage-READY",
+        "zero-byte-public-upload-MQ-runner-helper-commit"
+      ],
+      "classification": "VOLUME_96M_OOM"
+    },
+    {
+      "number": 6,
+      "status": "FAIL",
+      "resultSha256": "a8768ee3738994b6d441854000b613cc62908bb6e8bff045dc7cf6c54158a6f4",
+      "r2Restored": true,
+      "assertions": [],
+      "classification": "FILE_OPERATION_QUIESCENCE_PREFLIGHT"
+    },
+    {
+      "number": 7,
+      "status": "PASS",
+      "resultSha256": "72bfc7d07754dcf905080210b3fac10586a585c1cb21340c2fa4a0a52f7ad29f",
+      "r2Restored": true,
+      "assertions": [
+        "fresh-V13-runtime1-real-MQ-storage-READY",
+        "zero-byte-public-upload-MQ-runner-helper-commit",
+        "100MiB-public-stream-MQ-signed-runner-dockerJava-helper-hash",
+        "immutable-private-S3-download-fullhash-and-single-range",
+        "explicit-versioned-atomic-replacement-old-version-readback",
+        "one-charge-per-version-no-environment-no-held-transport",
+        "full-profile-idle-gVisor-coexists-with-login-and100MiB-stream-fixed-canary-reads-current-file-writes666"
+      ]
+    }
+  ],
+  "candidateLimitsMiB": {
+    "api": 384,
+    "worker": 288,
+    "runner": 320,
+    "postgres": 256,
+    "rabbitmq": 256,
+    "redis": 32,
+    "gateway": 32,
+    "master": 96,
+    "volume": 128,
+    "filer": 128,
+    "s3": 256,
+    "sandbox": 512,
+    "runtime": 128,
+    "helper": 64
+  },
+  "resourceSamples": {
+    "count": 11,
+    "minMemAvailable": 1468166144,
+    "minDiskFree": 5680840704,
+    "maxDeclaredBytes": 2952790016
+  },
+  "memoryPeaks": [
+    {
+      "name": "/agentplatform-r34-20261025t043802z-postgres-1",
+      "peak": 122630144,
+      "limit": 268435456
+    },
+    {
+      "name": "/agentplatform-r34-20261025t043802z-rabbitmq-1",
+      "peak": 226029568,
+      "limit": 268435456
+    },
+    {
+      "name": "/agentplatform-r34-20261025t043802z-redis-1",
+      "peak": 8781824,
+      "limit": 33554432
+    },
+    {
+      "name": "/agentplatform-r34-20261025t043802z-s3-1",
+      "peak": 194781184,
+      "limit": 268435456
+    },
+    {
+      "name": "/agentplatform-r34-20261025t043802z-filer-1",
+      "peak": 65511424,
+      "limit": 134217728
+    },
+    {
+      "name": "/agentplatform-r34-20261025t043802z-volume-1",
+      "peak": 102948864,
+      "limit": 134217728
+    },
+    {
+      "name": "/agentplatform-r34-20261025t043802z-master-1",
+      "peak": 67366912,
+      "limit": 100663296
+    },
+    {
+      "name": "/agentplatform-r34-20261025t043802z-worker-1",
+      "peak": 247123968,
+      "limit": 301989888
+    },
+    {
+      "name": "/agentplatform-r34-20261025t043802z-gateway-1",
+      "peak": 9433088,
+      "limit": 33554432
+    },
+    {
+      "name": "/agentplatform-r34-20261025t043802z-api-1",
+      "peak": 394461184,
+      "limit": 402653184
+    },
+    {
+      "name": "/agentplatform-r34-20261025t043802z-runner-1",
+      "peak": 302309376,
+      "limit": 335544320
+    },
+    {
+      "name": "/ap-r34-resource-canary-8e66b200-3035-4e02-b08a-c20d1b2ba4e9",
+      "peak": 50233344,
+      "limit": 536870912
+    }
+  ],
+  "nativePlanSource": "37a60f1bcce60ad31f02d38d4a6a563c938b6535"
+}

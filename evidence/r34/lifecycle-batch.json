@@ -1,0 +1,287 @@
+{
+  "stage": "R3.4",
+  "stageStatus": "IMPLEMENTING",
+  "batchStatus": "PASS",
+  "sourceCommit": "0c6e08bf81716e0625a6a2209363e170684702cd",
+  "supplierCalls": 0,
+  "scope": [
+    "V14 lifecycle admission and scoped prior stop provenance",
+    "typed MyBatis/Spring short transactions and DRAINING handoff",
+    "V3 signed control with V2 rejection compatibility",
+    "durable stop then cleanup revision2 before capacity release",
+    "file-write admission and retained reservations",
+    "actual API/runner PostgreSQL roles"
+  ],
+  "limitations": [
+    "Lifecycle API/UI and initial V3 prepare are not assembled",
+    "Expired-owner query-only reconciler remains unimplemented",
+    "Docker operations in this batch are mocked; native stop/cleanup NOT_RUN",
+    "MQ fault tests8 NOT_RUN",
+    "Full final browser/resource/1800s/restore/protected PR/cloud release NOT_RUN"
+  ],
+  "actualPostgres": {
+    "tests": 84,
+    "pass": 76,
+    "failures": 0,
+    "errors": 0,
+    "notRun": 8,
+    "reports": [
+      {
+        "suite": "com.agentplatform.app.workspace.EnvironmentPostgresTest",
+        "tests": 57,
+        "failures": 0,
+        "errors": 0,
+        "notRun": 4,
+        "reportSha256": "3462e6a0ef544c06b01014592b4dc812d018c5b569a2c3eeeef9dec23ec84540"
+      },
+      {
+        "suite": "com.agentplatform.app.files.FilePostgresTest",
+        "tests": 27,
+        "failures": 0,
+        "errors": 0,
+        "notRun": 4,
+        "reportSha256": "c957e5216bf7ffb270d93af11b3021175cf31a04879ef17729d5337737c9c767"
+      }
+    ],
+    "logSha256": "2338e954bfe7afb799e01af23c01dd81482a72deb5550774e00578943e961ef9"
+  },
+  "engineering": {
+    "status": "PASS",
+    "exitCode": 0,
+    "sourceBase": "0c6e08bf81716e0625a6a2209363e170684702cd",
+    "workingTreeClean": true,
+    "supplierCalls": 0,
+    "commands": [
+      {
+        "name": "atomic-move-preflight",
+        "exitCode": 0,
+        "elapsedSeconds": 0.825,
+        "log": ".cache\\r34-local\\verify-lifecycle-batch-01\\atomic-move-preflight.log",
+        "sha256": "c7525303910ed5000351026297f6f5550e34425e95da839b41fab69c4e534cd4"
+      },
+      {
+        "name": "maven-verify",
+        "exitCode": 0,
+        "elapsedSeconds": 153.253,
+        "log": ".cache\\r34-local\\verify-lifecycle-batch-01\\maven-verify.log",
+        "sha256": "ebe91cfda34dfde1b3054a372be8b9e3c65bbd5faf939f9e2b163527379b0b28"
+      }
+    ]
+  },
+  "preservedFailures": [
+    {
+      "batch": 6,
+      "classification": "V14 SQL used against V13 upgrade fixture, with cascade errors",
+      "logSha256": "bb6071505fe4a9a68919dba671e862c5e5714d31dbda67c0c2bb5e2ae5603a89",
+      "resolution": "Frozen V13 SQL fixtures and finally schema restoration; assertions preserved"
+    },
+    {
+      "batch": 10,
+      "classification": "Cross-feature fixture omitted sandbox singleton reset after TRUNCATE CASCADE",
+      "logSha256": "cd9479219c3bf8da3667ca58a5c9b9af16ec25e4bed47a689e52ec5547bdaa32",
+      "resolution": "Restore exact fixture singleton; combined batch11 PASS"
+    }
+  ],
+  "files": [
+    {
+      "path": "backend/platform-api/src/main/java/com/agentplatform/api/workspace/EnvironmentRunnerApi.java",
+      "sha256": "edc639ba8a05a3080428d3ff11b7e45a1fd178ca09083268da7f548730fa957d",
+      "gitBlob": "d70b5e0db35780637aefb4ef8fa09536f905d763",
+      "gitBlobSha256": "edc639ba8a05a3080428d3ff11b7e45a1fd178ca09083268da7f548730fa957d"
+    },
+    {
+      "path": "backend/platform-app/src/main/java/com/agentplatform/app/workspace/EnvironmentRunnerService.java",
+      "sha256": "31d28a364cb012410ea7d79f6a6a327cc26b7877eef4c49744c7c96fca9e867e",
+      "gitBlob": "b2fca4d85e2be78cf34162f87b0784236e37df36",
+      "gitBlobSha256": "31d28a364cb012410ea7d79f6a6a327cc26b7877eef4c49744c7c96fca9e867e"
+    },
+    {
+      "path": "backend/platform-app/src/main/java/com/agentplatform/app/workspace/TransactionalEnvironmentExecutionRepository.java",
+      "sha256": "5c3b5de9564aca4a4a5c660a9d99d3f280ec10b3291635a6db4bd6d5fdda6248",
+      "gitBlob": "c60e10b700a96386d8799e2461edc10d5797e326",
+      "gitBlobSha256": "5c3b5de9564aca4a4a5c660a9d99d3f280ec10b3291635a6db4bd6d5fdda6248"
+    },
+    {
+      "path": "backend/platform-app/src/main/java/com/agentplatform/app/workspace/TransactionalEnvironmentLifecycleRepository.java",
+      "sha256": "1a9d6444a52dff43720ffb25c44f8653f7c2058adb3c207c66ce89334ff37f5b",
+      "gitBlob": "4ed676596d6ba677f12901767d97b463c63a3539",
+      "gitBlobSha256": "1a9d6444a52dff43720ffb25c44f8653f7c2058adb3c207c66ce89334ff37f5b"
+    },
+    {
+      "path": "backend/platform-app/src/main/resources/db/migration/V14__environment_lifecycle.sql",
+      "sha256": "0a796d1b047be6c0e2925852b57d7963406913733ad40a99b40f27973ad2d8a4",
+      "gitBlob": "ed0d47fe7f9c3eeaf82d3e5c12652419d0761e27",
+      "gitBlobSha256": "0a796d1b047be6c0e2925852b57d7963406913733ad40a99b40f27973ad2d8a4"
+    },
+    {
+      "path": "backend/platform-app/src/main/resources/mybatis/mapper/workspace/EnvironmentExecutionMapper.xml",
+      "sha256": "688d4c723bd63f8b614c46d702d7eb42a86cf32e627b39a289ce9eb92caf1468",
+      "gitBlob": "8114be4dc3d09b9eb21fa51073a1700c436339e6",
+      "gitBlobSha256": "688d4c723bd63f8b614c46d702d7eb42a86cf32e627b39a289ce9eb92caf1468"
+    },
+    {
+      "path": "backend/platform-app/src/main/resources/mybatis/mapper/workspace/EnvironmentPreparationMapper.xml",
+      "sha256": "f610f60fbde45a65b39281e5cb9fe7fbc9b3779b2145cf7edeebc5b86a050bd3",
+      "gitBlob": "2f6146ea1c5508c63011280ed8fcfe15e23106ad",
+      "gitBlobSha256": "f610f60fbde45a65b39281e5cb9fe7fbc9b3779b2145cf7edeebc5b86a050bd3"
+    },
+    {
+      "path": "backend/platform-app/src/main/resources/mybatis/mapper/workspace/EnvironmentLifecycleMapper.xml",
+      "sha256": "c3f3917170a7da4d18d42b32268eb286e114fd9385c76394c8f20a8aa22a34be",
+      "gitBlob": "8fd197fa60334cc313af2add1b2128d6edb8b90b",
+      "gitBlobSha256": "c3f3917170a7da4d18d42b32268eb286e114fd9385c76394c8f20a8aa22a34be"
+    },
+    {
+      "path": "backend/platform-app/src/test/java/com/agentplatform/app/files/FilePostgresTest.java",
+      "sha256": "9d55065f3a0881fc2bd55c5eccad70254add24fd5be4bbbd1ccb4fe4181f1eec",
+      "gitBlob": "2861f87868774cf4af8698b89dd88e44e84a43f1",
+      "gitBlobSha256": "9d55065f3a0881fc2bd55c5eccad70254add24fd5be4bbbd1ccb4fe4181f1eec"
+    },
+    {
+      "path": "backend/platform-app/src/test/java/com/agentplatform/app/workspace/EnvironmentPostgresTest.java",
+      "sha256": "765965066d62cbb32a68bc05abecf29f3fb7890e6e2f9514a8a8b3bc234f4999",
+      "gitBlob": "16ac63cce5e29a444e7b2df222f620622e15df3d",
+      "gitBlobSha256": "765965066d62cbb32a68bc05abecf29f3fb7890e6e2f9514a8a8b3bc234f4999"
+    },
+    {
+      "path": "backend/platform-app/src/test/resources/fixtures/workspace/v13/EnvironmentExecutionMapper.xml",
+      "sha256": "aae0214e29d2e54ad9adb0c9769144fbabb9edabe23cf322dfd8575fbe3f18d0",
+      "gitBlob": "deba3bf692265180704ae80ee650aded03205419",
+      "gitBlobSha256": "aae0214e29d2e54ad9adb0c9769144fbabb9edabe23cf322dfd8575fbe3f18d0"
+    },
+    {
+      "path": "backend/platform-app/src/test/resources/fixtures/workspace/v13/EnvironmentExecutionMapper.origin.json",
+      "sha256": "b13210cef95bbbf72f5af7c5f0ed9595d90279d701555200c9062a4153bd9dd1",
+      "gitBlob": "3e785104fdbe71c898d7da60aac0857cb837adfb",
+      "gitBlobSha256": "b13210cef95bbbf72f5af7c5f0ed9595d90279d701555200c9062a4153bd9dd1"
+    },
+    {
+      "path": "backend/platform-app/src/test/resources/fixtures/workspace/v13/EnvironmentPreparationMapper.xml",
+      "sha256": "5594a8cfdc8c1ef0bc9478533146eb6ce30ee011b5cfa7ff0d3f051f879a6f99",
+      "gitBlob": "cdff691349f9518c698fb14fb41a8c73306d4308",
+      "gitBlobSha256": "5594a8cfdc8c1ef0bc9478533146eb6ce30ee011b5cfa7ff0d3f051f879a6f99"
+    },
+    {
+      "path": "backend/platform-app/src/test/resources/fixtures/workspace/v13/EnvironmentPreparationMapper.origin.json",
+      "sha256": "82d4c8a34d7229af888485e9b3d495ad98f882b9af4fc5fe47f0e46fe92709f0",
+      "gitBlob": "a8d736fbd06cb68cb55f853431e0b71f7100c30c",
+      "gitBlobSha256": "82d4c8a34d7229af888485e9b3d495ad98f882b9af4fc5fe47f0e46fe92709f0"
+    },
+    {
+      "path": "backend/platform-domain/src/main/java/com/agentplatform/domain/workspace/EnvironmentExecutionRepository.java",
+      "sha256": "fae36a6fc5434b6a8e387c9e7e7e95ab983747ecb3c3132ee255cdb2ec406f3f",
+      "gitBlob": "e95f0d94f5c586c8e4d4a844a5e2bad4644e48c4",
+      "gitBlobSha256": "fae36a6fc5434b6a8e387c9e7e7e95ab983747ecb3c3132ee255cdb2ec406f3f"
+    },
+    {
+      "path": "backend/platform-domain/src/main/java/com/agentplatform/domain/workspace/EnvironmentLifecycleRepository.java",
+      "sha256": "877995949c27949e55caf1082444afb7d2f58704c4aef62261c58b8b71d4082f",
+      "gitBlob": "7271b4132d7b6a7750986c32f4daa7688f914d6f",
+      "gitBlobSha256": "877995949c27949e55caf1082444afb7d2f58704c4aef62261c58b8b71d4082f"
+    },
+    {
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/adapter/repository/files/MyBatisFileRepository.java",
+      "sha256": "e2f6c49da98ea78ad1287d332db0fabd4116a5360892bec8d417b11004d843c5",
+      "gitBlob": "ac4fd455cdca36476c965fb722d18b56a8a1b6f8",
+      "gitBlobSha256": "e2f6c49da98ea78ad1287d332db0fabd4116a5360892bec8d417b11004d843c5"
+    },
+    {
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/adapter/repository/workspace/MyBatisEnvironmentExecutionRepository.java",
+      "sha256": "089eb0ce1aeb071d12f970ae3cd288805860d4bd8c2be8e14fcafd0388c0b8cf",
+      "gitBlob": "8d0a8e74b70329e7250ad7b9cd0f5e54d98cf44a",
+      "gitBlobSha256": "089eb0ce1aeb071d12f970ae3cd288805860d4bd8c2be8e14fcafd0388c0b8cf"
+    },
+    {
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/adapter/repository/workspace/MyBatisEnvironmentPreparationRepository.java",
+      "sha256": "addd3158326f64ae846eb90c3a41a280ecd137b07e2b2750180441f07a8a69fb",
+      "gitBlob": "80df265230f0180e88d41cdbd2b7cffa49f3a6ea",
+      "gitBlobSha256": "addd3158326f64ae846eb90c3a41a280ecd137b07e2b2750180441f07a8a69fb"
+    },
+    {
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/adapter/repository/workspace/MyBatisEnvironmentUseRepository.java",
+      "sha256": "1c5e28e50a03a53e996fb4c313dbb4679d84164bc51bc761ba6b6b4f4c9236e8",
+      "gitBlob": "e4ab57195d4718741444445dada615eb0b423d82",
+      "gitBlobSha256": "1c5e28e50a03a53e996fb4c313dbb4679d84164bc51bc761ba6b6b4f4c9236e8"
+    },
+    {
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/adapter/repository/workspace/MyBatisEnvironmentLifecycleRepository.java",
+      "sha256": "e91ad08ced2a2845b34568d89c9a2720eb0eca831bf829f2f192c8d57ee5349e",
+      "gitBlob": "5ba14b461b20b053454e3f5954aa0487d9376057",
+      "gitBlobSha256": "e91ad08ced2a2845b34568d89c9a2720eb0eca831bf829f2f192c8d57ee5349e"
+    },
+    {
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/dao/po/EnvironmentLifecycleRows.java",
+      "sha256": "fc17cc6a26f43479a3eb7860acd67057bb2ebd86fc79046afbd7861acb32d8d8",
+      "gitBlob": "790fa02615140742981f449d8973db4592286796",
+      "gitBlobSha256": "fc17cc6a26f43479a3eb7860acd67057bb2ebd86fc79046afbd7861acb32d8d8"
+    },
+    {
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/dao/workspace/EnvironmentLifecycleMapper.java",
+      "sha256": "556c28ad02b2990f82f5d67735d4b6cdbb81ba0ab620b6245c08eaa1ef081053",
+      "gitBlob": "5df2708797e3b5c3097faafbc72f2deb20a6a115",
+      "gitBlobSha256": "556c28ad02b2990f82f5d67735d4b6cdbb81ba0ab620b6245c08eaa1ef081053"
+    },
+    {
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/dao/workspace/EnvironmentExecutionMapper.java",
+      "sha256": "8cd4e6455fd658eaef3e784a84ef9d66b4aebc98e75afb85a4eb49fa620f4bac",
+      "gitBlob": "68c5fa93f06a6d46619cbd81697178217b47a727",
+      "gitBlobSha256": "8cd4e6455fd658eaef3e784a84ef9d66b4aebc98e75afb85a4eb49fa620f4bac"
+    },
+    {
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/dao/workspace/EnvironmentPreparationMapper.java",
+      "sha256": "e20e660b642917025c1f8923d7eca069fc38dab755263a9dd3137b5c645e18b7",
+      "gitBlob": "9a594d9943104aa0d2f6512892ae3e0cbf6919f0",
+      "gitBlobSha256": "e20e660b642917025c1f8923d7eca069fc38dab755263a9dd3137b5c645e18b7"
+    },
+    {
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/workspace/RunnerSignatures.java",
+      "sha256": "7ac7a376250ae76ef214ed7d4e6d7ca5b6682d6cb5ab2848bd0b6f8e4779067e",
+      "gitBlob": "663c2f91accd95c81b22e29044a38b9eab9ed990",
+      "gitBlobSha256": "7ac7a376250ae76ef214ed7d4e6d7ca5b6682d6cb5ab2848bd0b6f8e4779067e"
+    },
+    {
+      "path": "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/workspace/SignedRunnerHttpClient.java",
+      "sha256": "507a61638ae0f4e7c4dc3f4787544f9564fa06b8f887ca63586600d18a545543",
+      "gitBlob": "36ee9f959b4b3f1c39e5d0b4e8c667b6f757e06b",
+      "gitBlobSha256": "507a61638ae0f4e7c4dc3f4787544f9564fa06b8f887ca63586600d18a545543"
+    },
+    {
+      "path": "backend/platform-trigger/src/main/java/com/agentplatform/trigger/http/EnvironmentRunnerController.java",
+      "sha256": "9793709d8aaad5ab88634caee0caca2717bedf98293a1b49c93771c9f500e05e",
+      "gitBlob": "e0a0623f48a847138c0e0bf0f38d9b31bfdacf40",
+      "gitBlobSha256": "9793709d8aaad5ab88634caee0caca2717bedf98293a1b49c93771c9f500e05e"
+    },
+    {
+      "path": "backend/platform-trigger/src/main/java/com/agentplatform/trigger/http/RunnerSecurityConfiguration.java",
+      "sha256": "8c72d801f40037418b55680f2d82e10404f7cecebd33fc99728eaeb8ee9894a6",
+      "gitBlob": "2fa347e613e41fc77e918aa9e4a833f2a47ddfad",
+      "gitBlobSha256": "8c72d801f40037418b55680f2d82e10404f7cecebd33fc99728eaeb8ee9894a6"
+    },
+    {
+      "path": "deploy/config/r3-environment-grants.sql",
+      "sha256": "5ac65548fa4c85aa32e625e7ca1cf1ca9b340d5b6b5a8f46f9b045d4ba0b14f8",
+      "gitBlob": "4e7d972c7e71831451d87d68b0ad0df7eddca6c8",
+      "gitBlobSha256": "5ac65548fa4c85aa32e625e7ca1cf1ca9b340d5b6b5a8f46f9b045d4ba0b14f8"
+    },
+    {
+      "path": "openspec/changes/r3-4-environment-lifecycle-release/design.md",
+      "sha256": "c2a1a72432bb29aff35d3af99db004a41d86b6745dc6238a2de3f6ea7fff1fa1",
+      "gitBlob": "d5b29770fd43354f44bbce4f0bfbc1efd59c245e",
+      "gitBlobSha256": "c2a1a72432bb29aff35d3af99db004a41d86b6745dc6238a2de3f6ea7fff1fa1"
+    }
+  ],
+  "skill": {
+    "scope": "Lifecycle implementation batch learning, not stage completion",
+    "files": [
+      {
+        "path": "C:\\Users\\laili\\.codex\\skills\\ai-agent-platform\\references\\reconstruction-operations.md",
+        "sha256": "c35925bef4aeb4996efd3373e2147386c3a39092a1d01f1b0acec7faae7a3dc4"
+      },
+      {
+        "path": "C:\\Users\\laili\\.codex\\skills\\ai-agent-platform\\references\\reconstruction-operations-evidence.md",
+        "sha256": "814561168cfe593693238ec704148a8309fa7d23a45b9f5ddae24b0f5441f123"
+      }
+    ]
+  },
+  "production": "No cloud mutations in this batch; retained R2 production identity; no R3 release tag"
+}

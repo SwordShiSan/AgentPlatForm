@@ -43,6 +43,7 @@ public final class MyBatisFileRepository implements FileRepository {
         var row = lock ? workspaces.lockWorkspace(actor.spaceId(), id) : workspaces.workspace(actor.spaceId(), id);
         if (row == null) throw new FileFailure(404, "RESOURCE_NOT_FOUND");
         if (!"READY".equals(row.state())) throw new FileFailure(409, "WORKSPACE_STORAGE_NOT_READY");
+        if (lock && environments.lifecycleBusy(actor.spaceId(),id)) throw new FileFailure(423,"ENVIRONMENT_LIFECYCLE_BUSY");
         return row;
     }
     private void storage(Actor actor) {

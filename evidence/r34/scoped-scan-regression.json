@@ -1,0 +1,45 @@
+{
+  "status": "PASS",
+  "sourceBase": "fd2aa8a30ad6a907702e446b2bceafa8118090df",
+  "scope": "Restricted API scan permission fix; real PostgreSQL/RabbitMQ regression",
+  "testSuites": [
+    {
+      "class": "com.agentplatform.app.workspace.EnvironmentPostgresTest",
+      "tests": 72,
+      "skipped": 0,
+      "sha256": "f188fb513f69323ea1661a0a19b2d7e1120e4042c3e479470b3932237d3d97ab"
+    },
+    {
+      "class": "com.agentplatform.app.files.FilePostgresTest",
+      "tests": 28,
+      "skipped": 0,
+      "sha256": "72baad603cc04a32c23da5ec980d28f58b176f7d7c158e54f11b18debf357f69"
+    },
+    {
+      "class": "com.agentplatform.app.files.FileMaintenanceAdmissionTest",
+      "tests": 4,
+      "skipped": 0,
+      "sha256": "69e0a4b42ed50461cfd0665cfd2e66dae6a1d1dc09cae48d7b1e52b09ad6cd61"
+    }
+  ],
+  "commands": [
+    {
+      "name": "atomic-move",
+      "exitCode": 0,
+      "elapsedSeconds": 3.314,
+      "sha256": "5f150b59572f76758dd6b78eca2630d61daab7b96a8a35db799f1cb3ef6e3392"
+    },
+    {
+      "name": "environment-postgres",
+      "exitCode": 0,
+      "elapsedSeconds": 380.921,
+      "sha256": "d457a3403120db23f84920b0c819c4ec6e97d264b6481f3209f64bf3c3efd4b8"
+    }
+  ],
+  "grantSha256": "b7d787de6093a00268a7948670552e0a4dbe8d08605c42b5b638f2abb3e4ea45",
+  "privateUseBodiesReadable": false,
+  "runtimeSource": "fd2aa8a30ad6a907702e446b2bceafa8118090df",
+  "runtimeRebuilt": false,
+  "supplierCalls": 0,
+  "productionRelease": "NOT_RUN"
+}

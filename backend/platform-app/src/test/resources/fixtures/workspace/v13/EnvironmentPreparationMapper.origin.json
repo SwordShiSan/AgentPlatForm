@@ -1,0 +1,6 @@
+{
+  "sourceCommit": "645701b80e4b565c0165a2aaa4af63e0e454c690",
+  "sourcePath": "backend/platform-app/src/main/resources/mybatis/mapper/workspace/EnvironmentPreparationMapper.xml",
+  "sha256": "5594a8cfdc8c1ef0bc9478533146eb6ce30ee011b5cfa7ff0d3f051f879a6f99",
+  "scope": "Frozen V13 SQL fixture; no second production writer"
+}

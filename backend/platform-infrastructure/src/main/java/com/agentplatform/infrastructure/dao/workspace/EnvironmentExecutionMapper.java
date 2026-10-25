@@ -15,6 +15,12 @@ public interface EnvironmentExecutionMapper {
     boolean knownPublication(@Param("item") Publication item);
     int inbox(@Param("eventId") UUID eventId, @Param("operationId") UUID operationId);
     Command command(@Param("operationId") UUID operationId);
+    UUID observableOperation();
+    com.agentplatform.infrastructure.dao.po.EnvironmentLifecycleRows.ObservationLease observe(
+            @Param("command") Command command,@Param("observerId") UUID observerId);
+    boolean observing(@Param("command") Command command,@Param("observerId") UUID observerId,
+                      @Param("revision") Long revision,@Param("active") boolean active);
+    int completeObservedOperation(@Param("observation") Observation observation,@Param("receipt") Receipt receipt);
     int claim(@Param("operationId") UUID operationId, @Param("owner") UUID owner);
     boolean owned(@Param("command") Command command, @Param("active") boolean active);
     int renew(@Param("command") Command command);
@@ -27,10 +33,19 @@ public interface EnvironmentExecutionMapper {
     UUID originalRunner(@Param("commandId") UUID commandId);
     int accept(@Param("command") Command command, @Param("hash") String hash,@Param("runnerId") UUID runnerId);
     ReceiptRow receipt(@Param("commandId") UUID commandId);
+    boolean receiptPointerValid(@Param("commandId") UUID commandId,@Param("revision") long revision,@Param("state") String state);
+    com.agentplatform.domain.workspace.SandboxRuntime.Stop priorStop(@Param("command") Command command);
     int commitRunner(@Param("command") Command command, @Param("receipt") Receipt receipt,@Param("runnerId") UUID runnerId);
     void insertReceipt(@Param("command") Command command, @Param("receipt") Receipt receipt, @Param("json") String json, @Param("hash") String hash);
     void insertStop(@Param("id") UUID id, @Param("command") Command command, @Param("receipt") Receipt receipt, @Param("hash") String hash,
             @Param("runnerId") UUID runnerId,@Param("priorRunnerProof") UUID priorRunnerProof);
+    UUID stopReceiptId(@Param("command") Command command);
+    boolean cleanupConfirmed(@Param("command") Command command);
+    void insertCleanup(@Param("id") UUID id, @Param("command") Command command,
+                       @Param("stopId") UUID stopId, @Param("runnerId") UUID runnerId,
+                       @Param("removal") com.agentplatform.domain.workspace.SandboxRuntime.Removal removal,
+                       @Param("json") String json, @Param("hash") String hash);
+    int commitCleanup(@Param("command") Command command, @Param("runnerId") UUID runnerId);
     int completeOperation(@Param("command") Command command, @Param("receipt") Receipt receipt);
     int projectEnvironment(@Param("command") Command command, @Param("receipt") Receipt receipt, @Param("state") String state);
     void projectWorkspace(@Param("command") Command command, @Param("state") String state);

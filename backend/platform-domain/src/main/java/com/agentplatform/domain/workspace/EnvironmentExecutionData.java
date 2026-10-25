@@ -18,4 +18,7 @@ public final class EnvironmentExecutionData {
     public record Receipt(UUID commandId, UUID operationId, UUID environmentId, UUID workspaceId,
             long generation, long fence, String state, String effectState, String errorCode,
             SandboxRuntime.Container container, SandboxRuntime.Stop stop, long revision) {}
+    public enum QueryMode { EXECUTION, OBSERVATION, READ_ONLY }
+    public record Query(Command command,QueryMode mode) {}
+    public record Observation(Command command,UUID observerId,long revision) {}
 }

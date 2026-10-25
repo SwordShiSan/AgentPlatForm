@@ -7,7 +7,14 @@ import java.util.UUID;
 public interface EnvironmentPreparationRepository {
     record Snapshot(UUID environmentId, UUID workspaceId, String state, long generation, long version,
                     UUID operationId, String operationKind, String operationStatus, String errorCode,
-                    boolean prepareAllowed, boolean retryAllowed) {}
+                    boolean prepareAllowed, boolean retryAllowed,boolean sleepAllowed,boolean wakeAllowed,boolean deleteAllowed) {
+        /** Narrow compatibility for the historical preparation probes. */
+        public Snapshot(UUID environmentId,UUID workspaceId,String state,long generation,long version,UUID operationId,
+                String operationKind,String operationStatus,String errorCode,boolean prepareAllowed,boolean retryAllowed) {
+            this(environmentId,workspaceId,state,generation,version,operationId,operationKind,operationStatus,errorCode,
+                    prepareAllowed,retryAllowed,false,false,false);
+        }
+    }
     /** Original operation identity survives a lost response even if the projection advanced. */
     record Submission(UUID operationId, Snapshot environment) {}
     Snapshot get(Actor actor, UUID workspaceId);

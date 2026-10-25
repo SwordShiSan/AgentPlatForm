@@ -1,0 +1,124 @@
+{
+  "status": "FAILED_WINDOWS_RESTORED",
+  "windows": [
+    {
+      "operation": "lifecycle-upgrade-37c400aaa154",
+      "status": "FAIL",
+      "source": "37c400aaa154d909f70a6b503f13b0c31cd23a33",
+      "supplierCalls": 0,
+      "assertions": [
+        "retained-R34-V13-data-upgraded-to-V14-runtime1"
+      ],
+      "r2Restored": true,
+      "legacyStopped": true,
+      "resultSha256": "f6b2854d44d0bd726fecb13305123c19d73e8d95b96d568c1562caa92f878b61",
+      "reports": []
+    },
+    {
+      "operation": "lifecycle-upgrade2-37c400aaa154",
+      "status": "FAIL",
+      "source": "37c400aaa154d909f70a6b503f13b0c31cd23a33",
+      "supplierCalls": 0,
+      "assertions": [
+        "retained-R34-upgrade-result-V14-runtime1-reopened-with-same-files"
+      ],
+      "r2Restored": true,
+      "legacyStopped": true,
+      "resultSha256": "73a199f893f249de37ebb8ea325b6fddb0e040e54ea05fd15e7714762e2100f4",
+      "reports": []
+    },
+    {
+      "operation": "lifecycle-upgrade3-37c400aaa154",
+      "status": "FAIL",
+      "source": "37c400aaa154d909f70a6b503f13b0c31cd23a33",
+      "supplierCalls": 0,
+      "assertions": [
+        "retained-R34-upgrade-result-V14-runtime1-reopened-with-same-files"
+      ],
+      "r2Restored": true,
+      "legacyStopped": true,
+      "resultSha256": "916bcea06e90f58154a0cfaee075be87ed60db5e8e8a3abd47471a412b0624c2",
+      "reports": [
+        "lifecycle-prepare-1.json",
+        "lifecycle-sleep-1.json",
+        "lifecycle-wake-2.json",
+        "lifecycle-delete-2.json",
+        "lifecycle-prepare-3.json"
+      ]
+    }
+  ],
+  "stageStatus": "IMPLEMENTING",
+  "supplierCalls": 0,
+  "currentProductionBaseline": "R2",
+  "productionMigrationPerformed": false,
+  "rootCauses": [
+    {
+      "window": 1,
+      "cause": "Fixture gateway used production-only Host allowlist; fixture endpoint rejected before application login",
+      "action": "Mount separately hashed localhost fixture config; production Host allowlist unchanged"
+    },
+    {
+      "window": 2,
+      "cause": "Retained fixture grant script omitted current kind-column SELECT and V14 cleanup grants",
+      "oldGrantSha256": "2fcc3992574c52334b268b6035136f2b5ddde43fc91b04fd31a6f57e6b172b49",
+      "currentGrantSha256": "5ac65548fa4c85aa32e625e7ca1cf1ca9b340d5b6b5a8f46f9b045d4ba0b14f8",
+      "action": "Stage and hash all exact candidate grant inputs"
+    },
+    {
+      "window": 3,
+      "cause": "API cgroup OOMKilled=true at384MiB; five native lifecycle commands completed before failure in idle observation",
+      "action": "Retain FAIL; retest full chat/workspace profile with rebalanced caps, not reduced capabilities"
+    }
+  ],
+  "nativePartialEvidence": {
+    "commands": [
+      "PREPARE generation1",
+      "SLEEP generation1",
+      "WAKE generation2",
+      "DELETE generation2",
+      "PREPARE generation3"
+    ],
+    "scope": "Partial success only; idle/complete native window FAIL",
+    "apiMemoryLimitBytes": 402653184,
+    "apiPeakSampleBytes": 402657280,
+    "workerPeakSampleBytes": 238460928,
+    "runnerPeakSampleBytes": 285515776,
+    "samplingNotAbsolutePeak": true
+  },
+  "coldArchive": {
+    "status": "FOUR_HASH_VERIFIED_ARCHIVES_ORIGINAL_TEST_IMAGE_WITHDRAWN",
+    "rawBytes": 4294967296,
+    "rawSha256": "388e5deff502d2ca6cc606bac33b3ecb64fabd0792a47fe4d9e93aea1122f646",
+    "compressedSha256": "d5431c7f18c8180567f69295242144c8348ab3c1be441b093d5d43a20be81d04",
+    "cloudCopies": 2,
+    "protectedLocalCopies": 2,
+    "databaseVolumesAndUnknownFactsRetained": true,
+    "productionTouched": false
+  },
+  "nextResourceCandidate": {
+    "status": "RUNNING_NOT_VERIFIED",
+    "limitsMiB": {
+      "api": 512,
+      "worker": 320,
+      "runner": 320,
+      "postgres": 192,
+      "rabbitmq": 256,
+      "redis": 16,
+      "gateway": 32,
+      "master": 80,
+      "volume": 128,
+      "filer": 96,
+      "s3": 224,
+      "sandbox": 512,
+      "runtime": 128,
+      "helper": 64
+    },
+    "totalMiB": 2880,
+    "profiles": {
+      "api": "identity-local,chat-local,workspace-api",
+      "worker": "chat-worker,workspace-worker",
+      "runner": "workspace-runner"
+    },
+    "supplierCalls": 0
+  }
+}

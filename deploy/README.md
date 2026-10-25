@@ -58,3 +58,12 @@ docker compose -p agentplatform-app -f deploy/compose.r0.1.yaml up -d --build --
 停止仅运行 `docker compose -p agentplatform-app -f deploy/compose.r0.1.yaml down`，不加-v、不执行全局prune。
 
 R0.3扩展agentplatform-env与应用profiles，开发canary采用已授权云端Linux，同一固定镜像另行通过生产门禁；小阶段通过后经两PR晋级main。生产tag只在大阶段云端通过后创建。设计见[部署方案](../../项目文档/06-AgentScope重构专项/07-交付与验收/03-本地与云端部署.md)。不复用旧库/卷/入口；新站TLS和部署目标须明确，旧HTTP80入口及数据保留，服务可在获准窗口暂停并恢复。
+
+
+## R3.4 protected maintenance scan admission
+
+`platform.workspace.files.maintenance.scan-admission-enabled` defaults to `true`. Setting it to `false` requires the explicit `workspace-maintenance` profile; otherwise startup rejects the configuration. This closes only new periodic SCAN admission. Existing outbox/MQ/ACK, receipts, reconciliation and transfer release continue normally.
+
+For an approved consistent backup/fault snapshot, close the public gateway/API producers first, run the same worker artifact with `chat-worker,workspace-worker,workspace-maintenance` and `PLATFORM_WORKSPACE_FILES_MAINTENANCE_SCAN_ADMISSION_ENABLED=false`, then wait for actual terminal operations, free leases and confirmed stopped transfers. Preserve UNKNOWN and stop the snapshot if it cannot be reconciled through original receipts/exact stop proof. Stop the drainer and runner before freezing DB/workspace/object metadata. Never reset an operation, purge a queue or use direct database execution to obtain a quiet snapshot.
+
+Normal browser/resource/observation acceptance uses scan admission enabled. Maintenance mode is an operational input, not proof that the full runtime was validated. R3.4 remains subject to its [canonical plan](../../项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R3.4-环境生命周期与发行实施计划.md), protected promotion and production release gates.

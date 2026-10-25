@@ -45,13 +45,20 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
     }
     public DockerSandboxRuntime(SandboxPolicy policy,com.agentplatform.domain.workspace.WorkspaceEffectBoundary boundary,
             UUID instanceId,AuxiliaryContainerSlot helperSlot) {
+        this(policy,boundary,instanceId,helperSlot,createDockerClient());
+    }
+    DockerSandboxRuntime(SandboxPolicy policy,com.agentplatform.domain.workspace.WorkspaceEffectBoundary boundary,
+            UUID instanceId,AuxiliaryContainerSlot helperSlot,DockerClient client) {
         this.instanceId=Objects.requireNonNull(instanceId);this.helperSlot=Objects.requireNonNull(helperSlot);
-        this.policy = policy;this.boundary=boundary;
+        this.policy = Objects.requireNonNull(policy);this.boundary=Objects.requireNonNull(boundary);
+        this.docker=Objects.requireNonNull(client);
+    }
+    private static DockerClient createDockerClient() {
         var config = DefaultDockerClientConfig.createDefaultConfigBuilder()
                 .withDockerHost("unix:///var/run/docker.sock").withApiVersion("1.45").build();
         var transport = new ApacheDockerHttpClient.Builder().dockerHost(config.getDockerHost())
                 .connectionTimeout(Duration.ofSeconds(2)).responseTimeout(Duration.ofSeconds(10)).maxConnections(4).build();
-        docker = DockerClientImpl.getInstance(config, transport);
+        return DockerClientImpl.getInstance(config, transport);
     }
 
     private static WorkspaceFailure unavailable(String code) { return new WorkspaceFailure(503, code); }
@@ -645,6 +652,34 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
             throw unavailable("SANDBOX_STOP_IDENTITY_MISMATCH");
         }
         docker.removeContainerCmd(found.getId()).withForce(false).withRemoveVolumes(false).exec();
+    }
+
+    @Override public Removal confirmRemoval(Identity identity, Stop receipt) {
+        Objects.requireNonNull(identity);
+        if(receipt==null||!receipt.execStopped()||!receipt.callbacksStopped()
+                ||!policy.image().equals(receipt.image())||receipt.containerId()==null
+                ||!receipt.containerId().matches("[0-9a-f]{64}")||receipt.observedAt()==null)
+            throw unavailable("SANDBOX_STOP_UNCONFIRMED");
+        try {
+            var start=Instant.parse(receipt.startedAt());var finish=Instant.parse(receipt.finishedAt());
+            if(!start.isAfter(Instant.EPOCH)||!finish.isAfter(start)||receipt.observedAt().isBefore(finish))
+                throw new IllegalArgumentException();
+        } catch(RuntimeException invalid) {throw unavailable("SANDBOX_STOP_UNCONFIRMED");}
+        try {
+            // This validates all original labels, mounts and isolation, then the
+            // precise stopped identity; force and volume removal remain disabled.
+            removeStopped(identity,receipt);
+        } catch(NotFoundException alreadyRemoved) {
+            // A lost remove response can be queried using the committed stop.
+            // Absence alone, without that prior fact, never reaches this branch.
+        }
+        for(String target:List.of(receipt.containerId(),name(identity))) {
+            try {
+                docker.inspectContainerCmd(target).exec();
+                throw unavailable("SANDBOX_CLEANUP_UNCONFIRMED");
+            } catch(NotFoundException absent) { /* Both exact ID and original name must be absent. */ }
+        }
+        return new Removal(receipt.containerId(),receipt.image(),receipt.startedAt(),receipt.finishedAt(),Instant.now());
     }
 
     @Override public void close() throws java.io.IOException { docker.close(); }
