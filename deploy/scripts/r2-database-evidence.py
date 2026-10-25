@@ -13,7 +13,8 @@ import subprocess
 import tempfile
 
 
-def capture(container):
+def capture(container, expected_migration=9):
+    assert expected_migration in (9, 14)
     assert re.fullmatch('[a-f0-9]{64}', container), 'Use the exact PostgreSQL container ID'
     state = json.loads(subprocess.check_output(['docker', 'inspect', container]))
     assert len(state) == 1
@@ -21,9 +22,11 @@ def capture(container):
     labels = state['Config']['Labels']
     project = labels['com.docker.compose.project']
     assert labels['com.docker.compose.service'] == 'postgres' and state['State']['Running']
-    assert project in {'agentplatform-env', 'agentplatform-r2-restore-env', 'agentplatform-r24-local'}
+    assert project in {'agentplatform-env', 'agentplatform-r2-restore-env', 'agentplatform-r3-restore-env', 'agentplatform-r24-local'}
     local = project == 'agentplatform-r24-local'
     app = project if local else project.removesuffix('-env') + '-app'
+    if expected_migration == 14 and project == 'agentplatform-env':
+        assert not subprocess.check_output(['docker', 'ps', '-q', '--filter', 'label=com.docker.compose.project=agentplatform-r3-app'], text=True).strip(), 'Stop R3 applications before fingerprinting'
     running = subprocess.check_output(['docker', 'ps', '-q', '--filter', 'label=com.docker.compose.project=' + app], text=True).splitlines()
     if running:
         services = json.loads(subprocess.check_output(['docker', 'inspect', *running]))
@@ -41,7 +44,7 @@ def capture(container):
     tables = query("SELECT schemaname||'.'||tablename FROM pg_tables WHERE schemaname IN ('pf','pf_runtime') ORDER BY schemaname,tablename;").splitlines()
     assert tables and all(re.fullmatch(r'(pf|pf_runtime)\.[a-z][a-z0-9_]*', name) for name in tables)
     metadata = json.loads(query("SELECT json_build_object('migration',max(version::int),'runtimeBaseline',(SELECT schema_version FROM pf.baseline_version WHERE id=1),'postgres',current_setting('server_version'),'vector',(SELECT extversion FROM pg_extension WHERE extname='vector')) FROM pf.flyway_schema_history WHERE success;"))
-    assert metadata['migration'] == 9 and metadata['runtimeBaseline'] == 1
+    assert metadata['migration'] == expected_migration and metadata['runtimeBaseline'] == 1
     statements = ['BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;', "SET LOCAL work_mem='4MB';", "SET LOCAL statement_timeout='120s';"]
     for name in tables:
         statements += ["SELECT 'TABLE:" + name + "';", "COPY (SELECT encode(sha256(convert_to(to_jsonb(t)::text,'UTF8')),'hex') AS h FROM " + name + " t ORDER BY h) TO STDOUT;"]
@@ -83,8 +86,9 @@ def main():
     parser.add_argument('container', help='Exact running PostgreSQL container ID')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--compare', type=Path)
+    parser.add_argument('--expected-migration', type=int, choices=[9, 14], default=9)
     args = parser.parse_args()
-    result = capture(args.container)
+    result = capture(args.container, args.expected_migration)
     if args.compare:
         before = json.loads(args.compare.read_text(encoding='utf-8'))
         assert before['status'] == 'PASS' and before['metadata'] == result['metadata'] and before['tables'] == result['tables'], 'Restored database facts differ'
@@ -92,7 +96,7 @@ def main():
     fd = os.open(args.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, 'w', encoding='utf-8') as stream:
         json.dump(result, stream, indent=2); stream.write('\n')
-    print('PASS quiescent schema9/baseline1 fingerprints; no plaintext rows, worker or supplier request.')
+    print('PASS quiescent schema'+str(args.expected_migration)+'/baseline1 fingerprints; no plaintext rows, worker or supplier request.')
 
 
 if __name__ == '__main__':

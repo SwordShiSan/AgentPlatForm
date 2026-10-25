@@ -38,6 +38,8 @@ class Window:
   if generation=='r2':self.stop_r2_apps()
   else:self.stop_r3_apps()
   dest.mkdir(mode=0o700)
+  if generation=='r3':
+   self.run(['python3',str(self.folder/'r2-database-evidence.py'),self.by['postgres']['Id'],'--expected-migration','14','--output',str(dest/'database.json')])
   with (dest/'postgres.sql').open('wb') as stream:
    subprocess.run(['docker','exec',self.by['postgres']['Id'],'pg_dumpall','-U','ap_admin'],stdout=stream,stderr=self.log,check=True,timeout=120)
   self.run(['docker','exec',self.by['rabbitmq']['Id'],'rabbitmqctl','export_definitions','/tmp/r3-release-definitions.json'])
@@ -45,6 +47,7 @@ class Window:
   for name in ['s3','filer','volume','master','redis','rabbitmq','postgres']:self.run(['docker','stop','-t','60',self.by[name]['Id']])
   self.run(['tar','-C',str(ROOT),'-czf',str(dest/'cold.tgz'),'data','deploy','config','secrets'],timeout=180)
   shutil.copytree(self.folder/'secrets',dest/'r3-secrets')
+  (dest/'r3-key-hashes.json').write_text(json.dumps({p.name:self.hash(p) for p in (dest/'r3-secrets').iterdir() if p.is_file()},indent=2))
   for name in ['compose.json','stage.json','s3.candidate.json']:shutil.copy2(self.folder/name,dest/name)
   mount=self.run(['findmnt','-n','-o','UUID','--target',str(ROOT/'workspaces')]);assert mount==self.stage['productionUuid']
   self.run(['sync']);frozen=False;h=hashlib.sha256();size=0
