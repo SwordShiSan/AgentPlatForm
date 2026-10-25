@@ -78,5 +78,52 @@
     "final candidate30-minute observation",
     "protected PR promotion",
     "production R3 backup/restore/rollback/release"
-  ]
+  ],
+  "committedSource": "1ec4fffa4679b37e31053e2450b47355b12edd35",
+  "engineeringVerify": {
+    "status": "PASS",
+    "exitCode": 0,
+    "sourceBase": "1ec4fffa4679b37e31053e2450b47355b12edd35",
+    "workingTreeClean": true,
+    "supplierCalls": 0,
+    "commands": [
+      {
+        "name": "atomic-move-preflight",
+        "exitCode": 0,
+        "elapsedSeconds": 1.088,
+        "log": ".cache\\r34-local\\verify-foundation-01\\atomic-move-preflight.log",
+        "sha256": "6690cbdfe7214d9e2a64a3b3a4687c0ab43d5fea8de790c304756d3f8ad6d90b"
+      },
+      {
+        "name": "maven-verify",
+        "exitCode": 0,
+        "elapsedSeconds": 184.841,
+        "log": ".cache\\r34-local\\verify-foundation-01\\maven-verify.log",
+        "sha256": "a7577f57a3b653294f243a7bb323ea81036dee6dbeacea3ea3092e39df71cbd6"
+      }
+    ]
+  },
+  "committedSourceBindings": {
+    "backend/platform-app/src/main/resources/db/migration/V14__environment_lifecycle.sql": {
+      "gitUtf8LfBlobSha256": "589831bf6ef258d360a527469e09c84dfe6f16b3d1398dd26c755bac9b910c8c",
+      "testedWorkingBytesSha256": "589831bf6ef258d360a527469e09c84dfe6f16b3d1398dd26c755bac9b910c8c"
+    },
+    "backend/platform-app/src/test/java/com/agentplatform/app/workspace/EnvironmentPostgresTest.java": {
+      "gitUtf8LfBlobSha256": "7050e29cc18e4e12fc3eed90238383a44d116faa8dae3ab585ea110211c9d9bb",
+      "testedWorkingBytesSha256": "7050e29cc18e4e12fc3eed90238383a44d116faa8dae3ab585ea110211c9d9bb"
+    },
+    "backend/platform-domain/src/main/java/com/agentplatform/domain/workspace/SandboxRuntime.java": {
+      "gitUtf8LfBlobSha256": "002bfb85a43f0f1130054c3f61be225bf76c88db035db8461d2344c143820b66",
+      "testedWorkingBytesSha256": "002bfb85a43f0f1130054c3f61be225bf76c88db035db8461d2344c143820b66"
+    },
+    "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/workspace/DockerSandboxRuntime.java": {
+      "gitUtf8LfBlobSha256": "e6c5e47921746e07289a3ffb87100f41c4adb70b062dde0a2b48feddf94cf426",
+      "testedWorkingBytesSha256": "e6c5e47921746e07289a3ffb87100f41c4adb70b062dde0a2b48feddf94cf426"
+    },
+    "backend/platform-infrastructure/src/test/java/com/agentplatform/infrastructure/workspace/SandboxRemovalTest.java": {
+      "gitUtf8LfBlobSha256": "f8f29a7dc400ab9c6cd49fbeefe8cb99b3d564d98b29bddd6f28845e77d932fc",
+      "testedWorkingBytesSha256": "f8f29a7dc400ab9c6cd49fbeefe8cb99b3d564d98b29bddd6f28845e77d932fc"
+    }
+  },
+  "applicationImageAfterFoundation": "NOT_BUILT"
 }
