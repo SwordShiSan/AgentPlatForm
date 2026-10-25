@@ -124,6 +124,9 @@ public final class FileRunnerService implements FileRunnerApi {
         if(unconfirmedTransports.contains(command.operation().commandId()))return signed(command,null,path);
         var result=completed.get(command.operation().commandId());
         if(result!=null)return signed(command,persistKnown(command,result),path);
+        var neverAccepted=repository.observeNeverAccepted(command,instance.id(),
+                RunnerSignatures.sha256(JSON.writeValueAsBytes(command)));
+        if(neverAccepted!=null)return signed(command,neverAccepted,path);
         if(!repository.mayObserve(command,instance.id()))return signed(command,null,path);
         result=runtime.reconcile(command,authority(command),repository.priorRunnerStopped(command,instance.id()));
         if(result!=null){completed.put(command.operation().commandId(),result);return signed(command,persistKnown(command,result),path);}

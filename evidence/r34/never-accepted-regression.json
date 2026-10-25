@@ -1,0 +1,55 @@
+{
+  "status": "PASS",
+  "scope": "Never-accepted signed-query recovery; existing accepted UNKNOWN remains blocked",
+  "sourceBase": "62dd472ff09e1b56c4a729786ac5319cf330729c",
+  "workingTreeClean": false,
+  "testSuites": [
+    {
+      "class": "com.agentplatform.app.files.FileRunnerServiceTest",
+      "tests": 2,
+      "skipped": 0,
+      "sha256": "fa553f8af485057f720972870334a3c77300fedd6e5068820427ff3b57c3594c"
+    },
+    {
+      "class": "com.agentplatform.app.files.FilePostgresTest",
+      "tests": 32,
+      "skipped": 0,
+      "sha256": "b80a2682bae86f3750d609527d5dcaf91068512c7950d8a3a7112d6c04f72cf7"
+    },
+    {
+      "class": "com.agentplatform.app.files.FileMaintenanceAdmissionTest",
+      "tests": 4,
+      "skipped": 0,
+      "sha256": "f3cc1236cdee2eb4af79acdbcce882e347be1f1d0733a3391a94a77fe4bf0d9b"
+    }
+  ],
+  "commands": [
+    {
+      "name": "atomic-move",
+      "exitCode": 0,
+      "elapsedSeconds": 1.384,
+      "sha256": "c110810330ec6a4616c993bef055ddc567cea65baa74920a4d8df92f124e7a2c"
+    },
+    {
+      "name": "environment-postgres",
+      "exitCode": 0,
+      "elapsedSeconds": 52.602,
+      "sha256": "95b823f2eb6f21262de17268d54d8e1e17357286c0a538bc4de7f852bce45c8e"
+    }
+  ],
+  "sourceSha256": {
+    "backend/platform-app/src/main/java/com/agentplatform/app/files/FileRunnerService.java": "947de7b38278bef3d1304b6a4a8f3f57a72d545c9002e658cf4a8ff078f64c1a",
+    "backend/platform-app/src/main/java/com/agentplatform/app/files/TransactionalFileRunnerRepository.java": "ad5ab435ccc1b925eea762b4d0a1db44709007f5c91ec77b2198f0fc709f7e9d",
+    "backend/platform-app/src/main/resources/mybatis/mapper/files/FileMapper.xml": "9a6045bb37128b0e060fdb75c35baeb682cc027636271ce9acfa161711248899",
+    "backend/platform-app/src/main/resources/mybatis/mapper/files/FileRunnerMapper.xml": "e0cd827477de55cad352c74215d3518e1d1c61670e69566fdfad1f930c9a021a",
+    "backend/platform-app/src/test/java/com/agentplatform/app/files/FilePostgresTest.java": "a446ce21bd9919937c3f107ba7de3a418168d13b52f35855beaa79d3bab891cc",
+    "backend/platform-app/src/test/java/com/agentplatform/app/files/FileRunnerServiceTest.java": "914e159122b0f6eae212314d8b1999300fa25f6f2991e0568b65d857cd95e504",
+    "backend/platform-domain/src/main/java/com/agentplatform/domain/files/FileRunnerRepository.java": "7926147ffa414cae8b74daa76d19d98ba8b55ea4a827001ff48de4bf9914ebff",
+    "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/adapter/repository/files/MyBatisFileRunnerRepository.java": "1fa319846dc081b1d1c131d742b397f1ad426020d3aac37ba00fa8458e8e738f",
+    "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/dao/files/FileRunnerMapper.java": "d95debf138b2ab09e538af3ea15f09e36d8075738fcd4d628c17faac33ed9945"
+  },
+  "supplierCalls": 0,
+  "physicalInvocationByNegativeQuery": false,
+  "productionRecovery": "NOT_RUN",
+  "schemaChanged": false
+}

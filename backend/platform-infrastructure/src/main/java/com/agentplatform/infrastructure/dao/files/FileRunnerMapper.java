@@ -9,6 +9,7 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface FileRunnerMapper {
     Physical command(@Param("id") UUID commandId);
+    boolean expiredUnknown(@Param("command") Command command);
     int accept(@Param("command") Command command,@Param("runner") UUID runner,@Param("hash") String hash);
     int created(@Param("command") Command command,@Param("runner") UUID runner,@Param("container") String container);
     int requestStart(@Param("command") Command command,@Param("runner") UUID runner);

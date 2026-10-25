@@ -29,5 +29,6 @@ public final class TransactionalFileRunnerRepository implements FileRunnerReposi
     @Override public boolean priorRunnerStopped(Command c,UUID i){return tx(()->delegate.priorRunnerStopped(c,i));}
     @Override public boolean mayObserve(Command c,UUID i){return tx(()->delegate.mayObserve(c,i));}
     @Override public Receipt receipt(Command c){return tx(()->delegate.receipt(c));}
+    @Override public Receipt observeNeverAccepted(Command c,UUID i,String h){return tx(()->delegate.observeNeverAccepted(c,i,h));}
     @Override public void recordResult(Command c,UUID i,FileRuntime.Result result){tx(()->{delegate.recordResult(c,i,result);return null;});}
 }

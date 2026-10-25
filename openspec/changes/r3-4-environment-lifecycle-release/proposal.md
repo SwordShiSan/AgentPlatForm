@@ -15,3 +15,6 @@ R3.3 has verified public immutable files, but environment controls still expose 
 
 ## Impact
 Public additions are sleep/wake POST and environment DELETE, all versioned/idempotent. Changes cover six-module DDD application/domain/infrastructure/trigger/API, MyBatis XML, Vue and deployment scripts. No public shell/tools, workspace/file deletion or real provider calls. GitHub Actions stays disabled; protected PRs remain required.
+# Closure defect correction
+
+Complete the existing failure/query reconciliation contract for provably never-accepted expired file commands, retain UNKNOWN for accepted work, and persist production MQ permissions across restarts. This stays within R3.4 and the same change: no new public endpoint, migration, tool, supplier call or physical replay. Earlier VERIFIED artifacts remain historical; corrected runtime must pass targeted real-role transactions, full engineering checks and core functional/recovery checks before release.
