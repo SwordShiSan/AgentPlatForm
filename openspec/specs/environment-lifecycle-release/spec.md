@@ -101,4 +101,3 @@ The runner SHALL distinguish an expired UNKNOWN file operation that never crosse
 #### Scenario: Concurrent or late delivery
 - **WHEN** two original queries race or an old POST arrives after the negative observation
 - **THEN** the original operation lock and immutable receipt permit one negative fact only, the expired UNKNOWN/terminal fence cannot execute, and no new physical invocation is made
-
