@@ -1,0 +1,17 @@
+{
+  "status": "RELEASED",
+  "tag": "production-r3-95ffaf3b7137",
+  "source": "95ffaf3b71373a8c5d1628febbcc15c3cbd49322",
+  "tagObject": "94444e36e183a6e453e70020e04d93dc10a04987",
+  "promotionPullRequests": [
+    94,
+    95,
+    96,
+    97,
+    98,
+    99
+  ],
+  "cloudRunning": "R3",
+  "legacyStoppedRetained": true,
+  "realSupplierCalls": 0
+}
