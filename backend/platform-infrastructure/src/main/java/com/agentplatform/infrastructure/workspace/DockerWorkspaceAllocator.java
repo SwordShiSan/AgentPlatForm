@@ -39,7 +39,7 @@ public final class DockerWorkspaceAllocator implements WorkspaceAllocator, AutoC
     }
     static String fixedWorkspaceRoot(String path) {
         if(path==null||!(path.equals("/srv/agentplatform/workspaces")
-                ||path.matches("/srv/agentplatform/acceptance/r3[123]-[a-z0-9-]+/workspaces")))
+                ||path.matches("/srv/agentplatform/acceptance/r3[1234]-[a-z0-9-]+/workspaces")))
             throw new IllegalArgumentException("Pinned helper and fixed trusted mount required");
         return path;
     }

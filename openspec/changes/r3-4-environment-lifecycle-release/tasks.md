@@ -1,7 +1,7 @@
 ## 1. Preparation
 - [x] 1.1 Approved Plan; inspect clean main/phase and previous acceptance, create dedicated step.
 - [x] 1.2 Canonical Plan/ADR/contracts and five artifacts; strict before implementation.
-- [ ] 1.3 Read-only tool/Docker/SSH/resource preflight; independent fixture and immutable identities.
+- [x] 1.3 Read-only tool/Docker/SSH/resource preflight; independent fixture and immutable identities.
 ## 2. Resource feasibility first
 - [ ] 2.1 Whole profile cold start, login,100MiB stream and trusted canary under capped budgets.
 - [ ] 2.2 Preserve actual limits/heap/OOM/host/disk evidence; correct only proven issues.
