@@ -714,10 +714,127 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tasks/{id}/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTaskPermissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateTaskPermissions"];
+        trace?: never;
+    };
+    "/api/v1/tasks/{id}/permission-scopes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTaskPermissionScopes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{id}/grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createTaskGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{id}/grants/{grantId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["revokeTaskGrant"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        TaskDirectoryGrant: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            scopeId: string;
+            path: string;
+            capabilities: ("LIST" | "READ" | "WRITE")[];
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date-time */
+            revokedAt: string | null;
+            active: boolean;
+            policyVersion: string;
+        };
+        TaskPermissions: {
+            /** Format: uuid */
+            taskId: string;
+            /** Format: uuid */
+            workspaceId: string | null;
+            /**
+             * @default RISK_BASED
+             * @enum {string}
+             */
+            mode: "RISK_BASED" | "FULL";
+            version: number;
+            policyVersion: string;
+            mutable: boolean;
+            effectiveRestrictions: string[];
+            grants: components["schemas"]["TaskDirectoryGrant"][];
+        };
+        TaskPermissionScope: {
+            /** Format: uuid */
+            scopeId: string;
+            path: string;
+            capabilities: ("LIST" | "READ" | "WRITE")[];
+        };
+        TaskPermissionScopes: {
+            items: components["schemas"]["TaskPermissionScope"][];
+            /** Format: uuid */
+            nextCursor: string | null;
+        };
+        TaskPermissionPatch: {
+            /**
+             * @default RISK_BASED
+             * @enum {string}
+             */
+            mode: "RISK_BASED" | "FULL";
+        };
+        TaskGrantRequest: {
+            /** Format: uuid */
+            scopeId: string;
+            capabilities: ("LIST" | "READ" | "WRITE")[];
+        };
         CreateFileUpload: {
             path: string;
             bytes: number;
@@ -894,8 +1011,13 @@ export interface components {
                 modelId?: string;
                 /** @default false */
                 planMode: boolean;
-                /** @constant */
-                permissionMode?: "RISK_BASED";
+                /** Format: uuid */
+                workspaceId?: string | null;
+                /**
+                 * @default RISK_BASED
+                 * @enum {string}
+                 */
+                permissionMode: "RISK_BASED" | "FULL";
                 /** @enum {string} */
                 credentialSource?: "PLATFORM" | "USER";
             };
@@ -2742,6 +2864,156 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuotaView"][];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getTaskPermissions: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current task authorization projection */
+            200: {
+                headers: {
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskPermissions"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    updateTaskPermissions: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "If-Match": string;
+                "X-Space-Id"?: string;
+                "X-CSRF-Token": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskPermissionPatch"];
+            };
+        };
+        responses: {
+            /** @description Current task authorization projection */
+            200: {
+                headers: {
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskPermissions"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getTaskPermissionScopes: {
+        parameters: {
+            query?: {
+                cursor?: string;
+            };
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current task authorization projection */
+            200: {
+                headers: {
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskPermissionScopes"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    createTaskGrant: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "If-Match": string;
+                "X-Space-Id"?: string;
+                "X-CSRF-Token": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description Current task authorization projection */
+            200: {
+                headers: {
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskPermissions"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    revokeTaskGrant: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "If-Match": string;
+                "X-Space-Id"?: string;
+                "X-CSRF-Token": string;
+            };
+            path: {
+                id: string;
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current task authorization projection */
+            200: {
+                headers: {
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskPermissions"];
                 };
             };
             default: components["responses"]["IdentityProblem"];

@@ -28,14 +28,14 @@ class PlanQuotaPostgresTest {
     @TempDir Path work;
     @BeforeAll static void migrate() throws Exception {
         url=System.getenv("R41_TEST_JDBC_URL");Assumptions.assumeTrue(url!=null,"R41 database not configured; NOT_RUN");
-        assertEquals("jdbc:postgresql://127.0.0.1:15454/r41_test?connectTimeout=2&socketTimeout=5",url);
+        assertTrue("jdbc:postgresql://127.0.0.1:15454/r41_test?connectTimeout=2&socketTimeout=5".equals(url) || ("1".equals(System.getenv("R42_ACCEPTANCE")) && "jdbc:postgresql://127.0.0.1:15455/r42_test?connectTimeout=2&socketTimeout=5".equals(url)));
         password=Files.readString(Path.of(System.getenv("R41_TEST_PASSWORD_FILE"))).strip();
         Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").cleanDisabled(false).load().clean();
         administratorFixture=null;
         var before=Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").target("14").load();before.migrate();
         assertEquals("14",before.info().current().getVersion().toString());
         var current=Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").load();current.migrate();
-        assertEquals("15",current.info().current().getVersion().toString());current.validate();
+        assertEquals("16",current.info().current().getVersion().toString());current.validate();
     }
     @BeforeEach void setup() {
         var configuration=new com.zaxxer.hikari.HikariConfig();configuration.setJdbcUrl(url);configuration.setUsername("postgres");configuration.setPassword(password);configuration.setMaximumPoolSize(4);configuration.setMinimumIdle(1);
@@ -204,7 +204,7 @@ class PlanQuotaPostgresTest {
         try(var execution=new ChatExecution(repository,provider,cipher,work)){execution.run(claim(task));}
         var pending=repository.pending(user,task.conversationId()).getFirst();
         repository.answer(user,task.id(),pending.interactionId(),UUID.randomUUID(),new Answer(pending.version(),Decision.EXECUTE_PLAN,"",List.of()));
-        var broker=new com.rabbitmq.client.ConnectionFactory();broker.setHost("127.0.0.1");broker.setPort(15710);broker.setVirtualHost("/agentplatform");broker.setUsername("ap_operator");
+        var broker=new com.rabbitmq.client.ConnectionFactory();broker.setHost("127.0.0.1");broker.setPort("1".equals(System.getenv("R42_ACCEPTANCE"))?15712:15710);broker.setVirtualHost("/agentplatform");broker.setUsername("ap_operator");
         broker.setPassword(Files.readString(Path.of(file)).strip());broker.setAutomaticRecoveryEnabled(false);broker.setConnectionTimeout(2000);
         var managed=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory(broker);
         try(var connection=broker.newConnection();

@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia';
 import { reactive } from 'vue';
 
-export interface PendingSubmission { key: string; text: string; model: string; source: 'PLATFORM' | 'USER'; conversation: string; planMode?: boolean }
-export interface ChatDraft { text: string; model: string; source: 'PLATFORM' | 'USER'; planMode?: boolean; pending?: PendingSubmission }
+export interface PendingSubmission { key: string; text: string; model: string; source: 'PLATFORM' | 'USER'; conversation: string; workspaceId?: string | null; permissionMode?: 'RISK_BASED' | 'FULL'; planMode?: boolean }
+export interface ChatDraft { text: string; model: string; source: 'PLATFORM' | 'USER'; workspaceId?: string | null; permissionMode?: 'RISK_BASED' | 'FULL'; planMode?: boolean; pending?: PendingSubmission }
 export interface PlanEditorDraft { title: string; markdown: string; baseRevision: number }
 const prefix = 'agentplatform:chat-draft:';
 export function clearChatDrafts() {

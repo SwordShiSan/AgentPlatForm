@@ -18,7 +18,9 @@ public final class ChatRequests {
     public record Options(String modelId,
                           String credentialSource,
                           Boolean planMode,
-                          String permissionMode) {}
+                          String permissionMode, String workspaceId) {
+        public Options(String modelId,String credentialSource,Boolean planMode,String permissionMode){this(modelId,credentialSource,planMode,permissionMode,null);}
+    }
     public record Task(@NotNull @Valid Input input, @NotNull @Valid Options options) {}
     public static final class Conversation {
         private String title;

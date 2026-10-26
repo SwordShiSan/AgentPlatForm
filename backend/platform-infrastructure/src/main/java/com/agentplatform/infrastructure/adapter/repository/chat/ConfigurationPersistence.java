@@ -54,7 +54,7 @@ final class ConfigurationPersistence extends ChatPersistenceSupport {
     public Map<String,Object> configuration(Actor a,UUID id){return tx(true,c->{auth(c,a);task(c,a,id,false);
         { var rows10 = c.conversation().selectTask10(id, a.spaceId()); var row10 = rows10.isEmpty() ? null : rows10.getFirst();
             if(row10 == null)throw new ChatFailure(404,"RESOURCE_NOT_FOUND");var values=new TreeMap<>(object(row10.configJson()));
-            values.keySet().retainAll(Set.of("modelId","modelName","modelVersion","credentialId","credentialRevision","credentialSource","window","maxOutput","thinking","pricingVersion","inputPrice","outputPrice","perCallMicros","bundleHash"));
+            values.keySet().retainAll(Set.of("modelId","modelName","modelVersion","credentialId","credentialRevision","credentialSource","window","maxOutput","thinking","pricingVersion","inputPrice","outputPrice","perCallMicros","bundleHash","workspaceId","permissionMode"));
             return Map.of("configSnapshotId",row10.id().toString(),"configHash",row10.configHash(),"bundleId",row10.bundleId().toString(),"values",values,"restrictions",Map.of("credentialActive",row10.credentialActive(),"modelActive",row10.modelActive()));
          }
     });}

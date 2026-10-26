@@ -1,3 +1,7 @@
+## R4.2 implementation
+
+Task resources, versioned permission modes and revocable directory grants are implemented behind local opt-in flags. Acceptance and protected promotion are pending; cloud production remains R3. See [local acceptance](deploy/R4.2-LOCAL.md) and the [canonical plan](../项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R4.2-风险策略任务资源绑定与范围授权实施计划.md).
+
 # AgentPlatForm
 
 当前R4.1：**R4.1 VERIFIED、R4完成1/4、未RELEASED**。持久Plan／问题／文本续接和每日用户额度已实现，本地工程与主要功能验收通过；真实Flash充值后沿用原计数完成闭环，最终5/20；首次余额不足保留历史，已通过PR108/109晋级并归档R4.1。详见[本地验收与阻断](deploy/R4.1-LOCAL.md)和[脱敏证据](evidence/r41/acceptance-index.json)。生产继续R3，本期未部署。下文早期“R4未启动”仅属历史。

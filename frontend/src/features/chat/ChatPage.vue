@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ModelSettings from './ModelSettings.vue';
 import PlanCard from './PlanCard.vue';
+import TaskPermissions from './TaskPermissions.vue';
 import QuestionCard from './QuestionCard.vue';
 import RecoveryNotice from './RecoveryNotice.vue';
 import { useChatDrafts, type PendingSubmission } from './drafts';
@@ -18,6 +19,8 @@ import { subscribeReplay, type StreamStatus } from './event-stream';
 const route = useRoute(); const router = useRouter(); const cache = useQueryClient();
 const planEnabled = import.meta.env.VITE_PLAN_ENABLED === 'true';
 const planMode = ref(false);
+const permissionsEnabled = import.meta.env.VITE_PERMISSIONS_ENABLED === 'true';
+const permissionMode = ref<'RISK_BASED' | 'FULL'>('RISK_BASED');const workspaceId = ref('');
 const draft = ref(''); const error = ref(''); const busy = ref(false);
 const pending = ref<PendingSubmission>();
 const selectedModel = ref(''); const source = ref<'PLATFORM' | 'USER'>('PLATFORM'); const drafts = useChatDrafts();
@@ -25,6 +28,7 @@ const selected = computed(() => typeof route.params.id === 'string' ? route.para
 const me = useQuery({ queryKey: ['identity', 'me'], queryFn: async () => (await api.GET('/api/v1/me')).data! });
 const actor = computed(() => me.data.value?.id ?? '');
 const space = computed(() => me.data.value?.spaces.find(item => item.type === 'PERSONAL')?.id ?? '');
+const workspaces = useQuery({ queryKey: computed(() => ['chat', actor.value, space.value, 'workspace-choices']), enabled: computed(() => permissionsEnabled && !!actor.value && !!space.value), queryFn: async () => (await api.GET('/api/v1/workspaces', { params: { query: { limit: 100 } } })).data! });
 const effective = useQuery({ queryKey: computed(() => ['chat', actor.value, 'effective-config']), enabled: computed(() => !!actor.value), queryFn: async () => (await api.GET('/api/v1/effective-config')).data! });
 const preferences = useQuery({ queryKey: computed(() => ['chat', actor.value, 'preferences']), enabled: computed(() => !!actor.value), queryFn: async () => (await api.GET('/api/v1/me/preferences')).data! });
 
@@ -122,6 +126,7 @@ function connect() {
         if (!previous) throw new SnapshotRequired('Canonical projection is missing');
         return applyChatEvent(previous, body);
       });
+      if (body.type === 'task.permissions_changed') void cache.invalidateQueries({ queryKey: ['chat', user, selectedSpace, 'permissions'] });
       if (body.type === 'usage.updated') { void cache.invalidateQueries({ queryKey: ['chat', user, 'usage'] }); void quota.refetch(); }
     },
     rebase: async signal => {
@@ -139,12 +144,12 @@ function restoreDraft() {
   if (!actor.value || !space.value) return;
   restoring = true;
   const value = drafts.load(actor.value, space.value, selected.value);
-  planMode.value = value.planMode ?? false; draft.value = value.text; pending.value = value.pending; selectedModel.value = value.model || effective.data.value?.values.modelId || ''; source.value = value.model ? value.source : effective.data.value?.values.credentialSource || 'PLATFORM';
+  planMode.value = value.planMode ?? false; workspaceId.value = value.workspaceId ?? ''; permissionMode.value = value.permissionMode ?? 'RISK_BASED'; draft.value = value.text; pending.value = value.pending; selectedModel.value = value.model || effective.data.value?.values.modelId || ''; source.value = value.model ? value.source : effective.data.value?.values.credentialSource || 'PLATFORM';
   restoring = false;
 }
 watch([actor, space, selected], () => { stopStream(); error.value = ''; restoreDraft(); connect(); }, { immediate: true, flush: 'sync' });
 watch(() => effective.data.value, () => { if (!selectedModel.value) restoreDraft(); });
-watch([draft, selectedModel, source, pending, planMode], () => { if (mounted && !restoring) drafts.save(actor.value, space.value, selected.value, { text: draft.value, model: selectedModel.value, source: source.value, planMode: planMode.value, ...(pending.value ? { pending: pending.value } : {}) }); }, { deep: true, flush: 'sync' });
+watch([draft, selectedModel, source, pending, planMode, workspaceId, permissionMode], () => { if (mounted && !restoring) drafts.save(actor.value, space.value, selected.value, { text: draft.value, model: selectedModel.value, source: source.value, planMode: planMode.value, workspaceId: workspaceId.value, permissionMode: permissionMode.value, ...(pending.value ? { pending: pending.value } : {}) }); }, { deep: true, flush: 'sync' });
 onBeforeUnmount(() => { mounted = false; stopStream(); });
 
 async function create() {
@@ -171,11 +176,11 @@ async function moreConversations() {
 async function submit() {
   if (busy.value || (!pending.value && (!draft.value.trim() || running.value))) return;
   const model = models.data.value?.items.find(item => item.id === selectedModel.value); if (!model) { error.value = '所选模型或凭据不可用，请检查配置。'; return; }
-  pending.value ??= { key: newRequestId(), text: draft.value, model: model.id, source: source.value, conversation: selected.value, planMode: planEnabled && planMode.value };
+  pending.value ??= { key: newRequestId(), text: draft.value, model: model.id, source: source.value, conversation: selected.value, planMode: planEnabled && planMode.value, workspaceId: permissionsEnabled ? workspaceId.value || null : null, permissionMode: permissionsEnabled ? permissionMode.value : 'RISK_BASED' };
   const value = pending.value; busy.value = true; error.value = '';
   try {
     const token = await csrf();
-    const body = { input: { text: value.text, attachments: [] }, options: { modelId: value.model, credentialSource: value.source, planMode: value.planMode ?? false, permissionMode: 'RISK_BASED' as const } };
+    const body = { input: { text: value.text, attachments: [] }, options: { modelId: value.model, credentialSource: value.source, planMode: value.planMode ?? false, permissionMode: value.permissionMode ?? 'RISK_BASED', ...(value.workspaceId ? { workspaceId: value.workspaceId } : {}) } };
     let conversation = value.conversation;
     if (conversation) await api.POST('/api/v1/conversations/{id}/tasks', { params: { path: { id: conversation }, header: { 'Idempotency-Key': value.key, 'X-CSRF-Token': token } }, body });
     else { const accepted = (await api.POST('/api/v1/conversations', { params: { header: { 'Idempotency-Key': value.key, 'X-CSRF-Token': token } }, body: { title: '新对话', initialTask: body } })).data!; conversation = accepted.id; }
@@ -241,6 +246,7 @@ async function cancel() {
         <p v-if="reconciliationState?.excludedFromContext">该未完成轮次未进入后续模型上下文；页面保留的部分回复不代表成功结果。</p>
         <p v-if="reconciliationState?.stopConfirmed">执行者已停止；可在剩余额度内发送独立新消息。</p>
       </aside>
+      <TaskPermissions v-if="permissionsEnabled && lastTask" :key="lastTask.taskId" :actor="actor" :space="space" :task-id="lastTask.taskId" :task-version="lastTask.version" />
       <RecoveryNotice v-if="lastTask" :actor="actor" :space="space" :task-id="lastTask.taskId" :version="lastTask.version" :interrupted="lastTask.status === 'BLOCKED' || lastTask.status === 'FAILED'" />
       <section v-if="lastTask?.reasonCode && diagnostics.data.value" aria-label="任务诊断" class="task-diagnostics">
         <p>{{ diagnosticAction }}</p><p v-if="diagnostics.data.value.hasPartialOutput">已保留部分回复。</p>
@@ -258,6 +264,11 @@ async function cancel() {
           <button type="button" :disabled="busy || !!pending || !selectedModel" @click="saveDefaults">设为我的默认</button>
         </div>
         <p class="intro">选择仅影响下次发送。{{ effective.data.value?.sources.modelId === 'USER' ? '默认模型来自个人偏好。' : '默认模型来自平台。' }}</p>
+        <div v-if="permissionsEnabled" class="chat-options">
+          <label for="chat-workspace">本次工作区</label><select id="chat-workspace" v-model="workspaceId" :disabled="busy || !!pending"><option value="">不绑定（普通文本）</option><option v-for="item in workspaces.data.value?.items.filter(w => w.state === 'READY')" :key="item.id" :value="item.id">{{ item.name }}</option></select>
+          <label for="chat-permission">本次权限</label><select id="chat-permission" v-model="permissionMode" :disabled="busy || !!pending"><option value="RISK_BASED">按风险确认</option><option value="FULL">任务内完全权限</option></select>
+          <p v-if="workspaces.isError.value" role="alert">暂时无法读取工作区，可继续不绑定的文本聊天。</p>
+        </div>
         <label v-if="planEnabled" class="plan-toggle"><input v-model="planMode" type="checkbox" :disabled="busy || !!pending || running" /> 先制定计划，再确认文本执行</label>
         <label for="chat-input">消息</label>
         <textarea id="chat-input" v-model="draft" rows="3" :disabled="busy || !!pending" placeholder="输入文字，按 Ctrl + Enter 发送" @keydown.ctrl.enter.prevent="submit" @keydown.meta.enter.prevent="submit" />
