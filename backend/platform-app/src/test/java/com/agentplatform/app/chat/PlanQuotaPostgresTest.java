@@ -181,6 +181,23 @@ class PlanQuotaPostgresTest {
         sql("UPDATE pf.app_user SET platform_admin=true WHERE id='"+admin.userId()+"'");
         repository.stopped(lease,"FAILED","FIXTURE_DONE",null,"b".repeat(64));
     }
+    @Test void failedControlIntentOrWaitingCheckpointNeverCreatesAResumableWait() throws Exception {
+        for(String window:List.of("stageControls","commitCheckpoint")){
+            var task=task(user,true);var calls=new AtomicInteger();
+            ChatRepository faulted=(ChatRepository)java.lang.reflect.Proxy.newProxyInstance(ChatRepository.class.getClassLoader(),new Class<?>[]{ChatRepository.class},(proxy,method,args)->{
+                boolean review=method.getName().equals("stageControls")&&((List<?>)args[1]).stream().anyMatch(c->((HarnessData.Call)c).name().equals("platform_plan_review"));
+                boolean waiting=method.getName().equals("commitCheckpoint")&&((HarnessData.CheckpointDraft)args[2]).phase()==HarnessData.CheckpointPhase.WAITING_INPUT;
+                if(window.equals(method.getName())&&(review||waiting))throw new ChatFailure(503,"FIXTURE_PERSISTENCE_FAILURE");
+                try{return method.invoke(repository,args);}catch(java.lang.reflect.InvocationTargetException failure){throw failure.getCause();}
+            });
+            try(var execution=new ChatExecution(faulted,provider(calls),cipher,work)){execution.run(claim(task));}
+            assertEquals("FAILED",repository.task(user,task.id()).status());assertEquals(2,calls.get());
+            assertTrue(repository.pending(user,task.conversationId()).isEmpty());
+            assertEquals(0,count("SELECT count(*) FROM pf.checkpoint WHERE task_id='"+task.id()+"' AND phase='WAITING_INPUT'"));
+            assertEquals(0,count("SELECT count(*) FROM pf.execution_slot WHERE task_id='"+task.id()+"'"));
+            assertEquals(0,count("SELECT count(*) FROM pf.interaction_resume WHERE task_id='"+task.id()+"'"));
+        }
+    }
     @Test void acceptedAnswerUsesRealRabbitConfirmAckAndDuplicateHandoffWithoutSecondOwner() throws Exception {
         String file=System.getenv("R41_MQ_PASSWORD_FILE");Assumptions.assumeTrue(file!=null,"Isolated R41 broker not configured; NOT_RUN");
         var task=task(user,true);var calls=new AtomicInteger();var provider=provider(calls);
@@ -190,14 +207,21 @@ class PlanQuotaPostgresTest {
         var broker=new com.rabbitmq.client.ConnectionFactory();broker.setHost("127.0.0.1");broker.setPort(15710);broker.setVirtualHost("/agentplatform");broker.setUsername("ap_operator");
         broker.setPassword(Files.readString(Path.of(file)).strip());broker.setAutomaticRecoveryEnabled(false);broker.setConnectionTimeout(2000);
         var managed=new org.springframework.amqp.rabbit.connection.CachingConnectionFactory(broker);
-        try(var connection=broker.newConnection();var channel=connection.createChannel();
+        try(var connection=broker.newConnection();
             var transport=new com.agentplatform.infrastructure.chat.SpringAmqpDispatchTransport(managed,repository)){
+            var channel=connection.createChannel(); // Intentionally aborted below; connection owns exceptional cleanup.
             UUID relay=UUID.randomUUID();var publication=repository.publications(relay).stream().filter(p->p.envelope().aggregateId().equals(task.id())).findFirst().orElseThrow();
-            transport.publish(publication.envelope());repository.published(relay,publication,true);
+            // Broker accepted the publish, but the relay loses its confirm result.
+            transport.publish(publication.envelope());repository.published(relay,publication,false);
             var delivery=received(channel);var envelope=tools.jackson.databind.json.JsonMapper.builder().build().readValue(delivery.getBody(),Envelope.class);
             assertEquals(publication.envelope(),envelope);var target=repository.claim(envelope,UUID.randomUUID());assertNotNull(target);
-            channel.basicAck(delivery.getEnvelope().getDeliveryTag(),false);
-            transport.publish(envelope);var duplicate=received(channel);assertNull(repository.claim(envelope,UUID.randomUUID()));channel.basicAck(duplicate.getEnvelope().getDeliveryTag(),false);
+            // Close the delivery channel before ACK; the actual broker must redeliver.
+            channel.abort();
+            try(var second=connection.createChannel()){
+                var redelivered=received(second);assertTrue(redelivered.getEnvelope().isRedeliver());
+                assertNull(repository.claim(envelope,UUID.randomUUID()));second.basicAck(redelivered.getEnvelope().getDeliveryTag(),false);
+                transport.publish(envelope);var duplicate=received(second);assertNull(repository.claim(envelope,UUID.randomUUID()));second.basicAck(duplicate.getEnvelope().getDeliveryTag(),false);
+            }
             try(var execution=new ChatExecution(repository,provider,cipher,work)){execution.run(target);}
             assertEquals("SUCCEEDED",repository.task(user,task.id()).status());assertEquals(3,calls.get());
             assertEquals(2,count("SELECT count(*) FROM pf.attempt WHERE task_id='"+task.id()+"'"));
