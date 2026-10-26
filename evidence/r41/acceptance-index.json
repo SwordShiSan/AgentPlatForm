@@ -1,0 +1,246 @@
+{
+  "stage": "R4.1",
+  "status": "ACCEPTANCE_PASS_PENDING_PROTECTED_PROMOTION",
+  "verified": false,
+  "released": false,
+  "implementationAndTestSource": "72065e5642cf5fe756f4fd9ccbcd618fe965b7e2",
+  "runtimeBaseline": "schema1",
+  "migration": "V15",
+  "migrationSha256": "f0c7b87e8acdb356bfb15f509848d9aae51ca3b258bfb2c20902b97d05a6921e",
+  "images": {
+    "api": {
+      "tag": "agentplatform-api:r41-7b07a2c0d46e",
+      "dockerImageId": "sha256:07824b3e08fc24e571124281f1b8bb3d2cdca96d0f1f7da0e713402bdb64ff5c",
+      "platformConfigId": "sha256:99b5cf389e2c3737d40a3ab04b9311ee900723f781f07d07f539598cd5f46835",
+      "architecture": "linux/amd64",
+      "source": "7b07a2c0d46e1b7d62e794915550c1f30370ed03",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/99b5cf389e2c3737d40a3ab04b9311ee900723f781f07d07f539598cd5f46835",
+          "RepoTags": [
+            "agentplatform-api:r41-7b07a2c0d46e"
+          ],
+          "Layers": [
+            "blobs/sha256/a60ef8ec184edb5ed91f5983f00261359fb2fe20f603e8d488b9477d32fcad70",
+            "blobs/sha256/49b14164d4d96e593cb68db980906b691931cdcde6f60b918280317c89e55462",
+            "blobs/sha256/7c48d168a51b541814c6814256cd298e11114f5f088e4511cffb4f6b3622d1b6",
+            "blobs/sha256/5165dac19553999758e23bf9247e5bac05f0d26ee503d13bf70c1e8873eb8d37",
+            "blobs/sha256/02e0e048361058af7411fe47569c4d90b68a917dba037514c3831b7bf7029c7b",
+            "blobs/sha256/acc93b257e6f2400f5e3fdf64cb0c7955e37069bb80a6235b95c9484a9ec0643",
+            "blobs/sha256/7caad43af07c70612f14e0f28c0fe6433e10b214cb72b3ec7f64e8cef08c360b",
+            "blobs/sha256/a989570c6f5f1ceac36ff6d53901cfeaac05c7d7c4ac8b3f1ccd9160519fc598"
+          ]
+        }
+      ],
+      "exportStreamSha256": "705b7e9245e598977b5cf170e69f0b1b0aae14533c1324c5740ee8df290db1a2",
+      "exportBytes": 194166784,
+      "archiveRetained": false
+    },
+    "gateway": {
+      "tag": "agentplatform-gateway:r41-103c4de8f677",
+      "dockerImageId": "sha256:7dbb406e1e8b2f051f648fecf66977c47bce3a68b2b49cf36b41a89eb50f7216",
+      "platformConfigId": "sha256:5d218f0090f2a3d46f437796ad04325d4e76b7cf8d6fa2830b6185f55a58cb55",
+      "architecture": "linux/amd64",
+      "source": "103c4de8f6775fe9512a1dff00e9b32007400e1e",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/5d218f0090f2a3d46f437796ad04325d4e76b7cf8d6fa2830b6185f55a58cb55",
+          "RepoTags": [
+            "agentplatform-gateway:r41-103c4de8f677"
+          ],
+          "Layers": [
+            "blobs/sha256/e2de96513ba9eb53b431787ec8a65cdde380ac4772a3e4c4b714dcfde2a102b5",
+            "blobs/sha256/655cdf110ce6cc8b81dc0bf0d471a4fb200eac950a7a108ed5335b91ed3ef07b",
+            "blobs/sha256/cb3dcaeaef3012c03cc5ba44f04289e06247ee28b0396073f0c1aa4667e08cd6",
+            "blobs/sha256/c792e3f2c3b45eb2b0ab9ca191eb1c881394ef80dc9b03a728d4241709cfd309",
+            "blobs/sha256/dfd17a001b4375f4b03069aa2c6c03e965543d91589d9f7399dae7c3798037bd",
+            "blobs/sha256/69146b4a52cfd86bdd87919b33fc3c6afd168c7911c27d3805d48212887b2e4f",
+            "blobs/sha256/1f9e9a0fcad78d32ce75d315476a02e8c85818e0db3191e375796df6d1594dda",
+            "blobs/sha256/db0e3cd9a4f71fb319f83c2b8da0c7ba756419e6d8a8671e117dcba315656b39",
+            "blobs/sha256/ab0d6d0b8f06a2555ffb7e2777729ed4c2c656d62a2869414c9df71b527c4b41",
+            "blobs/sha256/7ea919a81cbfdc1373bf325c4efc565e69cd17bd1cad547679cc4ca7dbec106c",
+            "blobs/sha256/17b2e750e8cb2601057f3dd943502db2e71119a629f511c22208f9670c081c23"
+          ]
+        }
+      ],
+      "exportStreamSha256": "ec44b4c933f62a3516d824692d8298b80dfc0e638b192e45937d364fccf3402c",
+      "exportBytes": 25713664,
+      "archiveRetained": false
+    },
+    "provider-fixture": {
+      "tag": "agentplatform-provider-fixture:r41-7b07a2c0d46e",
+      "dockerImageId": "sha256:ef2b8d186ea29d46d24d04ea2ad212ef0079b5adca9fcc7561a3a949adf17130",
+      "platformConfigId": "sha256:b3232382358a18bd3258d35be39bdcf67e44c297c37621d67eb9b526e64bccfe",
+      "architecture": "linux/amd64",
+      "source": "7b07a2c0d46e1b7d62e794915550c1f30370ed03",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/b3232382358a18bd3258d35be39bdcf67e44c297c37621d67eb9b526e64bccfe",
+          "RepoTags": [
+            "agentplatform-provider-fixture:r41-7b07a2c0d46e"
+          ],
+          "Layers": [
+            "blobs/sha256/ecc510c1e359bdc007b39802570bb7e4dec7d6ebccf357c3201a74299113e05e",
+            "blobs/sha256/75b6a36c64a1cf3520fc4b4aae4739d5caa8a6a05c27835a920a61784c9c32f8",
+            "blobs/sha256/6912e23eb44595b44dc6d9882b34f305ad6f6e9667cec70b13e5dbc4f8cd97f4",
+            "blobs/sha256/bbc5a12237474ec0b23b5051260d56d6436a24d70d9cad961adebe7a037ed813",
+            "blobs/sha256/d9d089f18af11ddb70f8fd0f8bbfd7a069abfbdfc0cc65213991e539d5b579d5"
+          ]
+        }
+      ],
+      "exportStreamSha256": "10c9d8c1dad1146b4d9dfebb34dee3a966a545f308a20b4165923c7808b9ba61",
+      "exportBytes": 43287552,
+      "archiveRetained": false
+    }
+  },
+  "results": {
+    "mavenVerify": "PASS",
+    "targetedRealPgMq": {
+      "mainCases": 13,
+      "additionalConcurrentQuotaCase": 1,
+      "additionalRejectReviseCase": 1,
+      "additionalWaitingFailureCase": 1,
+      "distinctFocusedCases": 16,
+      "actualAckLossRetest": "PASS",
+      "supplierCalls": 0,
+      "status": "PASS"
+    },
+    "frontend": {
+      "unitTests": 44,
+      "browserCases": 3,
+      "widths": [
+        375,
+        768,
+        1440
+      ],
+      "zoom": "200%",
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "status": "PASS"
+    },
+    "contractsAndInvalidFixtures": "PASS",
+    "persistenceBoundary": "PASS",
+    "credentialLeak": "PASS",
+    "realFlash": {
+      "status": "PASS",
+      "runId": "f3d0c0a9-5b8c-4926-8ba6-35d7796f339d",
+      "taskId": "01a177eb-76ca-7cbf-9ba8-7b8753a50b62",
+      "controlKinds": [
+        "QUESTION",
+        "PLAN_APPROVAL"
+      ],
+      "sameTask": true,
+      "model": "deepseek-flash",
+      "meter": {
+        "physicalRequests": 5,
+        "knownCalls": 4,
+        "unknownCalls": 0,
+        "inputTokens": 4244,
+        "outputTokens": 264,
+        "estimatedCostMicros": 10600
+      },
+      "providerOrigin": "https://api.deepseek.com",
+      "accounting": "estimated cost; reported usage preserved",
+      "imageSource": "7b07a2c0d46e1b7d62e794915550c1f30370ed03"
+    },
+    "legacyUnchangedDatabaseSuites": "NOT_RUN in this invocation; historical R3 gates are not relabeled as new real runs",
+    "waitingFailure": {
+      "status": "PASS",
+      "windows": [
+        "before control intent",
+        "before WAITING_INPUT checkpoint"
+      ],
+      "firstAggregateRun": "FAIL: deliberate channel abort was closed twice by test cleanup; waiting case passed",
+      "ackLossRetest": "PASS after fixture cleanup correction; production AMQP code unchanged"
+    }
+  },
+  "resourceProfile": {
+    "containerLimitsMiB": 2080,
+    "withSerialOperatorMiB": 2400,
+    "maxMiB": 2887,
+    "businessSandboxStarted": false,
+    "minimumPhysicalHostCapacityClaim": false
+  },
+  "quota": {
+    "ordinaryDailyTokens": 1000000,
+    "configurable": true,
+    "defaultTimezone": "Asia/Shanghai",
+    "administrator": "role based unlimited, metered; not username based",
+    "defaultCostLimit": null,
+    "businessRequestCountLimit": null,
+    "realAcceptanceRequestLimit": 20,
+    "requestsUsed": 5
+  },
+  "reports": {
+    "mavenVerify": {
+      "protectedPath": ".cache/r41-local/maven-final-01.log",
+      "sha256": "d1778134d44e0f1ae2ec88bb4e9b5156ea31148e83eefae2e08f2c4b8e7a1e34"
+    },
+    "waitingAndMqFaultsFirstRun": {
+      "protectedPath": ".cache/r41-local/waiting-mq-fault-final.log",
+      "sha256": "e9a9620bcc3c5c5f0e64ad8f6df1254237111dd17a76f6c2ac0c30599581ca34"
+    },
+    "mqAckLossRetest": {
+      "protectedPath": ".cache/r41-local/mq-ack-loss-final.log",
+      "sha256": "d8a801719915ac96fb02788d5c40219667fdb06e5f06d8b6d357a522a919538f"
+    },
+    "quotaConcurrency": {
+      "protectedPath": ".cache/r41-local/quota-concurrency-final.log",
+      "sha256": "746e822b8a2ca7c40a545ba5fb82c43ea28ad29e342057002a4a76f881cbb402"
+    },
+    "planRejectionAndRevision": {
+      "protectedPath": ".cache/r41-local/plan-revision-final.log",
+      "sha256": "c8174a9f6b8d83ae6e22ddcd723a1e2d5979b5b0a5b8706f1ed789e01bfa7241"
+    },
+    "vueUnit": {
+      "protectedPath": ".cache/r41-local/frontend-final-01.log",
+      "sha256": "0cab169094282c90d96a8dbc00925629d5d1a44fd25929a6b0d84e83a43495bb"
+    },
+    "realApiBrowser": {
+      "protectedPath": ".cache/r41-local/browser-03.log",
+      "sha256": "5375d981955d7a11c3e6287b91efbadc33fc8c2865efcdbb51614d87d251684e"
+    },
+    "credentialLeak": {
+      "protectedPath": ".cache/r41-local/credential-leak-check.json",
+      "sha256": "37c27f2f08fb0f9acc03572ab0f92c2ea5304dfe8d7edee13975fea5694f9ee4"
+    },
+    "realFlash": {
+      "protectedPath": ".cache/r41-local/real-flash-result.json",
+      "sha256": "0c7d898aaf37ccdbf4d40f7dc773693f9a68cbb658d777f39775aa0a2b655aa4"
+    },
+    "imageIdentity": {
+      "protectedPath": ".cache/r41-local/image-identity-chain.json",
+      "sha256": "05044a0e0aea98ad2990be77929925db58336f5788e97043cb5486c71235c957"
+    }
+  },
+  "historicalFailuresRetained": [
+    "browser-01.log",
+    "browser-02.log",
+    "plan-quota-pg-mq-06.log",
+    "waiting-mq-fault-final.log",
+    "real-flash-first-balance-failure.json"
+  ],
+  "promotion": {
+    "stepPr": "PENDING_PROTECTED_PROMOTION",
+    "phaseToMain": "PENDING_PROTECTED_PROMOTION",
+    "actionsDisabled": true,
+    "r4PhasePrProtection": true
+  },
+  "scope": {
+    "production": "R3 unchanged; no cloud operation",
+    "cloudSandbox": "DEFERRED; never archive its delta",
+    "planApproval": "text continuation only; no business tools"
+  },
+  "skill": {
+    "reference": "ai-agent-platform/references/reconstruction-operations.md",
+    "sha256": "5dc20dd72923300ffc73fbc184fac5625588967aa6216bf5a0907ad96f00cb8c"
+  },
+  "verificationSources": {
+    "fullMaven": "103c4de8f6775fe9512a1dff00e9b32007400e1e",
+    "browser": "103c4de8f6775fe9512a1dff00e9b32007400e1e",
+    "incrementalTestSource": "72065e5642cf5fe756f4fd9ccbcd618fe965b7e2"
+  },
+  "migrationHashEncoding": "exact Git blob; UTF-8/LF"
+}
