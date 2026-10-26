@@ -75,6 +75,7 @@ services:
     restart: "no"
     mem_limit: 32m
     memswap_limit: 32m
+    memswap_limit: 32m
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     tmpfs: ["/tmp:rw,noexec,nosuid,size=8m"]
@@ -88,6 +89,7 @@ services:
     read_only: true
     restart: "no"
     mem_limit: 64m
+    memswap_limit: 64m
     memswap_limit: 64m
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]

@@ -74,7 +74,7 @@ test('task workspace binding directory grants mode changes and revocation surviv
   await login(page);await page.getByLabel('本次工作区',{exact:true}).selectOption({label:'R42 browser metadata'});
   await page.getByLabel('本次权限',{exact:true}).selectOption('FULL');await begin(page,'fixture:plan R42目录授权');
   const panel=page.getByTestId('task-permissions');await expect(page.getByTestId('plan-card')).toBeVisible();
-  await expect(panel.getByLabel('权限模式',{exact:true})).toHaveValue('FULL');
+  await expect(panel.getByRole('combobox',{name:'权限模式',exact:true})).toHaveValue('FULL');
   const task=(await snapshot(page)).tasks.at(-1).taskId;
   const before=await (await page.request.get(`/api/v1/tasks/${task}/configuration`)).json();
   await panel.getByLabel('授权目录',{exact:true}).selectOption({label:'docs'});
@@ -89,7 +89,7 @@ test('task workspace binding directory grants mode changes and revocation surviv
   await expect(panel.getByRole('button',{name:'撤销授权',exact:true})).toBeVisible();
   const once=await (await page.request.get(`/api/v1/tasks/${task}/permissions`)).json();expect(once.grants).toHaveLength(1);expect(once.version).toBe(2);
   await page.reload();await expect(panel.getByRole('button',{name:'撤销授权',exact:true})).toBeVisible();
-  await panel.getByLabel('权限模式',{exact:true}).selectOption('RISK_BASED');
+  await panel.getByRole('combobox',{name:'权限模式',exact:true}).selectOption('RISK_BASED');
   await expect.poll(async()=>(await (await page.request.get(`/api/v1/tasks/${task}/permissions`)).json()).mode).toBe('RISK_BASED');
   await panel.getByRole('button',{name:'撤销授权',exact:true}).click();await expect(panel).toContainText('已撤销');
   const after=await (await page.request.get(`/api/v1/tasks/${task}/configuration`)).json();expect(after.configHash).toBe(before.configHash);
@@ -105,13 +105,13 @@ test('two tabs cannot overwrite a permission revision and missing csrf or versio
   const token=(await (await page.request.get('/api/v1/auth/csrf')).json()).csrfToken;
   const headers={'Origin':'http://127.0.0.1:18102','X-CSRF-Token':token,'Idempotency-Key':crypto.randomUUID(),'If-Match':`"${state.version}"`};
   const secondTab=await page.context().newPage();await secondTab.goto(page.url());
-  await expect(secondTab.getByTestId('task-permissions').getByLabel('权限模式',{exact:true})).toHaveValue('RISK_BASED',{timeout:30_000});
+  await expect(secondTab.getByTestId('task-permissions').getByRole('combobox',{name:'权限模式',exact:true})).toHaveValue('RISK_BASED',{timeout:30_000});
   const first=await page.request.patch(`/api/v1/tasks/${task}/permissions`,{headers,data:{mode:'FULL'}});expect(first.status()).toBe(200);
-  const stale=await secondTab.request.patch(`/api/v1/tasks/${task}/permissions`,{headers:{...headers,'Idempotency-Key':crypto.randomUUID()},data:{mode:'RISK_BASED'}});expect(stale.status()).toBe(412);await secondTab.reload();await expect(secondTab.getByTestId('task-permissions').getByLabel('权限模式',{exact:true})).toHaveValue('FULL');await secondTab.close();
+  const stale=await secondTab.request.patch(`/api/v1/tasks/${task}/permissions`,{headers:{...headers,'Idempotency-Key':crypto.randomUUID()},data:{mode:'RISK_BASED'}});expect(stale.status()).toBe(412);await secondTab.reload();await expect(secondTab.getByTestId('task-permissions').getByRole('combobox',{name:'权限模式',exact:true})).toHaveValue('FULL');await secondTab.close();
   const noVersion=await page.request.patch(`/api/v1/tasks/${task}/permissions`,{headers:{Origin:headers.Origin,'X-CSRF-Token':token,'Idempotency-Key':crypto.randomUUID()},data:{mode:'FULL'}});expect(noVersion.status()).toBe(428);
   const noCsrf=await page.request.patch(`/api/v1/tasks/${task}/permissions`,{headers:{Origin:headers.Origin,'Idempotency-Key':crypto.randomUUID(),'If-Match':'"2"'},data:{mode:'FULL'}});expect(noCsrf.status()).toBe(403);
   const foreign=await browser.newContext();const other=await foreign.newPage();await login(other,true);
   expect((await other.request.get(`/api/v1/tasks/${task}/permissions`)).status()).toBe(404);await foreign.close();
-  await page.reload();await expect(page.getByTestId('task-permissions').getByLabel('权限模式',{exact:true})).toHaveValue('FULL');
+  await page.reload();await expect(page.getByTestId('task-permissions').getByRole('combobox',{name:'权限模式',exact:true})).toHaveValue('FULL');
   await page.getByTestId('plan-card').getByRole('button',{name:'仅交付方案',exact:true}).click();
 });
