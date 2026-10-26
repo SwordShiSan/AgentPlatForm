@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 import type { components } from '../../shared/api/generated/http';
 import { useInteractionAnswer } from './use-interaction-answer';
-const props = defineProps<{ interaction: components['schemas']['PendingInteraction'] }>();
+const props = defineProps<{ interaction: components['schemas']['PendingInteraction']; ready: boolean }>();
 const emit = defineEmits<{ refresh: [] }>();
 const text = ref(''); const selected = ref<string[]>([]);
 const reply = useInteractionAnswer(() => props.interaction, () => emit('refresh'));
@@ -17,7 +17,8 @@ function answer(skip = false) { void reply.send({ expectedVersion: props.interac
     <p>有效期至：{{ new Date(interaction.expiresAt).toLocaleString() }}</p>
     <p v-if="reply.error.value" role="alert">{{ reply.error.value }}</p>
     <button v-if="reply.uncertain.value" :disabled="reply.busy.value" @click="reply.retry">重试原回答</button>
-    <form @submit.prevent="answer()"><fieldset :disabled="reply.busy.value || reply.uncertain.value"><legend>你的回答</legend>
+    <p v-if="!ready" role="status">正在保存等待状态，完成后即可回答。</p>
+    <form @submit.prevent="answer()"><fieldset :disabled="!ready || reply.busy.value || reply.uncertain.value"><legend>你的回答</legend>
       <label v-for="option in interaction.options" :key="option.id"><input v-model="selected" type="checkbox" :value="option.id" /> {{ option.label }}</label>
       <label :for="`question-answer-${interaction.interactionId}`">补充说明</label><textarea :id="`question-answer-${interaction.interactionId}`" v-model="text" rows="3" />
       <div class="chat-actions"><button :disabled="!text.trim() && !selected.length">提交回答</button><button v-if="interaction.optional" type="button" @click="answer(true)">跳过</button></div>

@@ -231,8 +231,8 @@ async function cancel() {
         </article>
       </div>
       <template v-for="interaction in snapshot.data.value?.pending" :key="interaction.interactionId">
-        <PlanCard v-if="interaction.kind === 'PLAN_APPROVAL'" :interaction="{ ...interaction, question: null }" :actor="actor" :space="space" @refresh="refreshInteractions" />
-        <QuestionCard v-else :interaction="{ ...interaction, plan: null }" @refresh="refreshInteractions" />
+        <PlanCard v-if="interaction.kind === 'PLAN_APPROVAL'" :interaction="{ ...interaction, question: null }" :actor="actor" :space="space" :ready="snapshot.data.value?.tasks.find(task => task.taskId === interaction.taskId)?.status === 'WAITING_INPUT'" @refresh="refreshInteractions" />
+        <QuestionCard v-else :interaction="{ ...interaction, plan: null }" :ready="interaction.optional || snapshot.data.value?.tasks.find(task => task.taskId === interaction.taskId)?.status === 'WAITING_INPUT'" @refresh="refreshInteractions" />
       </template>
       <p v-if="lastTask" role="status">{{ labels[lastTask.status] }}{{ lastTask.cancelRequested && running ? ' · 正在取消' : '' }}<span v-if="reason"> · {{ reason }}</span></p>
       <p v-if="stopLabel" role="status" data-testid="stop-stage">{{ stopLabel }}</p>
