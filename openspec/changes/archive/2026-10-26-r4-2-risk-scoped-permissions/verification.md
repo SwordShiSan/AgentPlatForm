@@ -1,3 +1,6 @@
+# Final functional status: VERIFIED
+Protected PR113/114 merged; implementation main76d7617b70d064ca7f197e775248790538b03893. All mandatory R4.2 functional gates PASS. R4 is2/4, not RELEASED; cloud R3 unchanged. Final archival/synchronization and delivery identities are recorded separately in the protected delivery MANIFEST.json. Earlier intermediate statuses and failures are historical.
+
 # Required acceptance
 - 工程：Maven verify、DDD/Enforcer/持久化边界、Mapper/XML；Vue typecheck/test/build；契约生成/非法fixture、links、strict。
 - 迁移：全新安装、V15→V16、旧程序/任务默认RISK_BASED空绑定，V1–V15不变。
