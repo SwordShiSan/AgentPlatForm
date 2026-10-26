@@ -73,7 +73,16 @@ test('task workspace binding directory grants mode changes and revocation surviv
   const task=(await snapshot(page)).tasks.at(-1).taskId;
   const before=await (await page.request.get(`/api/v1/tasks/${task}/configuration`)).json();
   await panel.getByLabel('授权目录',{exact:true}).selectOption({label:'docs'});
-  await panel.getByRole('button',{name:'授予目录范围',exact:true}).click();await expect(panel.getByRole('button',{name:'撤销授权',exact:true})).toBeVisible();
+  let loseResponse=true;
+  await page.route('**/api/v1/tasks/*/grants',async route=>{
+    if(route.request().method()==='POST'&&loseResponse){loseResponse=false;const committed=await route.fetch();expect(committed.status()).toBe(200);await route.abort('failed');}
+    else await route.continue();
+  });
+  await panel.getByRole('button',{name:'授予目录范围',exact:true}).click();
+  await expect(panel.getByRole('button',{name:'重试同一权限请求',exact:true})).toBeVisible();
+  await panel.getByRole('button',{name:'重试同一权限请求',exact:true}).click();
+  await expect(panel.getByRole('button',{name:'撤销授权',exact:true})).toBeVisible();
+  const once=await (await page.request.get(`/api/v1/tasks/${task}/permissions`)).json();expect(once.grants).toHaveLength(1);expect(once.version).toBe(2);
   await page.reload();await expect(panel.getByRole('button',{name:'撤销授权',exact:true})).toBeVisible();
   await panel.getByLabel('权限模式',{exact:true}).selectOption('RISK_BASED');
   await expect.poll(async()=>(await (await page.request.get(`/api/v1/tasks/${task}/permissions`)).json()).mode).toBe('RISK_BASED');
@@ -90,8 +99,10 @@ test('two tabs cannot overwrite a permission revision and missing csrf or versio
   const state=await (await page.request.get(`/api/v1/tasks/${task}/permissions`)).json();
   const token=(await (await page.request.get('/api/v1/auth/csrf')).json()).csrfToken;
   const headers={'Origin':'http://127.0.0.1:18102','X-CSRF-Token':token,'Idempotency-Key':crypto.randomUUID(),'If-Match':`"${state.version}"`};
+  const secondTab=await page.context().newPage();await secondTab.goto(page.url());
+  await expect(secondTab.getByTestId('task-permissions').getByLabel('权限模式',{exact:true})).toHaveValue('RISK_BASED');
   const first=await page.request.patch(`/api/v1/tasks/${task}/permissions`,{headers,data:{mode:'FULL'}});expect(first.status()).toBe(200);
-  const stale=await page.request.patch(`/api/v1/tasks/${task}/permissions`,{headers:{...headers,'Idempotency-Key':crypto.randomUUID()},data:{mode:'RISK_BASED'}});expect(stale.status()).toBe(412);
+  const stale=await secondTab.request.patch(`/api/v1/tasks/${task}/permissions`,{headers:{...headers,'Idempotency-Key':crypto.randomUUID()},data:{mode:'RISK_BASED'}});expect(stale.status()).toBe(412);await secondTab.reload();await expect(secondTab.getByTestId('task-permissions').getByLabel('权限模式',{exact:true})).toHaveValue('FULL');await secondTab.close();
   const noVersion=await page.request.patch(`/api/v1/tasks/${task}/permissions`,{headers:{Origin:headers.Origin,'X-CSRF-Token':token,'Idempotency-Key':crypto.randomUUID()},data:{mode:'FULL'}});expect(noVersion.status()).toBe(428);
   const noCsrf=await page.request.patch(`/api/v1/tasks/${task}/permissions`,{headers:{Origin:headers.Origin,'Idempotency-Key':crypto.randomUUID(),'If-Match':'"2"'},data:{mode:'FULL'}});expect(noCsrf.status()).toBe(403);
   const foreign=await browser.newContext();const other=await foreign.newPage();await login(other,true);
