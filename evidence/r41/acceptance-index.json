@@ -1,7 +1,7 @@
 {
   "stage": "R4.1",
-  "status": "ACCEPTANCE_PASS_PENDING_PROTECTED_PROMOTION",
-  "verified": false,
+  "status": "VERIFIED",
+  "verified": true,
   "released": false,
   "implementationAndTestSource": "72065e5642cf5fe756f4fd9ccbcd618fe965b7e2",
   "runtimeBaseline": "schema1",
@@ -223,10 +223,23 @@
     "real-flash-first-balance-failure.json"
   ],
   "promotion": {
-    "stepPr": "PENDING_PROTECTED_PROMOTION",
-    "phaseToMain": "PENDING_PROTECTED_PROMOTION",
+    "step": {
+      "number": 108,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/108",
+      "head": "59eb0c913e600f99051a6303571ee2b5cf459f52",
+      "base": "phase/r4-plan-permissions",
+      "mergeSha": "392f940a48462926be58fef9d605867f090ce195"
+    },
+    "main": {
+      "number": 109,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/109",
+      "head": "392f940a48462926be58fef9d605867f090ce195",
+      "base": "main",
+      "mergeSha": "cb185c30ad9b76cf727297b0f3924ffe88a14e22"
+    },
     "actionsDisabled": true,
-    "r4PhasePrProtection": true
+    "productionUnchanged": true,
+    "r4Released": false
   },
   "scope": {
     "production": "R3 unchanged; no cloud operation",
@@ -242,5 +255,22 @@
     "browser": "103c4de8f6775fe9512a1dff00e9b32007400e1e",
     "incrementalTestSource": "72065e5642cf5fe756f4fd9ccbcd618fe965b7e2"
   },
-  "migrationHashEncoding": "exact Git blob; UTF-8/LF"
+  "migrationHashEncoding": "exact Git blob; UTF-8/LF",
+  "archive": "openspec/changes/archive/2026-10-26-r4-1-plan-question-interactions",
+  "cleanup": {
+    "status": "PASS",
+    "runningFixtureServices": 0,
+    "volumesAndImagesPreserved": true,
+    "reportSha256": "898c005aac0cb509b147669fe58452090f27a835b4f1699aedf0f9656ec0f6d1"
+  },
+  "delivery": {
+    "copies": 2,
+    "protectedDirectories": [
+      ".cache/protected-r41-delivery-a",
+      ".cache/protected-r41-delivery-b"
+    ],
+    "minimumRetentionDays": 30,
+    "bodySeparateFromEvidence": true,
+    "finalSourceAndHashes": "sealed MANIFEST.json in each protected directory; no credentials/raw SQL/raw logs included"
+  }
 }

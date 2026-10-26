@@ -1,6 +1,6 @@
 # Verification — R4.1
 
-Current status: ACCEPTANCE_PASS_PENDING_PROTECTED_PROMOTION. Production remains R3; R4 is not RELEASED. Source/image/report hashes: `evidence/r41/acceptance-index.json`. Historical FAIL logs are retained, never relabeled PASS.
+Current status: VERIFIED. Production remains R3; R4 is not RELEASED. Source/image/report hashes: `evidence/r41/acceptance-index.json`. Historical FAIL logs are retained, never relabeled PASS.
 
 | Group | Evidence and scope | Current result |
 |---|---|---|
@@ -13,7 +13,7 @@ Current status: ACCEPTANCE_PASS_PENDING_PROTECTED_PROMOTION. Production remains 
 | UI | Real API browser3, immutable edit/refresh, QUESTION, plan-only, same-task continuation, double context/admin isolation,375/768/1440,200%zoom,keyboard/light/dark; Vue44/type/build | PASS |
 | Engineering | Full Maven verify/DDD/Enforcer/Mapper, persistence guard, generated contract no diff/invalid fixtures, links and strict | PASS |
 | Real Flash | First request balance rejection retained; recharge confirmed through one official read-only balance check; same runId final5/20,4 successful requests,4508 reported tokens,0UNKNOWN; QUESTION/Plan/approval/text continuation same task | PASS |
-| Closure | Two protected PR levels, exact-source review, archive this change only, delivery hashes/Skill/cleanup | PENDING |
+| Closure | Implementation PR108/109 merged; this change archived; Skill and cleanup complete; protected delivery is sealed before closure publication | PASS |
 
 Real cost0.0106CNY is an estimate from frozen prices, not a supplier billing receipt. The first balance rejection retains null usage; no reset or alternate key. Acceptance credential revoked and all local fixture services stopped; volumes/images retained. No R4 deployment/tag or R4.2 start.
 
