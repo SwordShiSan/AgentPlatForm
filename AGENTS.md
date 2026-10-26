@@ -1,3 +1,7 @@
+# R4.2 current conclusion (2026-10-27)
+
+R4.2 VERIFIED via protected PR113/114; R4 is2/4 and not RELEASED, cloud remains R3. Task-scoped permissions and resource binding do not enable production business tools. R4.3 requires its own Plan/OpenSpec. Local acceptance stack is stopped; retain volumes/images. Full local sandbox2880MiB remains reserved, cloud sandbox change remains DEFERRED and must not be archived into current specs. Evidence: evidence/r42/acceptance-index.json. Earlier status below is historical.
+
 # Current local sandbox decision (2026-10-26)
 The user deferred cloud sandbox migration because of cost. Continue the released local Docker + gVisor/runsc sandbox, runner/docker-java, shared XFS workspace, fixed trusted storage helpers and SeaweedFS immutable versions. Existing ownership/fence/authorization and precise stop receipts remain authoritative; local process/transport cancellation or lease expiry alone is not stopping proof.
 
