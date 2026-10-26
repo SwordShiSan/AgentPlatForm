@@ -1,3 +1,10 @@
+# Current local sandbox decision (2026-10-26)
+The user deferred cloud sandbox migration because of cost. Continue the released local Docker + gVisor/runsc sandbox, runner/docker-java, shared XFS workspace, fixed trusted storage helpers and SeaweedFS immutable versions. Existing ownership/fence/authorization and precise stop receipts remain authoritative; local process/transport cancellation or lease expiry alone is not stopping proof.
+
+Keep the canonical R3.C plan, reviews, ADR-21 through ADR-23 and all files in `openspec/changes/r3-cloud-sandbox-alignment` as DEFERRED reference material, not current implementation requirements or an R4 prerequisite. The CLI may still enumerate this retained directory; that does not authorize applying it. Do not archive/merge cloud deltas into main specs, mark unimplemented work verified, add cloud SDK dependencies or implement the proposed V15. Its old migration number is not reserved for future work.
+
+Retain the verified 2880MiB full local profile, including sandbox512MiB/runtime128MiB/helper64MiB. The cloud-only 2784MiB reallocation does not apply. Module limits may be adjusted from measurements within2887MiB total, with768MiB host reserve and no swap expansion; do not spend the local sandbox reserve twice. R3 remains RELEASED; R4 requires its own small-stage Plan/OpenSpec and has not started. This correction changes documentation only, not application, schema, deployment or cloud instances.
+
 # Current user-approved R0.4 workflow exception (2026-10-15)
 GitHub is version management only: Actions disabled, required CI retired, local/cloud exact-source acceptance evidence supports step→phase→main PRs. Preserve PR/non-force protection. No blanket third-party vulnerability remediation or source rebuild requirement; functionality/isolation/quota/resource/recovery gates remain. Same accepted Plan/OpenSpec applies; previous CI instructions below are historical where conflicting.
 
