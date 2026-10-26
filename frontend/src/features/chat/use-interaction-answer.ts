@@ -16,7 +16,7 @@ export function useInteractionAnswer(interaction: () => Pending, refresh: () => 
   let original: { key: string; body: Answer } | undefined;
   async function send(body: Answer) {
     if (busy.value||disposed) return;
-    original ??= { key: newRequestId(), body: { ...body, optionIds: [...body.optionIds] } };
+    original ??= { key: newRequestId(), body: { ...body, optionIds: [...(body.optionIds ?? [])] } };
     busy.value = true; error.value = '';
     try {
       const token = (await api.GET('/api/v1/auth/csrf',{signal:controller.signal})).data!.csrfToken; setCsrf(token);
