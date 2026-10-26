@@ -1,6 +1,6 @@
-## R4.2 implementation
+## R4.2 VERIFIED
 
-Task resources, versioned permission modes and revocable directory grants are implemented behind local opt-in flags. Acceptance and protected promotion are pending; cloud production remains R3. See [local acceptance](deploy/R4.2-LOCAL.md) and the [canonical plan](../项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R4.2-风险策略任务资源绑定与范围授权实施计划.md).
+任务工作区绑定、RISK_BASED/FULL与可撤销目录授权已通过本地验收，并经[PR113](https://github.com/SwordShiSan/AgentPlatForm/pull/113)／[PR114](https://github.com/SwordShiSan/AgentPlatForm/pull/114)晋级。**R4完成2/4、未RELEASED；云端继续R3。** 业务工具仍关闭，真实供应商调用0。见[验收索引](evidence/r42/acceptance-index.json)、[本地验收](deploy/R4.2-LOCAL.md)及[正式计划](../项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R4.2-风险策略任务资源绑定与范围授权实施计划.md)。云沙箱继续DEFERRED；R4.3另行Plan/OpenSpec。下方状态为历史。
 
 # AgentPlatForm
 
