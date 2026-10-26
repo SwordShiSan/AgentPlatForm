@@ -1,0 +1,236 @@
+{
+  "stage": "R4.2",
+  "status": "ACCEPTANCE_PASS_PENDING_PROTECTED_PROMOTION",
+  "verified": false,
+  "released": false,
+  "baselineMain": "042be4a1e4ad1a726192d280c8de710bd1070aec",
+  "implementationSource": "9d3e91843c722f78240bc5bbe1c8520b76c248ec",
+  "testAndConfigurationSource": "de06690c63b4fd32c4b9e3d4b8675fe3bf38131c",
+  "runtimeBaseline": "schema1",
+  "migration": "V16",
+  "migrationSha256": "4dcaa53192cc01c8b1b9c50c1808ba9d8a6416bd4765c8d2b240a22d515f350d",
+  "images": {
+    "api": {
+      "tag": "agentplatform-api:r42-9d3e91843c72",
+      "configId": "sha256:9ae26db56ace425148ff96a78203b36d0fb2c95b0c9e992ccd754d0246fc728e",
+      "source": "9d3e91843c722f78240bc5bbe1c8520b76c248ec",
+      "architecture": "linux/amd64"
+    },
+    "gateway": {
+      "tag": "agentplatform-gateway:r42-9d3e91843c72",
+      "configId": "sha256:c9ea2e01e105a5bfd3b8b87ed96d36f2c4ba2f7e13762f45cbe46eb01ecc5bc7",
+      "source": "9d3e91843c722f78240bc5bbe1c8520b76c248ec",
+      "architecture": "linux/amd64"
+    },
+    "provider-fixture": {
+      "tag": "agentplatform-provider-fixture:r42-9d3e91843c72",
+      "configId": "sha256:35b3c3c664bedf56e0b2465bf816d4b14298dbc8c9cf9550820d022ca37324c4",
+      "source": "9d3e91843c722f78240bc5bbe1c8520b76c248ec",
+      "architecture": "linux/amd64"
+    }
+  },
+  "jarSha256": "2cd3e789a9ca203cb7adb59966579dfb91777e5ef4a6e5d39e8f4142b260a846",
+  "gates": {
+    "engineeringAndRealDependencies": {
+      "status": "PASS",
+      "source": "9d3e91843c722f78240bc5bbe1c8520b76c248ec",
+      "cleanSource": true,
+      "exitCode": 0,
+      "receiptSha256": "e6c87ea430747624fb0f95eba880de0ed83bcabf4e59692f73a98ecf093d6ead",
+      "logSha256": "e1801fc9549893e11ae4228207a8d2269a4d04f133444dd1e866d49faa45a73e",
+      "realPostgresMqCases": 24,
+      "skippedR42Cases": 0
+    },
+    "sdkExperiment": {
+      "status": "PASS",
+      "cases": 28,
+      "supplierCalls": 0,
+      "logSha256": "f82662c5da91c6856b5ab156be39b3dc14c3d9d44ed960be2c7ab08fb992b36b"
+    },
+    "vue": {
+      "status": "PASS",
+      "cases": 44,
+      "logSha256": "c78429e972770e2c0bff25b92f2fb69a0ed2c220f30568adcf69f8f2bc9cb361"
+    },
+    "contracts": {
+      "status": "PASS",
+      "logSha256": "e4e838fd860926709e27faba1df6743c30872f9a43b9e121cb66679af8a630ea"
+    },
+    "links": {
+      "status": "PASS",
+      "logSha256": "021f3b9cb12cf44f72dcb90d1d97c19fafcbde4e384885e3e0e3621fd1970a08"
+    },
+    "typecheck": {
+      "status": "PASS",
+      "exitCode": 0,
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "basis": "Observed successful pinned vue-tsc command; production frontend tree unchanged"
+    },
+    "browser": {
+      "status": "PASS",
+      "cases": 5,
+      "method": "Latest result per named case; three Plan regressions and two targeted permission cases on the same immutable images",
+      "results": [
+        {
+          "name": "plan edit refresh confirmation stays on the same task and supports responsive themes",
+          "status": "PASS",
+          "testSource": "0123740789ee24157a53beae3da0672487b02b7d",
+          "durationMs": 40329
+        },
+        {
+          "name": "required question is not a new user message and plan-only delivery makes no extra model call",
+          "status": "PASS",
+          "testSource": "0123740789ee24157a53beae3da0672487b02b7d",
+          "durationMs": 21151
+        },
+        {
+          "name": "admin quota exemption does not permit reading another user plan",
+          "status": "PASS",
+          "testSource": "0123740789ee24157a53beae3da0672487b02b7d",
+          "durationMs": 17571
+        },
+        {
+          "name": "task workspace binding directory grants mode changes and revocation survive refresh",
+          "status": "PASS",
+          "testSource": "de06690c63b4fd32c4b9e3d4b8675fe3bf38131c",
+          "durationMs": 27711
+        },
+        {
+          "name": "two tabs cannot overwrite a permission revision and missing csrf or version fails",
+          "status": "PASS",
+          "testSource": "de06690c63b4fd32c4b9e3d4b8675fe3bf38131c",
+          "durationMs": 17619
+        }
+      ],
+      "runs": [
+        {
+          "status": "FAIL",
+          "testSource": "2779af05beeab92e2620bfc3e2d537b58599abfb",
+          "runtimeSource": "9d3e91843c722f78240bc5bbe1c8520b76c248ec",
+          "stats": {
+            "startTime": "2026-10-26T15:06:23.042Z",
+            "duration": 222360.48,
+            "expected": 1,
+            "skipped": 0,
+            "unexpected": 4,
+            "flaky": 0
+          },
+          "receiptSha256": "499ef3ae302fbff7c55da153f8ca9bc52fa0b0ce87c49f2220732c23444790d2"
+        },
+        {
+          "status": "FAIL",
+          "testSource": "0123740789ee24157a53beae3da0672487b02b7d",
+          "runtimeSource": "9d3e91843c722f78240bc5bbe1c8520b76c248ec",
+          "stats": {
+            "startTime": "2026-10-26T15:24:57.446Z",
+            "duration": 167858.444,
+            "expected": 3,
+            "skipped": 0,
+            "unexpected": 2,
+            "flaky": 0
+          },
+          "receiptSha256": "ea63c51eee16537665ceb6ca3e335d2a0f78f0e039c2ea30c8368710f5ef5b3e"
+        },
+        {
+          "status": "FAIL",
+          "testSource": "cdd72ecb50bcdaa1186c8667da7a5114736557fc",
+          "runtimeSource": "9d3e91843c722f78240bc5bbe1c8520b76c248ec",
+          "stats": {
+            "startTime": "2026-10-26T15:38:18.054Z",
+            "duration": 79970.54,
+            "expected": 0,
+            "skipped": 0,
+            "unexpected": 2,
+            "flaky": 0
+          },
+          "receiptSha256": "cd6193c7bf2bdf89b7946c212c3a16176844e3288faa635c708f936cc7ff9d00"
+        },
+        {
+          "status": "PASS",
+          "testSource": "de06690c63b4fd32c4b9e3d4b8675fe3bf38131c",
+          "runtimeSource": "9d3e91843c722f78240bc5bbe1c8520b76c248ec",
+          "stats": {
+            "startTime": "2026-10-26T16:01:59.787Z",
+            "duration": 57680.820999999996,
+            "expected": 2,
+            "skipped": 0,
+            "unexpected": 0,
+            "flaky": 0
+          },
+          "receiptSha256": "e98e0c80e58d5f269c98c96365856e60ef8a5534aef3596bcedb24562d366fb5"
+        }
+      ]
+    },
+    "resources": {
+      "status": "PASS",
+      "containerLimitMiB": 2080,
+      "daemonMemoryBytes": 8256712704,
+      "physicalMinimumHostVerified": false,
+      "sampleSha256": "7b7c9414ecbb18d510e37931879dfbf7ffbce02314b1f1125791c6f87c39fde3",
+      "description": "Single functional sample, not absolute peak or throughput proof"
+    },
+    "skill": {
+      "status": "PASS",
+      "validation": {
+        "status": "PASS",
+        "frontmatter": true,
+        "referenceLinks": 18,
+        "stageLearningUnique": true,
+        "officialPythonValidator": "NOT_RUN_MISSING_PYYAML",
+        "scope": "alternate structural validation; no dependency installed"
+      }
+    }
+  },
+  "supplierCalls": 0,
+  "production": {
+    "changed": false,
+    "continues": "R3",
+    "r4Released": false
+  },
+  "actionsEnabled": false,
+  "unchangedProductionSourceComparedToRuntime": true,
+  "roleGrantSha256": "a6c70c2b5b0b873f21ab81a61672dd39caca588acb7f0bfecacd9de26beff5e4",
+  "notRun": {
+    "officialPythonSkillValidator": "NOT_RUN_MISSING_PYYAML; alternate structural validation passed",
+    "physicalXfsGvisor": "NOT_RUN_UNCHANGED_R3_SCOPE",
+    "observation30min": "NOT_REQUIRED_BY_APPROVED_R42_PLAN",
+    "realSupplier": "NOT_RUN_REQUIRED_ZERO"
+  },
+  "failureHistory": [
+    {
+      "kind": "POSTGRES",
+      "status": "FAIL",
+      "protectedReceipt": ".cache/r42-local/postgres-tests-1793021983100971800/result.json",
+      "sha256": "ddf7ec87ff4a92a887391e94c7d7b0092e70442b8bd82a5b8d7e0a2e9e0b98c0"
+    },
+    {
+      "kind": "POSTGRES",
+      "status": "FAIL",
+      "protectedReceipt": ".cache/r42-local/postgres-tests-1793022432893959700/result.json",
+      "sha256": "58913f0bdde88eda0a593deaedb43ea27e7b696856a42a44758829cfd7a2578a"
+    },
+    {
+      "kind": "BROWSER",
+      "status": "FAIL",
+      "protectedReceipt": ".cache/r42-local/browser-1793027175499795100/result.json",
+      "sha256": "499ef3ae302fbff7c55da153f8ca9bc52fa0b0ce87c49f2220732c23444790d2"
+    },
+    {
+      "kind": "BROWSER",
+      "status": "FAIL",
+      "protectedReceipt": ".cache/r42-local/browser-1793028289875356500/result.json",
+      "sha256": "ea63c51eee16537665ceb6ca3e335d2a0f78f0e039c2ea30c8368710f5ef5b3e"
+    },
+    {
+      "kind": "BROWSER",
+      "status": "FAIL",
+      "protectedReceipt": ".cache/r42-local/browser-1793029089235893000/result.json",
+      "sha256": "cd6193c7bf2bdf89b7946c212c3a16176844e3288faa635c708f936cc7ff9d00"
+    }
+  ],
+  "delivery": {
+    "canonicalBodyOutsideGit": true,
+    "cloudBodySynced": false,
+    "copies": "Two protected local copies sealed after final clean checkout; no disk-failure independence claim"
+  }
+}
