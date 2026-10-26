@@ -59,7 +59,7 @@ public final class ChatExecution implements AutoCloseable {
             var startup=repository.executionStartup(lease);deadline=startup.deadline();
             List<Message> history=startup.history();
             Scope scope=new Scope(lease.spaceId().toString(),lease.userId().toString(),lease.conversationId().toString(),lease.taskId().toString(),lease.attemptId().toString(),lease.fence(),repository.planMode(lease));
-            List<Approval> approvals=repository.controlApprovals(lease);boolean controls=scope.planMode()||!approvals.isEmpty();
+            List<Approval> approvals=repository.controlApprovals(lease);boolean controls=scope.planMode()||!approvals.isEmpty()||repository.plan(new ChatData.Actor(lease.userId(),lease.spaceId()),lease.taskId()).current()!=null;
             AtomicReference<UUID> turnId=new AtomicReference<>();String frozenModelName=repository.modelName(lease);final Instant executionDeadline=deadline;
             ModelGateway metered=new ModelGateway(){
                 @Override public String modelName(Scope ignored){return frozenModelName;}
@@ -119,6 +119,9 @@ public final class ChatExecution implements AutoCloseable {
                 });}
                 public CompletionStage<Void> afterModelCommitted(Scope s,Turn t){return control.during(()->{var call=accepted.get();if(call==null)throw new ChatFailure(409,"ACCEPTED_CALL_MISSING");repository.commitRound(lease,turnId.get(),t,call);FixtureFaults.pause("round-before-checkpoint");return CompletableFuture.completedFuture(null);});}
                 public CompletionStage<Void> beforeControlBatch(Scope s,List<com.agentplatform.types.harness.HarnessData.Call> calls){
+                    return control.during(()->{if(controls)repository.stageControls(lease,calls);return CompletableFuture.completedFuture(null);});
+                }
+                public CompletionStage<Void> beforeWaiting(Scope s,List<com.agentplatform.types.harness.HarnessData.Call> calls){
                     return control.during(()->{if(controls)repository.stageControls(lease,calls);return CompletableFuture.completedFuture(null);});
                 }
                 public CompletionStage<Void> beforeTool(Scope s,com.agentplatform.types.harness.HarnessData.Call c){return control.during(()->{

@@ -23,7 +23,7 @@
     <select id="taskPending" resultType="com.agentplatform.infrastructure.dao.po.PlanRows$InteractionRow">SELECT <include refid="interactionColumns"/> FROM pf.task_interaction i WHERE i.task_id=#{task} AND i.status='OPEN' ORDER BY i.created_at,i.id</select>
     <insert id="insertInteraction">
         INSERT INTO pf.task_interaction(id,space_id,task_id,source_attempt_id,call_id,kind,optional,payload_json,revision_id,expires_at)
-        VALUES(#{id},#{space},#{task},#{attempt},#{call},#{kind},#{optional},#{payload}::jsonb,#{revision},clock_timestamp()+CASE WHEN #{kind}='PLAN_APPROVAL' THEN interval '7 days' ELSE interval '24 hours' END)
+        VALUES(#{id},#{space},#{task},#{attempt},#{call},#{kind},#{optional},#{payload}::jsonb,#{revision},coalesce(#{expires,jdbcType=TIMESTAMP_WITH_TIMEZONE},clock_timestamp()+CASE WHEN #{kind}='PLAN_APPROVAL' THEN interval '7 days' ELSE interval '24 hours' END))
     </insert>
     <update id="closeInteraction">UPDATE pf.task_interaction SET status=#{state},version=version+1 WHERE id=#{id} AND status='OPEN'</update>
     <sql id="answerColumns">id,interaction_id,task_id,command_id,request_hash,decision,content_json</sql>
@@ -32,10 +32,12 @@
     <insert id="insertAnswer">INSERT INTO pf.interaction_answer(id,space_id,task_id,interaction_id,user_id,expected_version,command_id,request_hash,decision,content_json,trace_id) VALUES(#{id},#{interaction.spaceId},#{interaction.taskId},#{interaction.id},#{user},#{interaction.version},#{command},#{hash},#{decision},#{content}::jsonb,#{trace})</insert>
     <insert id="insertResume">INSERT INTO pf.interaction_resume(id,space_id,task_id,source_attempt_id,checkpoint_id,answer_id,call_id,answer_hash,review_revision_id,generation) VALUES(#{id},#{interaction.spaceId},#{interaction.taskId},#{interaction.sourceAttemptId},#{checkpoint},#{answer},#{interaction.callId},#{hash},#{revision},#{generation})</insert>
     <sql id="resumeColumns">id,task_id,source_attempt_id,checkpoint_id,answer_id,call_id,answer_hash,review_revision_id,generation,target_attempt_id,status</sql>
-    <select id="resume" resultType="com.agentplatform.infrastructure.dao.po.PlanRows$ResumeRow">SELECT <include refid="resumeColumns"/> FROM pf.interaction_resume WHERE target_attempt_id=#{attempt}</select>
+    <select id="resume" resultType="com.agentplatform.infrastructure.dao.po.PlanRows$ResumeRow">SELECT r.id,r.task_id,r.source_attempt_id,r.checkpoint_id,r.answer_id,r.call_id,r.answer_hash,r.review_revision_id,r.generation,b.attempt_id AS target_attempt_id,r.status FROM pf.interaction_resume r JOIN pf.interaction_resume_binding b ON b.resume_id=r.id AND b.space_id=r.space_id AND b.task_id=r.task_id WHERE b.attempt_id=#{attempt}</select>
     <select id="queuedResume" resultType="com.agentplatform.infrastructure.dao.po.PlanRows$ResumeRow">SELECT <include refid="resumeColumns"/> FROM pf.interaction_resume WHERE task_id=#{task} AND status='QUEUED'</select>
     <update id="claimResume">UPDATE pf.interaction_resume SET target_attempt_id=#{attempt},status='CLAIMED' WHERE id=#{id} AND status='QUEUED'</update>
-    <update id="finishResume">UPDATE pf.interaction_resume SET status='COMPLETED' WHERE target_attempt_id=#{attempt} AND status='CLAIMED'</update>
+    <insert id="bindResume">INSERT INTO pf.interaction_resume_binding(resume_id,space_id,task_id,attempt_id,generation,fence) SELECT id,space_id,task_id,#{lease.attemptId},(SELECT generation FROM pf.execution_dispatch WHERE task_id=#{lease.taskId}),#{lease.fence} FROM pf.interaction_resume WHERE id=#{id} AND task_id=#{lease.taskId} AND space_id=#{lease.spaceId} AND status='CLAIMED'</insert>
+    <select id="attemptCalls" resultType="long">SELECT count(*) FROM pf.model_call WHERE attempt_id=#{attempt}</select>
+    <update id="finishResume">UPDATE pf.interaction_resume r SET status='COMPLETED' WHERE id=(SELECT resume_id FROM pf.interaction_resume_binding WHERE attempt_id=#{attempt}) AND status='CLAIMED' AND EXISTS(SELECT 1 FROM pf.control_input c WHERE c.task_id=r.task_id AND c.call_id=r.call_id AND c.status='COMMITTED')</update>
     <update id="waitingTask">UPDATE pf.task SET status='WAITING_INPUT',reason_code=NULL,version=version+1,updated_at=clock_timestamp() WHERE id=#{task} AND status='RUNNING' AND NOT cancel_requested</update>
     <update id="updatePlanOption">UPDATE pf.task SET plan_mode=#{plan} WHERE id=#{task}</update>
     <update id="closeTaskInteractions">UPDATE pf.task_interaction SET status=#{state},version=version+1 WHERE task_id=#{task} AND status='OPEN'</update>

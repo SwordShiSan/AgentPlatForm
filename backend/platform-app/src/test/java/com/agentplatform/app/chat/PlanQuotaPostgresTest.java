@@ -201,6 +201,49 @@ class PlanQuotaPostgresTest {
         repository.stopped(lease,"FAILED","FIXTURE_DONE",null,"f".repeat(64));
         assertEquals(0,repository.quota(user).stream().filter(q->q.metric()==QuotaData.Metric.TOKENS).findFirst().orElseThrow().reserved());
     }
+    @Test void claimedAnswerCrashRebindsTheSameAnswerWithoutReplayingTheModel() throws Exception {
+        var task=task(user,true);var calls=new AtomicInteger();var provider=provider(calls);
+        try(var execution=new ChatExecution(repository,provider,cipher,work)){execution.run(claim(task));}
+        var pending=repository.pending(user,task.conversationId()).getFirst();
+        repository.answer(user,task.id(),pending.interactionId(),UUID.randomUUID(),new Answer(pending.version(),Decision.EXECUTE_PLAN,"",List.of()));
+        var lost=claim(task); // committed claim, then stopped before startup/ACK/execution
+        repository.stopped(lost,"BLOCKED","WORKER_INTERRUPTED",null,"2".repeat(64));
+        var recovery=repository.recovery(user,task.id());assertTrue(recovery.eligible(),recovery.reasonCode());
+        repository.restore(new RecoveryLedger.RestoreCommand(UUID.randomUUID(),task.id(),recovery.checkpointId(),lost.attemptId(),recovery.taskVersion(),recovery.revision(),"fixture"));
+        var target=claim(task);
+        try(var execution=new ChatExecution(repository,provider,cipher,work)){execution.run(target);}
+        assertEquals("SUCCEEDED",repository.task(user,task.id()).status());assertEquals(3,calls.get());
+        assertEquals(1,count("SELECT count(*) FROM pf.interaction_answer WHERE task_id='"+task.id()+"'"));
+        assertEquals(2,count("SELECT count(*) FROM pf.interaction_resume_binding WHERE task_id='"+task.id()+"'"));
+    }
+    @Test void optionalQuestionConsumesOneAnswerAtTheNextSafePointWithoutAnotherAttempt() throws Exception {
+        var task=task(user,true);var calls=new AtomicInteger();var entered=new CountDownLatch(1);var release=new CountDownLatch(1);
+        var delegate=scripted(List.of(
+                control("optional","platform_ask_user",Map.of("question","可选风格？","optional",true,"options",List.of())),
+                control("write","platform_plan_write",Map.of("title","文本计划","markdown","按文本处理。")),
+                control("review","platform_plan_review",Map.of())),calls);
+        ChatProvider provider=new ChatProvider(){
+            public boolean real(){return false;}
+            public CompletionStage<Result> stream(String key,List<HarnessData.Message> input,java.util.function.Consumer<String> text){throw new AssertionError();}
+            public Exchange openTyped(String model,String key,List<HarnessData.Message> input,List<HarnessData.ToolDefinition> definitions,java.util.function.Consumer<String> text){
+                if(calls.get()==1){entered.countDown();try{assertTrue(release.await(10,TimeUnit.SECONDS));}catch(InterruptedException e){throw new RuntimeException(e);}}
+                return delegate.openTyped(model,key,input,definitions,text);
+            }
+        };
+        try(var execution=new ChatExecution(repository,provider,cipher,work)){
+            var lease=claim(task);var running=CompletableFuture.runAsync(()->execution.run(lease));
+            try{
+                assertTrue(entered.await(10,TimeUnit.SECONDS));var q=repository.pending(user,task.conversationId()).getFirst();assertTrue(q.optional());
+                UUID command=UUID.randomUUID();var answer=new Answer(q.version(),Decision.ANSWER,"简短",List.of());
+                var accepted=repository.answer(user,task.id(),q.interactionId(),command,answer);
+                assertEquals(accepted,repository.answer(user,task.id(),q.interactionId(),command,answer));
+            }finally{release.countDown();}
+            running.get(20,TimeUnit.SECONDS);
+        }
+        assertEquals(1,count("SELECT count(*) FROM pf.control_input_consumption WHERE task_id='"+task.id()+"'"));
+        assertEquals(1,count("SELECT count(*) FROM pf.attempt WHERE task_id='"+task.id()+"'"));
+        assertEquals("WAITING_INPUT",repository.task(user,task.id()).status());repository.cancel(user,task.id(),UUID.randomUUID());
+    }
     @Test void safeCheckpointRecoveryPreservesActivityBudgetAcrossAUserWait() throws Exception {
         var lease=claim(task(user,false));var startup=repository.executionStartup(lease);
         byte[] state=("{\"user_id\":\""+lease.userId()+"\",\"session_id\":\""+lease.conversationId()+"\",\"context\":[]}").getBytes(java.nio.charset.StandardCharsets.UTF_8);

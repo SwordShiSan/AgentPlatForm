@@ -20,7 +20,7 @@ public interface PlanMapper {
     InteractionRow interaction(@Param("space") UUID space,@Param("task") UUID task,@Param("id") UUID id);
     List<InteractionRow> pending(@Param("space") UUID space,@Param("conversation") UUID conversation);
     List<InteractionRow> taskPending(@Param("task") UUID task);
-    int insertInteraction(@Param("id") UUID id,@Param("space") UUID space,@Param("task") UUID task,@Param("attempt") UUID attempt,@Param("call") String call,@Param("kind") String kind,@Param("optional") boolean optional,@Param("payload") String payload,@Param("revision") UUID revision);
+    int insertInteraction(@Param("id") UUID id,@Param("space") UUID space,@Param("task") UUID task,@Param("attempt") UUID attempt,@Param("call") String call,@Param("kind") String kind,@Param("optional") boolean optional,@Param("payload") String payload,@Param("revision") UUID revision,@Param("expires") java.time.Instant expires);
     int closeInteraction(@Param("id") UUID id,@Param("state") String state);
     AnswerRow answer(@Param("interaction") UUID interaction);
     AnswerRow command(@Param("user") UUID user,@Param("command") UUID command);
@@ -29,6 +29,8 @@ public interface PlanMapper {
     ResumeRow resume(@Param("attempt") UUID attempt);
     ResumeRow queuedResume(@Param("task") UUID task);
     int claimResume(@Param("id") UUID id,@Param("attempt") UUID attempt);
+    int bindResume(@Param("id") UUID id,@Param("lease") Lease lease);
+    long attemptCalls(@Param("attempt") UUID attempt);
     int finishResume(@Param("attempt") UUID attempt);
     int waitingTask(@Param("task") UUID task);
     int updatePlanOption(@Param("task") UUID task,@Param("plan") boolean plan);

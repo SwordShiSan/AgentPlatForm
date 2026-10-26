@@ -23,7 +23,7 @@ public final class PlanControls {
     public record Question(String question, boolean optional, List<Option> options) {
         public Question {
             text(question, 32768);
-            options = options == null ? List.of() : List.copyOf(options);
+            options = List.copyOf(java.util.Objects.requireNonNull(options, "QUESTION_OPTIONS_REQUIRED"));
             if (options.size() > 16) throw new IllegalArgumentException("QUESTION_OPTIONS_LIMIT");
             var ids = new HashSet<String>();
             for (Option option : options) if (!ids.add(option.id())) throw new IllegalArgumentException("QUESTION_OPTION_DUPLICATE");

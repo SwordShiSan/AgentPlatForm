@@ -22,6 +22,7 @@ V15 增加 plan、不可变 plan_revision、interaction、interaction_answer、c
 答案流程：实时授权/版本→答案 CAS、交互水位、恢复绑定及 outbox 同事务→MQ confirm→领取提交→ACK→新 attempt。校验原 COMMITTED checkpoint、哈希、bundle、停止收据；原 checkpoint 不改写，答案是独立控制增量，不伪造 USER 消息。保持 taskId、模型/凭据/预算身份；ConfirmResult 只绑定原 call，无 PermissionRule 放宽。UNKNOWN 不重放。
 
 ## 交互规则
+恢复绑定另保存不可变的 attempt 绑定历史。回答已领取但尚未开始物理调用即崩溃时，仅在精确停止证明、原 checkpoint/答案绑定、零物理调用及完整哈希校验全部满足后，允许新 attempt 重新绑定同一答案；不覆盖原绑定。控制意图已提交而等待未封存时，恢复后的 ASK 以新交互身份绑定当前 attempt，保留原期限并拒绝旧确认。任何 UNKNOWN 调用仍阻断恢复。
 PLAN 支持 EXECUTE_PLAN、REVISE_PLAN、REJECT_PLAN、DELIVER_PLAN。直接编辑 If-Match 创建不可变修订，关闭旧审阅并建立新审阅水位；原 SDK review call 通过 resume_binding 显式绑定当前审阅。旧确认 412。拒绝回到讨论，不等于取消；仅交付方案直接成功，不再请求模型。执行结果是已批准修订的文本续接。
 
 QUESTION 支持选项、自填，optional 才能 SKIP；可选问题非阻塞，在下一安全点消费一次，任务结束后不能复活。计划审批 7 天、问题 24 小时，到期关闭交互并明确结束等待，永不自动允许。计划 128KiB，答案/修改要求 32KiB，按 UTF-8 字节校验；超上下文保留内容并明确拒绝，不截断。取消等待任务关闭交互，释放可用预留；取消/答案/过期使用相同锁序和版本。

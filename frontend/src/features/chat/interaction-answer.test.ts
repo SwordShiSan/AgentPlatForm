@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-import { effectScope } from 'vue';
+import { effectScope, reactive } from 'vue';
 import { useInteractionAnswer } from './use-interaction-answer';
 const mocks=vi.hoisted(()=>({GET:vi.fn(),POST:vi.fn()}));
 vi.mock('../../shared/api/client', () => ({ api:mocks }));
@@ -17,4 +17,13 @@ it('a response loss retries the exact answer and key while preserving the UI inp
   expect(requests[1]?.[1]?.body).toEqual({ expectedVersion: 1, decision: 'ANSWER', text: '原回答😀', optionIds: [] });
   expect(requests[1]?.[1]?.params?.header?.['Idempotency-Key']).toBe(requests[0]?.[1]?.params?.header?.['Idempotency-Key']);
   expect(state.uncertain.value).toBe(false); expect(refresh).toHaveBeenCalledTimes(2); scope.stop();
+});
+it('freezes reactive option selections without cloning a Vue proxy', async () => {
+  mocks.POST.mockResolvedValue({ data: {} });
+  const scope = effectScope(); const state = scope.run(() => useInteractionAnswer(() => interaction, vi.fn()))!;
+  const selected = reactive(['brief']);
+  await state.send({ expectedVersion: 1, decision: 'ANSWER', text: '', optionIds: selected });
+  selected.push('changed');
+  expect(mocks.POST.mock.calls[0]?.[1]?.body.optionIds).toEqual(['brief']);
+  expect(state.error.value).toBe(''); scope.stop();
 });

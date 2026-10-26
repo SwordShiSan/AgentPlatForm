@@ -140,7 +140,12 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
         if(c.recovery().unknown(t.id())>0)throw new ChatFailure(409,"RECOVERY_UNKNOWN_EFFECT");
         if(c.recovery().newerTasks(t.id())>0)throw new ChatFailure(409,"RECOVERY_CONVERSATION_ADVANCED");
         if(cp==null)throw new ChatFailure(409,"CHECKPOINT_NOT_COMMITTED");
-        if(!latest.equals(cp.attemptId()))throw new ChatFailure(409,"CHECKPOINT_ATTEMPT_MISMATCH");
+        if(!latest.equals(cp.attemptId())){
+            var input=c.plan().resume(latest);
+            if(input==null||!"CLAIMED".equals(input.status())||!input.checkpointId().equals(cp.id())
+                    ||!input.sourceAttemptId().equals(cp.attemptId())||c.plan().attemptCalls(latest)!=0)
+                throw new ChatFailure(409,"CHECKPOINT_ATTEMPT_MISMATCH");
+        }
         if(daily(c,t.id())){
             if(c.executionPolicy().policy(t.id()).activeMillis()>=120000)throw new ChatFailure(409,"RECOVERY_DEADLINE_EXCEEDED");
         }else if(t.deadline()==null||!t.deadline().isAfter(c.recovery().now()))throw new ChatFailure(409,"RECOVERY_DEADLINE_EXCEEDED");
@@ -206,6 +211,13 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
         if(resume!=null){
             if(!resume.checkpointId().equals(request.checkpointId())||resume.generation()!=c.recovery().generation(l.taskId())
                     ||c.plan().claimResume(resume.id(),l.attemptId())!=1)throw new ChatFailure(409,"CONTROL_RESUME_BINDING_MISMATCH");
+            if(c.plan().bindResume(resume.id(),l)!=1)throw new ChatFailure(409,"CONTROL_RESUME_BINDING_MISMATCH");
+        }else{
+            var prior=c.plan().resume(request.sourceAttemptId());
+            if(prior!=null&&"CLAIMED".equals(prior.status())&&prior.checkpointId().equals(request.checkpointId())){
+                if(c.plan().attemptCalls(request.sourceAttemptId())!=0||c.plan().bindResume(prior.id(),l)!=1)
+                    throw new ChatFailure(409,"CONTROL_RESUME_BINDING_MISMATCH");
+            }
         }
         copy(c,l,request.checkpointId());
     }

@@ -46,7 +46,10 @@ final class PlanPersistence extends ChatPersistenceSupport implements PlanLedger
         return open(new Actor(lease.userId(),lease.spaceId()),lease.taskId(),lease.conversationId(),lease.attemptId(),call,kind,optional,payload,revision);
     }
     private UUID open(Actor actor,UUID task,UUID conversation,UUID sourceAttempt,String call,String kind,boolean optional,String payload,UUID revision){
-        UUID id=Uuid7.next();mappers.plan().insertInteraction(id,actor.spaceId(),task,sourceAttempt,call,kind,optional,payload,revision);
+        return open(actor,task,conversation,sourceAttempt,call,kind,optional,payload,revision,null);
+    }
+    private UUID open(Actor actor,UUID task,UUID conversation,UUID sourceAttempt,String call,String kind,boolean optional,String payload,UUID revision,java.time.Instant expires){
+        UUID id=Uuid7.next();mappers.plan().insertInteraction(id,actor.spaceId(),task,sourceAttempt,call,kind,optional,payload,revision,expires);
         var row=mappers.plan().interaction(actor.spaceId(),task,id);
         event(mappers,actor,conversation,task,"interaction.opened",row.version(),
                 Map.of("interactionId",id.toString(),"taskId",task.toString(),"kind",kind,"optional",optional,"version",row.version(),"expiresAt",row.expiresAt().toString()));
@@ -71,7 +74,21 @@ final class PlanPersistence extends ChatPersistenceSupport implements PlanLedger
         if(calls.size()!=1||!PlanControls.NAMES.contains(calls.getFirst().name()))throw new ChatFailure(422,"CONTROL_BATCH_LIMIT");
         var call=calls.getFirst();String digest=hash(MyBatisExecutionLedger.canonicalJson(call));
         var existing=c.plan().control(lease.taskId(),call.id());
-        if(existing!=null){if(!digest.equals(existing.callHash()))throw new ChatFailure(409,"CONTROL_CALL_CONFLICT");return null;}
+        if(existing!=null){
+            if(!digest.equals(existing.callHash()))throw new ChatFailure(409,"CONTROL_CALL_CONFLICT");
+            if(existing.interactionId()!=null){
+                var old=c.plan().interaction(lease.spaceId(),lease.taskId(),existing.interactionId());
+                if(!old.optional()&&"OPEN".equals(old.status())&&!old.sourceAttemptId().equals(lease.attemptId())){
+                    if(c.recovery().hasStop(lease.taskId(),old.sourceAttemptId())!=1)throw new ChatFailure(409,"EXECUTION_STOP_NOT_CONFIRMED");
+                    if(!old.expiresAt().isAfter(c.recovery().now()))throw new ChatFailure(409,"INTERACTION_EXPIRED");
+                    c.plan().closeInteraction(old.id(),"SUPERSEDED");var actor=new Actor(lease.userId(),lease.spaceId());
+                    event(c,actor,lease.conversationId(),lease.taskId(),"interaction.resolved",old.version()+1,Map.of("taskId",lease.taskId().toString(),"interactionId",old.id().toString(),"decision","SUPERSEDED","version",old.version()+1));
+                    UUID replacement=open(actor,lease.taskId(),lease.conversationId(),lease.attemptId(),call.id(),old.kind(),false,old.payloadJson(),old.revisionId(),old.expiresAt());
+                    c.plan().bindControl(existing.id(),replacement);
+                }else if(!Set.of("OPEN","ANSWERED").contains(old.status()))throw new ChatFailure(409,"INTERACTION_CLOSED");
+            }
+            return null;
+        }
         if(!c.executionPolicy().policy(lease.taskId()).planMode()&&"platform_plan_write".equals(call.name()))throw new ChatFailure(403,"APPROVED_PLAN_IMMUTABLE_FOR_EXECUTION");
         UUID id=Uuid7.next();c.plan().insertControl(id,lease,call.id(),call.name(),digest,json(call.arguments()));
         UUID interaction=null;
@@ -120,8 +137,12 @@ final class PlanPersistence extends ChatPersistenceSupport implements PlanLedger
             if(answer==null)text=json(Map.of("optional",true,"instruction","Optional question opened; continue without inventing an answer."));
             else{
                 var result=new LinkedHashMap<String,Object>();result.put("decision",answer.decision());result.put("answer",object(answer.contentJson()));
-                if("PLAN_APPROVAL".equals(interaction.kind()))result.put("approvedPlan",revision(c.plan().revision(interaction.revisionId())));
-                result.put("instruction","Use only this explicit decision and plan revision. Continue text only; no file, shell or business tool permissions are granted.");
+                if("PLAN_APPROVAL".equals(interaction.kind()))result.put("EXECUTE_PLAN".equals(answer.decision())?"approvedPlan":"planUnderDiscussion",revision(c.plan().revision(interaction.revisionId())));
+                result.put("instruction",switch(answer.decision()){
+                    case "EXECUTE_PLAN" -> "Continue text processing using exactly approvedPlan. No file, shell or business tool permissions are granted.";
+                    case "REVISE_PLAN", "REJECT_PLAN" -> "Do not execute the rejected or superseded plan. Discuss the supplied feedback, save a new revision and request a new review. No business tools are authorized.";
+                    default -> "This is clarification data only, not an execution or permission grant. Do not invent answers. Continue the text-only planning discussion.";
+                });
                 text=json(result);
             }
         }

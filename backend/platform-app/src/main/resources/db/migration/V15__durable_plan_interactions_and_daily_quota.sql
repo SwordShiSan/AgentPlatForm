@@ -69,6 +69,13 @@ CREATE TABLE pf.interaction_resume (
  FOREIGN KEY(space_id,task_id,review_revision_id) REFERENCES pf.plan_revision(space_id,task_id,id)
 );
 CREATE UNIQUE INDEX one_queued_interaction_resume ON pf.interaction_resume(task_id) WHERE status='QUEUED';
+CREATE TABLE pf.interaction_resume_binding (
+ resume_id uuid NOT NULL REFERENCES pf.interaction_resume(id), space_id uuid NOT NULL, task_id uuid NOT NULL,
+ attempt_id uuid PRIMARY KEY, generation bigint NOT NULL, fence bigint NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ FOREIGN KEY(space_id,task_id,attempt_id) REFERENCES pf.attempt(space_id,task_id,id)
+);
+CREATE TRIGGER interaction_resume_binding_immutable BEFORE UPDATE OR DELETE ON pf.interaction_resume_binding FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
 CREATE TABLE pf.control_input_consumption (
  answer_id uuid PRIMARY KEY, space_id uuid NOT NULL, task_id uuid NOT NULL, attempt_id uuid NOT NULL,
  answer_hash text NOT NULL CHECK(answer_hash ~ '^[a-f0-9]{64}$'), created_at timestamptz NOT NULL DEFAULT clock_timestamp(),

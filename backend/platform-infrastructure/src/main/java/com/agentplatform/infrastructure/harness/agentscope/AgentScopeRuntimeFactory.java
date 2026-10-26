@@ -152,8 +152,10 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
                 if (asking.get()) {
                     List<Call> pending = turn == null ? restoredPending() : turn.round().calls();
                     boolean control = pending.stream().anyMatch(call -> catalog.get(call.name()).category() == ToolCategory.CONTROL);
-                    saveCheckpoint(control ? CheckpointPhase.WAITING_INPUT : CheckpointPhase.TERMINAL);
-                    return Mono.just(new Outcome(control ? Completion.WAITING_INPUT : Completion.WAITING_APPROVAL, "", pending));
+                    return await(()->boundary.beforeWaiting(request.scope(),pending)).then(Mono.fromCallable(()->{
+                        saveCheckpoint(control ? CheckpointPhase.WAITING_INPUT : CheckpointPhase.TERMINAL);
+                        return new Outcome(control ? Completion.WAITING_INPUT : Completion.WAITING_APPROVAL,"",pending);
+                    }));
                 }
                 saveCheckpoint(CheckpointPhase.TERMINAL);
                 Message candidate = Message.text(Role.ASSISTANT, turn == null ? "" : turn.round().text());
@@ -186,7 +188,7 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
             Set<String> finished=canonical.stream().flatMap(message->message.observations().stream()).filter(o->o.status()==OperationStatus.SUCCEEDED).map(Observation::callId).collect(java.util.stream.Collectors.toSet());
             snapshot.contextMutable().clear();
             Set<String> waiting = phase == CheckpointPhase.WAITING_INPUT
-                    ? pendingCalls.get().stream().map(Call::id).collect(java.util.stream.Collectors.toSet()) : Set.of();
+                    ? (pendingCalls.get().isEmpty()?restoredPending():pendingCalls.get()).stream().map(Call::id).collect(java.util.stream.Collectors.toSet()) : Set.of();
             canonical.stream().map(codec::encode).map(message->message.withContent(message.getContent().stream().map(block->{
                 if(block instanceof ToolUseBlock tool) {
                     if(finished.contains(tool.getId()))return (ContentBlock)tool.withState(ToolCallState.FINISHED);

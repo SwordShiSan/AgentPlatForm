@@ -43,6 +43,7 @@ public final class HarnessPorts {
         default CompletionStage<Void> beforeControlBatch(Scope scope, List<Call> calls) {
             return java.util.concurrent.CompletableFuture.completedFuture(null);
         }
+        default CompletionStage<Void> beforeWaiting(Scope scope,List<Call> calls){return java.util.concurrent.CompletableFuture.completedFuture(null);}
         CompletionStage<Void> beforeTool(Scope scope, Call call);
         CompletionStage<Void> afterToolCommitted(Scope scope, Call call, Observation result);
         CompletionStage<Completion> beforeStop(Scope scope, Message candidate);
