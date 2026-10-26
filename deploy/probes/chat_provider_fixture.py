@@ -51,6 +51,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(422)
             return
         messages = body.get('messages', [])
+        control_tools = {tool.get('function', {}).get('name') for tool in body.get('tools', [])}
+        plan_scenario = 'platform_plan_write' in control_tools
         prompt = messages[-1].get('content', '') if messages else ''
         if not isinstance(prompt, str):
             prompt = json.dumps(prompt)
@@ -84,7 +86,32 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.flush()
 
         try:
-            if prompt.startswith('fixture:recovery-tool') and not any(message.get('role') == 'tool' for message in messages):
+            if plan_scenario:
+                calls = [call for message in messages for call in message.get('tool_calls', [])]
+                names = {call.get('id'): call.get('function', {}).get('name') for call in calls}
+                results = [message for message in messages if message.get('role') == 'tool']
+                last_result = results[-1] if results else {}
+                last_name = names.get(last_result.get('tool_call_id'))
+                last_content = json.dumps(last_result.get('content', ''), ensure_ascii=False)
+                user_text = next((message.get('content', '') for message in reversed(messages) if message.get('role') == 'user'), '')
+                name, arguments = None, None
+                if not results and 'fixture:plan-question' in str(user_text):
+                    name, arguments = 'platform_ask_user', {'question': '希望采用哪种文本风格？', 'optional': False,
+                        'options': [{'id': 'brief', 'label': '简洁'}, {'id': 'detailed', 'label': '详细'}]}
+                elif last_name == 'platform_plan_write':
+                    name, arguments = 'platform_plan_review', {}
+                elif last_name == 'platform_plan_review' and not any(action in last_content for action in ['REVISE_PLAN', 'REJECT_PLAN']):
+                    chunk({'content': '已按确认的计划完成文本处理：666。'}, 'stop')
+                else:
+                    name, arguments = 'platform_plan_write', {'title': '文本处理计划',
+                        'markdown': '1. 明确用户提供的文本需求。\n2. 在当前对话中组织并输出文本结果。\n3. 不访问文件、终端或其他业务工具。'}
+                if name:
+                    encoded = json.dumps(arguments, ensure_ascii=False)
+                    middle = max(1, len(encoded) // 2)
+                    chunk({'tool_calls': [{'index': 0, 'id': 'control-' + str(len(calls) + 1), 'type': 'function',
+                        'function': {'name': name, 'arguments': encoded[:middle]}}]})
+                    chunk({'tool_calls': [{'index': 0, 'function': {'arguments': encoded[middle:]}}]}, 'tool_calls')
+            elif prompt.startswith('fixture:recovery-tool') and not any(message.get('role') == 'tool' for message in messages):
                 chunk({'tool_calls': [{'index': 0, 'id': 'recovery-operation-1', 'type': 'function',
                        'function': {'name': 'recovery_probe', 'arguments': '{"text":"one"}'}}]}, 'tool_calls')
             elif prompt.startswith('fixture:empty'):

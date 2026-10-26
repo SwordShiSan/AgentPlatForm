@@ -19,11 +19,18 @@ public interface ChatApi {
     record RecoveryView(String taskId,boolean eligible,String stage,String reasonCode,long revision,
                         long taskVersion,String checkpointId,String traceId) {}
     record MessageView(String id,String taskId,String role,List<Map<String,Object>> blocks,String status,long version) {}
-    record Snapshot(int schemaVersion,long cursor,List<MessageView> messages,List<TaskView> tasks,List<Object> pending,List<Object> artifacts) {}
+    record Snapshot(int schemaVersion,long cursor,List<MessageView> messages,List<TaskView> tasks,List<com.agentplatform.types.PlanInteractionData.Pending> pending,List<Object> artifacts) {}
     record EventView(int schemaVersion,String eventId,String spaceId,String conversationId,String taskId,long seq,String type,String occurredAt,long entityVersion,Map<String,Object> payload) {}
     record UsageView(String callId,String status,Long inputTokens,Long outputTokens,Long costMicros,boolean estimated) {}
+    record QuotaView(String metric,boolean unlimited,Long limit,long used,long reserved,Long remaining,String resetAt,long policyVersion) {}
     ConversationView first(Caller caller,String key,String title,String model,String source,String text);
     Accepted submitConfigured(Caller caller,String conversation,String key,String model,String source,String text);
+    ConversationView firstPlan(Caller caller,String key,String title,String model,String source,String text,boolean plan);
+    Accepted submitPlan(Caller caller,String conversation,String key,String model,String source,String text,boolean plan);
+    com.agentplatform.types.PlanInteractionData.Plan plan(Caller caller,String task);
+    com.agentplatform.types.PlanInteractionData.Plan editPlan(Caller caller,String task,long expected,com.agentplatform.types.PlanInteractionData.Edit edit);
+    com.agentplatform.types.PlanInteractionData.Accepted answer(Caller caller,String task,String interaction,String key,com.agentplatform.types.PlanInteractionData.Answer answer);
+    List<QuotaView> quota(Caller caller);
     Map<String,Object> diagnostics(Caller caller,String task);
     Map<String,Object> preferences(Caller caller);
     Map<String,Object> preferences(Caller caller,long expected,Map<String,Object> patch);

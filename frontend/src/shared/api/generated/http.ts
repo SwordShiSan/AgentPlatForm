@@ -666,6 +666,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tasks/{id}/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTaskPlan"];
+        put: operations["editTaskPlan"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{id}/interactions/{interactionId}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["answerTaskInteraction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/usage-quota": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getMyUsageQuota"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -822,7 +870,7 @@ export interface components {
             /** Format: uuid */
             conversationId: string;
             /** @enum {string} */
-            status: "QUEUED" | "RUNNING" | "BLOCKED" | "SUCCEEDED" | "FAILED" | "CANCELLED";
+            status: "QUEUED" | "RUNNING" | "WAITING_INPUT" | "BLOCKED" | "SUCCEEDED" | "FAILED" | "CANCELLED";
             cancelRequested: boolean;
             reasonCode: string | null;
             version: number;
@@ -833,7 +881,7 @@ export interface components {
             /** Format: uuid */
             conversationId: string;
             /** @enum {string} */
-            status: "QUEUED" | "RUNNING" | "BLOCKED" | "SUCCEEDED" | "FAILED" | "CANCELLED";
+            status: "QUEUED" | "RUNNING" | "WAITING_INPUT" | "BLOCKED" | "SUCCEEDED" | "FAILED" | "CANCELLED";
             cursor: number;
         };
         SubmitChatTask: {
@@ -844,8 +892,8 @@ export interface components {
             options: {
                 /** Format: uuid */
                 modelId?: string;
-                /** @constant */
-                planMode?: false;
+                /** @default false */
+                planMode: boolean;
                 /** @constant */
                 permissionMode?: "RISK_BASED";
                 /** @enum {string} */
@@ -877,7 +925,7 @@ export interface components {
             cursor: number;
             messages: components["schemas"]["ChatMessage"][];
             tasks: components["schemas"]["ChatTask"][];
-            pending: unknown[];
+            pending: components["schemas"]["PendingInteraction"][];
             artifacts: unknown[];
         };
         ChatUsage: {
@@ -1066,6 +1114,95 @@ export interface components {
             items: components["schemas"]["Workspace"][];
             /** Format: uuid */
             nextCursor: string | null;
+        };
+        PlanRevision: {
+            /** Format: uuid */
+            id: string;
+            revision: number;
+            title: string;
+            markdown: string;
+            /** @enum {unknown} */
+            source: "MODEL" | "USER";
+            hash: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        TaskPlan: {
+            /** Format: uuid */
+            taskId: string;
+            /** @enum {unknown} */
+            status: "NOT_CREATED" | "DRAFT" | "REVIEW" | "APPROVED" | "DELIVERED" | "REJECTED";
+            version: number;
+            current: components["schemas"]["PlanRevision"] | null;
+            revisions: components["schemas"]["PlanRevision"][];
+        };
+        EditTaskPlan: {
+            title: string;
+            markdown: string;
+        };
+        PendingInteraction: {
+            /** Format: uuid */
+            interactionId: string;
+            /** Format: uuid */
+            taskId: string;
+            version: number;
+            /** Format: date-time */
+            expiresAt: string;
+            /** @constant */
+            kind: "PLAN_APPROVAL";
+            /** @constant */
+            optional: false;
+            plan: components["schemas"]["PlanRevision"];
+            question: null;
+            options: {
+                id: string;
+                label: string;
+            }[];
+        } | {
+            /** Format: uuid */
+            interactionId: string;
+            /** Format: uuid */
+            taskId: string;
+            version: number;
+            /** Format: date-time */
+            expiresAt: string;
+            /** @constant */
+            kind: "QUESTION";
+            optional: boolean;
+            plan: null;
+            question: string;
+            options: {
+                id: string;
+                label: string;
+            }[];
+        };
+        AnswerInteraction: {
+            expectedVersion: number;
+            /** @enum {unknown} */
+            decision: "EXECUTE_PLAN" | "REVISE_PLAN" | "REJECT_PLAN" | "DELIVER_PLAN" | "ANSWER" | "SKIP";
+            text?: string;
+            optionIds?: string[];
+        };
+        InteractionAccepted: {
+            /** Format: uuid */
+            taskId: string;
+            /** Format: uuid */
+            interactionId: string;
+            /** @enum {unknown} */
+            status: "QUEUED" | "WAITING_INPUT" | "RUNNING" | "SUCCEEDED";
+            version: number;
+        };
+        QuotaView: {
+            /** @enum {unknown} */
+            metric: "TOKENS" | "COST_MICROS";
+            unlimited: boolean;
+            limit: number | null;
+            used: number;
+            reserved: number;
+            remaining: number | null;
+            /** Format: date-time */
+            resetAt: string;
+            policyVersion: number;
         };
     };
     responses: {
@@ -2498,6 +2635,113 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FileStorageUsage"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getTaskPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current authorized projection */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskPlan"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    editTaskPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                "If-Match": components["parameters"]["EnvironmentMatch"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditTaskPlan"];
+            };
+        };
+        responses: {
+            /** @description Current authorized projection */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskPlan"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    answerTaskInteraction: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+                interactionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerInteraction"];
+            };
+        };
+        responses: {
+            /** @description Answer durably accepted; execution resumes through MQ */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InteractionAccepted"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getMyUsageQuota: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Versioned daily quota; administrator unlimited is still metered */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotaView"][];
                 };
             };
             default: components["responses"]["IdentityProblem"];

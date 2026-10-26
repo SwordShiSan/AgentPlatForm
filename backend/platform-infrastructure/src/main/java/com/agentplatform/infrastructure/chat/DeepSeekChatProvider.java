@@ -40,6 +40,14 @@ public final class DeepSeekChatProvider implements ChatProvider, AutoCloseable {
         return open(modelName,key,input,onText).result();
     }
     @Override public Exchange open(String modelName,String key,List<Message> input,Consumer<String> onText){
+        return exchange(modelName,key,input,fixtureTools?RecoveryFixtureTool.DEFINITIONS.stream().map(ToolDefinition::legacy).toList():List.of(),onText);
+    }
+    @Override public Exchange openTyped(String modelName,String key,List<Message> input,List<ToolDefinition> definitions,Consumer<String> onText){
+        if(definitions.stream().anyMatch(d->d.category()!=ToolCategory.CONTROL||!PlanControls.NAMES.contains(d.name())))
+            throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");
+        return exchange(modelName,key,input,definitions,onText);
+    }
+    private Exchange exchange(String modelName,String key,List<Message> input,List<ToolDefinition> definitions,Consumer<String> onText){
         if(!List.of("deepseek-flash","deepseek-v4-pro").contains(modelName))throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");
         var http=HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).connectTimeout(Duration.ofSeconds(10)).build();
         var transport=new JdkHttpTransport(http,HttpTransportConfig.defaults());
@@ -59,7 +67,10 @@ public final class DeepSeekChatProvider implements ChatProvider, AutoCloseable {
         var subscriptionRef=new AtomicReference<reactor.core.Disposable>();
         var cancellation=new AtomicBoolean();
         var callbacks=new Phaser(1);
-        var subscription=model.stream(input.stream().map(messageCodec::encode).toList(),List.of(),options)
+        var catalog=new java.util.LinkedHashMap<String,ToolDefinition>();
+        for(var definition:definitions)if(catalog.putIfAbsent(definition.name(),definition)!=null)throw new IllegalArgumentException("Duplicate tool");
+        var schemas=definitions.stream().map(d->ToolSchema.builder().name(d.name()).description(d.description()).parameters(d.inputSchema()).build()).toList();
+        var subscription=model.stream(input.stream().map(messageCodec::encode).toList(),schemas,options)
                 .timeout(Duration.ofSeconds(120)).doOnNext(response->{
                     if(callbacks.register()<0)return;
                     try {
@@ -67,7 +78,7 @@ public final class DeepSeekChatProvider implements ChatProvider, AutoCloseable {
                     if(response.getId()!=null)id.set(response.getId());if(response.getFinishReason()!=null)finish.set(response.getFinishReason());
                     for(var block:response.getContent()){
                         if(block instanceof TextBlock b&&!b.getText().isEmpty()){if(text.length()+b.getText().length()>65536)throw new ChatFailure(422,"MODEL_OUTPUT_LIMIT");text.append(b.getText());onText.accept(b.getText());}
-                        else if(block instanceof ToolUseBlock tool){if(!fixtureTools)throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");accumulatedTools.add(tool);}
+                        else if(block instanceof ToolUseBlock tool){if(catalog.isEmpty())throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");accumulatedTools.add(tool);}
                         // Thinking blocks are deliberately not copied into any platform buffer.
                     }
                     if(response.getUsage()!=null){usage.set(true);in.set(response.getUsage().getInputTokens());out.set(response.getUsage().getOutputTokens());}
@@ -92,8 +103,9 @@ public final class DeepSeekChatProvider implements ChatProvider, AutoCloseable {
                 },()->{
                     if(callbacks.register()<0)return;
                     try {
-                        var definitions=java.util.Map.of("recovery_probe",RecoveryFixtureTool.DEFINITIONS.getFirst());
-                        var calls=accumulatedTools.buildAllToolCalls().stream().map(tool->messageCodec.decodeCall(tool,definitions)).toList();
+                        var calls=accumulatedTools.buildAllToolCalls().stream().map(tool->messageCodec.decodeTypedCall(tool,catalog)).toList();
+                        long controlCalls=calls.stream().filter(call->catalog.get(call.name()).category()==ToolCategory.CONTROL).count();
+                        if(controlCalls>1||(controlCalls==1&&calls.size()!=1))throw new ChatFailure(422,"CONTROL_BATCH_LIMIT");
                         result.complete(new Result(new Round(text.toString(),calls,finish.get()==null?"unknown":finish.get(),in.get(),out.get()),usage.get(),id.get()));
                     } catch(RuntimeException invalid) {result.completeExceptionally(classify(invalid));}
                     finally { callbacks.arriveAndDeregister(); }

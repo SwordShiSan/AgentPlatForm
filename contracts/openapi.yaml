@@ -1203,6 +1203,13 @@ paths:
                 $ref: "#/components/schemas/FileStorageUsage"
         default:
           $ref: "#/components/responses/IdentityProblem"
+  /api/v1/tasks/{id}/plan:
+    get: {"operationId": "getTaskPlan", "security": [{"session": []}], "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}], "responses": {"200": {"description": "Current authorized projection", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TaskPlan"}}}}, "default": {"$ref": "#/components/responses/IdentityProblem"}}}
+    put: {"operationId": "editTaskPlan", "security": [{"session": []}], "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}, {"$ref": "#/components/parameters/CsrfToken"}, {"$ref": "#/components/parameters/EnvironmentMatch"}], "responses": {"200": {"description": "Current authorized projection", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TaskPlan"}}}}, "default": {"$ref": "#/components/responses/IdentityProblem"}}, "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EditTaskPlan"}}}}}
+  /api/v1/tasks/{id}/interactions/{interactionId}/answer:
+    post: {"operationId": "answerTaskInteraction", "security": [{"session": []}], "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}, {"$ref": "#/components/parameters/CsrfToken"}, {"name": "interactionId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}, {"name": "Idempotency-Key", "in": "header", "required": true, "schema": {"type": "string", "format": "uuid"}}], "responses": {"default": {"$ref": "#/components/responses/IdentityProblem"}, "202": {"description": "Answer durably accepted; execution resumes through MQ", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InteractionAccepted"}}}}}, "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AnswerInteraction"}}}}}
+  /api/v1/me/usage-quota:
+    get: {"operationId": "getMyUsageQuota", "security": [{"session": []}], "responses": {"200": {"description": "Versioned daily quota; administrator unlimited is still metered", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/QuotaView"}}}}}, "default": {"$ref": "#/components/responses/IdentityProblem"}}}
 components:
   securitySchemes:
     session:
@@ -1724,6 +1731,7 @@ components:
           enum:
             - QUEUED
             - RUNNING
+            - WAITING_INPUT
             - BLOCKED
             - SUCCEEDED
             - FAILED
@@ -1772,7 +1780,8 @@ components:
           properties:
             modelId: *a4
             planMode:
-              const: false
+              type: boolean
+              default: false
             permissionMode:
               const: RISK_BASED
             credentialSource: &a11
@@ -1846,8 +1855,9 @@ components:
             $ref: "#/components/schemas/ChatTask"
         pending:
           type: array
-          maxItems: 0
-          items: {}
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/PendingInteraction"
         artifacts:
           type: array
           maxItems: 0
@@ -2327,3 +2337,10 @@ components:
             - string
             - "null"
           format: uuid
+    PlanRevision: {"type": "object", "additionalProperties": false, "required": ["id", "revision", "title", "markdown", "source", "hash", "createdAt"], "properties": {"id": {"type": "string", "format": "uuid"}, "revision": {"type": "integer", "minimum": 1}, "title": {"type": "string", "minLength": 1, "maxLength": 1024}, "markdown": {"type": "string", "minLength": 1, "maxLength": 131072}, "source": {"enum": ["MODEL", "USER"]}, "hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "createdAt": {"type": "string", "format": "date-time"}}}
+    TaskPlan: {"type": "object", "additionalProperties": false, "required": ["taskId", "status", "version", "current", "revisions"], "properties": {"taskId": {"type": "string", "format": "uuid"}, "status": {"enum": ["NOT_CREATED", "DRAFT", "REVIEW", "APPROVED", "DELIVERED", "REJECTED"]}, "version": {"type": "integer", "minimum": 0}, "current": {"oneOf": [{"$ref": "#/components/schemas/PlanRevision"}, {"type": "null"}]}, "revisions": {"type": "array", "items": {"$ref": "#/components/schemas/PlanRevision"}}}}
+    EditTaskPlan: {"type": "object", "additionalProperties": false, "required": ["title", "markdown"], "properties": {"title": {"type": "string", "minLength": 1, "maxLength": 1024}, "markdown": {"type": "string", "minLength": 1, "maxLength": 131072}}}
+    PendingInteraction: {"oneOf": [{"type": "object", "additionalProperties": false, "required": ["interactionId", "taskId", "version", "expiresAt", "kind", "optional", "plan", "question", "options"], "properties": {"interactionId": {"type": "string", "format": "uuid"}, "taskId": {"type": "string", "format": "uuid"}, "version": {"type": "integer", "minimum": 1}, "expiresAt": {"type": "string", "format": "date-time"}, "kind": {"const": "PLAN_APPROVAL"}, "optional": {"const": false}, "plan": {"$ref": "#/components/schemas/PlanRevision"}, "question": {"type": "null"}, "options": {"type": "array", "maxItems": 0, "items": {"type": "object", "additionalProperties": false, "required": ["id", "label"], "properties": {"id": {"type": "string", "minLength": 1, "maxLength": 128}, "label": {"type": "string", "minLength": 1, "maxLength": 1024}}}}}}, {"type": "object", "additionalProperties": false, "required": ["interactionId", "taskId", "version", "expiresAt", "kind", "optional", "plan", "question", "options"], "properties": {"interactionId": {"type": "string", "format": "uuid"}, "taskId": {"type": "string", "format": "uuid"}, "version": {"type": "integer", "minimum": 1}, "expiresAt": {"type": "string", "format": "date-time"}, "kind": {"const": "QUESTION"}, "optional": {"type": "boolean"}, "plan": {"type": "null"}, "question": {"type": "string", "minLength": 1, "maxLength": 32768}, "options": {"type": "array", "maxItems": 16, "items": {"type": "object", "additionalProperties": false, "required": ["id", "label"], "properties": {"id": {"type": "string", "minLength": 1, "maxLength": 128}, "label": {"type": "string", "minLength": 1, "maxLength": 1024}}}}}}]}
+    AnswerInteraction: {"type": "object", "additionalProperties": false, "required": ["expectedVersion", "decision"], "properties": {"expectedVersion": {"type": "integer", "minimum": 1}, "decision": {"enum": ["EXECUTE_PLAN", "REVISE_PLAN", "REJECT_PLAN", "DELIVER_PLAN", "ANSWER", "SKIP"]}, "text": {"type": "string", "maxLength": 32768}, "optionIds": {"type": "array", "maxItems": 16, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 128}}}}
+    InteractionAccepted: {"type": "object", "additionalProperties": false, "required": ["taskId", "interactionId", "status", "version"], "properties": {"taskId": {"type": "string", "format": "uuid"}, "interactionId": {"type": "string", "format": "uuid"}, "status": {"enum": ["QUEUED", "WAITING_INPUT", "RUNNING", "SUCCEEDED"]}, "version": {"type": "integer", "minimum": 1}}}
+    QuotaView: {"type": "object", "additionalProperties": false, "required": ["metric", "unlimited", "limit", "used", "reserved", "remaining", "resetAt", "policyVersion"], "properties": {"metric": {"enum": ["TOKENS", "COST_MICROS"]}, "unlimited": {"type": "boolean"}, "limit": {"type": ["integer", "null"], "minimum": 0}, "used": {"type": "integer", "minimum": 0}, "reserved": {"type": "integer", "minimum": 0}, "remaining": {"type": ["integer", "null"], "minimum": 0}, "resetAt": {"type": "string", "format": "date-time"}, "policyVersion": {"type": "integer", "minimum": 1}}}

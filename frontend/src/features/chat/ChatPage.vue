@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import ModelSettings from './ModelSettings.vue';
+import PlanCard from './PlanCard.vue';
+import QuestionCard from './QuestionCard.vue';
 import RecoveryNotice from './RecoveryNotice.vue';
 import { useChatDrafts, type PendingSubmission } from './drafts';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
@@ -14,6 +16,8 @@ import { applyChatEvent, SnapshotRequired, type ChatSnapshot } from './stream-st
 import { subscribeReplay, type StreamStatus } from './event-stream';
 
 const route = useRoute(); const router = useRouter(); const cache = useQueryClient();
+const planEnabled = import.meta.env.VITE_PLAN_ENABLED === 'true';
+const planMode = ref(false);
 const draft = ref(''); const error = ref(''); const busy = ref(false);
 const pending = ref<PendingSubmission>();
 const selectedModel = ref(''); const source = ref<'PLATFORM' | 'USER'>('PLATFORM'); const drafts = useChatDrafts();
@@ -30,6 +34,9 @@ const models = useQuery({ queryKey: computed(() => ['chat', actor.value, 'models
 const modelAvailable = computed(() => models.data.value?.items.some(item => item.id === selectedModel.value) ?? false);
 const conversations = useQuery({ queryKey: listKey, enabled: computed(() => !!actor.value), queryFn: async () => (await api.GET('/api/v1/conversations', { params: { query: { limit: 100 } } })).data! });
 const snapshot = useQuery({ queryKey: snapshotKey, enabled: computed(() => !!actor.value && !!space.value && !!selected.value), queryFn: async ({ queryKey, signal }) => (await api.GET('/api/v1/conversations/{id}/snapshot', { signal, params: { path: { id: String(queryKey[4]) }, header: { 'X-Space-Id': String(queryKey[2]) } } })).data! });
+const quota = useQuery({ queryKey: computed(() => ['chat', actor.value, 'quota']), enabled: computed(() => !!actor.value), queryFn: async () => (await api.GET('/api/v1/me/usage-quota')).data! });
+const tokenQuota = computed(() => quota.data.value?.find(item => item.metric === 'TOKENS'));
+async function refreshInteractions() { await snapshot.refetch(); await quota.refetch(); }
 const lastTask = computed(() => snapshot.data.value?.tasks.at(-1));
 const unknownTasks = computed(() => snapshot.data.value?.tasks.filter(task => task.status === 'BLOCKED' && ['EXTERNAL_RESULT_UNKNOWN', 'WORKER_INTERRUPTED', 'AUTHORIZATION_REVOKED'].includes(task.reasonCode ?? '')) ?? []);
 const reconciliationTask = computed(() => lastTask.value?.cancelRequested && lastTask.value.status === 'RUNNING' ? lastTask.value : unknownTasks.value.at(-1) ?? lastTask.value);
@@ -54,7 +61,7 @@ const stopLabel = computed(() => {
   return '';
 });
 const config = useQuery({ queryKey: computed(() => ['chat', actor.value, 'configuration', lastTask.value?.taskId]), enabled: computed(() => !!lastTask.value), queryFn: async () => (await api.GET('/api/v1/tasks/{id}/configuration', { params: { path: { id: lastTask.value!.taskId } } })).data! });
-const running = computed(() => snapshot.data.value?.tasks.some(item => ['QUEUED', 'RUNNING'].includes(item.status)) ?? false);
+const running = computed(() => snapshot.data.value?.tasks.some(item => ['QUEUED', 'RUNNING', 'WAITING_INPUT'].includes(item.status)) ?? false);
 const diagnostics = useQuery({ queryKey: computed(() => ['chat', actor.value, space.value, 'diagnostics', lastTask.value?.taskId, lastTask.value?.version]), enabled: computed(() => !!lastTask.value && !running.value), queryFn: async () => (await api.GET('/api/v1/tasks/{id}/diagnostics', { params: { path: { id: lastTask.value!.taskId } } })).data! });
 const diagnosticCopy = ref('');
 const diagnosticAction = computed(() => {
@@ -90,7 +97,7 @@ const reason = computed(() => {
     default: return '回复未能完成，已保留现有记录。';
   }
 });
-const labels: Record<string, string> = { QUEUED: '排队中', RUNNING: '正在回复', SUCCEEDED: '已完成', FAILED: '失败', CANCELLED: '已取消', BLOCKED: '需要处理' };
+const labels: Record<string, string> = { WAITING_INPUT: '等待你的回答', QUEUED: '排队中', RUNNING: '正在回复', SUCCEEDED: '已完成', FAILED: '失败', CANCELLED: '已取消', BLOCKED: '需要处理' };
 let stream: (() => void) | undefined;
 let generation = 0;
 const streamStatus = ref<StreamStatus>('connecting');
@@ -115,7 +122,7 @@ function connect() {
         if (!previous) throw new SnapshotRequired('Canonical projection is missing');
         return applyChatEvent(previous, body);
       });
-      if (body.type === 'usage.updated') void cache.invalidateQueries({ queryKey: ['chat', user, 'usage'] });
+      if (body.type === 'usage.updated') { void cache.invalidateQueries({ queryKey: ['chat', user, 'usage'] }); void quota.refetch(); }
     },
     rebase: async signal => {
       const result = await api.GET('/api/v1/conversations/{id}/snapshot', { signal, params: { path: { id: conversation }, header: { 'X-Space-Id': selectedSpace } } });
@@ -132,12 +139,12 @@ function restoreDraft() {
   if (!actor.value || !space.value) return;
   restoring = true;
   const value = drafts.load(actor.value, space.value, selected.value);
-  draft.value = value.text; pending.value = value.pending; selectedModel.value = value.model || effective.data.value?.values.modelId || ''; source.value = value.model ? value.source : effective.data.value?.values.credentialSource || 'PLATFORM';
+  planMode.value = value.planMode ?? false; draft.value = value.text; pending.value = value.pending; selectedModel.value = value.model || effective.data.value?.values.modelId || ''; source.value = value.model ? value.source : effective.data.value?.values.credentialSource || 'PLATFORM';
   restoring = false;
 }
 watch([actor, space, selected], () => { stopStream(); error.value = ''; restoreDraft(); connect(); }, { immediate: true, flush: 'sync' });
 watch(() => effective.data.value, () => { if (!selectedModel.value) restoreDraft(); });
-watch([draft, selectedModel, source, pending], () => { if (mounted && !restoring) drafts.save(actor.value, space.value, selected.value, { text: draft.value, model: selectedModel.value, source: source.value, ...(pending.value ? { pending: pending.value } : {}) }); }, { deep: true, flush: 'sync' });
+watch([draft, selectedModel, source, pending, planMode], () => { if (mounted && !restoring) drafts.save(actor.value, space.value, selected.value, { text: draft.value, model: selectedModel.value, source: source.value, planMode: planMode.value, ...(pending.value ? { pending: pending.value } : {}) }); }, { deep: true, flush: 'sync' });
 onBeforeUnmount(() => { mounted = false; stopStream(); });
 
 async function create() {
@@ -164,11 +171,11 @@ async function moreConversations() {
 async function submit() {
   if (busy.value || (!pending.value && (!draft.value.trim() || running.value))) return;
   const model = models.data.value?.items.find(item => item.id === selectedModel.value); if (!model) { error.value = '所选模型或凭据不可用，请检查配置。'; return; }
-  pending.value ??= { key: newRequestId(), text: draft.value, model: model.id, source: source.value, conversation: selected.value };
+  pending.value ??= { key: newRequestId(), text: draft.value, model: model.id, source: source.value, conversation: selected.value, planMode: planEnabled && planMode.value };
   const value = pending.value; busy.value = true; error.value = '';
   try {
     const token = await csrf();
-    const body = { input: { text: value.text, attachments: [] }, options: { modelId: value.model, credentialSource: value.source, planMode: false as const, permissionMode: 'RISK_BASED' as const } };
+    const body = { input: { text: value.text, attachments: [] }, options: { modelId: value.model, credentialSource: value.source, planMode: value.planMode ?? false, permissionMode: 'RISK_BASED' as const } };
     let conversation = value.conversation;
     if (conversation) await api.POST('/api/v1/conversations/{id}/tasks', { params: { path: { id: conversation }, header: { 'Idempotency-Key': value.key, 'X-CSRF-Token': token } }, body });
     else { const accepted = (await api.POST('/api/v1/conversations', { params: { header: { 'Idempotency-Key': value.key, 'X-CSRF-Token': token } }, body: { title: '新对话', initialTask: body } })).data!; conversation = accepted.id; }
@@ -184,7 +191,7 @@ async function submit() {
       pending.value = undefined;
       error.value = failure.problem.code === 'CREDENTIAL_SOURCE_UNAVAILABLE'
         ? '所选凭据未配置或已撤销，请检查模型密钥与来源。输入已保留。'
-        : failure.problem.code === 'QUOTA_EXCEEDED' ? '聊天额度不足，输入已保留，请联系运维核对额度。'
+        : ['QUOTA_EXCEEDED', 'DAILY_TOKEN_QUOTA_EXCEEDED'].includes(failure.problem.code) ? '聊天额度不足，输入已保留，请联系运维核对额度。'
         : '提交被拒绝，输入已保留，请核对输入和配置。';
     }
     else error.value = '提交暂未确认。重试会复用原消息和请求标识，不重复创建任务。';
@@ -223,6 +230,10 @@ async function cancel() {
           <p v-if="!message.blocks.length" class="chat-text">暂无可显示的文本内容。</p>
         </article>
       </div>
+      <template v-for="interaction in snapshot.data.value?.pending" :key="interaction.interactionId">
+        <PlanCard v-if="interaction.kind === 'PLAN_APPROVAL'" :interaction="{ ...interaction, question: null }" :actor="actor" :space="space" :ready="snapshot.data.value?.tasks.find(task => task.taskId === interaction.taskId)?.status === 'WAITING_INPUT'" @refresh="refreshInteractions" />
+        <QuestionCard v-else :interaction="{ ...interaction, plan: null }" :ready="interaction.optional || snapshot.data.value?.tasks.find(task => task.taskId === interaction.taskId)?.status === 'WAITING_INPUT'" @refresh="refreshInteractions" />
+      </template>
       <p v-if="lastTask" role="status">{{ labels[lastTask.status] }}{{ lastTask.cancelRequested && running ? ' · 正在取消' : '' }}<span v-if="reason"> · {{ reason }}</span></p>
       <p v-if="stopLabel" role="status" data-testid="stop-stage">{{ stopLabel }}</p>
       <aside v-if="(reconciliationState?.unknownCalls ?? 0) > 0" aria-label="结果待核对" class="intro" data-testid="reconciliation-notice">
@@ -239,6 +250,7 @@ async function cancel() {
       <p v-if="lastTask?.reasonCode && diagnostics.isError.value" role="alert">暂时无法读取诊断记录，已有消息已保留。</p>
       <p v-if="usedTokens !== undefined" class="intro">{{ usedTokens === null ? '用量待对账，未将未知用量记为零。' : `本次使用 ${usedTokens} tokens` }}</p>
       <p v-if="error" role="alert" class="identity-error">{{ error }}</p>
+      <p v-if="tokenQuota" role="status" data-testid="daily-quota">{{ tokenQuota.unlimited ? '管理员额度不限，用量持续记录' : `今日剩余 ${tokenQuota.remaining?.toLocaleString()} tokens / ${tokenQuota.limit?.toLocaleString()}` }}<span v-if="!tokenQuota.unlimited"> · {{ new Date(tokenQuota.resetAt).toLocaleString() }} 重置</span></p>
       <form class="chat-composer" @submit.prevent="submit">
         <div class="chat-options">
           <label for="chat-model">模型</label><select id="chat-model" v-model="selectedModel" :disabled="busy || !!pending"><option v-for="item in models.data.value?.items" :key="item.id" :value="item.id">{{ item.name }}</option></select>
@@ -246,6 +258,7 @@ async function cancel() {
           <button type="button" :disabled="busy || !!pending || !selectedModel" @click="saveDefaults">设为我的默认</button>
         </div>
         <p class="intro">选择仅影响下次发送。{{ effective.data.value?.sources.modelId === 'USER' ? '默认模型来自个人偏好。' : '默认模型来自平台。' }}</p>
+        <label v-if="planEnabled" class="plan-toggle"><input v-model="planMode" type="checkbox" :disabled="busy || !!pending || running" /> 先制定计划，再确认文本执行</label>
         <label for="chat-input">消息</label>
         <textarea id="chat-input" v-model="draft" rows="3" :disabled="busy || !!pending" placeholder="输入文字，按 Ctrl + Enter 发送" @keydown.ctrl.enter.prevent="submit" @keydown.meta.enter.prevent="submit" />
         <div class="chat-actions"><button type="submit" :disabled="busy || (!pending && (running || !draft.trim())) || !modelAvailable">{{ pending ? '重试同一条消息' : '发送' }}</button><button v-if="running" type="button" :disabled="busy || lastTask?.cancelRequested" @click="cancel">取消回复</button></div>

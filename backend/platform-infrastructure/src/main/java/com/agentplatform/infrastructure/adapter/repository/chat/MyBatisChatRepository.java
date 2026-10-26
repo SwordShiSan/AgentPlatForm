@@ -16,6 +16,8 @@ import tools.jackson.databind.json.JsonMapper;
 public final class MyBatisChatRepository implements ChatRepository {
     public static final UUID BUNDLE = ChatPersistenceSupport.BUNDLE;
     private final ControlPersistence controls;
+    private final PlanPersistence plans;
+    private final ChatMappers mappers;
     private final RecoveryPersistence recovery;
     private final ConversationPersistence conversations;
     private final ConfigurationPersistence configurations;
@@ -23,6 +25,7 @@ public final class MyBatisChatRepository implements ChatRepository {
     private final ExecutionPersistence executions;
     private final CheckpointPersistence checkpoints;
     public MyBatisChatRepository(ChatMappers mappers) {
+        this.mappers=mappers;plans=new PlanPersistence(mappers);
         controls = new ControlPersistence(mappers);
         recovery = new RecoveryPersistence(mappers);
         conversations = new ConversationPersistence(mappers);
@@ -53,6 +56,11 @@ public final class MyBatisChatRepository implements ChatRepository {
     @Override public void delta(Lease l,String text) { executions.delta(l, text); }
     @Override public Call beginCall(Lease l,boolean real) { return executions.beginCall(l, real); }
     @Override public void startCall(Lease l,Call call,boolean real) { executions.startCall(l, call, real); }
+    @Override public void permitAcceptanceCall(Lease l,Call call,UUID run){
+        ChatPersistenceSupport.owned(mappers,l,false);mappers.executionPolicy().createAcceptanceRun(run);
+        if(mappers.executionPolicy().reserveAcceptance(run)!=1)throw new ChatFailure(429,"ACCEPTANCE_REQUEST_LIMIT");
+        mappers.executionPolicy().recordAcceptanceCall(run,call.id());
+    }
     @Override public void settle(Lease l,Call call,HarnessData.Round round,String requestId,String error,boolean real) { executions.settle(l, call, round, requestId, error, real); }
     @Override public Credential credential(Lease l,UUID call) { return executions.credential(l, call); }
     @Override public void finish(Lease l,String status,String reason) { executions.finish(l, status, reason); }
@@ -94,4 +102,20 @@ public final class MyBatisChatRepository implements ChatRepository {
     @Override public RecoveryLedger.Recovery recoveryForOperator(UUID id) { return recovery.recoveryForOperator(id); }
     @Override public RecoveryLedger.Recovery restore(RecoveryLedger.RestoreCommand command) { return recovery.restore(command); }
     @Override public boolean ready() { return conversations.ready(); }
+
+    @Override public com.agentplatform.types.PlanInteractionData.Plan plan(Actor a,UUID t){return plans.plan(a,t);}
+    @Override public com.agentplatform.types.PlanInteractionData.Plan editPlan(Actor a,UUID t,long v,com.agentplatform.types.PlanInteractionData.Edit e){return plans.editPlan(a,t,v,e);}
+    @Override public List<com.agentplatform.types.PlanInteractionData.Pending> pending(Actor a,UUID c){return plans.pending(a,c);}
+    @Override public com.agentplatform.types.PlanInteractionData.Accepted answer(Actor a,UUID t,UUID i,UUID k,com.agentplatform.types.PlanInteractionData.Answer v){return plans.answer(a,t,i,k,v);}
+    @Override public void stageControls(Lease l,List<HarnessData.Call> c){plans.stageControls(l,c);}
+    @Override public HarnessData.Decision controlDecision(Lease l,HarnessData.Call c){return plans.controlDecision(l,c);}
+    @Override public HarnessData.Observation executeControl(Lease l,HarnessData.Call c){return plans.executeControl(l,c);}
+    @Override public void waitingStopped(Lease l,String receipt){plans.waitingStopped(l,receipt);}
+    @Override public List<HarnessData.Approval> controlApprovals(Lease l){return plans.controlApprovals(l);}
+    @Override public boolean planMode(Lease l){return plans.planMode(l);}
+    @Override public void consumeOptional(Lease l){plans.consumeOptional(l);}
+    @Override public List<QuotaData.View> quota(Actor a){ChatPersistenceSupport.auth(mappers,a);return new MyBatisQuotaLedger(mappers.quota()).view(a.userId());}
+    @Override public long configureQuota(QuotaData.Change change){return new MyBatisQuotaLedger(mappers.quota()).configure(change);}
+    @Override public First firstPlan(Actor a,UUID k,String title,UUID model,String source,String text,boolean plan){return conversations.firstPlan(a,k,title,model,source,text,plan);}
+    @Override public Task submitPlan(Actor a,UUID conversation,UUID k,UUID model,String source,String text,boolean plan){return conversations.submitPlan(a,conversation,k,model,source,text,plan);}
 }

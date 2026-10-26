@@ -31,6 +31,13 @@ public final class ChatExecution implements AutoCloseable {
             task->{var thread=new Thread(task,"execution-cancel");thread.setDaemon(true);return thread;},new ThreadPoolExecutor.AbortPolicy());
     public boolean accepting() { return !unavailable.get(); }
     private volatile Lease current;
+    private UUID acceptanceRun;
+    private boolean executionStarted;
+    /** Only the protected acceptance profile calls this; ordinary users have no request-count ceiling. */
+    public synchronized void configureAcceptanceWindow(UUID run){
+        if(executionStarted||acceptanceRun!=null||!provider.real())throw new IllegalStateException("ACCEPTANCE_WINDOW_NOT_CONFIGURABLE");
+        acceptanceRun=Objects.requireNonNull(run);
+    }
     public ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,Path work){this(repository,provider,cipher,work,Executors.newScheduledThreadPool(2),true);}
     public ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,Path work,ScheduledExecutorService timers){this(repository,provider,cipher,work,timers,false);}
     private ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,Path work,ScheduledExecutorService timers,boolean ownsTimers){this(repository,provider,cipher,work,timers,ownsTimers,null);}
@@ -42,24 +49,29 @@ public final class ChatExecution implements AutoCloseable {
     /** Compatibility for existing probes; private state always uses the fenced repository. */
     public ChatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,StateStorage ignored,Path work){this(repository,provider,cipher,work);}
     public void run(Lease lease){
+        synchronized(this){executionStarted=true;}
         if(!accepting())throw new ChatFailure(503,"EXECUTION_STOP_UNCONFIRMED");
         current=lease;var control=new ExecutionControl(cancellationExecutor);currentControl=control;
         Instant deadline=Instant.now().plusSeconds(120);AtomicReference<Throwable> asynchronousFailure=new AtomicReference<>();
         AtomicReference<ExecutionLedger.CallResult> accepted=new AtomicReference<>();AtomicReference<Round> acceptedRound=new AtomicReference<>();
-        var batch=new Batch(lease);String terminal="FAILED",reason="MODEL_EXECUTION_FAILED";boolean completed=false;
+        var batch=new Batch(lease);String terminal="FAILED",reason="MODEL_EXECUTION_FAILED";boolean completed=false,waiting=false;
         try{
             var startup=repository.executionStartup(lease);deadline=startup.deadline();
             List<Message> history=startup.history();
-            Scope scope=new Scope(lease.spaceId().toString(),lease.userId().toString(),lease.conversationId().toString(),lease.taskId().toString(),lease.attemptId().toString(),lease.fence(),false);
+            Scope scope=new Scope(lease.spaceId().toString(),lease.userId().toString(),lease.conversationId().toString(),lease.taskId().toString(),lease.attemptId().toString(),lease.fence(),repository.planMode(lease));
+            List<Approval> approvals=repository.controlApprovals(lease);boolean controls=scope.planMode()||!approvals.isEmpty()||repository.plan(new ChatData.Actor(lease.userId(),lease.spaceId()),lease.taskId()).current()!=null;
             AtomicReference<UUID> turnId=new AtomicReference<>();String frozenModelName=repository.modelName(lease);final Instant executionDeadline=deadline;
             ModelGateway metered=new ModelGateway(){
                 @Override public String modelName(Scope ignored){return frozenModelName;}
                 public CompletionStage<Round> complete(Scope s,List<Message> messages,List<com.agentplatform.types.harness.HarnessData.Call> tools){return stream(s,messages,tools,text->{});}
                 public CompletionStage<Round> stream(Scope s,List<Message> messages,List<com.agentplatform.types.harness.HarnessData.Call> tools,Consumer<String> onText){
                     if(!tools.isEmpty()&&fixtureTools==null)return CompletableFuture.failedFuture(new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH"));
+                    return streamTyped(s,messages,tools.stream().map(ToolDefinition::legacy).toList(),onText);
+                }
+                @Override public CompletionStage<Round> streamTyped(Scope s,List<Message> messages,List<ToolDefinition> definitions,Consumer<String> onText){
                     var result=new CompletableFuture<Round>();AtomicReference<CompletableFuture<?>> pending=new AtomicReference<>();
                     result.whenComplete((v,e)->{if(result.isCancelled()&&pending.get()!=null)pending.get().cancel(true);});
-                    physical(lease,messages,text->{if(control.closing())throw new ChatFailure(409,"TASK_CANCEL_REQUESTED");batch.append(text);onText.accept(text);},result,pending,executionDeadline,0,false,accepted,acceptedRound,control);
+                    physical(lease,messages,definitions,text->{if(control.closing())throw new ChatFailure(409,"TASK_CANCEL_REQUESTED");batch.append(text);onText.accept(text);},result,pending,executionDeadline,0,false,accepted,acceptedRound,control);
                     return result;
                 }
             };
@@ -77,6 +89,7 @@ public final class ChatExecution implements AutoCloseable {
                         case MODEL_COMMITTED -> "model-checkpoint-after-seal";
                         case TOOL_COMMITTED -> "tool-checkpoint-after-seal";
                         case TERMINAL -> "terminal-checkpoint-after-seal";
+                        case WAITING_INPUT -> "waiting-checkpoint-after-seal";
                     });
                     FixtureFaults.pause(draft.phase()==CheckpointPhase.INPUT_READY?"input-checkpoint-after-seal":"checkpoint-after-seal");
                 });}
@@ -88,23 +101,40 @@ public final class ChatExecution implements AutoCloseable {
                 public Set<String> keys(Scope s){scope(s);return control.during(()->repository.stateKeys(lease));}
                 public void delete(Scope s,String key){scope(s);control.during(()->repository.stateDelete(lease,key));}
             };
-            var factory=new AgentScopeRuntimeFactory(metered,(s,c)->fixtureTools==null?Decision.DENY:Decision.ALLOW,
-                    fixtureTools==null?(s,c)->CompletableFuture.failedFuture(new ChatFailure(422,"TOOLS_NOT_AVAILABLE")):fixtureTools,
-                    attemptState,manifests,fixtureTools==null?List.of():RecoveryFixtureTool.DEFINITIONS,work);
+            var factory=new AgentScopeRuntimeFactory(metered,(s,c)->controls?repository.controlDecision(lease,c):fixtureTools==null?Decision.DENY:Decision.ALLOW,
+                    controls?(s,c)->CompletableFuture.completedFuture(repository.executeControl(lease,c)):fixtureTools==null?(s,c)->CompletableFuture.failedFuture(new ChatFailure(422,"TOOLS_NOT_AVAILABLE")):fixtureTools,
+                    attemptState,manifests,new ToolCatalogPort(){
+                        public List<com.agentplatform.types.harness.HarnessData.Call> definitions(){return fixtureTools==null?List.of():RecoveryFixtureTool.DEFINITIONS;}
+                        public List<ToolDefinition> typedDefinitions(){return controls?PlanControls.DEFINITIONS:ToolCatalogPort.super.typedDefinitions();}
+                    },work);
             LoopBoundary boundary=new LoopBoundary(){
-                public CompletionStage<List<Message>> beforeModel(Scope s,List<Message> ignored){return control.during(()->{turnId.set(repository.beginTurn(lease));return CompletableFuture.completedFuture(repository.checkpointHistory(lease));});}
+                public CompletionStage<List<Message>> beforeModel(Scope s,List<Message> ignored){return control.during(()->{
+                    if(controls)repository.consumeOptional(lease);
+                    var context=repository.checkpointHistory(lease);
+                    var json=tools.jackson.databind.json.JsonMapper.builder().build();
+                    long upperBound=json.writeValueAsString(context).getBytes(java.nio.charset.StandardCharsets.UTF_8).length+512L;
+                    if(controls)upperBound+=json.writeValueAsString(PlanControls.DEFINITIONS.stream().map(ToolDefinition::inputSchema).toList()).getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+                    if(upperBound>7168)throw new ChatFailure(422,"CONTEXT_REQUIRED_TOO_LARGE");
+                    turnId.set(repository.beginTurn(lease));return CompletableFuture.completedFuture(context);
+                });}
                 public CompletionStage<Void> afterModelCommitted(Scope s,Turn t){return control.during(()->{var call=accepted.get();if(call==null)throw new ChatFailure(409,"ACCEPTED_CALL_MISSING");repository.commitRound(lease,turnId.get(),t,call);FixtureFaults.pause("round-before-checkpoint");return CompletableFuture.completedFuture(null);});}
+                public CompletionStage<Void> beforeControlBatch(Scope s,List<com.agentplatform.types.harness.HarnessData.Call> calls){
+                    return control.during(()->{if(controls)repository.stageControls(lease,calls);return CompletableFuture.completedFuture(null);});
+                }
+                public CompletionStage<Void> beforeWaiting(Scope s,List<com.agentplatform.types.harness.HarnessData.Call> calls){
+                    return control.during(()->{if(controls)repository.stageControls(lease,calls);return CompletableFuture.completedFuture(null);});
+                }
                 public CompletionStage<Void> beforeTool(Scope s,com.agentplatform.types.harness.HarnessData.Call c){return control.during(()->{
-                    if(fixtureTools==null)throw new ChatFailure(422,"TOOLS_NOT_AVAILABLE");
+                    if(fixtureTools==null&&!controls)throw new ChatFailure(422,"TOOLS_NOT_AVAILABLE");
                     repository.startTool(lease,c);FixtureFaults.pause("tool-after-start");return CompletableFuture.completedFuture(null);
                 });}
                 public CompletionStage<Void> afterToolCommitted(Scope s,com.agentplatform.types.harness.HarnessData.Call c,Observation o){return control.during(()->{
-                    if(fixtureTools==null)throw new ChatFailure(422,"TOOLS_NOT_AVAILABLE");
+                    if(fixtureTools==null&&!controls)throw new ChatFailure(422,"TOOLS_NOT_AVAILABLE");
                     FixtureFaults.pause("tool-before-result");repository.commitTool(lease,c,o);FixtureFaults.pause("tool-after-result");return CompletableFuture.completedFuture(null);
                 });}
-                public CompletionStage<Completion> beforeStop(Scope s,Message message){return CompletableFuture.completedFuture(message.text().isBlank()?Completion.INCOMPLETE:Completion.PASS);}
+                public CompletionStage<Completion> beforeStop(Scope s,Message message){return CompletableFuture.completedFuture(message.text().isBlank()||scope.planMode()?Completion.INCOMPLETE:Completion.PASS);}
             };
-            PreparedRun prepared=factory.prepare(new Request(scope,ChatRuntime.bundle(),startup.restoring()?List.of():List.of(history.getLast()),startup.restoring(),List.of(),startup.nextTurn()),boundary);active=prepared;control.run(prepared);
+            PreparedRun prepared=factory.prepare(new Request(scope,ChatRuntime.bundle(),startup.restoring()?List.of():List.of(history.getLast()),startup.restoring(),approvals,startup.nextTurn()),boundary);active=prepared;control.run(prepared);
             control.timer(timers.scheduleAtFixedRate(()->{
                 try(var ticket=control.enter()){batch.flush();repository.check(lease);}
                 catch(Throwable error){if(!control.closing()){asynchronousFailure.compareAndSet(null,error);control.cancel();}}
@@ -117,8 +147,9 @@ public final class ChatExecution implements AutoCloseable {
                     Math.max(1,java.time.Duration.between(Instant.now(),deadline).toMillis()),TimeUnit.MILLISECONDS);
             Throwable failure=asynchronousFailure.get();if(failure!=null)throw new CompletionException(failure);
             if(outcome==null||control.closing())throw new ChatFailure(409,"TASK_CANCEL_REQUESTED");
-            batch.flush();if(((Outcome)outcome).completion()!=Completion.PASS)throw new ChatFailure(503,"MODEL_INCOMPLETE");
-            terminal="SUCCEEDED";reason=null;completed=true;
+            batch.flush();var completion=((Outcome)outcome).completion();
+            if(completion==Completion.WAITING_INPUT){waiting=true;terminal="WAITING_INPUT";reason=null;completed=true;}
+            else {if(completion!=Completion.PASS)throw new ChatFailure(503,"MODEL_INCOMPLETE");terminal="SUCCEEDED";reason=null;completed=true;}
         }catch(Throwable failure){
             Throwable error=failure;
             for(Throwable cause=failure;cause!=null;cause=cause.getCause())if(cause instanceof ChatFailure||cause instanceof TimeoutException){error=cause;break;}
@@ -131,21 +162,22 @@ public final class ChatExecution implements AutoCloseable {
                 if(quiet){
                     var value=accepted.get();var round=acceptedRound.get();
                     CancellationLedger.KnownUsage usage=value!=null&&value.usageKnown()&&round!=null?new CancellationLedger.KnownUsage(value.call(),round,value.requestId(),value.real()):null;
-                    repository.stopped(lease,terminal,reason,usage,control.receipt(lease.taskId()+":"+lease.attemptId()+":"+lease.ownerId()+":"+lease.fence()));
+                    String receipt=control.receipt(lease.taskId()+":"+lease.attemptId()+":"+lease.ownerId()+":"+lease.fence());
+                    if(waiting)repository.waitingStopped(lease,receipt);else repository.stopped(lease,terminal,reason,usage,receipt);
                 }else{unavailable.set(true);repository.stopUnconfirmed(lease);}
             }catch(Throwable lost){unavailable.set(true);System.getLogger(getClass().getName()).log(System.Logger.Level.WARNING,"Attempt requires stopped-owner reconciliation; terminationConfirmed="+quiet);}
             active=null;current=null;currentControl=null;
         }
     }
-    private void physical(Lease l,List<Message> messages,Consumer<String> text,CompletableFuture<Round> result,AtomicReference<CompletableFuture<?>> pending,Instant deadline,int retries,boolean repaired,AtomicReference<ExecutionLedger.CallResult> accepted,AtomicReference<Round> acceptedRound,ExecutionControl control){
+    private void physical(Lease l,List<Message> messages,List<ToolDefinition> definitions,Consumer<String> text,CompletableFuture<Round> result,AtomicReference<CompletableFuture<?>> pending,Instant deadline,int retries,boolean repaired,AtomicReference<ExecutionLedger.CallResult> accepted,AtomicReference<Round> acceptedRound,ExecutionControl control){
         if(result.isDone())return;
         try(var ticket=control.enter()){
             if(Instant.now().isAfter(deadline)){result.completeExceptionally(new ChatFailure(504,"PROVIDER_TIMEOUT"));return;}
             ChatData.Call call=repository.beginCall(l,provider.real());String key;
-            try{key=cipher.decrypt(repository.credential(l,call.id()));repository.startCall(l,call,provider.real());}
+            try{key=cipher.decrypt(repository.credential(l,call.id()));if(provider.real()&&acceptanceRun!=null)repository.permitAcceptanceCall(l,call,acceptanceRun);repository.startCall(l,call,provider.real());}
             catch(Throwable error){try{repository.settle(l,call,null,null,"CALL_NOT_SENT",false);}catch(Exception ignored){}result.completeExceptionally(error);return;}
             AtomicBoolean emitted=new AtomicBoolean();CompletableFuture<ChatProvider.Result> future;
-            try{var exchange=provider.open(repository.modelName(l),key,messages,value->{emitted.set(true);text.accept(value);});control.exchange(exchange);future=exchange.result().toCompletableFuture();}
+            try{var exchange=(definitions.isEmpty()?provider.open(repository.modelName(l),key,messages,value->{emitted.set(true);text.accept(value);}):provider.openTyped(repository.modelName(l),key,messages,definitions,value->{emitted.set(true);text.accept(value);}));control.exchange(exchange);future=exchange.result().toCompletableFuture();}
             catch(Throwable error){future=CompletableFuture.failedFuture(error);}
             pending.set(future);if(result.isCancelled())future.cancel(true);
             var callback=control.enter();
@@ -160,16 +192,16 @@ public final class ChatExecution implements AutoCloseable {
                         String code=cause instanceof ChatFailure f?f.code():"PROVIDER_REQUEST_FAILED";
                         repository.settle(l,call,null,null,code,provider.real());
                         if(!emitted.get()&&retries<2&&Set.of("PROVIDER_RATE_LIMITED","PROVIDER_SERVER_REJECTED").contains(code)&&!result.isDone()){
-                            control.timer(timers.schedule(()->physical(l,messages,text,result,pending,deadline,retries+1,repaired,accepted,acceptedRound,control),retries==0?1:3,TimeUnit.SECONDS));return;
+                            control.timer(timers.schedule(()->physical(l,messages,definitions,text,result,pending,deadline,retries+1,repaired,accepted,acceptedRound,control),retries==0?1:3,TimeUnit.SECONDS));return;
                         }result.completeExceptionally(cause);return;
                     }
                     boolean incompleteTransport="unknown".equals(value.round().finishReason());
                     boolean empty=value.round().text().isBlank()&&value.round().calls().isEmpty()&&!emitted.get();
-                    boolean supported="stop".equals(value.round().finishReason())||(fixtureTools!=null&&"tool_calls".equals(value.round().finishReason()));
+                    boolean supported="stop".equals(value.round().finishReason())||((fixtureTools!=null||!definitions.isEmpty())&&"tool_calls".equals(value.round().finishReason()));
                     if(!supported||empty){
                         repository.settle(l,call,value.usageKnown()?value.round():null,value.requestId(),value.usageKnown()?null:incompleteTransport?"PROVIDER_REQUEST_FAILED":"PROVIDER_USAGE_MISSING",provider.real());
                         if(!"stop".equals(value.round().finishReason())){result.completeExceptionally(new ChatFailure(503,"PROVIDER_TRUNCATED"));return;}
-                        if(!repaired){physical(l,messages,text,result,pending,deadline,retries,true,accepted,acceptedRound,control);return;}
+                        if(!repaired){physical(l,messages,definitions,text,result,pending,deadline,retries,true,accepted,acceptedRound,control);return;}
                         result.completeExceptionally(new ChatFailure(503,"PROVIDER_EMPTY_RESPONSE"));return;
                     }
                     acceptedRound.set(value.round());accepted.set(new ExecutionLedger.CallResult(call,value.usageKnown(),value.requestId(),provider.real()));

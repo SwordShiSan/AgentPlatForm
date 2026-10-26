@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.chat.PlanMapper">
+    <select id="plan" resultType="com.agentplatform.infrastructure.dao.po.PlanRows$PlanRow">SELECT id,space_id,task_id,current_revision,status,version FROM pf.task_plan WHERE space_id=#{space} AND task_id=#{task}</select>
+    <sql id="revisionColumns">id,revision,title,markdown,source,content_hash,created_at</sql>
+    <select id="revisions" resultType="com.agentplatform.infrastructure.dao.po.PlanRows$RevisionRow">SELECT <include refid="revisionColumns"/> FROM pf.plan_revision WHERE plan_id=#{plan} ORDER BY revision</select>
+    <select id="revision" resultType="com.agentplatform.infrastructure.dao.po.PlanRows$RevisionRow">SELECT <include refid="revisionColumns"/> FROM pf.plan_revision WHERE id=#{id}</select>
+    <insert id="insertPlan">INSERT INTO pf.task_plan(id,space_id,task_id) VALUES(#{id},#{space},#{task}) ON CONFLICT(space_id,task_id) DO NOTHING</insert>
+    <insert id="insertRevision">INSERT INTO pf.plan_revision(id,space_id,task_id,plan_id,revision,title,markdown,content_hash,source,trace_id) VALUES(#{id},#{plan.spaceId},#{plan.taskId},#{plan.id},#{plan.currentRevision}+1,#{title},#{markdown},#{hash},#{source},(SELECT trace_id FROM pf.task WHERE id=#{plan.taskId}))</insert>
+    <update id="advancePlan">UPDATE pf.task_plan SET current_revision=current_revision+CASE WHEN #{newRevision} THEN 1 ELSE 0 END,status=#{state},version=version+1 WHERE id=#{plan}</update>
+    <select id="control" resultType="com.agentplatform.infrastructure.dao.po.PlanRows$ControlRow">
+        SELECT id,space_id,task_id,source_attempt_id,call_id,tool_name,call_hash,arguments_json,interaction_id,status,result_json FROM pf.control_input WHERE task_id=#{task} AND call_id=#{call}
+    </select>
+    <insert id="insertControl">
+        INSERT INTO pf.control_input(id,space_id,task_id,source_attempt_id,call_id,tool_name,call_hash,arguments_json,trace_id)
+        VALUES(#{id},#{lease.spaceId},#{lease.taskId},#{lease.attemptId},#{call},#{tool},#{hash},#{arguments}::jsonb,(SELECT trace_id FROM pf.task WHERE id=#{lease.taskId}))
+    </insert>
+    <update id="bindControl">UPDATE pf.control_input SET interaction_id=#{interaction} WHERE id=#{id} AND status='PREPARED'</update>
+    <update id="finishControl">UPDATE pf.control_input SET status='COMMITTED',result_json=#{result}::jsonb WHERE id=#{id} AND status='PREPARED'</update>
+    <sql id="interactionColumns">i.id,i.space_id,i.task_id,i.source_attempt_id,i.call_id,i.kind,i.optional,i.payload_json,i.revision_id,i.version,i.status,i.expires_at</sql>
+    <select id="interaction" resultType="com.agentplatform.infrastructure.dao.po.PlanRows$InteractionRow">SELECT <include refid="interactionColumns"/> FROM pf.task_interaction i WHERE i.space_id=#{space} AND i.task_id=#{task} AND i.id=#{id}</select>
+    <select id="pending" resultType="com.agentplatform.infrastructure.dao.po.PlanRows$InteractionRow">SELECT <include refid="interactionColumns"/> FROM pf.task_interaction i JOIN pf.task t ON t.id=i.task_id AND t.space_id=i.space_id WHERE i.space_id=#{space} AND t.conversation_id=#{conversation} AND i.status='OPEN' ORDER BY i.created_at,i.id LIMIT 100</select>
+    <select id="taskPending" resultType="com.agentplatform.infrastructure.dao.po.PlanRows$InteractionRow">SELECT <include refid="interactionColumns"/> FROM pf.task_interaction i WHERE i.task_id=#{task} AND i.status='OPEN' ORDER BY i.created_at,i.id</select>
+    <insert id="insertInteraction">
+        INSERT INTO pf.task_interaction(id,space_id,task_id,source_attempt_id,call_id,kind,optional,payload_json,revision_id,expires_at)
+        VALUES(#{id},#{space},#{task},#{attempt},#{call},#{kind},#{optional},#{payload}::jsonb,#{revision},coalesce(#{expires,jdbcType=TIMESTAMP_WITH_TIMEZONE},clock_timestamp()+CASE WHEN #{kind}='PLAN_APPROVAL' THEN interval '7 days' ELSE interval '24 hours' END))
+    </insert>
+    <update id="closeInteraction">UPDATE pf.task_interaction SET status=#{state},version=version+1 WHERE id=#{id} AND status='OPEN'</update>
+    <sql id="answerColumns">id,interaction_id,task_id,command_id,request_hash,decision,content_json</sql>
+    <select id="answer" resultType="com.agentplatform.infrastructure.dao.po.PlanRows$AnswerRow">SELECT <include refid="answerColumns"/> FROM pf.interaction_answer WHERE interaction_id=#{interaction}</select>
+    <select id="command" resultType="com.agentplatform.infrastructure.dao.po.PlanRows$AnswerRow">SELECT <include refid="answerColumns"/> FROM pf.interaction_answer WHERE user_id=#{user} AND command_id=#{command}</select>
+    <insert id="insertAnswer">INSERT INTO pf.interaction_answer(id,space_id,task_id,interaction_id,user_id,expected_version,command_id,request_hash,decision,content_json,trace_id) VALUES(#{id},#{interaction.spaceId},#{interaction.taskId},#{interaction.id},#{user},#{interaction.version},#{command},#{hash},#{decision},#{content}::jsonb,#{trace})</insert>
+    <insert id="insertResume">INSERT INTO pf.interaction_resume(id,space_id,task_id,source_attempt_id,checkpoint_id,answer_id,call_id,answer_hash,review_revision_id,generation) VALUES(#{id},#{interaction.spaceId},#{interaction.taskId},#{interaction.sourceAttemptId},#{checkpoint},#{answer},#{interaction.callId},#{hash},#{revision},#{generation})</insert>
+    <sql id="resumeColumns">id,task_id,source_attempt_id,checkpoint_id,answer_id,call_id,answer_hash,review_revision_id,generation,target_attempt_id,status</sql>
+    <select id="resume" resultType="com.agentplatform.infrastructure.dao.po.PlanRows$ResumeRow">SELECT r.id,r.task_id,r.source_attempt_id,r.checkpoint_id,r.answer_id,r.call_id,r.answer_hash,r.review_revision_id,r.generation,b.attempt_id AS target_attempt_id,r.status FROM pf.interaction_resume r JOIN pf.interaction_resume_binding b ON b.resume_id=r.id AND b.space_id=r.space_id AND b.task_id=r.task_id WHERE b.attempt_id=#{attempt}</select>
+    <select id="queuedResume" resultType="com.agentplatform.infrastructure.dao.po.PlanRows$ResumeRow">SELECT <include refid="resumeColumns"/> FROM pf.interaction_resume WHERE task_id=#{task} AND status='QUEUED'</select>
+    <update id="claimResume">UPDATE pf.interaction_resume SET target_attempt_id=#{attempt},status='CLAIMED' WHERE id=#{id} AND status='QUEUED'</update>
+    <insert id="bindResume">INSERT INTO pf.interaction_resume_binding(resume_id,space_id,task_id,attempt_id,generation,fence) SELECT id,space_id,task_id,#{lease.attemptId},(SELECT generation FROM pf.execution_dispatch WHERE task_id=#{lease.taskId}),#{lease.fence} FROM pf.interaction_resume WHERE id=#{id} AND task_id=#{lease.taskId} AND space_id=#{lease.spaceId} AND status='CLAIMED'</insert>
+    <select id="attemptCalls" resultType="long">SELECT count(*) FROM pf.model_call WHERE attempt_id=#{attempt}</select>
+    <update id="finishResume">UPDATE pf.interaction_resume r SET status='COMPLETED' WHERE id=(SELECT resume_id FROM pf.interaction_resume_binding WHERE attempt_id=#{attempt}) AND status='CLAIMED' AND EXISTS(SELECT 1 FROM pf.control_input c WHERE c.task_id=r.task_id AND c.call_id=r.call_id AND c.status='COMMITTED')</update>
+    <update id="waitingTask">UPDATE pf.task SET status='WAITING_INPUT',reason_code=NULL,version=version+1,updated_at=clock_timestamp() WHERE id=#{task} AND status='RUNNING' AND NOT cancel_requested</update>
+    <update id="updatePlanOption">UPDATE pf.task SET plan_mode=#{plan} WHERE id=#{task}</update>
+    <update id="closeTaskInteractions">UPDATE pf.task_interaction SET status=#{state},version=version+1 WHERE task_id=#{task} AND status='OPEN'</update>
+    <select id="expiringTask" resultType="java.util.UUID">
+        SELECT i.task_id FROM pf.task_interaction i JOIN pf.task t ON t.id=i.task_id JOIN pf.app_user u ON u.id=t.creator_id
+        JOIN pf.membership m ON m.space_id=t.space_id AND m.user_id=t.creator_id WHERE i.status='OPEN'
+        AND (i.expires_at&lt;=clock_timestamp() OR u.status&lt;&gt;'ACTIVE' OR m.status&lt;&gt;'ACTIVE') ORDER BY i.expires_at,i.id LIMIT 1
+    </select>
+    <select id="staleInteractions" resultType="com.agentplatform.infrastructure.dao.po.PlanRows$InteractionRow">
+        SELECT <include refid="interactionColumns"/> FROM pf.task_interaction i JOIN pf.task t ON t.id=i.task_id JOIN pf.app_user u ON u.id=t.creator_id
+        JOIN pf.membership m ON m.space_id=t.space_id AND m.user_id=t.creator_id WHERE i.task_id=#{task} AND i.status='OPEN'
+        AND (i.expires_at&lt;=clock_timestamp() OR u.status&lt;&gt;'ACTIVE' OR m.status&lt;&gt;'ACTIVE') ORDER BY i.created_at,i.id
+    </select>
+    <insert id="consumeOptional">
+        INSERT INTO pf.control_input_consumption(answer_id,space_id,task_id,attempt_id,answer_hash)
+        SELECT a.id,a.space_id,a.task_id,#{lease.attemptId},a.request_hash FROM pf.interaction_answer a
+        JOIN pf.task_interaction i ON i.id=a.interaction_id JOIN pf.control_input c ON c.interaction_id=i.id
+        JOIN pf.tool_operation o ON o.task_id=i.task_id AND o.call_id=i.call_id
+        WHERE a.task_id=#{lease.taskId} AND a.space_id=#{lease.spaceId} AND i.optional AND i.status='ANSWERED' AND c.status='COMMITTED' AND o.status='SUCCEEDED'
+        ON CONFLICT(answer_id) DO NOTHING
+    </insert>
+    <select id="consumedInputs" resultType="com.agentplatform.infrastructure.dao.chat.PlanMapper$InputRow">
+        SELECT a.id AS answer_id,i.call_id,a.content_json,a.request_hash AS answer_hash FROM pf.control_input_consumption c
+        JOIN pf.interaction_answer a ON a.id=c.answer_id JOIN pf.task_interaction i ON i.id=a.interaction_id
+        WHERE c.task_id=#{task} ORDER BY c.created_at,a.id
+    </select>
+</mapper>

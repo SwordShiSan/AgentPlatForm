@@ -75,6 +75,7 @@ public final class TransactionalChatRepository implements ChatRepository {
     @Override public void delta(Lease lease, String text) { tx(transactions, () -> { delegate.delta(lease, text); return null; }); }
     @Override public Call beginCall(Lease lease, boolean real) { return tx(transactions, () -> delegate.beginCall(lease, real)); }
     @Override public void startCall(Lease lease, Call call, boolean real) { tx(transactions, () -> { delegate.startCall(lease, call, real); return null; }); }
+    @Override public void permitAcceptanceCall(Lease l,Call call,UUID run){tx(transactions,()->{delegate.permitAcceptanceCall(l,call,run);return null;});}
     @Override public void settle(Lease lease, Call call, HarnessData.Round round, String requestId, String error, boolean real) { tx(transactions, () -> { delegate.settle(lease, call, round, requestId, error, real); return null; }); }
     @Override public Credential credential(Lease lease, UUID callId) { return tx(transactions, () -> delegate.credential(lease, callId)); }
     @Override public void finish(Lease lease, String status, String reason) { tx(transactions, () -> { delegate.finish(lease, status, reason); return null; }); }
@@ -107,4 +108,20 @@ public final class TransactionalChatRepository implements ChatRepository {
     @Override public void validateCheckpoint(Lease lease, UUID checkpoint, Bundle bundle) { tx(transactions, () -> { delegate.validateCheckpoint(lease, checkpoint, bundle); return null; }); }
     @Override public void restoreCheckpoint(Lease lease, UUID checkpoint, Bundle bundle) { tx(transactions, () -> { delegate.restoreCheckpoint(lease, checkpoint, bundle); return null; }); }
     @Override public void recoverStopped(StoppedOwner proof) { tx(transactions, () -> { delegate.recoverStopped(proof); return null; }); }
+
+    @Override public com.agentplatform.types.PlanInteractionData.Plan plan(Actor a,UUID t){return tx(snapshots,()->delegate.plan(a,t));}
+    @Override public com.agentplatform.types.PlanInteractionData.Plan editPlan(Actor a,UUID t,long v,com.agentplatform.types.PlanInteractionData.Edit e){return tx(transactions,()->delegate.editPlan(a,t,v,e));}
+    @Override public List<com.agentplatform.types.PlanInteractionData.Pending> pending(Actor a,UUID c){return tx(snapshots,()->delegate.pending(a,c));}
+    @Override public com.agentplatform.types.PlanInteractionData.Accepted answer(Actor a,UUID t,UUID i,UUID k,com.agentplatform.types.PlanInteractionData.Answer v){return tx(transactions,()->delegate.answer(a,t,i,k,v));}
+    @Override public void stageControls(Lease l,List<HarnessData.Call> c){tx(transactions,()->{delegate.stageControls(l,c);return null;});}
+    @Override public HarnessData.Decision controlDecision(Lease l,HarnessData.Call c){return tx(transactions,()->delegate.controlDecision(l,c));}
+    @Override public HarnessData.Observation executeControl(Lease l,HarnessData.Call c){return tx(transactions,()->delegate.executeControl(l,c));}
+    @Override public void waitingStopped(Lease l,String r){tx(transactions,()->{delegate.waitingStopped(l,r);return null;});}
+    @Override public List<HarnessData.Approval> controlApprovals(Lease l){return tx(transactions,()->delegate.controlApprovals(l));}
+    @Override public boolean planMode(Lease l){return tx(transactions,()->delegate.planMode(l));}
+    @Override public void consumeOptional(Lease l){tx(transactions,()->{delegate.consumeOptional(l);return null;});}
+    @Override public List<com.agentplatform.domain.chat.QuotaData.View> quota(Actor a){return tx(transactions,()->delegate.quota(a));}
+    @Override public long configureQuota(com.agentplatform.domain.chat.QuotaData.Change change){return tx(transactions,()->delegate.configureQuota(change));}
+    @Override public First firstPlan(Actor a,UUID k,String title,UUID model,String source,String text,boolean plan){return tx(transactions,()->delegate.firstPlan(a,k,title,model,source,text,plan));}
+    @Override public Task submitPlan(Actor a,UUID conversation,UUID k,UUID model,String source,String text,boolean plan){return tx(transactions,()->delegate.submitPlan(a,conversation,k,model,source,text,plan));}
 }
