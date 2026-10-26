@@ -83,7 +83,8 @@
         "task.children_changed",
         "context.updated",
         "verification.updated",
-        "file.version.created"
+        "file.version.created",
+        "task.permissions_changed"
       ]
     },
     "occurredAt": {
@@ -720,6 +721,54 @@
               "version": {
                 "type": "integer",
                 "minimum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "task.permissions_changed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "taskId",
+              "permissionVersion",
+              "mode",
+              "change"
+            ],
+            "properties": {
+              "taskId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "permissionVersion": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "RISK_BASED",
+                  "FULL"
+                ]
+              },
+              "change": {
+                "type": "string",
+                "enum": [
+                  "MODE_CHANGED",
+                  "GRANT_CREATED",
+                  "GRANT_REVOKED"
+                ]
               }
             }
           }

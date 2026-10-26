@@ -1,0 +1,9 @@
+- [x] 1. 核验基线并完成Plan、正式计划/ADR、分期修正及OpenSpec五类文件
+- [x] 2. SDK确定性实验：ALLOW/ASK/DENY、撤销后拒绝、无宽泛SDK规则
+- [x] 3. 先更新OpenAPI/事件和生成客户端；添加V16及Mapper/XML
+- [x] 4. 原子提交绑定/初始权限/快照/预算/outbox与兼容历史任务
+- [x] 5. 完成RiskPolicy、授权/撤销/CAS/审计及startTool事务最终复核
+- [x] 6. 完成HTTP接口和Vue工作区/权限/目录grant面板
+- [ ] 7. 工程回归、真实PG/MQ迁移与竞争、权限矩阵及浏览器验收
+- [ ] 8. 精确源码/镜像证据、两级保护PR、归档和phase同步
+- [ ] 9. 更新正文/台账/Skill、两份保护交付与停止验收资源

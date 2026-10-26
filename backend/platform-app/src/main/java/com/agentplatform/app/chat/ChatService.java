@@ -66,4 +66,19 @@ public final class ChatService implements ChatApi {
     public com.agentplatform.types.PlanInteractionData.Plan editPlan(Caller c,String task,long expected,com.agentplatform.types.PlanInteractionData.Edit edit){return repository.editPlan(actor(c),id(task),expected,edit);}
     public com.agentplatform.types.PlanInteractionData.Accepted answer(Caller c,String task,String interaction,String key,com.agentplatform.types.PlanInteractionData.Answer answer){return repository.answer(actor(c),id(task),id(interaction),id(key),answer);}
     public List<QuotaView> quota(Caller c){return repository.quota(actor(c)).stream().map(v->new QuotaView(v.metric().name(),v.unlimited(),v.limit(),v.used(),v.reserved(),v.remaining(),v.resetAt().toString(),v.policyVersion())).toList();}
+
+    public com.agentplatform.types.TaskPermissionData.View permissions(Caller c,String t){return new PermissionGrantService(repository).read(actor(c),id(t));}
+    public com.agentplatform.types.TaskPermissionData.Scopes permissionScopes(Caller c,String t){return new PermissionGrantService(repository).scopes(actor(c),id(t));}
+    public com.agentplatform.types.TaskPermissionData.Scopes permissionScopes(Caller c,String t,String cursor){return repository.permissionScopes(actor(c),id(t),cursor);}
+    public com.agentplatform.types.TaskPermissionData.View permissionMode(Caller c,String t,String k,long v,com.agentplatform.types.TaskPermissionData.Mode m){return new PermissionGrantService(repository).mode(actor(c),id(t),id(k),v,m);}
+    public com.agentplatform.types.TaskPermissionData.View grant(Caller c,String t,String k,long v,com.agentplatform.types.TaskPermissionData.CreateGrant g){return new PermissionGrantService(repository).grant(actor(c),id(t),id(k),v,g);}
+    public com.agentplatform.types.TaskPermissionData.View revokeGrant(Caller c,String t,String g,String k,long v){return new PermissionGrantService(repository).revoke(actor(c),id(t),id(g),id(k),v);}
+    public ConversationView firstAuthorized(Caller c,String k,String title,String model,String source,String text,boolean plan,String workspace,com.agentplatform.types.TaskPermissionData.Mode mode){
+        Actor a=actor(c);var value=repository.firstAuthorized(a,id(k),title,model==null?null:id(model),source,text,plan,workspace==null?null:id(workspace),mode);
+        var conversation=value.conversation();var task=value.task();return new ConversationView(conversation.id().toString(),conversation.title(),conversation.version(),conversation.updatedAt().toString(),new Accepted(task.id().toString(),task.conversationId().toString(),task.status(),repository.snapshot(a,task.conversationId()).cursor()));
+    }
+    public Accepted submitAuthorized(Caller c,String conversation,String k,String model,String source,String text,boolean plan,String workspace,com.agentplatform.types.TaskPermissionData.Mode mode){
+        Actor a=actor(c);var task=repository.submitAuthorized(a,id(conversation),id(k),model==null?null:id(model),source,text,plan,workspace==null?null:id(workspace),mode);
+        return new Accepted(task.id().toString(),task.conversationId().toString(),task.status(),repository.snapshot(a,task.conversationId()).cursor());
+    }
 }

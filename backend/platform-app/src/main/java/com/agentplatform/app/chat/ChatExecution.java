@@ -101,7 +101,7 @@ public final class ChatExecution implements AutoCloseable {
                 public Set<String> keys(Scope s){scope(s);return control.during(()->repository.stateKeys(lease));}
                 public void delete(Scope s,String key){scope(s);control.during(()->repository.stateDelete(lease,key));}
             };
-            var factory=new AgentScopeRuntimeFactory(metered,(s,c)->controls?repository.controlDecision(lease,c):fixtureTools==null?Decision.DENY:Decision.ALLOW,
+            var factory=new AgentScopeRuntimeFactory(metered,(s,c)->new OperationAuthorization(repository).decide(lease,c),
                     controls?(s,c)->CompletableFuture.completedFuture(repository.executeControl(lease,c)):fixtureTools==null?(s,c)->CompletableFuture.failedFuture(new ChatFailure(422,"TOOLS_NOT_AVAILABLE")):fixtureTools,
                     attemptState,manifests,new ToolCatalogPort(){
                         public List<com.agentplatform.types.harness.HarnessData.Call> definitions(){return fixtureTools==null?List.of():RecoveryFixtureTool.DEFINITIONS;}

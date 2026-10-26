@@ -118,4 +118,14 @@ public final class MyBatisChatRepository implements ChatRepository {
     @Override public long configureQuota(QuotaData.Change change){return new MyBatisQuotaLedger(mappers.quota()).configure(change);}
     @Override public First firstPlan(Actor a,UUID k,String title,UUID model,String source,String text,boolean plan){return conversations.firstPlan(a,k,title,model,source,text,plan);}
     @Override public Task submitPlan(Actor a,UUID conversation,UUID k,UUID model,String source,String text,boolean plan){return conversations.submitPlan(a,conversation,k,model,source,text,plan);}
+
+    @Override public com.agentplatform.types.TaskPermissionData.View permissions(Actor a,UUID t){return new PermissionPersistence(mappers).permissions(a,t);}
+    @Override public com.agentplatform.types.TaskPermissionData.Scopes permissionScopes(Actor a,UUID t){return new PermissionPersistence(mappers).scopes(a,t);}
+    @Override public com.agentplatform.types.TaskPermissionData.Scopes permissionScopes(Actor a,UUID t,String cursor){return new PermissionPersistence(mappers).scopes(a,t,cursor);}
+    @Override public com.agentplatform.types.TaskPermissionData.View permissionMode(Actor a,UUID t,UUID k,long v,com.agentplatform.types.TaskPermissionData.Mode m){return new PermissionPersistence(mappers).mode(a,t,k,v,m);}
+    @Override public com.agentplatform.types.TaskPermissionData.View grant(Actor a,UUID t,UUID k,long v,com.agentplatform.types.TaskPermissionData.CreateGrant g){return new PermissionPersistence(mappers).grant(a,t,k,v,g);}
+    @Override public com.agentplatform.types.TaskPermissionData.View revokeGrant(Actor a,UUID t,UUID g,UUID k,long v){return new PermissionPersistence(mappers).revoke(a,t,g,k,v);}
+    @Override public HarnessData.Decision operationDecision(Lease l,HarnessData.Call c){return PermissionPersistence.decision(mappers,l,c,true);}
+    @Override public First firstAuthorized(Actor a,UUID k,String title,UUID model,String source,String text,boolean plan,UUID w,com.agentplatform.types.TaskPermissionData.Mode m){return conversations.firstAuthorized(a,k,title,model,source,text,plan,w,m);}
+    @Override public Task submitAuthorized(Actor a,UUID conversation,UUID k,UUID model,String source,String text,boolean plan,UUID w,com.agentplatform.types.TaskPermissionData.Mode m){return conversations.submitAuthorized(a,conversation,k,model,source,text,plan,w,m);}
 }
