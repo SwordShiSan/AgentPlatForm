@@ -15,7 +15,7 @@ import tools.jackson.databind.json.JsonMapper;
 /** Shared authorization, ownership guards and canonical conversions, without SQL plumbing. */
 abstract class ChatPersistenceSupport {
 
-    public static final UUID BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000009");
+    public static final UUID BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000017");
     static final JsonMapper JSON=JsonMapper.builder().build();
     protected final ChatMappers mappers;
     protected ChatPersistenceSupport(ChatMappers mappers) { this.mappers = mappers; }
@@ -85,12 +85,17 @@ abstract class ChatPersistenceSupport {
         c.dispatch().insertEventOutbox77(Uuid7.next(), a.spaceId(), Uuid7.next(), task, generation);
     }
     protected static Task submit(ChatMappers c,Actor a,UUID convo,UUID key,UUID selectedModel,String selectedSource,String text){
+        return submit(c,a,convo,key,selectedModel,selectedSource,text,false);
+    }
+    protected static Task submit(ChatMappers c,Actor a,UUID convo,UUID key,UUID selectedModel,String selectedSource,String text,boolean planMode){
         auth(c,a);if(text==null||text.isBlank()||text.codePointCount(0,text.length())>8192)throw new ChatFailure(400,"INVALID_CHAT_TEXT");
-        String path="/conversations/"+convo+"/tasks",fingerprint=hash(selectedSource==null?selectedModel+"\n"+text:selectedModel+"\n"+selectedSource+"\n"+text);UUID existing=idempotency(c,a,key,path,fingerprint);
+        String path="/conversations/"+convo+"/tasks",fingerprint=hash(selectedSource==null?selectedModel+"\n"+text:selectedModel+"\n"+selectedSource+"\n"+text);if(planMode)fingerprint=hash(fingerprint+"\nplan=true");UUID existing=idempotency(c,a,key,path,fingerprint);
         if(existing!=null)return task(c,a,existing,false);
+        new MyBatisQuotaLedger(c.quota()).lock(a.userId());
         { c.conversation().selectGuard59(); }
         c.dispatch().updateExecutionSlot79();
         conversation(c,a,convo,true);
+        if(c.executionPolicy().waiting(convo)>0)throw new ChatFailure(409,"CONVERSATION_WAITING_INPUT");
         { var rows58 = c.conversation().selectTask58(convo); var row58 = rows58.isEmpty() ? null : rows58.getFirst(); if(row58.value1()>=100)throw new ChatFailure(409,"CONVERSATION_TASK_LIMIT"); }
         { var rows57 = c.conversation().selectTask57(a.userId()); var row57 = rows57.isEmpty() ? null : rows57.getFirst(); if(row57.value1()>=20)throw new ChatFailure(429,"QUEUE_LIMIT_EXCEEDED"); }
         { var rows56 = c.dispatch().selectEventOutbox56(); var row56 = rows56.isEmpty() ? null : rows56.getFirst(); if(row56.value1()>=10000||(row56.value2()!=null&&row56.value2().isBefore(Instant.now().minusSeconds(900))))throw new ChatFailure(503,"DISPATCH_UNAVAILABLE"); }
@@ -101,8 +106,7 @@ abstract class ChatPersistenceSupport {
             if(row55 == null)throw new ChatFailure(422,"CREDENTIAL_SOURCE_UNAVAILABLE");credential=row55.id();revision=row55.revision();name=row55.modelName();pricing=row55.pricingVersion();modelVersion=row55.modelVersion();inputPrice=row55.inputMicrosPerMillion();outputPrice=row55.outputMicrosPerMillion();
          }
         c.accounting().insertBudgetAccount80(a.spaceId(), a.userId());
-        long perCall=(8192L*inputPrice+1024L*outputPrice+999999)/1000000,totalCost=perCall*4;
-        if(c.accounting().updateBudgetAccount81(totalCost, a.spaceId(), a.userId(), totalCost)!=1)throw new ChatFailure(429,"QUOTA_EXCEEDED");
+        long perCall=(8192L*inputPrice+1024L*outputPrice+999999)/1000000,totalCost=0;
         var bundle=ChatRuntime.bundle();
         c.configuration().insertRuntimeBundle82(BUNDLE, bundle.hash(), json(bundle));
         { var rows54 = c.configuration().selectRuntimeBundle54(BUNDLE); var row54 = rows54.isEmpty() ? null : rows54.getFirst(); if(row54 == null||!bundle.hash().equals(row54.value1()))throw new ChatFailure(409,"BUNDLE_INCOMPATIBLE"); }
@@ -111,12 +115,14 @@ abstract class ChatPersistenceSupport {
 
         c.configuration().insertChatConfigSnapshot83(snapshot, a.spaceId(), model, credential, revision, config, hash(config));
         c.conversation().insertTask84(id, a.spaceId(), convo, a.userId(), snapshot, BUNDLE, totalCost, com.agentplatform.types.RequestTrace.current());
+        c.executionPolicy().setPolicy(id,planMode);
         c.conversation().insertMessage85(userMessage, a.spaceId(), convo, id, json(textBlocks(userMessage,text)), assistant, a.spaceId(), convo, id, json(textBlocks(assistant,"")));
         c.dispatch().insertExecutionDispatch86(id);outbox(c,a,id,1);
         event(c,a,convo,id,"task.accepted",1,Map.of("taskId",id.toString(),"status","QUEUED"));remember(c,a,key,path,fingerprint,id);audit(c,a,"TASK_SUBMITTED",id,com.agentplatform.types.RequestTrace.current());return task(c,a,id,false);
     }
     protected static void inbox(ChatMappers c,Envelope e,String disposition){c.dispatch().insertConsumerInbox109(e.eventId(), e.spaceId(), e.aggregateId(), e.generation(), disposition);}
     static void owned(ChatMappers c,Lease l,boolean cancellationAllowed){
+        new MyBatisQuotaLedger(c.quota()).lock(l.userId());
         { var rows40 = c.dispatch().selectExecutionSlot40(l.taskId(), l.ownerId(), l.fence()); var row40 = rows40.isEmpty() ? null : rows40.getFirst(); if(row40 == null)throw new ChatFailure(409,"EXECUTION_FENCE_LOST");guardCommit(c,l,row40.value1(),!cancellationAllowed); }
         Actor a=new Actor(l.userId(),l.spaceId());conversation(c,a,l.conversationId(),true);
         Task task=task(c,a,l.taskId(),true);
@@ -134,17 +140,20 @@ abstract class ChatPersistenceSupport {
             String outcome=unbilled||"PROVIDER_SERVER_REJECTED".equals(error)?"FAILED":"PROVIDER_USAGE_MISSING".equals(error)?"COMPLETED":"UNKNOWN";
             c.accounting().updateModelCall120(outcome, error, call.id());
             c.accounting().updateBudgetReservation121(unbilled?"RELEASED":"RECONCILING", call.id());
-            if(unbilled){c.accounting().updateBudgetAccount122(allowance, l.spaceId(), l.userId());if(real)c.accounting().updateAcceptanceModelMeter123(allowance);}return;
+            if(!c.quota().reservations(call.id()).isEmpty())new MyBatisQuotaLedger(c.quota()).settle(l.userId(),call.id(),null,null,unbilled);
+            if(unbilled){if(!daily(c,l.taskId()))c.accounting().updateBudgetAccount122(allowance, l.spaceId(), l.userId());if(real)c.accounting().updateAcceptanceModelMeter123(allowance);}return;
         }
         if(round.inputTokens()<0||round.inputTokens()>8192||round.outputTokens()<0||round.outputTokens()>1024)throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION");
         long tokens=round.inputTokens()+round.outputTokens(),cost=(round.inputTokens()*((Number)prices.getOrDefault("inputPrice",2000000L)).longValue()+round.outputTokens()*((Number)prices.getOrDefault("outputPrice",8000000L)).longValue()+999999)/1000000;
         if(tokens>9216||cost>allowance)throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION");
         c.accounting().updateModelCall124(round.inputTokens(), round.outputTokens(), cost, requestId, call.id());
         c.accounting().updateBudgetReservation125(call.id());
-        c.accounting().updateBudgetAccount126(allowance, tokens, cost, l.spaceId(), l.userId());
+        if(!c.quota().reservations(call.id()).isEmpty())new MyBatisQuotaLedger(c.quota()).settle(l.userId(),call.id(),tokens,cost,false);
+        if(!daily(c,l.taskId()))c.accounting().updateBudgetAccount126(allowance, tokens, cost, l.spaceId(), l.userId());
         if(real)c.accounting().updateAcceptanceModelMeter127(allowance, cost);
         event(c,new Actor(l.userId(),l.spaceId()),l.conversationId(),l.taskId(),"usage.updated",call.ordinal(),Map.of("callId",call.id().toString(),"inputTokens",round.inputTokens(),"outputTokens",round.outputTokens(),"costMicros",cost,"estimated",true));return;
     }
+    static boolean daily(ChatMappers c,UUID task){return "USER_DAILY".equals(c.executionPolicy().policy(task).quotaMode());}
     static void authorizeCredential(ChatMappers c,Lease l){
         { var rows31 = c.conversation().selectAuthorizeChatCredential31(l.credentialId(), l.credentialRevision(), l.spaceId(), l.userId()); var row31 = rows31.isEmpty() ? null : rows31.getFirst();
             if(row31 == null||!row31.value1())throw new ChatFailure(403,"CREDENTIAL_REVOKED");
@@ -160,6 +169,14 @@ abstract class ChatPersistenceSupport {
          }
     }
     protected static void releasePrepared(ChatMappers c,Actor a,UUID task){
+        if(!daily(c,task))for(var call:c.accounting().selectModelCall50(a.spaceId(),task))
+            if("PREPARED".equals(call.status())&&!c.quota().reservations(call.id()).isEmpty())new MyBatisQuotaLedger(c.quota()).settle(a.userId(),call.id(),null,null,true);
+        if(daily(c,task)){
+            for(var call:c.accounting().selectModelCall50(a.spaceId(),task)) {
+                if("PREPARED".equals(call.status()))new MyBatisQuotaLedger(c.quota()).settle(a.userId(),call.id(),null,null,true);
+            }
+            c.accounting().markDailyPreparedReleased(task);c.accounting().updateModelCall132(task);return;
+        }
         c.accounting().releasePreparedReservations(task, a.spaceId(), a.userId());
         c.accounting().updateModelCall132(task);
     }
@@ -173,6 +190,9 @@ abstract class ChatPersistenceSupport {
                 ||proof.startedAt()==null||proof.stoppedAt()==null||proof.observedAt()==null
                 ||!proof.startedAt().isBefore(proof.stoppedAt())||proof.stoppedAt().isAfter(proof.observedAt()))
             throw new ChatFailure(409,"STOPPED_OWNER_PROOF_INVALID");
+        var quotaTask=c.recovery().task(proof.taskId());
+        if(quotaTask==null)throw new ChatFailure(409,"STOPPED_OWNER_PROOF_MISMATCH");
+        new MyBatisQuotaLedger(c.quota()).lock(quotaTask.userId());
         Instant databaseNow;UUID slotTask,slotOwner;long fence;
         { var rows28 = c.dispatch().selectExecutionSlot28(); var row28 = rows28.isEmpty() ? null : rows28.getFirst();
             slotTask=row28.value1();slotOwner=row28.value2();fence=row28.value3();databaseNow=row28.value5();

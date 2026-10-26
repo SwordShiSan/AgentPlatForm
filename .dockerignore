@@ -3,6 +3,7 @@
 !frontend/dist/**
 !deploy/*.Dockerfile
 !deploy/nginx.conf
+!deploy/nginx.chat-local.conf
 !deploy/nginx.files-local.conf
 !deploy/nginx.production.conf
 !deploy/probes/**

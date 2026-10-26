@@ -5,7 +5,7 @@ import com.agentplatform.types.harness.HarnessData;
 import java.util.List;
 import java.util.UUID;
 
-public interface ChatRepository extends ExecutionLedger, CancellationLedger, RecoveryLedger {
+public interface ChatRepository extends ExecutionLedger, CancellationLedger, RecoveryLedger, PlanLedger {
     List<Model> models(Actor actor);
     Conversation create(Actor actor, UUID key, String title);
     Conversation conversation(Actor actor, UUID id);
@@ -27,6 +27,7 @@ public interface ChatRepository extends ExecutionLedger, CancellationLedger, Rec
     void delta(Lease lease, String text);
     Call beginCall(Lease lease, boolean real);
     void startCall(Lease lease, Call call, boolean real);
+    void permitAcceptanceCall(Lease lease,Call call,UUID run);
     void settle(Lease lease, Call call, HarnessData.Round round, String requestId, String error, boolean real);
     Credential credential(Lease lease, UUID callId);
     void finish(Lease lease, String status, String reason);
@@ -38,6 +39,10 @@ public interface ChatRepository extends ExecutionLedger, CancellationLedger, Rec
     record First(Conversation conversation, Task task) {}
     First first(Actor actor, UUID key, String title, UUID model, String source, String text);
     Task submitConfigured(Actor actor, UUID conversation, UUID key, UUID model, String source, String text);
+    First firstPlan(Actor actor, UUID key, String title, UUID model, String source, String text, boolean planMode);
+    Task submitPlan(Actor actor, UUID conversation, UUID key, UUID model, String source, String text, boolean planMode);
+    List<QuotaData.View> quota(Actor actor);
+    long configureQuota(QuotaData.Change change);
     java.util.Map<String,Object> diagnostics(Actor actor, UUID task);
     java.util.Map<String,Object> preferences(Actor actor);
     java.util.Map<String,Object> preferences(Actor actor, long expected, java.util.Map<String,Object> patch);

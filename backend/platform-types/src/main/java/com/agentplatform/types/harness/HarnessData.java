@@ -19,7 +19,8 @@ public final class HarnessData {
 
     public enum Role { SYSTEM, USER, ASSISTANT, TOOL }
     public enum Decision { ALLOW, ASK, DENY }
-    public enum Completion { PASS, REPAIR, INCOMPLETE, WAITING_APPROVAL, CANCELLED }
+    public enum Completion { PASS, REPAIR, INCOMPLETE, WAITING_APPROVAL, WAITING_INPUT, CANCELLED }
+    public enum ToolCategory { CONTROL, READ_ONLY, BUSINESS }
     public enum OperationStatus { PREPARED, RUNNING, SUCCEEDED, UNKNOWN, DENIED }
 
     public record Scope(String spaceId, String actorId, String conversationId, String taskId,
@@ -35,6 +36,26 @@ public final class HarnessData {
             if (id == null || id.isBlank() || name == null || name.isBlank()) throw new IllegalArgumentException("Missing call identity");
             arguments = freezeMap(arguments);
         }
+    }
+
+    /** Definition metadata is distinct from an actual immutable invocation. */
+    public record ToolDefinition(String name, String description, ToolCategory category,
+                                 Map<String, Object> inputSchema, Class<?> argumentType, Call legacy) {
+        public ToolDefinition {
+            Objects.requireNonNull(name); Objects.requireNonNull(description); Objects.requireNonNull(category);
+            inputSchema = freezeMap(inputSchema);
+            if (name.isBlank() || !"object".equals(inputSchema.get("type"))) throw new IllegalArgumentException("Invalid tool schema");
+            if (argumentType == null && legacy == null) throw new IllegalArgumentException("Missing argument contract");
+        }
+        public static ToolDefinition legacy(Call definition) {
+            var properties = new LinkedHashMap<String, Object>();
+            definition.arguments().forEach((key, value) -> properties.put(key, Map.of("type",
+                    value instanceof Boolean ? "boolean" : value instanceof Number ? "number" : "string")));
+            return new ToolDefinition(definition.name(), "Platform controlled tool",
+                    definition.readOnly() ? ToolCategory.READ_ONLY : ToolCategory.BUSINESS,
+                    Map.of("type", "object", "properties", properties, "required", List.copyOf(properties.keySet()), "additionalProperties", false), null, definition);
+        }
+        public boolean readOnly() { return category == ToolCategory.READ_ONLY; }
     }
 
     public record Observation(String callId, String name, String text, OperationStatus status) {
@@ -99,7 +120,7 @@ public final class HarnessData {
         @Override public byte[] body() { return body == null ? null : body.clone(); }
     }
 
-    public enum CheckpointPhase { INPUT_READY, MODEL_COMMITTED, TOOL_COMMITTED, TERMINAL }
+    public enum CheckpointPhase { INPUT_READY, MODEL_COMMITTED, TOOL_COMMITTED, WAITING_INPUT, TERMINAL }
     /** Defensive copy, not a reference to mutable SDK state or a second message authority. */
     public record CheckpointDraft(long expectedVersion, byte[] state, List<Message> history, CheckpointPhase phase) {
         public CheckpointDraft {

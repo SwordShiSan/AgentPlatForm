@@ -27,6 +27,7 @@ final class DispatchPersistence extends ChatPersistenceSupport {
         else c.dispatch().updateEventOutbox94(item.id(), relay);return null;
     });}
     public void wakeDeferred(){tx(c->{
+        new PlanPersistence(c).expireOne();
         c.dispatch().updateExecutionSlot95();
         { var rows48 = c.dispatch().selectExecutionDispatch48();
             for (var row48 : rows48){UUID id=row48.value1();long generation=row48.value2()+1;c.dispatch().updateExecutionDispatch96(generation, id);outbox(c,new Actor(row48.value4(),row48.value3()),id,generation);}
@@ -35,6 +36,8 @@ final class DispatchPersistence extends ChatPersistenceSupport {
     public Lease claim(Envelope e,UUID owner){return tx(c->{
         if(e.schemaVersion()!=1||!"execution.ready".equals(e.kind())||!e.aggregateId().equals(e.payloadRef())||e.generation()<1)throw new ChatFailure(400,"INVALID_DISPATCH_MESSAGE");
         { var rows47 = c.dispatch().selectConsumerInbox47(e.eventId()); if(!rows47.isEmpty())return null; }
+        var quotaTask=c.recovery().task(e.aggregateId());
+        if(quotaTask!=null)new MyBatisQuotaLedger(c.quota()).lock(quotaTask.userId());
         boolean busy;long fence;
         { var rows46 = c.dispatch().selectExecutionSlot46(); var row46 = rows46.isEmpty() ? null : rows46.getFirst(); busy=row46.value1()!=null;fence=row46.value2()+1; }
         UUID actor,convo,model,credential,assistant;long revision,messageVersion;

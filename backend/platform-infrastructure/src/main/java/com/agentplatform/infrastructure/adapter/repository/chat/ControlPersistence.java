@@ -68,6 +68,7 @@ final class ControlPersistence extends ChatPersistenceSupport implements Cancell
             String previous=c.control().commandHash(command.commandId());
             if(previous!=null){if(!previous.equals(fingerprint))throw new ChatFailure(409,"IDEMPOTENCY_CONFLICT");return null;}
             var hint=c.control().call(command.callId());if(hint==null)throw new ChatFailure(404,"CALL_NOT_FOUND");
+            new MyBatisQuotaLedger(c.quota()).lock(hint.userId());
             c.dispatch().updateExecutionSlot87();Actor actor=new Actor(hint.userId(),hint.spaceId());
             conversation(c,actor,hint.conversationId(),true);var t=task(c,actor,hint.taskId(),true);
             if(c.control().taskState(t.id()).live()||"RUNNING".equals(t.status())||"QUEUED".equals(t.status()))throw new ChatFailure(409,"EXECUTION_NOT_STOPPED");
@@ -82,7 +83,13 @@ final class ControlPersistence extends ChatPersistenceSupport implements Cancell
                 if(command.providerRequestId()==null||command.providerRequestId().isBlank()||
                         (row.providerRequestId()!=null&&!row.providerRequestId().equals(command.providerRequestId())))throw new ChatFailure(409,"PROVIDER_EVIDENCE_MISMATCH");
                 if(command.decision()==Decision.CONFIRMED_NOT_EXECUTED) {
-                    if(c.control().release(row.id(),row.spaceId(),row.userId())!=1)throw new ChatFailure(409,"ACCOUNTING_CONFLICT");
+                    if(daily(c,row.taskId())){
+                        new MyBatisQuotaLedger(c.quota()).settle(row.userId(),row.id(),null,null,true);
+                        c.accounting().updateBudgetReservation121("RELEASED",row.id());
+                    }else{
+                        if(!c.quota().reservations(row.id()).isEmpty())new MyBatisQuotaLedger(c.quota()).settle(row.userId(),row.id(),null,null,true);
+                        if(c.control().release(row.id(),row.spaceId(),row.userId())!=1)throw new ChatFailure(409,"ACCOUNTING_CONFLICT");
+                    }
                     c.control().notExecuted(row.id());
                     if("REAL".equals(row.providerKind()))c.accounting().updateAcceptanceModelMeter123(row.allowance());
                 } else {
@@ -108,7 +115,8 @@ final class ControlPersistence extends ChatPersistenceSupport implements Cancell
         if(cost>row.allowance())throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION");
         if(mappers.control().settledBudget(row.id())!=1)throw new ChatFailure(409,"ACCOUNTING_CONFLICT");
         mappers.control().settledCall(row.id(),input,output,cost,request);
-        if(mappers.control().settledAccount(row.spaceId(),row.userId(),row.allowance(),input+output,cost)!=1)throw new ChatFailure(409,"ACCOUNTING_CONFLICT");
+        if(!mappers.quota().reservations(row.id()).isEmpty())new MyBatisQuotaLedger(mappers.quota()).settle(row.userId(),row.id(),input+output,cost,false);
+        if(!daily(mappers,row.taskId())&&mappers.control().settledAccount(row.spaceId(),row.userId(),row.allowance(),input+output,cost)!=1)throw new ChatFailure(409,"ACCOUNTING_CONFLICT");
         if("REAL".equals(row.providerKind()))mappers.accounting().updateAcceptanceModelMeter127(row.allowance(),cost);
         event(mappers,new Actor(row.userId(),row.spaceId()),row.conversationId(),row.taskId(),"usage.updated",row.revision()+1,
                 Map.of("callId",row.id().toString(),"inputTokens",input,"outputTokens",output,"costMicros",cost,"estimated",true));

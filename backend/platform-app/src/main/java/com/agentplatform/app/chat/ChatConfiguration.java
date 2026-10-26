@@ -24,8 +24,11 @@ public class ChatConfiguration {
             com.agentplatform.infrastructure.dao.chat.ConfigurationMapper configuration,
             com.agentplatform.infrastructure.dao.chat.EventMapper event,
             com.agentplatform.infrastructure.dao.chat.ControlMapper control,
-            com.agentplatform.infrastructure.dao.chat.RecoveryMapper recovery) {
-        return new com.agentplatform.infrastructure.dao.chat.ChatMappers(ledger, conversation, dispatch, accounting, configuration, event, control, recovery);
+            com.agentplatform.infrastructure.dao.chat.RecoveryMapper recovery,
+            com.agentplatform.infrastructure.dao.chat.QuotaMapper quota,
+            com.agentplatform.infrastructure.dao.chat.ExecutionPolicyMapper executionPolicy,
+            com.agentplatform.infrastructure.dao.chat.PlanMapper plan) {
+        return new com.agentplatform.infrastructure.dao.chat.ChatMappers(ledger, conversation, dispatch, accounting, configuration, event, control, recovery, quota, executionPolicy,plan);
     }
     @Bean ChatRepository chatRepository(com.agentplatform.infrastructure.dao.chat.ChatMappers mappers,
             org.springframework.transaction.support.TransactionTemplate transactions) {
@@ -63,8 +66,16 @@ public class ChatConfiguration {
     @Bean @Profile("chat-worker") ChatExecution chatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,DispatchTransport transport,
             @org.springframework.beans.factory.annotation.Qualifier("executionTimers") org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler timers,
             @Value("${platform.chat.workspace-root:/tmp/chat-runtime}")String root,
-            @Value("${platform.chat.fixture-tools:false}")boolean tools){return new ChatExecution(repository,provider,cipher,Path.of(root),timers.getScheduledExecutor(),
-                    tools?new com.agentplatform.infrastructure.chat.RecoveryFixtureTool(Path.of(root).resolve("fixture-effects")):null);}
+            @Value("${platform.chat.fixture-tools:false}")boolean tools,
+            @Value("${platform.chat.acceptance-run:}")String acceptanceRun,org.springframework.core.env.Environment environment){
+        var execution=new ChatExecution(repository,provider,cipher,Path.of(root),timers.getScheduledExecutor(),
+                    tools?new com.agentplatform.infrastructure.chat.RecoveryFixtureTool(Path.of(root).resolve("fixture-effects")):null);
+        if(!acceptanceRun.isBlank()){
+            if(!environment.acceptsProfiles(org.springframework.core.env.Profiles.of("plan-real-acceptance")))throw new IllegalArgumentException("ACCEPTANCE_PROFILE_REQUIRED");
+            execution.configureAcceptanceWindow(UUID.fromString(acceptanceRun));
+        }
+        return execution;
+    }
     static void handoff(ChatRepository repository,ChatExecution execution,UUID owner,DispatchTransport.Delivery delivery){
         // Different AMQP channels can dispatch concurrently during reconnect. Keep
         // claim/ACK/run cleanup serial inside one worker, in addition to the DB fence.

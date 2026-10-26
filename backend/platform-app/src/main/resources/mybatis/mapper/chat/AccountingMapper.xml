@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.agentplatform.infrastructure.dao.chat.AccountingMapper">
+    <update id="markDailyPreparedReleased">UPDATE pf.budget_reservation r SET state='RELEASED' FROM pf.model_call m WHERE r.call_id=m.id AND m.task_id=#{task} AND m.status='PREPARED' AND r.state='RESERVED'</update>
     <resultMap id="selectModelCall5Result" type="com.agentplatform.infrastructure.dao.po.AccountingRows$ModelCallRow5">
         <constructor>
             <arg name="value1" column="__column1" javaType="java.lang.Boolean"/>
