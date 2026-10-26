@@ -92,4 +92,3 @@ The platform SHALL resolve versioned USER token/cost quota policies, default to 
 #### Scenario: Cost and role changes
 - **WHEN** no cost policy is configured or administrator status is removed before the next request
 - **THEN** cost remains metered without a fee cap and the next request uses the current limited user policy
-
