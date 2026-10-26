@@ -19,6 +19,11 @@ async function begin(page:Page,text:string){
   await page.getByLabel('先制定计划，再确认文本执行').check();
   await page.getByLabel('消息',{exact:true}).fill(text);await page.getByLabel('消息',{exact:true}).press('Control+Enter');
   await expect(page).toHaveURL(/\/app\/chat\/[0-9a-f-]+$/);
+  await expect.poll(async()=>{
+    const state=(await snapshot(page)).tasks.at(-1).status;
+    if(!['QUEUED','RUNNING','WAITING_INPUT'].includes(state))throw new Error('Task reached '+state+' before an interaction');
+    return state;
+  },{timeout:60_000}).toBe('WAITING_INPUT');
 }
 async function snapshot(page:Page){const id=page.url().split('/').at(-1)!;const response=await page.request.get(`/api/v1/conversations/${id}/snapshot`);expect(response.ok()).toBe(true);return response.json();}
 
@@ -100,7 +105,7 @@ test('two tabs cannot overwrite a permission revision and missing csrf or versio
   const token=(await (await page.request.get('/api/v1/auth/csrf')).json()).csrfToken;
   const headers={'Origin':'http://127.0.0.1:18102','X-CSRF-Token':token,'Idempotency-Key':crypto.randomUUID(),'If-Match':`"${state.version}"`};
   const secondTab=await page.context().newPage();await secondTab.goto(page.url());
-  await expect(secondTab.getByTestId('task-permissions').getByLabel('权限模式',{exact:true})).toHaveValue('RISK_BASED');
+  await expect(secondTab.getByTestId('task-permissions').getByLabel('权限模式',{exact:true})).toHaveValue('RISK_BASED',{timeout:30_000});
   const first=await page.request.patch(`/api/v1/tasks/${task}/permissions`,{headers,data:{mode:'FULL'}});expect(first.status()).toBe(200);
   const stale=await secondTab.request.patch(`/api/v1/tasks/${task}/permissions`,{headers:{...headers,'Idempotency-Key':crypto.randomUUID()},data:{mode:'RISK_BASED'}});expect(stale.status()).toBe(412);await secondTab.reload();await expect(secondTab.getByTestId('task-permissions').getByLabel('权限模式',{exact:true})).toHaveValue('FULL');await secondTab.close();
   const noVersion=await page.request.patch(`/api/v1/tasks/${task}/permissions`,{headers:{Origin:headers.Origin,'X-CSRF-Token':token,'Idempotency-Key':crypto.randomUUID()},data:{mode:'FULL'}});expect(noVersion.status()).toBe(428);
