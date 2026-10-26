@@ -1,5 +1,7 @@
 # AgentPlatForm
 
+当前有效结论（2026-10-26）：**R3四步VERIFIED、R3 RELEASED；继续本地沙箱，R4未启动**。生产保持 `production-r3-95ffaf3b7137`。因成本暂不实施[R3.C阿里云沙箱方案](../项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R3.C-阿里云沙箱与数据面迁移纠正计划.md)，正式计划、ADR和OpenSpec全部标为DEFERRED保留，不再是R4前置，也不归档合并。当前继续Docker＋gVisor/runsc、同源XFS、受信文件helper及SeaweedFS，沿用2880MiB完整资源预算（包含本地sandbox/runtime/helper），云专用2784MiB重分配不生效。随后单独准备[R4.1 Plan/OpenSpec](../项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R4-Plan与权限交互.md)。本轮仅文档纠正，应用、数据库、部署及实例未改；以下旧“当前”段落仅保留历史。
+
 当前实施：**R3.3 IMPLEMENTING，R3已完成2/4 VERIFIED、未RELEASED**。前序[R3.2验收](deploy/r3.2-acceptance.json)已完成；本期按[正式计划](../项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R3.3-文件资产与额度实施计划.md)和唯一change `r3-3-file-assets-quota` 实现公开文件、显式替换、不可变版本与额度。首批工程和传输探针通过不等于完整阶段通过；文件功能开关默认关闭，签名runner/MQ、浏览器、Linux故障及最终观察未全部完成前不晋级。云端继续R2，不调用真实供应商。以下为历史阶段快照，实施状态以仓库外局部台账为准。
 
 R3.3 的固定本机回归入口、已验证子集及待验收边界见[本地实施说明](deploy/R3.3-LOCAL.md)。
