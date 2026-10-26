@@ -7,6 +7,9 @@ parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--permissions-only',action='store_true',help='Target only the two new permission cases after a locator/fixture-only fix')
 args=parser.parse_args()
 out=DATA/('browser-'+str(time.time_ns()));out.mkdir(parents=True,exist_ok=False)
+if os.name=='nt':
+    protection=subprocess.run(['icacls',str(out),'/inheritance:r','/grant:r',os.environ['USERNAME']+':(OI)(CI)F','SYSTEM:(OI)(CI)F'],capture_output=True,text=True)
+    assert protection.returncode==0,'Protect raw browser artifacts before entering fixture credentials'
 source=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
 assert not subprocess.check_output(['git','status','--porcelain'],cwd=ROOT),'Browser evidence requires committed test source'
 images=json.loads((DATA/'images.json').read_text(encoding='utf-8'))
@@ -14,6 +17,7 @@ with urllib.request.urlopen('http://127.0.0.1:18102/api/v1/readiness',timeout=5)
 node=ROOT/'.tools/node-v22.23.3-win-x64/node.exe'
 env=dict(os.environ,R42_BROWSER_ACCEPTANCE='1',BASE_URL='http://127.0.0.1:18102',PATH=str(node.parent)+os.pathsep+os.environ['PATH'])
 command=[str(node),str(ROOT/'frontend/node_modules/@playwright/test/cli.js'),'test','permissions.spec.ts','--reporter=json']
+command+=['--output',str(out/'private-artifacts')]
 if args.permissions_only:command+=['--grep','task workspace binding|two tabs cannot']
 report=out/'playwright.json';errors=out/'playwright.stderr.log'
 with report.open('xb') as stdout,errors.open('xb') as stderr:

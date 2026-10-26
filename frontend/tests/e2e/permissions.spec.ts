@@ -10,7 +10,8 @@ async function login(page:Page,admin=false){
   await page.goto('/');await expect(page).toHaveURL(/\/login$/);
   await page.getByLabel('账号',{exact:true}).fill(admin?'r42_admin':'r42_user');
   await page.getByLabel('密码',{exact:true}).fill(readFileSync(resolve(root,admin?'alice-password':'bob-password'),'utf8').trim());
-  await page.getByRole('button',{name:'登录',exact:true}).click();
+  const loginResponse=page.waitForResponse(response=>response.url().endsWith('/api/v1/auth/login')&&response.request().method()==='POST',{timeout:30_000});
+  await page.getByRole('button',{name:'登录',exact:true}).click();expect((await loginResponse).status()).toBe(200);
   await expect(page).toHaveURL(/\/app\/chat$/);
   await expect(page.getByRole('heading',{name:'普通聊天',exact:true})).toBeVisible();
 }
