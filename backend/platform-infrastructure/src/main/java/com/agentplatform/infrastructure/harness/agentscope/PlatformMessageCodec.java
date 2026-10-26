@@ -15,6 +15,11 @@ import java.util.Set;
 /** Private Jackson2 + SDK boundary. No JsonNode or SDK message is returned to the platform. */
 public final class PlatformMessageCodec {
     private final ObjectMapper mapper = JsonMapper.builder().findAndAddModules().build();
+    private final ObjectMapper argumentsMapper = JsonMapper.builder()
+            .disable(com.fasterxml.jackson.databind.MapperFeature.ALLOW_COERCION_OF_SCALARS)
+            .enable(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+            .enable(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES)
+            .enable(com.fasterxml.jackson.core.StreamReadFeature.STRICT_DUPLICATE_DETECTION).build();
 
     public void validate(Round round) {
         if (!Set.of("stop", "tool_calls").contains(round.finishReason())) throw new IllegalArgumentException("MODEL_OUTPUT_TRUNCATED_OR_INVALID");
@@ -67,6 +72,31 @@ public final class PlatformMessageCodec {
             if (supplied == null || !entry.getValue().getClass().isInstance(supplied)) throw new IllegalArgumentException("MODEL_TOOL_ARGUMENTS_INVALID");
         }
         return new Call(tool.getId(), tool.getName(), args, definition.readOnly());
+    }
+    public Call decodeTypedCall(ToolUseBlock tool, Map<String, ToolDefinition> definitions) {
+        ToolDefinition definition = definitions.get(tool.getName());
+        if (definition == null) throw new IllegalArgumentException("TOOL_NOT_REGISTERED");
+        if (definition.legacy() != null) return decodeCall(tool, Map.of(definition.name(), definition.legacy()));
+        try {
+            Map<String, Object> args = tool.getContent() != null && !tool.getContent().isBlank()
+                    ? argumentsMapper.readValue(tool.getContent(), new TypeReference<Map<String, Object>>() {}) : tool.getInput();
+            if (args == null) throw new IllegalArgumentException("Missing arguments");
+            // Jackson rejects unknown properties; typed record constructors validate nested values and byte limits.
+            argumentsMapper.convertValue(args, definition.argumentType());
+            return new Call(tool.getId(), tool.getName(), args, definition.readOnly());
+        } catch (Exception invalid) { throw new IllegalArgumentException("MODEL_TOOL_ARGUMENTS_INVALID", invalid); }
+    }
+    public Message decodeTyped(Msg message, Map<String, ToolDefinition> definitions) {
+        // Decode individual tool blocks separately: two invocations may share a tool name with different arguments.
+        var text = new StringBuilder(); var invocations = new ArrayList<Call>(); var results = new ArrayList<Observation>();
+        for (ContentBlock block : message.getContent()) {
+            if (block instanceof ToolUseBlock tool) invocations.add(decodeTypedCall(tool, definitions));
+            else {
+                Message decoded = decode(message.withContent(List.of(block)), Map.of());
+                text.append(decoded.text()); results.addAll(decoded.observations());
+            }
+        }
+        return new Message(Role.valueOf(message.getRole().name()), text.toString(), invocations, results);
     }
     public ToolUseBlock toolUse(Call call) {
         return ToolUseBlock.builder().id(call.id()).name(call.name()).input(call.arguments()).content(json(call.arguments())).build();

@@ -150,6 +150,18 @@ if (process.env.API_BASE_URL) {
 }
 console.log('Contracts valid; generation and normal/invalid fixtures passed.');
 
+// R4.1 rejects secret/permission fields and closed interaction decisions at the public boundary.
+const expanded = await SwaggerParser.dereference(structuredClone(api));
+const answerInteraction = ajv.compile(expanded.components.schemas.AnswerInteraction);
+const answerFixture = { expectedVersion: 1, decision: 'EXECUTE_PLAN', text: '', optionIds: [] };
+assert(answerInteraction(answerFixture));
+for (const patch of [{ expectedVersion: 0 }, { decision: 'ALLOW_SHELL' }, { permissions: ['FULL'] }, { apiKey: 'forbidden' }, { optionIds: ['same', 'same'] }]) {
+  assert(!answerInteraction({ ...answerFixture, ...patch }));
+}
+for (const type of ['interaction.opened', 'interaction.resolved', 'plan.revised']) {
+  assert(!validateEvent({ ...fixture, type, payload: { apiKey: 'forbidden' } }));
+}
+
 // R1.3 preference/metadata bodies reject privilege and secret-bearing response fields.
 const preferencePatch = ajv.compile(api.components.schemas.UpdateChatPreferences);
 assert(preferencePatch({defaultCredentialSource:'USER'}));

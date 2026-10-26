@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.chat.QuotaMapper">
+    <insert id="ensurePrincipal">INSERT INTO pf.quota_principal(user_id) VALUES(#{user}) ON CONFLICT DO NOTHING</insert>
+    <select id="lockPrincipal" resultType="com.agentplatform.infrastructure.dao.po.QuotaRows$Principal">
+        SELECT u.id AS user_id,u.platform_admin AS administrator,u.status='ACTIVE' AS active,clock_timestamp() AS now
+        FROM pf.quota_principal q JOIN pf.app_user u ON u.id=q.user_id WHERE q.user_id=#{user} FOR UPDATE OF q
+    </select>
+    <select id="policies" resultType="com.agentplatform.infrastructure.dao.po.QuotaRows$Policy">
+        SELECT DISTINCT ON(metric) id,metric,limit_value,timezone,version FROM pf.quota_policy
+        WHERE subject_user_id IS NULL OR subject_user_id=#{user}
+        ORDER BY metric,subject_user_id NULLS LAST
+    </select>
+    <insert id="ensureBucket">INSERT INTO pf.quota_bucket(user_id,metric,window_start,window_end) VALUES(#{user},#{metric},#{start},#{end}) ON CONFLICT DO NOTHING</insert>
+    <select id="bucket" resultType="com.agentplatform.infrastructure.dao.po.QuotaRows$Bucket">
+        SELECT consumed,reserved,version FROM pf.quota_bucket WHERE user_id=#{user} AND metric=#{metric} AND window_start=#{start}
+    </select>
+    <select id="earlierOutstanding" resultType="long">
+        SELECT COALESCE(sum(reserved),0) FROM pf.quota_reservation
+        WHERE user_id=#{user} AND metric=#{metric} AND window_start&lt;&gt;#{start} AND status IN ('RESERVED','UNKNOWN')
+    </select>
+    <select id="reservations" resultType="com.agentplatform.infrastructure.dao.po.QuotaRows$Reservation">
+        SELECT call_id,metric,user_id,window_start,reserved,actual,status FROM pf.quota_reservation WHERE call_id=#{call} ORDER BY metric
+    </select>
+    <insert id="insertReservation">
+        INSERT INTO pf.quota_reservation(call_id,metric,user_id,window_start,policy_id,policy_version,reserved,unlimited)
+        VALUES(#{call},#{metric},#{user},#{start},#{policy},#{revision},#{amount},#{unlimited})
+    </insert>
+    <update id="reserveBucket">UPDATE pf.quota_bucket SET reserved=reserved+#{amount},version=version+1 WHERE user_id=#{user} AND metric=#{metric} AND window_start=#{start}</update>
+    <update id="settleReservation">
+        UPDATE pf.quota_reservation SET actual=#{actual},status=#{state}
+        WHERE call_id=#{call} AND metric=#{metric} AND status IN ('RESERVED','UNKNOWN')
+    </update>
+    <update id="settleBucket">
+        UPDATE pf.quota_bucket SET reserved=reserved-#{reserved},consumed=consumed+#{actual},version=version+1
+        WHERE user_id=#{user} AND metric=#{metric} AND window_start=#{start} AND reserved&gt;=#{reserved}
+    </update>
+    <update id="unknown">UPDATE pf.quota_reservation SET status='UNKNOWN' WHERE call_id=#{call} AND status='RESERVED'</update>
+    <select id="policy" resultType="com.agentplatform.infrastructure.dao.po.QuotaRows$Policy">SELECT id,metric,limit_value,timezone,version FROM pf.quota_policy WHERE subject_user_id IS NOT DISTINCT FROM #{user,jdbcType=OTHER} AND metric=#{metric}</select>
+    <insert id="insertPolicy">INSERT INTO pf.quota_policy(id,subject_user_id,metric,limit_value,timezone) VALUES(#{id},#{change.userId,jdbcType=OTHER},#{change.metric},#{change.limit,jdbcType=BIGINT},#{change.timezone}) ON CONFLICT DO NOTHING</insert>
+    <update id="changePolicy">UPDATE pf.quota_policy SET limit_value=#{change.limit,jdbcType=BIGINT},timezone=#{change.timezone},version=version+1,updated_at=clock_timestamp() WHERE id=#{id} AND version=#{change.expectedVersion}</update>
+    <select id="policyCommand" resultType="com.agentplatform.infrastructure.dao.chat.QuotaMapper$Audit">SELECT request_hash,after_json FROM pf.quota_policy_audit WHERE command_id=#{command}</select>
+    <insert id="auditPolicy">INSERT INTO pf.quota_policy_audit(command_id,policy_id,expected_version,operator_id,request_hash,before_json,after_json) VALUES(#{change.commandId},#{id},#{change.expectedVersion},#{change.operator},#{hash},#{before}::jsonb,#{after}::jsonb)</insert>
+</mapper>

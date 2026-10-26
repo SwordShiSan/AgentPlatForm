@@ -48,7 +48,22 @@ public final class ChatService implements ChatApi {
                 state.taskVersion(),state.checkpointId()==null?null:state.checkpointId().toString(),state.traceId().toString());
     }
     private static List<java.util.Map<String,Object>> publicBlocks(Message message){return message.blocks().stream().filter(b->"TEXT".equals(b.get("type"))&&b.get("blockId") instanceof String&&b.get("text") instanceof String).map(b->java.util.Map.<String,Object>of("type","TEXT","blockId",b.get("blockId"),"text",b.get("text"))).toList();}
-    public Snapshot snapshot(Caller c,String value){var snapshot=repository.snapshot(actor(c),id(value));return new Snapshot(1,snapshot.cursor(),snapshot.messages().stream().filter(m->List.of("USER","ASSISTANT").contains(m.role())).map(m->new MessageView(m.id().toString(),m.taskId().toString(),m.role(),publicBlocks(m),m.status(),m.version())).toList(),snapshot.tasks().stream().map(ChatService::view).toList(),List.of(),List.of());}
+    public Snapshot snapshot(Caller c,String value){var snapshot=repository.snapshot(actor(c),id(value));return new Snapshot(1,snapshot.cursor(),snapshot.messages().stream().filter(m->List.of("USER","ASSISTANT").contains(m.role())).map(m->new MessageView(m.id().toString(),m.taskId().toString(),m.role(),publicBlocks(m),m.status(),m.version())).toList(),snapshot.tasks().stream().map(ChatService::view).toList(),snapshot.pending(),List.of());}
     public List<EventView> events(Caller c,String value,long after){return repository.events(actor(c),id(value),after).stream().map(e->new EventView(1,e.id().toString(),e.spaceId().toString(),e.conversationId().toString(),e.taskId()==null?null:e.taskId().toString(),e.seq(),e.type(),e.occurredAt().toString(),e.version(),e.payload())).toList();}
     public List<UsageView> usage(Caller c,String value){return repository.usage(actor(c),id(value)).stream().map(u->new UsageView(u.callId().toString(),u.status(),u.inputTokens(),u.outputTokens(),u.costMicros(),u.estimated())).toList();}
+
+    public ConversationView firstPlan(Caller c,String key,String title,String model,String source,String text,boolean plan){
+        Actor a=actor(c);var first=repository.firstPlan(a,id(key),title,model==null?null:id(model),source,text,plan);
+        var conversation=first.conversation();var task=first.task();
+        return new ConversationView(conversation.id().toString(),conversation.title(),conversation.version(),conversation.updatedAt().toString(),
+                new Accepted(task.id().toString(),task.conversationId().toString(),task.status(),repository.snapshot(a,task.conversationId()).cursor()));
+    }
+    public Accepted submitPlan(Caller c,String conversation,String key,String model,String source,String text,boolean plan){
+        Actor a=actor(c);var task=repository.submitPlan(a,id(conversation),id(key),model==null?null:id(model),source,text,plan);
+        return new Accepted(task.id().toString(),task.conversationId().toString(),task.status(),repository.snapshot(a,task.conversationId()).cursor());
+    }
+    public com.agentplatform.types.PlanInteractionData.Plan plan(Caller c,String task){return repository.plan(actor(c),id(task));}
+    public com.agentplatform.types.PlanInteractionData.Plan editPlan(Caller c,String task,long expected,com.agentplatform.types.PlanInteractionData.Edit edit){return repository.editPlan(actor(c),id(task),expected,edit);}
+    public com.agentplatform.types.PlanInteractionData.Accepted answer(Caller c,String task,String interaction,String key,com.agentplatform.types.PlanInteractionData.Answer answer){return repository.answer(actor(c),id(task),id(interaction),id(key),answer);}
+    public List<QuotaView> quota(Caller c){return repository.quota(actor(c)).stream().map(v->new QuotaView(v.metric().name(),v.unlimited(),v.limit(),v.used(),v.reserved(),v.remaining(),v.resetAt().toString(),v.policyVersion())).toList();}
 }

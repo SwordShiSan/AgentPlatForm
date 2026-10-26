@@ -38,19 +38,27 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
     private final ToolExecutionPort tools;
     private final StateStorage state;
     private final RuntimeStatePort manifests;
-    private final Map<String, Call> catalog;
+    private final Map<String, ToolDefinition> catalog;
     private final Path workspaceRoot;
     private final PlatformMessageCodec codec = new PlatformMessageCodec();
 
     public AgentScopeRuntimeFactory(ModelGateway model, PolicyPort policy, ToolExecutionPort tools,
                                    StateStorage state, RuntimeStatePort manifests, List<Call> definitions, Path workspaceRoot) {
+        this(model, policy, tools, state, manifests, new ToolCatalogPort() {
+            public List<Call> definitions() { return definitions; }
+        }, workspaceRoot);
+    }
+
+    public AgentScopeRuntimeFactory(ModelGateway model, PolicyPort policy, ToolExecutionPort tools,
+                                   StateStorage state, RuntimeStatePort manifests, ToolCatalogPort definitions, Path workspaceRoot) {
         this.model = java.util.Objects.requireNonNull(model); this.policy = java.util.Objects.requireNonNull(policy);
         this.tools = java.util.Objects.requireNonNull(tools); this.state = java.util.Objects.requireNonNull(state);
         this.manifests = java.util.Objects.requireNonNull(manifests);
         this.workspaceRoot = workspaceRoot.toAbsolutePath().normalize();
-        var registered = new LinkedHashMap<String, Call>();
-        for (Call definition : definitions) if (registered.putIfAbsent(definition.name(), definition) != null) throw new IllegalArgumentException("Duplicate tool");
-        this.catalog = Map.copyOf(registered);
+        var registered = new LinkedHashMap<String, ToolDefinition>();
+        for (ToolDefinition definition : definitions.typedDefinitions()) if (registered.putIfAbsent(definition.name(), definition) != null) throw new IllegalArgumentException("Duplicate tool");
+        // Stable definition order keeps provider prompts and cross-JVM contract evidence deterministic.
+        this.catalog = java.util.Collections.unmodifiableMap(new LinkedHashMap<>(registered));
     }
 
     @Override public PreparedRun prepare(Request request, LoopBoundary boundary) {
@@ -87,7 +95,7 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
                     .disableFilesystemTools().disableShellTool().disableWebTools().disableDynamicSkills()
                     .disableDefaultWorkspaceSkills().disableSubagents().disableDynamicSubagents().disableTranscript()
                     .disableWorkspaceContext().disableAtPathExpansion().disableToolsConfig().enablePendingToolRecovery(false)
-                    .maxRetries(1).maxIters(8).enableAgentTracingLog(false).middleware(new CommitMiddleware()).build();
+                    .maxRetries(1).maxIters(Integer.MAX_VALUE).enableAgentTracingLog(false).middleware(new CommitMiddleware()).build();
             // Some control tools are SDK defaults. Remove them before any run, then check the surface.
             for (ToolSchema schema : List.copyOf(agent.getDelegate().getToolkit().getToolSchemas())) {
                 if (!catalog.containsKey(schema.getName())) agent.getDelegate().getToolkit().removeTool(schema.getName());
@@ -101,7 +109,7 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
                 List<Msg> restored = history.stream().map(codec::encode).map(message -> message.withContent(message.getContent().stream().map(block -> {
                     if (block instanceof ToolUseBlock tool && priorTools.containsKey(tool.getId())) {
                         ToolUseBlock prior = priorTools.get(tool.getId());
-                        if (!codec.decodeCall(prior, catalog).equals(codec.decodeCall(tool, catalog))) throw new IllegalStateException("CHECKPOINT_CALL_MISMATCH");
+                        if (!codec.decodeTypedCall(prior, catalog).equals(codec.decodeTypedCall(tool, catalog))) throw new IllegalStateException("CHECKPOINT_CALL_MISMATCH");
                         return (ContentBlock) tool.withState(prior.getState());
                     }
                     return block;
@@ -140,12 +148,14 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
             AtomicBoolean asking = new AtomicBoolean();
             run.stream().doOnNext(event -> { if(event instanceof io.agentscope.core.event.RequireUserConfirmEvent) asking.set(true); }).then(Mono.defer(() -> {
                 active();
-                saveCheckpoint(CheckpointPhase.TERMINAL);
                 Turn turn = lastTurn.get();
                 if (asking.get()) {
                     List<Call> pending = turn == null ? restoredPending() : turn.round().calls();
-                    return Mono.just(new Outcome(Completion.WAITING_APPROVAL, "", pending));
+                    boolean control = pending.stream().anyMatch(call -> catalog.get(call.name()).category() == ToolCategory.CONTROL);
+                    saveCheckpoint(control ? CheckpointPhase.WAITING_INPUT : CheckpointPhase.TERMINAL);
+                    return Mono.just(new Outcome(control ? Completion.WAITING_INPUT : Completion.WAITING_APPROVAL, "", pending));
                 }
+                saveCheckpoint(CheckpointPhase.TERMINAL);
                 Message candidate = Message.text(Role.ASSISTANT, turn == null ? "" : turn.round().text());
                 return await(() -> boundary.beforeStop(request.scope(), candidate))
                         .map(decision -> new Outcome(decision, candidate.text(), List.of()));
@@ -161,12 +171,12 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
         private List<Call> restoredPending() {
             return agent.getDelegate().getAgentState(RuntimeContext.builder().userId(request.scope().actorId()).sessionId(request.scope().conversationId()).build())
                     .getContext().stream().flatMap(msg -> msg.getContentBlocks(ToolUseBlock.class).stream())
-                    .filter(tool -> tool.getState() == ToolCallState.ASKING).map(tool -> codec.decodeCall(tool, catalog)).toList();
+                    .filter(tool -> tool.getState() == ToolCallState.ASKING).map(tool -> codec.decodeTypedCall(tool, catalog)).toList();
         }
         private void saveCheckpoint(CheckpointPhase phase) {
             active();
             List<Message> canonical=manifests.checkpointHistory(request.scope());
-            if(canonical.isEmpty()) { if(phase==CheckpointPhase.TERMINAL)manifests.seal(request.scope(),request.bundle());return; }
+            if(canonical.isEmpty()) { if(phase==CheckpointPhase.TERMINAL||phase==CheckpointPhase.WAITING_INPUT)manifests.seal(request.scope(),request.bundle());return; }
             // Explicit public saveAgentState updates the SDK cache version, but an active
             // CallExecution keeps another loadedVersion. Snapshot a private clone instead;
             // never weaken CAS or mutate the running SDK context to force a save.
@@ -175,7 +185,15 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
             var snapshot=privateCodec.fromJson(privateCodec.toJson(agent.getDelegate().getAgentState(context)),io.agentscope.core.state.AgentState.class);
             Set<String> finished=canonical.stream().flatMap(message->message.observations().stream()).filter(o->o.status()==OperationStatus.SUCCEEDED).map(Observation::callId).collect(java.util.stream.Collectors.toSet());
             snapshot.contextMutable().clear();
-            canonical.stream().map(codec::encode).map(message->message.withContent(message.getContent().stream().map(block->block instanceof ToolUseBlock tool&&finished.contains(tool.getId())?(ContentBlock)tool.withState(ToolCallState.FINISHED):block).toList())).forEach(snapshot.contextMutable()::add);
+            Set<String> waiting = phase == CheckpointPhase.WAITING_INPUT
+                    ? pendingCalls.get().stream().map(Call::id).collect(java.util.stream.Collectors.toSet()) : Set.of();
+            canonical.stream().map(codec::encode).map(message->message.withContent(message.getContent().stream().map(block->{
+                if(block instanceof ToolUseBlock tool) {
+                    if(finished.contains(tool.getId()))return (ContentBlock)tool.withState(ToolCallState.FINISHED);
+                    if(waiting.contains(tool.getId()))return (ContentBlock)tool.withState(ToolCallState.ASKING);
+                }
+                return block;
+            }).toList())).forEach(snapshot.contextMutable()::add);
             byte[] bytes=privateCodec.toJson(snapshot).getBytes(java.nio.charset.StandardCharsets.UTF_8);
             long version=state.load(request.scope(),"checkpoint_agent_state").version();
             if(manifests.atomicCheckpoints(request.scope())){
@@ -204,7 +222,7 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
             @Override public Flux<ChatResponse> stream(List<Msg> messages, List<ToolSchema> definitions, GenerateOptions options) {
                 return Flux.create(sink -> {
                     AtomicBoolean emitted = new AtomicBoolean();
-                    var future = model.stream(request.scope(), messages.stream().map(msg -> codec.decode(msg, catalog)).toList(), List.copyOf(catalog.values()), text -> {
+                    var future = model.streamTyped(request.scope(), messages.stream().map(msg -> codec.decodeTyped(msg, catalog)).toList(), List.copyOf(catalog.values()), text -> {
                         active(); emitted.set(true); sink.next(ChatResponse.builder().content(List.of(TextBlock.builder().text(text).build())).build());
                     }).toCompletableFuture();
                     pendingFutures.add(future);sink.onCancel(() -> future.cancel(true));
@@ -214,7 +232,7 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
                         try {
                             active();
                             codec.validate(round);
-                            var resolved = round.calls().stream().map(call -> codec.decodeCall(codec.toolUse(call), catalog)).toList();
+                            var resolved = round.calls().stream().map(call -> codec.decodeTypedCall(codec.toolUse(call), catalog)).toList();
                             Round canonical = new Round(round.text(), resolved, round.finishReason(), round.inputTokens(), round.outputTokens());
                             lastTurn.set(new Turn(UUID.randomUUID().toString(), nextTurn.getAndIncrement(), canonical));
                             sink.next(codec.response(emitted.get()?new Round("",resolved,round.finishReason(),round.inputTokens(),round.outputTokens()):canonical));
@@ -229,7 +247,7 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
             @Override public int order() { return Integer.MAX_VALUE; }
             @Override public Flux<AgentEvent> onReasoning(Agent agent, RuntimeContext context, ReasoningInput input,
                                                         Function<ReasoningInput, Flux<AgentEvent>> next) {
-                return await(() -> boundary.beforeModel(request.scope(), input.messages().stream().map(msg -> codec.decode(msg, catalog)).toList()))
+                return await(() -> boundary.beforeModel(request.scope(), input.messages().stream().map(msg -> codec.decodeTyped(msg, catalog)).toList()))
                         .flatMapMany(messages -> next.apply(new ReasoningInput(messages.stream().map(codec::encode).toList(), input.tools(), input.options())))
                         .concatWith(Mono.defer(() -> {
                             Turn turn = lastTurn.get();
@@ -243,21 +261,23 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
                 return Flux.defer(() -> {
                     active();
                     Turn turn = lastTurn.get();
-                    List<Call> pending = input.toolCalls().stream().map(call -> codec.decodeCall(call, catalog)).toList();
+                    List<Call> pending = input.toolCalls().stream().map(call -> codec.decodeTypedCall(call, catalog)).toList();
                     pendingCalls.set(pending);
                     if (turn != null && !turn.round().calls().equals(pending)) return Flux.error(new IllegalStateException("TOOL_BATCH_MISMATCH"));
-                    // Restored pending calls are additionally checked against ledger in beforeTool.
-                    return next.apply(input).concatWith(Mono.fromRunnable(()->saveCheckpoint(CheckpointPhase.TOOL_COMMITTED)).then(Mono.<AgentEvent>empty()));
+                    long controls = pending.stream().filter(call -> catalog.get(call.name()).category() == ToolCategory.CONTROL).count();
+                    if (controls > 1 || (controls == 1 && pending.size() != 1))
+                        return Flux.error(new IllegalArgumentException("CONTROL_BATCH_LIMIT"));
+                    // Restored calls are checked against their canonical intent and answer before acting.
+                    return await(() -> boundary.beforeControlBatch(request.scope(), pending)).thenMany(next.apply(input)).concatWith(Mono.fromRunnable(()->saveCheckpoint(CheckpointPhase.TOOL_COMMITTED)).then(Mono.<AgentEvent>empty()));
                 });
             }
         }
 
         private final class GuardedTool extends ToolBase {
-            private final Call definition;
-            GuardedTool(Call definition) {
-                super(ToolBase.builder().name(definition.name()).description("Platform controlled tool")
-                        .inputSchema(Map.of("type", "object", "properties", definition.arguments().keySet().stream()
-                                .collect(java.util.stream.Collectors.toMap(key -> key, key -> Map.of("type", "string"))), "required", List.copyOf(definition.arguments().keySet())))
+            private final ToolDefinition definition;
+            GuardedTool(ToolDefinition definition) {
+                super(ToolBase.builder().name(definition.name()).description(definition.description())
+                        .inputSchema(definition.inputSchema())
                         .readOnly(definition.readOnly()).concurrencySafe(false));
                 this.definition = definition;
             }
@@ -274,13 +294,13 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
                 });
             }
             private Decision decide(Call call) {
-                if (request.scope().planMode() && !definition.readOnly()) return Decision.DENY;
+                if (request.scope().planMode() && definition.category() == ToolCategory.BUSINESS) return Decision.DENY;
                 return policy.decide(request.scope(), call);
             }
             @Override public Mono<ToolResultBlock> callAsync(ToolCallParam param) {
                 return Mono.defer(() -> {
                     active();
-                    Call call = codec.decodeCall(param.getToolUseBlock(), catalog);
+                    Call call = codec.decodeTypedCall(param.getToolUseBlock(), catalog);
                     if (decide(call) != Decision.ALLOW) return Mono.error(new SecurityException("TOOL_POLICY_CHANGED"));
                     return await(() -> boundary.beforeTool(request.scope(), call))
                             .then(await(() -> tools.execute(request.scope(), call)))

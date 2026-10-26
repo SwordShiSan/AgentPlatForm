@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface AccountingMapper {
+    int markDailyPreparedReleased(@org.apache.ibatis.annotations.Param("task") java.util.UUID task);
     List<ModelCallRow5> selectModelCall5(@Param("id") UUID id, @Param("id2") UUID id2);
     List<ModelCallRow24> selectModelCall24(@Param("slotTask") UUID slotTask, @Param("slotTask2") UUID slotTask2);
     List<Integer> selectModelCall33(@Param("call") UUID call, @Param("taskId") UUID taskId, @Param("attemptId") UUID attemptId, @Param("spaceId") UUID spaceId);

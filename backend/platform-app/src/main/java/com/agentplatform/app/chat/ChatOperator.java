@@ -49,6 +49,15 @@ public final class ChatOperator implements ApplicationRunner {
         }
         String action = option(args, "chat-action");
         switch (action) {
+            case "set-quota-policy" -> {
+                byte[] bytes=privateFile(Path.of(option(args,"policy-file")));
+                try {
+                    var change=tools.jackson.databind.json.JsonMapper.builder().enable(tools.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                            .build().readValue(bytes,com.agentplatform.domain.chat.QuotaData.Change.class);
+                    long version=repository.configureQuota(change);
+                    System.out.println("Quota policy updated; metric="+change.metric()+" revision="+version+"; existing usage and UNKNOWN holds preserved.");
+                } finally {Arrays.fill(bytes,(byte)0);}
+            }
             case "verify-restored-credentials" -> {
                 int count=0;
                 for(var credential:repository.recoveryCredentials()){

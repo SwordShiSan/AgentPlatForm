@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.chat.ExecutionPolicyMapper">
+    <select id="policy" resultType="com.agentplatform.infrastructure.dao.chat.ExecutionPolicyMapper$Policy">
+        SELECT plan_mode,quota_mode,active_millis,active_started_at FROM pf.task WHERE id=#{task}
+    </select>
+    <update id="setPolicy">UPDATE pf.task SET plan_mode=#{plan},quota_mode='USER_DAILY',reserved_tokens=0,reserved_micros=0,remaining_tokens=0,remaining_micros=0 WHERE id=#{task}</update>
+    <update id="beginActivity">
+        UPDATE pf.task SET active_started_at=coalesce(active_started_at,clock_timestamp()),
+        execution_deadline_at=coalesce(active_started_at,clock_timestamp())+((120000-active_millis)*interval '1 millisecond')
+        WHERE id=#{task} AND quota_mode='USER_DAILY' AND active_millis&lt;120000
+    </update>
+    <update id="stopActivity">
+        UPDATE pf.task SET active_millis=active_millis+greatest(0,extract(epoch FROM(clock_timestamp()-active_started_at))*1000)::bigint,
+        active_started_at=NULL WHERE id=#{task} AND active_started_at IS NOT NULL
+    </update>
+    <select id="waiting" resultType="int">SELECT count(*) FROM pf.task WHERE conversation_id=#{conversation} AND status='WAITING_INPUT'</select>
+    <insert id="createAcceptanceRun">INSERT INTO pf.acceptance_run(id,stage) VALUES(#{run},'R4.1') ON CONFLICT DO NOTHING</insert>
+    <update id="reserveAcceptance">UPDATE pf.acceptance_run SET physical_requests=physical_requests+1 WHERE id=#{run} AND physical_requests&lt;20</update>
+    <insert id="recordAcceptanceCall">INSERT INTO pf.acceptance_run_call(call_id,run_id) VALUES(#{call},#{run})</insert>
+    <select id="legacyAvailable" resultType="com.agentplatform.infrastructure.dao.chat.ExecutionPolicyMapper$LegacyBudget">
+        SELECT greatest(0,t.reserved_tokens-coalesce(sum(CASE WHEN r.state='SETTLED' THEN m.input_tokens+m.output_tokens WHEN r.state IN ('RESERVED','RECONCILING') THEN r.tokens ELSE 0 END),0)) AS tokens,
+        greatest(0,t.reserved_micros-coalesce(sum(CASE WHEN r.state='SETTLED' THEN m.cost_micros WHEN r.state IN ('RESERVED','RECONCILING') THEN r.amount_micros ELSE 0 END),0)) AS cost
+        FROM pf.task t LEFT JOIN pf.model_call m ON m.task_id=t.id LEFT JOIN pf.budget_reservation r ON r.call_id=m.id WHERE t.id=#{task}
+        GROUP BY t.id
+    </select>
+</mapper>

@@ -18,6 +18,12 @@ public final class HarnessPorts {
                                               java.util.function.Consumer<String> onText) {
             return complete(scope, messages, toolDefinitions);
         }
+        default CompletionStage<Round> streamTyped(Scope scope, List<Message> messages, List<ToolDefinition> definitions,
+                                                   java.util.function.Consumer<String> onText) {
+            if (definitions.stream().anyMatch(definition -> definition.legacy() == null))
+                return java.util.concurrent.CompletableFuture.failedFuture(new IllegalStateException("TYPED_TOOLS_NOT_SUPPORTED"));
+            return stream(scope, messages, definitions.stream().map(ToolDefinition::legacy).toList(), onText);
+        }
     }
     public interface ContextAssembler { CompletionStage<List<Message>> assemble(Scope scope, List<Message> history, List<Message> candidates); }
     public interface MemoryPort { CompletionStage<List<Message>> recall(Scope scope); }
@@ -33,13 +39,20 @@ public final class HarnessPorts {
     public interface LoopBoundary {
         CompletionStage<List<Message>> beforeModel(Scope scope, List<Message> history);
         CompletionStage<Void> afterModelCommitted(Scope scope, Turn turn);
+        /** Durable intent boundary, after the full round and before SDK permission/ASK. */
+        default CompletionStage<Void> beforeControlBatch(Scope scope, List<Call> calls) {
+            return java.util.concurrent.CompletableFuture.completedFuture(null);
+        }
         CompletionStage<Void> beforeTool(Scope scope, Call call);
         CompletionStage<Void> afterToolCommitted(Scope scope, Call call, Observation result);
         CompletionStage<Completion> beforeStop(Scope scope, Message candidate);
         default void cancelPending(Scope scope) {}
         default void release(Scope scope) {}
     }
-    public interface ToolCatalogPort { List<Call> definitions(); }
+    public interface ToolCatalogPort {
+        List<Call> definitions();
+        default List<ToolDefinition> typedDefinitions() { return definitions().stream().map(ToolDefinition::legacy).toList(); }
+    }
     public interface PreparedRun extends AutoCloseable {
         CompletionStage<Outcome> start();
         default CompletionStage<Void> terminated() {

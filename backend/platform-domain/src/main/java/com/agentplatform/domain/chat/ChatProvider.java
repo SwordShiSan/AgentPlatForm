@@ -18,6 +18,10 @@ public interface ChatProvider {
         return stream(apiKey,input,onText);
     }
     boolean real();
+    default Exchange openTyped(String model, String key, List<Message> input, List<ToolDefinition> definitions, Consumer<String> onText) {
+        if (!definitions.isEmpty()) throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");
+        return open(model,key,input,onText);
+    }
     /** Legacy scripted probes can complete normally but cannot certify cancelled transport. */
     default Exchange open(String model, String key, List<Message> input, Consumer<String> onText) {
         var future = stream(model, key, input, onText).toCompletableFuture();

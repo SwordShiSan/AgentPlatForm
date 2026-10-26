@@ -12,7 +12,11 @@ public final class ChatData {
     public record Conversation(UUID id, String title, long version, Instant updatedAt) {}
     public record Task(UUID id, UUID conversationId, String status, boolean cancelRequested, String reasonCode, long version) {}
     public record Message(UUID id, UUID taskId, String role, List<Map<String,Object>> blocks, String status, long version) {}
-    public record Snapshot(UUID conversationId, long cursor, List<Message> messages, List<Task> tasks) {}
+    public record Snapshot(UUID conversationId, long cursor, List<Message> messages, List<Task> tasks,
+                           List<com.agentplatform.types.PlanInteractionData.Pending> pending) {
+        public Snapshot(UUID conversationId,long cursor,List<Message> messages,List<Task> tasks){this(conversationId,cursor,messages,tasks,List.of());}
+        public Snapshot { pending=List.copyOf(pending); }
+    }
     public record Event(UUID id, UUID spaceId, UUID conversationId, UUID taskId, long seq, String type, long version, Instant occurredAt, Map<String,Object> payload) {}
     public record Envelope(int schemaVersion, UUID eventId, UUID spaceId, UUID aggregateId, long generation, String kind, Instant occurredAt, String traceparent, UUID payloadRef) {}
     public record Publish(UUID id, Envelope envelope) {}

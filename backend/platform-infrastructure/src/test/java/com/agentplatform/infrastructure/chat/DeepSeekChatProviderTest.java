@@ -12,6 +12,32 @@ import java.util.concurrent.atomic.*;
 import org.junit.jupiter.api.Test;
 
 class DeepSeekChatProviderTest {
+    @Test void productionControlSchemasAndFragmentedCallsUseExistingSdkTransport() throws Exception {
+        var server=com.sun.net.httpserver.HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
+        var body=new AtomicReference<String>();
+        server.createContext("/chat/completions",exchange->{
+            body.set(new String(exchange.getRequestBody().readAllBytes(),StandardCharsets.UTF_8));
+            exchange.getResponseHeaders().add("Content-Type","text/event-stream");exchange.sendResponseHeaders(200,0);
+            try(var output=exchange.getResponseBody()) {
+                output.write(("data: {\"id\":\"control\",\"choices\":[{\"index\":0,\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"review-1\",\"type\":\"function\",\"function\":{\"name\":\"platform_plan_review\",\"arguments\":\"{\"}}]},\"finish_reason\":null}]}\n\n"
+                        +"data: {\"id\":\"control\",\"choices\":[{\"index\":0,\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"}\"}}]},\"finish_reason\":\"tool_calls\"}]}\n\n"
+                        +"data: {\"id\":\"control\",\"choices\":[],\"usage\":{\"prompt_tokens\":12,\"completion_tokens\":3,\"total_tokens\":15}}\n\ndata: [DONE]\n\n").getBytes(StandardCharsets.UTF_8));
+            }
+        });server.start();
+        try(var provider=new DeepSeekChatProvider("http://127.0.0.1:"+server.getAddress().getPort(),true)) {
+            var call=provider.openTyped("deepseek-flash","fixture-sentinel",List.of(Message.text(Role.USER,"plan")),
+                    com.agentplatform.domain.chat.PlanControls.DEFINITIONS,text->fail("No public text"));
+            var result=call.result().toCompletableFuture().get(8,TimeUnit.SECONDS);
+            call.terminated().toCompletableFuture().get(5,TimeUnit.SECONDS);
+            assertEquals("platform_plan_review",result.round().calls().getFirst().name());
+            assertEquals("review-1",result.round().calls().getFirst().id());
+            assertTrue(result.round().calls().getFirst().arguments().isEmpty());assertTrue(result.usageKnown());
+            var wire=tools.jackson.databind.json.JsonMapper.builder().build().readTree(body.get());
+            assertEquals(3,wire.get("tools").size());
+            assertEquals("platform_plan_write",wire.get("tools").get(0).get("function").get("name").asText());
+            assertFalse(wire.get("tools").get(0).get("function").get("parameters").get("additionalProperties").asBoolean());
+        }finally{server.stop(0);}
+    }
     @org.junit.jupiter.params.ParameterizedTest @org.junit.jupiter.params.provider.ValueSource(strings={"deepseek-flash","deepseek-v4-pro"})
     void sdkDeliversTextBeforeFinalUsageAndDoesNotExposeReasoning(String modelName) throws Exception {
         var server = com.sun.net.httpserver.HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);

@@ -17,7 +17,10 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
     RecoveryPersistence(ChatMappers mappers) { super(mappers); }
 
     public Startup executionStartup(Lease l) { return tx(c -> {
-        MyBatisExecutionLedger.guard(c,l);c.recovery().initializeDeadline(l.taskId());
+        MyBatisExecutionLedger.guard(c,l);
+        if(daily(c,l.taskId())){
+            if(c.executionPolicy().beginActivity(l.taskId())!=1)throw new ChatFailure(504,"PROVIDER_TIMEOUT");
+        }else c.recovery().initializeDeadline(l.taskId());
         var task=c.recovery().task(l.taskId());var request=c.recovery().attemptRequest(l.attemptId());
         boolean restoring=request!=null;
         if(restoring)verify(c,l,request.checkpointId(),ChatRuntime.bundle());
@@ -39,17 +42,24 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
     static List<Message> history(ChatMappers c,Lease l) {
         MyBatisExecutionLedger.guard(c,l);var values=new ArrayList<>(input(c,l));
         var operations=c.recovery().operations(l.taskId());
+        var controlInputs=c.plan().consumedInputs(l.taskId());
         for(var turn:c.recovery().turns(l.taskId()))if("COMMITTED".equals(turn.status())) {
             Round round=JSON.readValue(turn.roundJson(),Round.class);
             values.add(new Message(Role.ASSISTANT,round.text(),round.calls(),List.of()));
             var observations=operations.stream().filter(o->o.turnId().equals(turn.id())&&"SUCCEEDED".equals(o.status()))
-                    .map(o->JSON.readValue(o.resultJson(),Observation.class)).toList();
+                    .map(o->{
+                        var observation=JSON.readValue(o.resultJson(),Observation.class);
+                        var input=controlInputs.stream().filter(i->i.callId().equals(observation.callId())).findFirst();
+                        if(input.isEmpty())return observation;
+                        String projection=json(Map.of("toolResult",observation.text(),"optionalControlInput",object(input.get().contentJson()),"answerId",input.get().answerId(),"answerHash",input.get().answerHash()));
+                        return new Observation(observation.callId(),observation.name(),projection,observation.status());
+                    }).toList();
             if(!observations.isEmpty())values.add(new Message(Role.TOOL,"",List.of(),observations));
         }
         return List.copyOf(values);
     }
     static Map<String,Object> canonical(ChatMappers c,Lease l) {
-        var facts=new TreeMap<String,Object>(object(c.recovery().facts(l.taskId())));facts.put("input",input(c,l));return facts;
+        var facts=new TreeMap<String,Object>(object(c.recovery().facts(l.taskId())));facts.put("input",input(c,l));facts.put("controlInputs",c.plan().consumedInputs(l.taskId()));return facts;
     }
     static String canonicalJson(Object value) { return MyBatisExecutionLedger.canonicalJson(value); }
 
@@ -84,6 +94,7 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
             Map<String,Object> root=object(cp.canonicalJson());decodeMessages(root.get("input"));
             var current=object(c.recovery().facts(task.id()));
             for(String key:List.of("turns","calls","operations"))if(!canonicalJson(root.get(key)).equals(canonicalJson(current.get(key))))throw new ChatFailure(409,"CHECKPOINT_LEDGER_ADVANCED");
+            if(root.containsKey("controlInputs")&&!canonicalJson(root.get("controlInputs")).equals(canonicalJson(c.plan().consumedInputs(task.id()))))throw new ChatFailure(409,"CHECKPOINT_CONTROL_INPUT_ADVANCED");
             long committed=c.recovery().turns(task.id()).stream().filter(t->"COMMITTED".equals(t.status())).count();
             if(cp.watermark()!=committed)throw new ChatFailure(409,"CHECKPOINT_LEDGER_ADVANCED");
             var states=object(cp.stateJson());if(!states.keySet().equals(Set.of("agent_state")))throw new ChatFailure(409,"CHECKPOINT_STATE_MISSING");
@@ -113,6 +124,7 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
 
     private static TaskRow locked(ChatMappers c,UUID id) {
         var row=c.recovery().task(id);if(row==null)throw new ChatFailure(404,"RESOURCE_NOT_FOUND");
+        new MyBatisQuotaLedger(c.quota()).lock(row.userId());
         c.dispatch().updateExecutionSlot87();
         Actor actor=new Actor(row.userId(),row.spaceId());conversation(c,actor,row.conversationId(),true);task(c,actor,id,true);
         return c.recovery().task(id);
@@ -129,8 +141,9 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
         if(c.recovery().newerTasks(t.id())>0)throw new ChatFailure(409,"RECOVERY_CONVERSATION_ADVANCED");
         if(cp==null)throw new ChatFailure(409,"CHECKPOINT_NOT_COMMITTED");
         if(!latest.equals(cp.attemptId()))throw new ChatFailure(409,"CHECKPOINT_ATTEMPT_MISMATCH");
-        if(t.deadline()==null||!t.deadline().isAfter(c.recovery().now()))throw new ChatFailure(409,"RECOVERY_DEADLINE_EXCEEDED");
-        if(c.recovery().calls(t.id())>=4)throw new ChatFailure(409,"MODEL_CALL_LIMIT");
+        if(daily(c,t.id())){
+            if(c.executionPolicy().policy(t.id()).activeMillis()>=120000)throw new ChatFailure(409,"RECOVERY_DEADLINE_EXCEEDED");
+        }else if(t.deadline()==null||!t.deadline().isAfter(c.recovery().now()))throw new ChatFailure(409,"RECOVERY_DEADLINE_EXCEEDED");
         // Reuse the existing frozen binding/credential policy rather than substituting a key.
         var authorization=c.conversation().selectAuthorizeChatCredential25(t.id());
         if(authorization.isEmpty()||!authorization.getFirst().value1()||!"ACTIVE".equals(authorization.getFirst().value2()))throw new ChatFailure(403,"CREDENTIAL_REVOKED");
@@ -162,8 +175,11 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
         var cp=c.recovery().latest(t.id());if(cp==null||!cp.id().equals(command.checkpointId())||!Objects.equals(c.recovery().latestAttempt(t.id()),command.stopAttemptId()))throw new ChatFailure(409,"RECOVERY_EVIDENCE_MISMATCH");
         core(c,t,cp,false,true);
         var config=object(c.conversation().selectTask6(t.id(),t.spaceId()).getFirst().value1());
-        int remaining=4-c.recovery().calls(t.id());long tokens=9216L*remaining,cost=((Number)config.get("perCallMicros")).longValue()*remaining;
-        if(c.recovery().reserve(t.spaceId(),t.userId(),tokens,cost)!=1)throw new ChatFailure(429,"QUOTA_EXCEEDED");
+        long tokens=0,cost=0;
+        if(!daily(c,t.id())){
+            var available=c.executionPolicy().legacyAvailable(t.id());tokens=available.tokens();cost=available.cost();
+            if(c.recovery().reserve(t.spaceId(),t.userId(),tokens,cost)!=1)throw new ChatFailure(429,"QUOTA_EXCEEDED");
+        }
         long revision=t.revision()+1;c.recovery().insertRequest(command,t.spaceId(),revision,digest);
         c.recovery().queueTask(t.id(),revision,tokens,cost);c.recovery().queueDispatch(t.id());
         var actor=new Actor(t.userId(),t.spaceId());outbox(c,actor,t.id(),c.recovery().generation(t.id()));
@@ -186,6 +202,11 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
         c.recovery().initializeDeadline(l.taskId());var request=c.recovery().latestRequest(l.taskId());
         if(request==null||!"QUEUED".equals(request.status()))return;
         if(c.recovery().claimRequest(request.commandId(),l.attemptId())!=1)throw new ChatFailure(409,"RECOVERY_VERSION_CONFLICT");
+        var resume=c.plan().queuedResume(l.taskId());
+        if(resume!=null){
+            if(!resume.checkpointId().equals(request.checkpointId())||resume.generation()!=c.recovery().generation(l.taskId())
+                    ||c.plan().claimResume(resume.id(),l.attemptId())!=1)throw new ChatFailure(409,"CONTROL_RESUME_BINDING_MISMATCH");
+        }
         copy(c,l,request.checkpointId());
     }
     static void requireTime(ChatMappers c,Lease l) {

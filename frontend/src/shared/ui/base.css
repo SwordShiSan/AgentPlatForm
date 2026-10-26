@@ -106,3 +106,12 @@ a { color: var(--accent); }
   .chat-sidebar nav { max-height: 120px; }
   .chat-content { padding: 16px; }
 }
+
+.interaction-card { border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-block: 1rem; min-width: 0; overflow-wrap: anywhere; }
+.interaction-card fieldset { min-width: 0; border: 0; padding: 0; }
+.interaction-card textarea, .interaction-card input:not([type="checkbox"]) { width: 100%; max-width: 100%; box-sizing: border-box; color: var(--text); background: var(--canvas); border: 1px solid var(--border); border-radius: 8px; padding: .6rem; font: inherit; }
+.interaction-card label { display: block; margin-block: .5rem; }
+.plan-comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.plan-comparison pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.plan-toggle { display: flex; align-items: center; gap: .5rem; }
+@media (max-width: 700px) { .plan-comparison { grid-template-columns: minmax(0, 1fr); } }

@@ -167,7 +167,8 @@
                   "BLOCKED",
                   "SUCCEEDED",
                   "FAILED",
-                  "CANCELLED"
+                  "CANCELLED",
+                  "WAITING_INPUT"
                 ]
               },
               "reasonCode": {
@@ -567,6 +568,158 @@
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 9007199254740991
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "plan.revised"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "taskId",
+              "revisionId",
+              "revision",
+              "version"
+            ],
+            "properties": {
+              "taskId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "revisionId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "version": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "interaction.opened"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "interactionId",
+              "taskId",
+              "kind",
+              "optional",
+              "version",
+              "expiresAt"
+            ],
+            "properties": {
+              "interactionId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "taskId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "kind": {
+                "enum": [
+                  "PLAN_APPROVAL",
+                  "QUESTION"
+                ]
+              },
+              "optional": {
+                "type": "boolean"
+              },
+              "version": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "interaction.resolved"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "interactionId",
+              "taskId",
+              "decision",
+              "version"
+            ],
+            "properties": {
+              "interactionId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "taskId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "decision": {
+                "enum": [
+                  "EXECUTE_PLAN",
+                  "REVISE_PLAN",
+                  "REJECT_PLAN",
+                  "DELIVER_PLAN",
+                  "ANSWER",
+                  "SKIP",
+                  "SUPERSEDED",
+                  "EXPIRED",
+                  "CANCELLED"
+                ]
+              },
+              "version": {
+                "type": "integer",
+                "minimum": 1
               }
             }
           }
