@@ -54,6 +54,20 @@ class PlanQuotaPostgresTest {
     Lease claim(Task task){UUID relay=UUID.randomUUID();var published=repository.publications(relay).stream().filter(x->x.envelope().aggregateId().equals(task.id())).findFirst().orElseThrow();repository.published(relay,published,true);return Objects.requireNonNull(repository.claim(published.envelope(),UUID.randomUUID()));}
     void sql(String sql) throws Exception {try(var connection=DriverManager.getConnection(url,"postgres",password);var statement=connection.createStatement()){statement.execute(sql);}}
     long count(String sql) throws Exception {try(var connection=DriverManager.getConnection(url,"postgres",password);var statement=connection.createStatement();var result=statement.executeQuery(sql)){assertTrue(result.next());return result.getLong(1);}}
+    @Test void concurrentReservationsCannotOversellTheLastDailyAllowance() throws Exception {
+        repository.configureQuota(new QuotaData.Change(UUID.randomUUID(),user.userId(),QuotaData.Metric.TOKENS,9216L,"Asia/Shanghai",0,"fixture"));
+        var lease=claim(task(user,false));repository.executionStartup(lease);
+        var start=new CountDownLatch(1);var successes=new java.util.concurrent.CopyOnWriteArrayList<Call>();var refused=new AtomicInteger();
+        Runnable reserve=()->{try{assertTrue(start.await(5,TimeUnit.SECONDS));successes.add(repository.beginCall(lease,false));}
+            catch(ChatFailure failure){assertEquals("DAILY_TOKEN_QUOTA_EXCEEDED",failure.code());refused.incrementAndGet();}
+            catch(InterruptedException failure){throw new RuntimeException(failure);}};
+        var first=CompletableFuture.runAsync(reserve);var second=CompletableFuture.runAsync(reserve);start.countDown();
+        CompletableFuture.allOf(first,second).get(10,TimeUnit.SECONDS);assertEquals(1,successes.size());assertEquals(1,refused.get());
+        assertEquals(9216,repository.quota(user).stream().filter(q->q.metric()==QuotaData.Metric.TOKENS).findFirst().orElseThrow().reserved());
+        repository.settle(lease,successes.getFirst(),null,null,"CALL_NOT_SENT",false);
+        repository.stopped(lease,"FAILED","FIXTURE_DONE",null,"3".repeat(64));
+        assertEquals(0,repository.quota(user).stream().filter(q->q.metric()==QuotaData.Metric.TOKENS).findFirst().orElseThrow().reserved());
+    }
     @Test void ordinaryDailyQuotaIsConfigurableAndAdministratorIsUnlimitedButMetered() throws Exception {
         assertEquals(1000000L,repository.quota(user).stream().filter(q->q.metric()==QuotaData.Metric.TOKENS).findFirst().orElseThrow().limit().longValue());
         assertTrue(repository.quota(admin).stream().allMatch(QuotaData.View::unlimited));
@@ -87,6 +101,27 @@ class PlanQuotaPostgresTest {
         assertEquals(2,repository.plan(user,task.id()).revisions().size());
         assertEquals(1,count("SELECT count(*) FROM pf.message WHERE task_id='"+task.id()+"' AND role='USER'"));
         assertTrue(repository.snapshot(user,task.conversationId()).pending().isEmpty());
+    }
+    @Test void rejectedOrRevisionRequestedPlanRequiresANewReviewBeforeTextExecution() throws Exception {
+        for(var decision:List.of(Decision.REJECT_PLAN,Decision.REVISE_PLAN)){
+            var task=task(user,true);var calls=new AtomicInteger();
+            var provider=scripted(List.of(
+                    control("write-first","platform_plan_write",Map.of("title","原计划","markdown","待审阅文本。")),
+                    control("review-first","platform_plan_review",Map.of()),
+                    control("write-revised","platform_plan_write",Map.of("title","修改后的计划","markdown","根据反馈调整文本。")),
+                    control("review-revised","platform_plan_review",Map.of()),
+                    new HarnessData.Round("确认后完成666",List.of(),"stop",10,4)),calls);
+            try(var execution=new ChatExecution(repository,provider,cipher,work)){execution.run(claim(task));}
+            var old=repository.pending(user,task.conversationId()).getFirst();
+            repository.answer(user,task.id(),old.interactionId(),UUID.randomUUID(),new Answer(old.version(),decision,"请更简短。",List.of()));
+            try(var execution=new ChatExecution(repository,provider,cipher,work)){execution.run(claim(task));}
+            assertEquals("WAITING_INPUT",repository.task(user,task.id()).status());
+            var revised=repository.pending(user,task.conversationId()).getFirst();assertNotEquals(old.interactionId(),revised.interactionId());
+            assertEquals(2,repository.plan(user,task.id()).revisions().size());
+            repository.answer(user,task.id(),revised.interactionId(),UUID.randomUUID(),new Answer(revised.version(),Decision.EXECUTE_PLAN,"",List.of()));
+            try(var execution=new ChatExecution(repository,provider,cipher,work)){execution.run(claim(task));}
+            assertEquals("SUCCEEDED",repository.task(user,task.id()).status());assertEquals(5,calls.get());
+        }
     }
     @Test void deliverPlanCompletesWithoutAnotherProviderCall() throws Exception {
         var task=task(user,true);var calls=new AtomicInteger();
