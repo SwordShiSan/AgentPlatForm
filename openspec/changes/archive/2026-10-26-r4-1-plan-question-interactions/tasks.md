@@ -19,5 +19,5 @@
 - [x] 5.1 Run engineering/architecture/persistence/Mapper/XML/frontend/contracts/links/strict and compatibility tests.
 - [x] 5.2 Run isolated real PG/MQ concurrency, fault windows, integrity, authorization and budget-conservation cases.
 - [x] 5.3 Run browser flows/accessibility/layouts and minimal Flash real acceptance under protected20request counter.
-- [ ] 5.4 Bind exact source/image/migration/evidence and complete protected step→phase→main PRs, archive only this change.
-- [ ] 5.5 Update ledgers, ADR, Skill and protected body/evidence delivery; stop local acceptance resources; production stays R3.
+- [x] 5.4 Bind exact source/image/migration/evidence and complete protected step→phase→main PRs, archive only this change.
+- [x] 5.5 Update ledgers, ADR, Skill and protected body/evidence delivery; stop local acceptance resources; production stays R3.
