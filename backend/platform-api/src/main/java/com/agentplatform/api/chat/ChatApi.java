@@ -3,7 +3,9 @@ package com.agentplatform.api.chat;
 import java.util.List;
 import java.util.Map;
 
-public interface ChatApi {
+public interface ChatApi extends TaskPermissionApi {
+    ConversationView firstAuthorized(Caller caller,String key,String title,String model,String source,String text,boolean plan,String workspace,com.agentplatform.types.TaskPermissionData.Mode mode);
+    Accepted submitAuthorized(Caller caller,String conversation,String key,String model,String source,String text,boolean plan,String workspace,com.agentplatform.types.TaskPermissionData.Mode mode);
     record Caller(String userId,String spaceId) {}
     record ModelView(String id,String name,List<String> capabilities,boolean available) {}
     record Models(List<ModelView> items) {}

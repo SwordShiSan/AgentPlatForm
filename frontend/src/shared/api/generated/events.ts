@@ -40,7 +40,8 @@ export type PlatformEvent = {
     | "task.children_changed"
     | "context.updated"
     | "verification.updated"
-    | "file.version.created";
+    | "file.version.created"
+    | "task.permissions_changed";
   occurredAt: string;
   entityVersion: number;
   payload: {

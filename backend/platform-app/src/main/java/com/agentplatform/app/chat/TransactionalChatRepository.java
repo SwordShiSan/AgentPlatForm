@@ -124,4 +124,14 @@ public final class TransactionalChatRepository implements ChatRepository {
     @Override public long configureQuota(com.agentplatform.domain.chat.QuotaData.Change change){return tx(transactions,()->delegate.configureQuota(change));}
     @Override public First firstPlan(Actor a,UUID k,String title,UUID model,String source,String text,boolean plan){return tx(transactions,()->delegate.firstPlan(a,k,title,model,source,text,plan));}
     @Override public Task submitPlan(Actor a,UUID conversation,UUID k,UUID model,String source,String text,boolean plan){return tx(transactions,()->delegate.submitPlan(a,conversation,k,model,source,text,plan));}
+
+    @Override public com.agentplatform.types.TaskPermissionData.View permissions(Actor a,UUID t){return tx(snapshots,()->delegate.permissions(a,t));}
+    @Override public com.agentplatform.types.TaskPermissionData.Scopes permissionScopes(Actor a,UUID t){return tx(snapshots,()->delegate.permissionScopes(a,t));}
+    @Override public com.agentplatform.types.TaskPermissionData.Scopes permissionScopes(Actor a,UUID t,String cursor){return tx(snapshots,()->delegate.permissionScopes(a,t,cursor));}
+    @Override public com.agentplatform.types.TaskPermissionData.View permissionMode(Actor a,UUID t,UUID k,long v,com.agentplatform.types.TaskPermissionData.Mode m){return tx(transactions,()->delegate.permissionMode(a,t,k,v,m));}
+    @Override public com.agentplatform.types.TaskPermissionData.View grant(Actor a,UUID t,UUID k,long v,com.agentplatform.types.TaskPermissionData.CreateGrant g){return tx(transactions,()->delegate.grant(a,t,k,v,g));}
+    @Override public com.agentplatform.types.TaskPermissionData.View revokeGrant(Actor a,UUID t,UUID g,UUID k,long v){return tx(transactions,()->delegate.revokeGrant(a,t,g,k,v));}
+    @Override public HarnessData.Decision operationDecision(Lease l,HarnessData.Call c){return tx(transactions,()->delegate.operationDecision(l,c));}
+    @Override public First firstAuthorized(Actor a,UUID k,String title,UUID model,String source,String text,boolean plan,UUID w,com.agentplatform.types.TaskPermissionData.Mode m){return tx(transactions,()->delegate.firstAuthorized(a,k,title,model,source,text,plan,w,m));}
+    @Override public Task submitAuthorized(Actor a,UUID conversation,UUID k,UUID model,String source,String text,boolean plan,UUID w,com.agentplatform.types.TaskPermissionData.Mode m){return tx(transactions,()->delegate.submitAuthorized(a,conversation,k,model,source,text,plan,w,m));}
 }

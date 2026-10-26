@@ -8,7 +8,7 @@ export class SnapshotRequired extends Error {}
 export function applyChatEvent(previous: ChatSnapshot, event: PlatformEvent): ChatSnapshot {
   if (event.seq <= previous.cursor) return previous;
   if (event.seq !== previous.cursor + 1) throw new SnapshotRequired('Event cursor gap');
-  if (!['task.accepted', 'task.state_changed', 'message.started', 'message.delta', 'message.completed', 'usage.updated'].includes(event.type)) {
+  if (!['task.accepted', 'task.state_changed', 'message.started', 'message.delta', 'message.completed', 'usage.updated', 'task.permissions_changed'].includes(event.type)) {
     throw new SnapshotRequired('Unsupported projection event');
   }
   const next = { ...previous };

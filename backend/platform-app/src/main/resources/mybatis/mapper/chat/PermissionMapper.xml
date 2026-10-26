@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.chat.PermissionMapper">
+  <select id="permission" resultType="com.agentplatform.infrastructure.dao.po.PermissionRows$PermissionRow">
+    SELECT t.id task_id,t.space_id,t.creator_id actor_id,t.conversation_id,b.workspace_id,b.root_scope_id,
+      coalesce(p.mode,'RISK_BASED') mode,coalesce(p.version,1) version,coalesce(p.policy_version,'task-directory-policy-v1') policy_version,
+      t.status,t.cancel_requested,t.plan_mode,clock_timestamp() now
+    FROM pf.task t LEFT JOIN pf.task_resource_binding b ON b.task_id=t.id LEFT JOIN pf.task_permission p ON p.task_id=t.id
+    WHERE t.space_id=#{space} AND t.id=#{task}
+  </select>
+  <select id="workspace" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.workspace WHERE id=#{id} AND space_id=#{actor.spaceId} AND actor_id=#{actor.userId} AND state='READY')</select>
+  <select id="directories" resultType="com.agentplatform.infrastructure.dao.po.PermissionRows$DirectoryRow">SELECT id,relative_path path FROM pf.file_entry WHERE space_id=#{space} AND workspace_id=#{workspace} AND kind='DIRECTORY' AND collection_state='CONFIRMED' <if test="after != null">AND relative_path &gt; #{after}</if> ORDER BY relative_path LIMIT 51</select>
+  <select id="directory" resultType="com.agentplatform.infrastructure.dao.po.PermissionRows$DirectoryRow">SELECT id,relative_path path FROM pf.file_entry WHERE space_id=#{space} AND workspace_id=#{workspace} AND id=#{id} AND kind='DIRECTORY' AND collection_state='CONFIRMED'</select>
+  <insert id="bind">INSERT INTO pf.task_resource_binding(task_id,space_id,actor_id,workspace_id,root_scope_id,initial_mode) VALUES(#{task},#{actor.spaceId},#{actor.userId},#{workspace},#{root},#{mode})</insert>
+  <insert id="initialize">INSERT INTO pf.task_permission(task_id,space_id,mode) VALUES(#{task},#{space},#{mode}) ON CONFLICT(task_id) DO NOTHING</insert>
+  <update id="mode">UPDATE pf.task_permission SET mode=#{mode},version=version+1 WHERE task_id=#{task} AND version=#{version}</update>
+  <update id="advance">UPDATE pf.task_permission SET version=version+1 WHERE task_id=#{task} AND version=#{version}</update>
+  <select id="grants" resultType="com.agentplatform.infrastructure.dao.po.PermissionRows$GrantRow">SELECT id,scope_id,directory_path path,capabilities::text capabilities,expires_at,revoked_at,policy_version FROM pf.task_directory_grant WHERE space_id=#{space} AND task_id=#{task} ORDER BY created_at,id</select>
+  <insert id="insertGrant">INSERT INTO pf.task_directory_grant(id,task_id,space_id,workspace_id,actor_id,scope_id,directory_path,capabilities,policy_version,created_at,expires_at) VALUES(#{id},#{p.taskId},#{p.spaceId},#{p.workspaceId},#{p.actorId},#{scope},#{path},#{caps}::jsonb,#{policy},CAST(#{p.now} AS timestamptz),CAST(#{p.now} AS timestamptz)+interval '24 hours')</insert>
+  <update id="revoke">UPDATE pf.task_directory_grant SET revoked_at=clock_timestamp() WHERE space_id=#{space} AND task_id=#{task} AND id=#{grant} AND revoked_at IS NULL</update>
+  <select id="command" resultType="com.agentplatform.infrastructure.dao.po.PermissionRows$CommandRow">SELECT request_hash,response_json::text response_json FROM pf.task_permission_command WHERE space_id=#{actor.spaceId} AND actor_id=#{actor.userId} AND task_id=#{task} AND command_id=#{key}</select>
+  <insert id="remember">INSERT INTO pf.task_permission_command(task_id,space_id,actor_id,command_id,request_hash,response_json) VALUES(#{task},#{actor.spaceId},#{actor.userId},#{key},#{hash},#{response}::jsonb)</insert>
+  <insert id="audit">INSERT INTO pf.task_permission_audit(id,space_id,task_id,actor_id,attempt_id,operation_id,call_id,decision,reason_code,policy_version,permission_version,arguments_hash,trace_id) VALUES(#{id},#{p.spaceId},#{p.taskId},#{p.actorId},#{attempt},#{operation},#{call},#{decision},#{reason},#{p.policyVersion},#{p.version},#{hash},#{trace})</insert>
+  <select id="operation" resultType="java.util.UUID">SELECT o.id FROM pf.tool_operation o JOIN pf.operation_execution_binding b ON b.operation_id=o.id WHERE o.task_id=#{task} AND b.attempt_id=#{attempt} AND o.call_id=#{call}</select>
+</mapper>

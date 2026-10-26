@@ -1210,6 +1210,245 @@ paths:
     post: {"operationId": "answerTaskInteraction", "security": [{"session": []}], "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}, {"$ref": "#/components/parameters/CsrfToken"}, {"name": "interactionId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}, {"name": "Idempotency-Key", "in": "header", "required": true, "schema": {"type": "string", "format": "uuid"}}], "responses": {"default": {"$ref": "#/components/responses/IdentityProblem"}, "202": {"description": "Answer durably accepted; execution resumes through MQ", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InteractionAccepted"}}}}}, "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AnswerInteraction"}}}}}
   /api/v1/me/usage-quota:
     get: {"operationId": "getMyUsageQuota", "security": [{"session": []}], "responses": {"200": {"description": "Versioned daily quota; administrator unlimited is still metered", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/QuotaView"}}}}}, "default": {"$ref": "#/components/responses/IdentityProblem"}}}
+  /api/v1/tasks/{id}/permissions:
+    get:
+      operationId: getTaskPermissions
+      tags:
+        - Chat
+      security:
+        - session: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Space-Id
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Current task authorization projection
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskPermissions"
+        default:
+          $ref: "#/components/responses/IdentityProblem"
+    patch:
+      operationId: updateTaskPermissions
+      tags:
+        - Chat
+      security:
+        - session: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: ^"[1-9][0-9]*"$
+        - name: X-Space-Id
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskPermissionPatch"
+      responses:
+        "200":
+          description: Current task authorization projection
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskPermissions"
+        default:
+          $ref: "#/components/responses/IdentityProblem"
+  /api/v1/tasks/{id}/permission-scopes:
+    get:
+      operationId: getTaskPermissionScopes
+      tags:
+        - Chat
+      security:
+        - session: []
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Space-Id
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Current task authorization projection
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskPermissionScopes"
+        default:
+          $ref: "#/components/responses/IdentityProblem"
+  /api/v1/tasks/{id}/grants:
+    post:
+      operationId: createTaskGrant
+      tags:
+        - Chat
+      security:
+        - session: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: ^"[1-9][0-9]*"$
+        - name: X-Space-Id
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskGrantRequest"
+      responses:
+        "200":
+          description: Current task authorization projection
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskPermissions"
+        default:
+          $ref: "#/components/responses/IdentityProblem"
+  /api/v1/tasks/{id}/grants/{grantId}:
+    delete:
+      operationId: revokeTaskGrant
+      tags:
+        - Chat
+      security:
+        - session: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: grantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: ^"[1-9][0-9]*"$
+        - name: X-Space-Id
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Current task authorization projection
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskPermissions"
+        default:
+          $ref: "#/components/responses/IdentityProblem"
 components:
   securitySchemes:
     session:
@@ -1253,6 +1492,158 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
   schemas:
+    TaskDirectoryGrant:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - scopeId
+        - path
+        - capabilities
+        - expiresAt
+        - revokedAt
+        - active
+        - policyVersion
+      properties:
+        id:
+          type: string
+          format: uuid
+        scopeId:
+          type: string
+          format: uuid
+        path:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+            enum:
+              - LIST
+              - READ
+              - WRITE
+          minItems: 1
+          maxItems: 3
+          uniqueItems: true
+        expiresAt:
+          type: string
+          format: date-time
+        revokedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        active:
+          type: boolean
+        policyVersion:
+          type: string
+    TaskPermissions:
+      type: object
+      additionalProperties: false
+      required:
+        - taskId
+        - workspaceId
+        - mode
+        - version
+        - policyVersion
+        - mutable
+        - effectiveRestrictions
+        - grants
+      properties:
+        taskId:
+          type: string
+          format: uuid
+        workspaceId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        mode:
+          type: string
+          enum:
+            - RISK_BASED
+            - FULL
+          default: RISK_BASED
+        version:
+          type: integer
+          minimum: 1
+        policyVersion:
+          type: string
+        mutable:
+          type: boolean
+        effectiveRestrictions:
+          type: array
+          items:
+            type: string
+        grants:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskDirectoryGrant"
+    TaskPermissionScope:
+      type: object
+      additionalProperties: false
+      required:
+        - scopeId
+        - path
+        - capabilities
+      properties:
+        scopeId:
+          type: string
+          format: uuid
+        path:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+            enum:
+              - LIST
+              - READ
+              - WRITE
+    TaskPermissionScopes:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskPermissionScope"
+        nextCursor:
+          type: [string, "null"]
+          format: uuid
+    TaskPermissionPatch:
+      type: object
+      additionalProperties: false
+      required:
+        - mode
+      properties:
+        mode:
+          type: string
+          enum:
+            - RISK_BASED
+            - FULL
+          default: RISK_BASED
+    TaskGrantRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - scopeId
+        - capabilities
+      properties:
+        scopeId:
+          type: string
+          format: uuid
+        capabilities:
+          type: array
+          items:
+            type: string
+            enum:
+              - LIST
+              - READ
+              - WRITE
+          minItems: 1
+          maxItems: 3
+          uniqueItems: true
     CreateFileUpload:
       type: object
       additionalProperties: false
@@ -1782,8 +2173,13 @@ components:
             planMode:
               type: boolean
               default: false
+            workspaceId:
+              type: [string, "null"]
+              format: uuid
             permissionMode:
-              const: RISK_BASED
+              type: string
+              enum: [RISK_BASED, FULL]
+              default: RISK_BASED
             credentialSource: &a11
               type: string
               enum:

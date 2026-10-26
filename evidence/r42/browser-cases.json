@@ -1,0 +1,36 @@
+{
+  "status": "PASS",
+  "runtimeSource": "9d3e91843c722f78240bc5bbe1c8520b76c248ec",
+  "cases": [
+    {
+      "name": "plan edit refresh confirmation stays on the same task and supports responsive themes",
+      "status": "PASS",
+      "testSource": "0123740789ee24157a53beae3da0672487b02b7d",
+      "durationMs": 40329
+    },
+    {
+      "name": "required question is not a new user message and plan-only delivery makes no extra model call",
+      "status": "PASS",
+      "testSource": "0123740789ee24157a53beae3da0672487b02b7d",
+      "durationMs": 21151
+    },
+    {
+      "name": "admin quota exemption does not permit reading another user plan",
+      "status": "PASS",
+      "testSource": "0123740789ee24157a53beae3da0672487b02b7d",
+      "durationMs": 17571
+    },
+    {
+      "name": "task workspace binding directory grants mode changes and revocation survive refresh",
+      "status": "PASS",
+      "testSource": "de06690c63b4fd32c4b9e3d4b8675fe3bf38131c",
+      "durationMs": 27711
+    },
+    {
+      "name": "two tabs cannot overwrite a permission revision and missing csrf or version fails",
+      "status": "PASS",
+      "testSource": "de06690c63b4fd32c4b9e3d4b8675fe3bf38131c",
+      "durationMs": 17619
+    }
+  ]
+}
