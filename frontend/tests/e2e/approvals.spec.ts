@@ -119,3 +119,28 @@ test('stale approvals only permit deny or task cancellation', async ({ page }) =
   await expect(page.getByTestId('approval-card').getByRole('button', { name: '允许这一次', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: '取消回复', exact: true }).click(); await terminal(page, 'CANCELLED');
 });
+
+test('ordinary Plan and Question still resume the same unbound text task after approval integration', async ({ page }) => {
+  await login(page); await page.getByRole('button', { name: '新建对话', exact: true }).click();
+  await page.getByRole('combobox', { name: '本次工作区', exact: true }).selectOption('');
+  await page.getByRole('combobox', { name: '本次权限', exact: true }).selectOption('RISK_BASED');
+  await page.getByLabel('先制定计划，再确认文本执行').check();
+  await page.getByLabel('消息', { exact: true }).fill('fixture:plan-question 澄清后仅交付文本方案');
+  await page.getByLabel('消息', { exact: true }).press('Control+Enter');
+  await expect(page).toHaveURL(/\/app\/chat\/[0-9a-f-]+$/);
+  await expect.poll(async () => (await snapshot(page)).tasks.at(-1)?.status, { timeout: 60_000 }).toBe('WAITING_INPUT');
+  const task = (await snapshot(page)).tasks.at(-1)!.taskId;
+  const question = page.getByTestId('question-card'); await expect(question).toBeVisible();
+  await expect(page.getByTestId('approval-card')).toHaveCount(0);
+  await question.getByLabel('简洁', { exact: true }).check();
+  await question.getByLabel('补充说明', { exact: true }).fill('保留中文与emoji😀');
+  await question.getByRole('button', { name: '提交回答', exact: true }).click();
+  const plan = page.getByTestId('plan-card'); await expect(plan).toBeVisible(); await page.reload();
+  await expect(plan).toBeVisible(); await expect(plan).toContainText('不授予文件、终端或其他工具权限');
+  expect((await snapshot(page)).tasks.at(-1)?.taskId).toBe(task);
+  const permission = await (await page.request.get(`/api/v1/tasks/${task}/permissions`)).json(); expect(permission.workspaceId).toBeNull();
+  await plan.getByRole('button', { name: '仅交付方案', exact: true }).click();
+  await terminal(page); await expect(plan).toHaveCount(0); await expect(question).toHaveCount(0);
+  await expect(page.locator('.chat-message.assistant .chat-text').last()).toContainText('明确用户提供的文本需求');
+  await page.reload(); await terminal(page); expect((await snapshot(page)).tasks.at(-1)?.taskId).toBe(task);
+});

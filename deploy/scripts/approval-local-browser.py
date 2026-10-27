@@ -4,7 +4,6 @@ import argparse, hashlib, json, os, subprocess, time, urllib.request
 
 ROOT=Path(__file__).resolve().parents[2];DATA=ROOT/'.cache/r43-local'
 parser=argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--permissions-only',action='store_true',help='Target only the two new permission cases after a locator/fixture-only fix')
 args=parser.parse_args()
 out=DATA/('browser-'+str(time.time_ns()));out.mkdir(parents=True,exist_ok=False)
 if os.name=='nt':
@@ -18,15 +17,14 @@ node=ROOT/'.tools/node-v22.23.3-win-x64/node.exe'
 env=dict(os.environ,R43_BROWSER_ACCEPTANCE='1',BASE_URL='http://127.0.0.1:18103',PATH=str(node.parent)+os.pathsep+os.environ['PATH'])
 command=[str(node),str(ROOT/'frontend/node_modules/@playwright/test/cli.js'),'test','approvals.spec.ts','--reporter=json']
 command+=['--output',str(out/'private-artifacts')]
-if args.permissions_only:raise SystemExit('R43 approval suite must run complete')
 report=out/'playwright.json';errors=out/'playwright.stderr.log'
 with report.open('xb') as stdout,errors.open('xb') as stderr:
     result=subprocess.run(command,cwd=ROOT/'frontend',env=env,stdout=stdout,stderr=stderr)
 parsed=json.loads(report.read_text(encoding='utf-8'))
-expected=4
+expected=5
 stats=parsed['stats'];passed=result.returncode==0 and stats['unexpected']==0 and stats['skipped']==0 and stats['expected']==expected
 record={'status':'PASS' if passed else 'FAIL','exitCode':result.returncode,'testSource':source,
-        'runtimeSource':images['source'],'supplierCalls':0,'stats':stats,'caseGroup':'permissions' if args.permissions_only else 'full',
+        'runtimeSource':images['source'],'supplierCalls':0,'stats':stats,'caseGroup':'approvals-and-plan',
         'reportSha256':hashlib.sha256(report.read_bytes()).hexdigest(),'command':command}
 (out/'result.json').write_text(json.dumps(record,indent=2)+'\n',encoding='utf-8',newline='\n')
 print(json.dumps({'status':record['status'],'exitCode':result.returncode,'evidence':str(out.relative_to(ROOT))}),flush=True)
