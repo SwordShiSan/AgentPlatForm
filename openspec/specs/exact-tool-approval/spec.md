@@ -50,4 +50,3 @@ Waiting/resume SHALL preserve cumulative active120seconds, task budgets and user
 #### Scenario: Resume after wait
 - **WHEN** approval resumes a task
 - **THEN** existing consumed budgets and UNKNOWN holds remain attached and no request-count ceiling is reintroduced.
-
