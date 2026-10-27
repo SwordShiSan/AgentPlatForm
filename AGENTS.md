@@ -1,3 +1,7 @@
+# R4.3 current conclusion (2026-10-27)
+
+R4.3 VERIFIED after exact-source local acceptance and protected two-level PR promotion. R4 is3/4, not RELEASED; cloud remains R3. Exact original-call approval uses ALLOW_ONCE/DENY and empty SDK rules; directory grants remain R4.2, production business catalogs/shell/network stay closed. UNKNOWN never replays. Real supplier calls0; all acceptance services including fixtures/dependencies stopped, volumes/images retained. R4.4 requires a separate Plan/OpenSpec. Keep local sandbox2880MiB full budget and the deferred cloud change unmerged. Evidence: evidence/r43/acceptance-index.json. Earlier conclusions below are historical.
+
 # R4.2 current conclusion (2026-10-27)
 
 R4.2 VERIFIED via protected PR113/114; R4 is2/4 and not RELEASED, cloud remains R3. Task-scoped permissions and resource binding do not enable production business tools. R4.3 requires its own Plan/OpenSpec. Local acceptance stack is stopped; retain volumes/images. Full local sandbox2880MiB remains reserved, cloud sandbox change remains DEFERRED and must not be archived into current specs. Evidence: evidence/r42/acceptance-index.json. Earlier status below is historical.
