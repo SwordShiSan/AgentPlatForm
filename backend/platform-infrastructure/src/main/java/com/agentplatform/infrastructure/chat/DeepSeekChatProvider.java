@@ -43,7 +43,8 @@ public final class DeepSeekChatProvider implements ChatProvider, AutoCloseable {
         return exchange(modelName,key,input,fixtureTools?RecoveryFixtureTool.DEFINITIONS.stream().map(ToolDefinition::legacy).toList():List.of(),onText);
     }
     @Override public Exchange openTyped(String modelName,String key,List<Message> input,List<ToolDefinition> definitions,Consumer<String> onText){
-        if(definitions.stream().anyMatch(d->d.category()!=ToolCategory.CONTROL||!PlanControls.NAMES.contains(d.name())))
+        if(definitions.stream().anyMatch(d->!(d.category()==ToolCategory.CONTROL&&PlanControls.NAMES.contains(d.name()))
+                && !(fixtureTools&&RecoveryFixtureTool.DEFINITIONS.stream().anyMatch(f->f.name().equals(d.name())))))
             throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");
         return exchange(modelName,key,input,definitions,onText);
     }

@@ -7,7 +7,8 @@ import { setCsrf } from '../../shared/api/session';
 import { useInteractionAnswer } from './use-interaction-answer';
 import { useChatDrafts } from './drafts';
 
-const props = defineProps<{ interaction: components['schemas']['PendingInteraction']; actor: string; space: string; ready: boolean }>();
+type PlanInteraction = Extract<components['schemas']['PendingInteraction'], { kind: 'PLAN_APPROVAL' }>;
+const props = defineProps<{ interaction: PlanInteraction; actor: string; space: string; ready: boolean }>();
 const emit = defineEmits<{ refresh: [] }>();
 const editing = ref(false); const title = ref(''); const markdown = ref(''); const request = ref(''); const editError = ref(''); const saving = ref(false);
 const drafts=useChatDrafts();const baseRevision=ref(0);

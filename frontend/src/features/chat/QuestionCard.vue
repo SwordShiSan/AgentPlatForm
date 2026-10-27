@@ -2,7 +2,8 @@
 import { ref } from 'vue';
 import type { components } from '../../shared/api/generated/http';
 import { useInteractionAnswer } from './use-interaction-answer';
-const props = defineProps<{ interaction: components['schemas']['PendingInteraction']; ready: boolean }>();
+type QuestionInteraction = Extract<components['schemas']['PendingInteraction'], { kind: 'QUESTION' }>;
+const props = defineProps<{ interaction: QuestionInteraction; ready: boolean }>();
 const emit = defineEmits<{ refresh: [] }>();
 const text = ref(''); const selected = ref<string[]>([]);
 const reply = useInteractionAnswer(() => props.interaction, () => emit('refresh'));

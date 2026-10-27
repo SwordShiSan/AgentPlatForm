@@ -120,7 +120,7 @@ public final class HarnessData {
         @Override public byte[] body() { return body == null ? null : body.clone(); }
     }
 
-    public enum CheckpointPhase { INPUT_READY, MODEL_COMMITTED, TOOL_COMMITTED, WAITING_INPUT, TERMINAL }
+    public enum CheckpointPhase { INPUT_READY, MODEL_COMMITTED, TOOL_COMMITTED, WAITING_INPUT, WAITING_APPROVAL, TERMINAL }
     /** Defensive copy, not a reference to mutable SDK state or a second message authority. */
     public record CheckpointDraft(long expectedVersion, byte[] state, List<Message> history, CheckpointPhase phase) {
         public CheckpointDraft {

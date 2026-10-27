@@ -28,8 +28,9 @@ public class ChatConfiguration {
             com.agentplatform.infrastructure.dao.chat.QuotaMapper quota,
             com.agentplatform.infrastructure.dao.chat.ExecutionPolicyMapper executionPolicy,
             com.agentplatform.infrastructure.dao.chat.PlanMapper plan,
-            com.agentplatform.infrastructure.dao.chat.PermissionMapper permissions) {
-        return new com.agentplatform.infrastructure.dao.chat.ChatMappers(ledger, conversation, dispatch, accounting, configuration, event, control, recovery, quota, executionPolicy,plan,permissions);
+            com.agentplatform.infrastructure.dao.chat.PermissionMapper permissions,
+            com.agentplatform.infrastructure.dao.chat.ApprovalMapper approvals) {
+        return new com.agentplatform.infrastructure.dao.chat.ChatMappers(ledger, conversation, dispatch, accounting, configuration, event, control, recovery, quota, executionPolicy,plan,permissions,approvals);
     }
     @Bean ChatRepository chatRepository(com.agentplatform.infrastructure.dao.chat.ChatMappers mappers,
             org.springframework.transaction.support.TransactionTemplate transactions) {
@@ -68,9 +69,14 @@ public class ChatConfiguration {
             @org.springframework.beans.factory.annotation.Qualifier("executionTimers") org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler timers,
             @Value("${platform.chat.workspace-root:/tmp/chat-runtime}")String root,
             @Value("${platform.chat.fixture-tools:false}")boolean tools,
+            @Value("${platform.chat.approvals-enabled:false}")boolean approvals,
             @Value("${platform.chat.acceptance-run:}")String acceptanceRun,org.springframework.core.env.Environment environment){
         var execution=new ChatExecution(repository,provider,cipher,Path.of(root),timers.getScheduledExecutor(),
                     tools?new com.agentplatform.infrastructure.chat.RecoveryFixtureTool(Path.of(root).resolve("fixture-effects")):null);
+        if(approvals){
+            if(!environment.acceptsProfiles(org.springframework.core.env.Profiles.of("recovery-fixture")))throw new IllegalArgumentException("FIXTURE_PROFILE_REQUIRED");
+            execution.configureToolApprovals();
+        }
         if(!acceptanceRun.isBlank()){
             if(!environment.acceptsProfiles(org.springframework.core.env.Profiles.of("plan-real-acceptance")))throw new IllegalArgumentException("ACCEPTANCE_PROFILE_REQUIRED");
             execution.configureAcceptanceWindow(UUID.fromString(acceptanceRun));

@@ -33,6 +33,12 @@ public final class ChatExecution implements AutoCloseable {
     private volatile Lease current;
     private UUID acceptanceRun;
     private boolean executionStarted;
+    private boolean toolApprovalsEnabled;
+    /** Deterministic acceptance only; production has no business tool catalog in R4.3. */
+    public synchronized void configureToolApprovals(){
+        if(executionStarted||fixtureTools==null||provider.real())throw new IllegalStateException("APPROVAL_FIXTURE_REQUIRED");
+        toolApprovalsEnabled=true;
+    }
     /** Only the protected acceptance profile calls this; ordinary users have no request-count ceiling. */
     public synchronized void configureAcceptanceWindow(UUID run){
         if(executionStarted||acceptanceRun!=null||!provider.real())throw new IllegalStateException("ACCEPTANCE_WINDOW_NOT_CONFIGURABLE");
@@ -59,7 +65,12 @@ public final class ChatExecution implements AutoCloseable {
             var startup=repository.executionStartup(lease);deadline=startup.deadline();
             List<Message> history=startup.history();
             Scope scope=new Scope(lease.spaceId().toString(),lease.userId().toString(),lease.conversationId().toString(),lease.taskId().toString(),lease.attemptId().toString(),lease.fence(),repository.planMode(lease));
-            List<Approval> approvals=repository.controlApprovals(lease);boolean controls=scope.planMode()||!approvals.isEmpty()||repository.plan(new ChatData.Actor(lease.userId(),lease.spaceId()),lease.taskId()).current()!=null;
+            List<Approval> controlApprovals=repository.controlApprovals(lease);
+            List<Approval> approvals=new ArrayList<>(controlApprovals);approvals.addAll(repository.toolApprovals(lease));
+            boolean controls=scope.planMode()||!controlApprovals.isEmpty()||repository.plan(new ChatData.Actor(lease.userId(),lease.spaceId()),lease.taskId()).current()!=null;
+            // Plan confirmation remains text-only. A retained Plan is not a business-tool grant.
+            List<com.agentplatform.types.harness.HarnessData.Call> businessDefinitions=controls||fixtureTools==null?List.of():RecoveryFixtureTool.DEFINITIONS.stream()
+                    .filter(c->toolApprovalsEnabled||!"approval_probe".equals(c.name())).toList();
             AtomicReference<UUID> turnId=new AtomicReference<>();String frozenModelName=repository.modelName(lease);final Instant executionDeadline=deadline;
             ModelGateway metered=new ModelGateway(){
                 @Override public String modelName(Scope ignored){return frozenModelName;}
@@ -90,6 +101,7 @@ public final class ChatExecution implements AutoCloseable {
                         case TOOL_COMMITTED -> "tool-checkpoint-after-seal";
                         case TERMINAL -> "terminal-checkpoint-after-seal";
                         case WAITING_INPUT -> "waiting-checkpoint-after-seal";
+                        case WAITING_APPROVAL -> "approval-checkpoint-after-seal";
                     });
                     FixtureFaults.pause(draft.phase()==CheckpointPhase.INPUT_READY?"input-checkpoint-after-seal":"checkpoint-after-seal");
                 });}
@@ -102,10 +114,11 @@ public final class ChatExecution implements AutoCloseable {
                 public void delete(Scope s,String key){scope(s);control.during(()->repository.stateDelete(lease,key));}
             };
             var factory=new AgentScopeRuntimeFactory(metered,(s,c)->new OperationAuthorization(repository).decide(lease,c),
-                    controls?(s,c)->CompletableFuture.completedFuture(repository.executeControl(lease,c)):fixtureTools==null?(s,c)->CompletableFuture.failedFuture(new ChatFailure(422,"TOOLS_NOT_AVAILABLE")):fixtureTools,
+                    (s,c)->PlanControls.NAMES.contains(c.name())?CompletableFuture.completedFuture(repository.executeControl(lease,c)):
+                            fixtureTools==null?CompletableFuture.failedFuture(new ChatFailure(422,"TOOLS_NOT_AVAILABLE")):fixtureTools.execute(s,c),
                     attemptState,manifests,new ToolCatalogPort(){
-                        public List<com.agentplatform.types.harness.HarnessData.Call> definitions(){return fixtureTools==null?List.of():RecoveryFixtureTool.DEFINITIONS;}
-                        public List<ToolDefinition> typedDefinitions(){return controls?PlanControls.DEFINITIONS:ToolCatalogPort.super.typedDefinitions();}
+                        public List<com.agentplatform.types.harness.HarnessData.Call> definitions(){return businessDefinitions;}
+                        public List<ToolDefinition> typedDefinitions(){var result=new ArrayList<ToolDefinition>();if(controls)result.addAll(PlanControls.DEFINITIONS);result.addAll(ToolCatalogPort.super.typedDefinitions());return List.copyOf(result);}
                     },work);
             LoopBoundary boundary=new LoopBoundary(){
                 public CompletionStage<List<Message>> beforeModel(Scope s,List<Message> ignored){return control.during(()->{
@@ -119,10 +132,10 @@ public final class ChatExecution implements AutoCloseable {
                 });}
                 public CompletionStage<Void> afterModelCommitted(Scope s,Turn t){return control.during(()->{var call=accepted.get();if(call==null)throw new ChatFailure(409,"ACCEPTED_CALL_MISSING");repository.commitRound(lease,turnId.get(),t,call);FixtureFaults.pause("round-before-checkpoint");return CompletableFuture.completedFuture(null);});}
                 public CompletionStage<Void> beforeControlBatch(Scope s,List<com.agentplatform.types.harness.HarnessData.Call> calls){
-                    return control.during(()->{if(controls)repository.stageControls(lease,calls);return CompletableFuture.completedFuture(null);});
+                    return control.during(()->{if(calls.stream().anyMatch(c->PlanControls.NAMES.contains(c.name())))repository.stageControls(lease,calls);else repository.stageToolApprovals(lease,calls);return CompletableFuture.completedFuture(null);});
                 }
                 public CompletionStage<Void> beforeWaiting(Scope s,List<com.agentplatform.types.harness.HarnessData.Call> calls){
-                    return control.during(()->{if(controls)repository.stageControls(lease,calls);return CompletableFuture.completedFuture(null);});
+                    return control.during(()->{if(calls.stream().anyMatch(c->PlanControls.NAMES.contains(c.name())))repository.stageControls(lease,calls);else repository.stageToolApprovals(lease,calls);return CompletableFuture.completedFuture(null);});
                 }
                 public CompletionStage<Void> beforeTool(Scope s,com.agentplatform.types.harness.HarnessData.Call c){return control.during(()->{
                     if(fixtureTools==null&&!controls)throw new ChatFailure(422,"TOOLS_NOT_AVAILABLE");
@@ -148,11 +161,14 @@ public final class ChatExecution implements AutoCloseable {
             Throwable failure=asynchronousFailure.get();if(failure!=null)throw new CompletionException(failure);
             if(outcome==null||control.closing())throw new ChatFailure(409,"TASK_CANCEL_REQUESTED");
             batch.flush();var completion=((Outcome)outcome).completion();
-            if(completion==Completion.WAITING_INPUT){waiting=true;terminal="WAITING_INPUT";reason=null;completed=true;}
+            if(completion==Completion.WAITING_INPUT||completion==Completion.WAITING_APPROVAL){waiting=true;terminal="WAITING_INPUT";reason=null;completed=true;}
             else {if(completion!=Completion.PASS)throw new ChatFailure(503,"MODEL_INCOMPLETE");terminal="SUCCEEDED";reason=null;completed=true;}
         }catch(Throwable failure){
             Throwable error=failure;
-            for(Throwable cause=failure;cause!=null;cause=cause.getCause())if(cause instanceof ChatFailure||cause instanceof TimeoutException){error=cause;break;}
+            for(Throwable cause=failure;cause!=null;cause=cause.getCause()){
+                if(cause instanceof IllegalArgumentException&&"TOOL_BATCH_UNSUPPORTED".equals(cause.getMessage())){error=new ChatFailure(422,"TOOL_BATCH_UNSUPPORTED");break;}
+                if(cause instanceof ChatFailure||cause instanceof TimeoutException){error=cause;break;}
+            }
             if(asynchronousFailure.get()!=null)error=asynchronousFailure.get();
             reason=error instanceof ChatFailure f?f.code():error instanceof TimeoutException?"PROVIDER_TIMEOUT":"MODEL_EXECUTION_FAILED";
             terminal="TASK_CANCEL_REQUESTED".equals(reason)?"CANCELLED":"CONTEXT_REQUIRED_TOO_LARGE".equals(reason)?"BLOCKED":"FAILED";

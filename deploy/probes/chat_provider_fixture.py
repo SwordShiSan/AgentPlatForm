@@ -86,7 +86,22 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.flush()
 
         try:
-            if plan_scenario:
+            approval_prompt = next((str(message.get('content', '')) for message in messages
+                                    if message.get('role') == 'user' and str(message.get('content', '')).startswith('fixture:approval')), None)
+            if approval_prompt:
+                results = [message for message in messages if message.get('role') == 'tool']
+                if not results or ('repeat-denied' in approval_prompt and len(results) == 1):
+                    calls = [{'index': 0, 'id': 'approval-operation-' + str(len(results) + 1), 'type': 'function',
+                              'function': {'name': 'approval_probe', 'arguments': '{"text":"approved-operation"}'}}]
+                    if 'batch' in approval_prompt:
+                        calls.append({'index': 1, 'id': 'approval-operation-2', 'type': 'function',
+                                      'function': {'name': 'approval_probe', 'arguments': '{"text":"second-operation"}'}})
+                    chunk({'tool_calls': calls}, 'tool_calls')
+                else:
+                    denied = any('DENIED' in json.dumps(item.get('content', '')).upper() or 'DENY' in json.dumps(item.get('content', '')).upper()
+                                 for item in results)
+                    chunk({'content': '操作已拒绝，继续文本说明。' if denied else '批准操作已完成：666。'}, 'stop')
+            elif plan_scenario:
                 calls = [call for message in messages for call in message.get('tool_calls', [])]
                 names = {call.get('id'): call.get('function', {}).get('name') for call in calls}
                 results = [message for message in messages if message.get('role') == 'tool']
