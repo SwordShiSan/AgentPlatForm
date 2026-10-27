@@ -158,6 +158,35 @@ assert(answerInteraction(answerFixture));
 for (const patch of [{ expectedVersion: 0 }, { decision: 'ALLOW_SHELL' }, { permissions: ['FULL'] }, { apiKey: 'forbidden' }, { optionIds: ['same', 'same'] }]) {
   assert(!answerInteraction({ ...answerFixture, ...patch }));
 }
+for (const decision of ['ALLOW_ONCE', 'DENY']) {
+  assert(answerInteraction({ expectedVersion: 1, decision }));
+  assert(answerInteraction({ expectedVersion: 1, decision, text: '', optionIds: [] }));
+  for (const patch of [{ text: 'change arguments' }, { optionIds: ['another-operation'] },
+    { arguments: {} }, { operationId: fixture.eventId }, { rules: ['FULL'] }, { scopeId: fixture.eventId }]) {
+    assert(!answerInteraction({ expectedVersion: 1, decision, ...patch }));
+  }
+}
+const pendingInteraction = ajv.compile(expanded.components.schemas.PendingInteraction);
+const approvalPayload = { operationId: fixture.eventId, toolName: 'platform_approval_fixture', summary: '仅当前调用',
+  reasonCode: 'CONFIRMATION_REQUIRED', workspaceId: null, target: null, targetVersion: null,
+  callHash: 'a'.repeat(64), stale: false, allowedActions: ['ALLOW_ONCE', 'DENY'], permissionVersion: 1, policyVersion: 'task-directory-policy-v1' };
+const approvalPending = { interactionId: fixture.eventId, taskId: fixture.payload.taskId, version: 1,
+  expiresAt: '2026-10-28T00:00:00Z', kind: 'TOOL_APPROVAL', optional: false, plan: null, question: null,
+  options: [], approval: approvalPayload };
+assert(pendingInteraction(approvalPending));
+for (const patch of [{ approval: null }, { optional: true }, { question: 'wrong card' }, { options: [{ id: 'x', label: 'x' }] }]) {
+  assert(!pendingInteraction({ ...approvalPending, ...patch }));
+}
+for (const patch of [{ callHash: 'bad' }, { allowedActions: ['ALLOW_TASK_SCOPE'] }, { arguments: {} },
+  { apiKey: 'forbidden' }, { containerId: 'private' }, { permissionVersion: 0 }]) {
+  assert(!pendingInteraction({ ...approvalPending, approval: { ...approvalPayload, ...patch } }));
+}
+assert(validateEvent({ ...fixture, type: 'interaction.opened', payload: { interactionId: fixture.eventId,
+  taskId: fixture.payload.taskId, kind: 'TOOL_APPROVAL', optional: false, version: 1, expiresAt: '2026-10-28T00:00:00Z' } }));
+for (const decision of ['ALLOW_ONCE', 'DENY']) {
+  assert(validateEvent({ ...fixture, type: 'interaction.resolved', payload: { interactionId: fixture.eventId,
+    taskId: fixture.payload.taskId, decision, version: 2 } }));
+}
 for (const type of ['interaction.opened', 'interaction.resolved', 'plan.revised']) {
   assert(!validateEvent({ ...fixture, type, payload: { apiKey: 'forbidden' } }));
 }

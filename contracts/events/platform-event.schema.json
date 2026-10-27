@@ -655,7 +655,8 @@
               "kind": {
                 "enum": [
                   "PLAN_APPROVAL",
-                  "QUESTION"
+                  "QUESTION",
+                  "TOOL_APPROVAL"
                 ]
               },
               "optional": {
@@ -715,7 +716,9 @@
                   "SKIP",
                   "SUPERSEDED",
                   "EXPIRED",
-                  "CANCELLED"
+                  "CANCELLED",
+                  "ALLOW_ONCE",
+                  "DENY"
                 ]
               },
               "version": {

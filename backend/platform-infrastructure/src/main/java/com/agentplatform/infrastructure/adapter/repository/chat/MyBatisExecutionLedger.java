@@ -57,11 +57,13 @@ final class MyBatisExecutionLedger {
     static void startTool(ChatMappers c,Lease l,com.agentplatform.types.harness.HarnessData.Call call) {
         guard(c,l);
         if(PermissionPersistence.decision(c,l,call,true)!=Decision.ALLOW)throw new ChatFailure(403,"OPERATION_NOT_AUTHORIZED");
+        ApprovalPersistence.consume(c,l,call);
         if(c.ledger().updateToolOperation191(l.spaceId(), l.taskId(), l.attemptId(), l.fence(), call.id(), hash(canonicalJson(call)))!=1)
             throw new ChatFailure(409,"OPERATION_NOT_PREPARED");
     }
 
     static void commitTool(ChatMappers c,Lease l,com.agentplatform.types.harness.HarnessData.Call call,Observation result) {
+        if(result.status()==OperationStatus.DENIED){ApprovalPersistence.denied(c,l,call,result);return;}
         guard(c,l);
         if(!call.id().equals(result.callId())||!call.name().equals(result.name())||result.status()!=OperationStatus.SUCCEEDED)
             throw new ChatFailure(409,"OPERATION_RESULT_MISMATCH");

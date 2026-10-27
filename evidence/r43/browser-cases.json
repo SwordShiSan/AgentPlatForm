@@ -1,0 +1,32 @@
+[
+  {
+    "title": "once approval survives refresh and lost response without replacing the original operation",
+    "status": "PASS",
+    "source": "1d84f4ed93b11ef2fad40edfd91838d44e3063eb",
+    "reportSha256": "133568e7ca50631b1f12419df49a733a9a4f93c7f86bec39e1a6f86666f2960c"
+  },
+  {
+    "title": "denying the original call does not loop a repeated denied fingerprint",
+    "status": "PASS",
+    "source": "1d84f4ed93b11ef2fad40edfd91838d44e3063eb",
+    "reportSha256": "133568e7ca50631b1f12419df49a733a9a4f93c7f86bec39e1a6f86666f2960c"
+  },
+  {
+    "title": "two actual tabs cannot accept conflicting decisions and admin cannot read the other user approval",
+    "status": "PASS",
+    "source": "1d84f4ed93b11ef2fad40edfd91838d44e3063eb",
+    "reportSha256": "133568e7ca50631b1f12419df49a733a9a4f93c7f86bec39e1a6f86666f2960c"
+  },
+  {
+    "title": "stale approvals only permit deny or task cancellation",
+    "status": "PASS",
+    "source": "1d84f4ed93b11ef2fad40edfd91838d44e3063eb",
+    "reportSha256": "133568e7ca50631b1f12419df49a733a9a4f93c7f86bec39e1a6f86666f2960c"
+  },
+  {
+    "title": "ordinary Plan and Question still resume the same unbound text task after approval integration",
+    "status": "PASS",
+    "source": "1d84f4ed93b11ef2fad40edfd91838d44e3063eb",
+    "reportSha256": "133568e7ca50631b1f12419df49a733a9a4f93c7f86bec39e1a6f86666f2960c"
+  }
+]

@@ -112,6 +112,8 @@ public final class MyBatisChatRepository implements ChatRepository {
     @Override public HarnessData.Observation executeControl(Lease l,HarnessData.Call c){return plans.executeControl(l,c);}
     @Override public void waitingStopped(Lease l,String receipt){plans.waitingStopped(l,receipt);}
     @Override public List<HarnessData.Approval> controlApprovals(Lease l){return plans.controlApprovals(l);}
+    @Override public void stageToolApprovals(Lease l,List<HarnessData.Call> calls){new ApprovalPersistence(mappers).stageToolApprovals(l,calls);}
+    @Override public List<HarnessData.Approval> toolApprovals(Lease l){return new ApprovalPersistence(mappers).toolApprovals(l);}
     @Override public boolean planMode(Lease l){return plans.planMode(l);}
     @Override public void consumeOptional(Lease l){plans.consumeOptional(l);}
     @Override public List<QuotaData.View> quota(Actor a){ChatPersistenceSupport.auth(mappers,a);return new MyBatisQuotaLedger(mappers.quota()).view(a.userId());}

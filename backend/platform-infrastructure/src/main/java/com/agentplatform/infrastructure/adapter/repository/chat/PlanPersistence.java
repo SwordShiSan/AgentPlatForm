@@ -24,7 +24,8 @@ final class PlanPersistence extends ChatPersistenceSupport implements PlanLedger
         PlanControls.Question q="QUESTION".equals(row.kind())?JSON.readValue(row.payloadJson(),PlanControls.Question.class):null;
         return new Pending(row.id(),row.taskId(),Kind.valueOf(row.kind()),row.optional(),row.version(),row.expiresAt(),
                 revision(row.revisionId()==null?null:mappers.plan().revision(row.revisionId())),q==null?null:q.question(),
-                q==null?List.of():q.options().stream().map(o->new Option(o.id(),o.label())).toList());
+                q==null?List.of():q.options().stream().map(o->new Option(o.id(),o.label())).toList(),
+                "TOOL_APPROVAL".equals(row.kind())?new ApprovalPersistence(mappers).projection(row):null);
     }
     public List<Pending> pending(Actor a,UUID conversation){return tx(true,c->{auth(c,a);conversation(c,a,conversation,false);return c.plan().pending(a.spaceId(),conversation).stream().map(this::pending).toList();});}
     private Task lock(Actor actor,UUID task){
@@ -156,7 +157,9 @@ final class PlanPersistence extends ChatPersistenceSupport implements PlanLedger
         try{auth(c,new Actor(lease.userId(),lease.spaceId()));authorizeCredential(c,lease);activeModel(c,lease);}
         catch(ChatFailure revoked){new ControlPersistence(c).stopped(lease,"FAILED","AUTHORIZATION_REVOKED",null,receipt);return null;}
         var checkpoint=c.recovery().latestMetadata(lease.taskId());
-        if(checkpoint==null||!checkpoint.attemptId().equals(lease.attemptId())||!"WAITING_INPUT".equals(checkpoint.phase()))
+        var blocking=c.plan().taskPending(lease.taskId()).stream().filter(i->!i.optional()).findFirst().orElse(null);
+        String expectedPhase=blocking!=null&&"TOOL_APPROVAL".equals(blocking.kind())?"WAITING_APPROVAL":"WAITING_INPUT";
+        if(checkpoint==null||!checkpoint.attemptId().equals(lease.attemptId())||!expectedPhase.equals(checkpoint.phase()))
             throw new ChatFailure(409,"WAITING_CHECKPOINT_REQUIRED");
         if(c.recovery().unknown(lease.taskId())>0){new ControlPersistence(c).stopped(lease,"BLOCKED","EXTERNAL_RESULT_UNKNOWN",null,receipt);return null;}
         if(c.plan().taskPending(lease.taskId()).stream().noneMatch(i->!i.optional()))throw new ChatFailure(409,"WAITING_INTERACTION_REQUIRED");
@@ -173,6 +176,7 @@ final class PlanPersistence extends ChatPersistenceSupport implements PlanLedger
     public List<HarnessData.Approval> controlApprovals(Lease lease){return tx(c->{
         owned(c,lease,false);var resume=c.plan().resume(lease.attemptId());if(resume==null)return List.of();
         var control=c.plan().control(lease.taskId(),resume.callId());
+        if(control==null)return List.of();
         var call=new HarnessData.Call(control.callId(),control.toolName(),object(control.argumentsJson()),false);
         if(controlDecision(lease,call)!=HarnessData.Decision.ALLOW)throw new ChatFailure(409,"CONTROL_ANSWER_REQUIRED");
         return List.of(new HarnessData.Approval(call,true));
@@ -182,12 +186,24 @@ final class PlanPersistence extends ChatPersistenceSupport implements PlanLedger
         var existing=c.plan().command(actor.userId(),command);
         if(existing!=null){if(!digest.equals(existing.requestHash()))throw new ChatFailure(409,"IDEMPOTENCY_CONFLICT");return new Accepted(task,interaction,t.status(),t.version());}
         var row=c.plan().interaction(actor.spaceId(),task,interaction);if(row==null)throw new ChatFailure(404,"RESOURCE_NOT_FOUND");
+        String approvalPath="/tasks/"+task+"/interactions/"+interaction+"/answer";
+        if("TOOL_APPROVAL".equals(row.kind())){
+            var replay=idempotency(c,actor,command,approvalPath,digest);
+            if(replay!=null)return new Accepted(task,interaction,t.status(),t.version());
+            var prior=c.plan().answer(interaction);
+            if(prior!=null){
+                if(!prior.decision().equals(answer.decision().name()))throw new ChatFailure(409,"INTERACTION_ALREADY_RESOLVED");
+                if(!MyBatisExecutionLedger.canonicalJson(JSON.readValue(prior.contentJson(),Answer.class)).equals(MyBatisExecutionLedger.canonicalJson(answer)))throw new ChatFailure(409,"IDEMPOTENCY_CONFLICT");
+                remember(c,actor,command,approvalPath,digest,interaction);return new Accepted(task,interaction,t.status(),t.version());
+            }
+        }
         if(row.version()!=answer.expectedVersion()||!"OPEN".equals(row.status()))throw new ChatFailure(412,"INTERACTION_VERSION_CONFLICT");
-        if(!row.expiresAt().isAfter(c.recovery().now()))throw new ChatFailure(409,"INTERACTION_EXPIRED");
+        if(!row.expiresAt().isAfter(c.recovery().now()))throw new ChatFailure(409,"TOOL_APPROVAL".equals(row.kind())?"APPROVAL_EXPIRED":"INTERACTION_EXPIRED");
         if(!Set.of("RUNNING","WAITING_INPUT").contains(t.status())||t.cancelRequested())throw new ChatFailure(409,"TASK_NOT_ACCEPTING_INPUT");
         validateAnswer(row,answer);
         var cp=c.recovery().latestMetadata(task);
-        if(!row.optional()&&(!"WAITING_INPUT".equals(t.status())||cp==null||!"WAITING_INPUT".equals(cp.phase())||!row.sourceAttemptId().equals(cp.attemptId())||c.recovery().hasStop(task,row.sourceAttemptId())!=1||c.recovery().live(task)>0))
+        String expectedPhase="TOOL_APPROVAL".equals(row.kind())?"WAITING_APPROVAL":"WAITING_INPUT";
+        if(!row.optional()&&(!"WAITING_INPUT".equals(t.status())||cp==null||!expectedPhase.equals(cp.phase())||!row.sourceAttemptId().equals(cp.attemptId())||c.recovery().hasStop(task,row.sourceAttemptId())!=1||c.recovery().live(task)>0))
             throw new ChatFailure(409,"EXECUTION_STOP_NOT_CONFIRMED");
         UUID id=Uuid7.next();c.plan().insertAnswer(id,row,actor.userId(),command,digest,answer.decision().name(),json(answer),com.agentplatform.types.RequestTrace.current());c.plan().closeInteraction(interaction,"ANSWERED");
         if(answer.decision()==Decision.DELIVER_PLAN){
@@ -206,10 +222,13 @@ final class PlanPersistence extends ChatPersistenceSupport implements PlanLedger
         var updated=task(c,actor,task,false);
         event(c,actor,t.conversationId(),task,"interaction.resolved",row.version()+1,Map.of("interactionId",interaction.toString(),"taskId",task.toString(),"decision",answer.decision().name(),"version",row.version()+1));
         event(c,actor,t.conversationId(),task,"task.state_changed",updated.version(),Map.of("taskId",task.toString(),"status",updated.status()));
+        if("TOOL_APPROVAL".equals(row.kind()))remember(c,actor,command,approvalPath,digest,interaction);
         return new Accepted(task,interaction,updated.status(),updated.version());
     });}
     private void validateAnswer(InteractionRow row,Answer answer){
-        if("PLAN_APPROVAL".equals(row.kind())){
+        if("TOOL_APPROVAL".equals(row.kind())){
+            new ApprovalPersistence(mappers).validateAnswer(row,answer);return;
+        }else if("PLAN_APPROVAL".equals(row.kind())){
             if(!Set.of(Decision.EXECUTE_PLAN,Decision.REVISE_PLAN,Decision.REJECT_PLAN,Decision.DELIVER_PLAN).contains(answer.decision())||!answer.optionIds().isEmpty())throw new ChatFailure(422,"INTERACTION_ANSWER_INVALID");
             if(answer.decision()==Decision.REVISE_PLAN&&answer.text().isBlank())throw new ChatFailure(422,"REVISION_REQUEST_REQUIRED");
         }else{

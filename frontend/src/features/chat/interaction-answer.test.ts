@@ -1,6 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { effectScope, reactive } from 'vue';
 import { useInteractionAnswer } from './use-interaction-answer';
+import { ApiError } from '../../shared/api/request';
 const mocks=vi.hoisted(()=>({GET:vi.fn(),POST:vi.fn()}));
 vi.mock('../../shared/api/client', () => ({ api:mocks }));
 vi.mock('../../shared/api/session', () => ({ setCsrf: vi.fn() }));
@@ -26,4 +27,27 @@ it('freezes reactive option selections without cloning a Vue proxy', async () =>
   selected.push('changed');
   expect(mocks.POST.mock.calls[0]?.[1]?.body.optionIds).toEqual(['brief']);
   expect(state.error.value).toBe(''); scope.stop();
+});
+it('retries only the original once approval after a lost response, never changed parameters', async () => {
+  mocks.POST.mockRejectedValueOnce(new TypeError('offline')).mockResolvedValueOnce({ data: {} });
+  const approval = { ...interaction, kind: 'TOOL_APPROVAL' as const, optional: false as const, question: null, approval: {
+    operationId: interaction.interactionId, toolName: 'platform_approval_fixture', summary: '当前调用', reasonCode: 'CONFIRMATION_REQUIRED',
+    workspaceId: null, target: null, targetVersion: null, callHash: 'a'.repeat(64), stale: false,
+    allowedActions: ['ALLOW_ONCE', 'DENY'] as ('ALLOW_ONCE' | 'DENY')[], permissionVersion: 1, policyVersion: 'task-directory-policy-v1' } };
+  const scope = effectScope(); const state = scope.run(() => useInteractionAnswer(() => approval, vi.fn()))!;
+  await state.send({ expectedVersion: 1, decision: 'ALLOW_ONCE' });
+  expect(state.uncertain.value).toBe(true);
+  await state.send({ expectedVersion: 1, decision: 'DENY' });
+  expect(mocks.POST.mock.calls[1]?.[1]?.body).toEqual({ expectedVersion: 1, decision: 'ALLOW_ONCE', optionIds: [] });
+  expect(mocks.POST.mock.calls[1]?.[1]?.params.header['Idempotency-Key']).toBe(mocks.POST.mock.calls[0]?.[1]?.params.header['Idempotency-Key']);
+  expect(mocks.POST.mock.calls[1]?.[1]?.body).not.toHaveProperty('arguments');
+  expect(state.uncertain.value).toBe(false); scope.stop();
+});
+it('does not retain an approval retry after a canonical version conflict', async () => {
+  mocks.POST.mockRejectedValue(new ApiError({ type: 'urn:problem', title: 'Changed', status: 412,
+    code: 'APPROVAL_STALE', traceId: '', retryable: false }));
+  const refresh = vi.fn(); const scope = effectScope(); const state = scope.run(() => useInteractionAnswer(() => interaction, refresh))!;
+  await state.send({ expectedVersion: 1, decision: 'ALLOW_ONCE' });
+  expect(state.uncertain.value).toBe(false); expect(refresh).toHaveBeenCalledOnce();
+  state.retry(); expect(mocks.POST).toHaveBeenCalledOnce(); scope.stop();
 });

@@ -46,7 +46,7 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
         for(var turn:c.recovery().turns(l.taskId()))if("COMMITTED".equals(turn.status())) {
             Round round=JSON.readValue(turn.roundJson(),Round.class);
             values.add(new Message(Role.ASSISTANT,round.text(),round.calls(),List.of()));
-            var observations=operations.stream().filter(o->o.turnId().equals(turn.id())&&"SUCCEEDED".equals(o.status()))
+            var observations=operations.stream().filter(o->o.turnId().equals(turn.id())&&Set.of("SUCCEEDED","DENIED").contains(o.status()))
                     .map(o->{
                         var observation=JSON.readValue(o.resultJson(),Observation.class);
                         var input=controlInputs.stream().filter(i->i.callId().equals(observation.callId())).findFirst();

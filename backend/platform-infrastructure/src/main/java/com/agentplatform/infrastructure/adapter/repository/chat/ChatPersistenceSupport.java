@@ -15,7 +15,7 @@ import tools.jackson.databind.json.JsonMapper;
 /** Shared authorization, ownership guards and canonical conversions, without SQL plumbing. */
 abstract class ChatPersistenceSupport {
 
-    public static final UUID BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000018");
+    public static final UUID BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000019");
     static final JsonMapper JSON=JsonMapper.builder().build();
     protected final ChatMappers mappers;
     protected ChatPersistenceSupport(ChatMappers mappers) { this.mappers = mappers; }
