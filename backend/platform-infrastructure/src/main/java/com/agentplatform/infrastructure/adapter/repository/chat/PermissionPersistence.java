@@ -157,7 +157,9 @@ final class PermissionPersistence extends ChatPersistenceSupport {
         } else {
             // Only the fixed deterministic probe can be supplied by the protected fixture composition.
             // Production has no business definitions. Neither FULL nor a grant registers a capability.
-            boolean fixture = "recovery_probe".equals(call.name()) && call.arguments().keySet().equals(Set.of("text"));
+            boolean approvalFixture = "approval_probe".equals(call.name()) && call.arguments().keySet().equals(Set.of("text"))
+                    && call.arguments().get("text") instanceof String text && !text.isBlank() && text.length()<=256 && text.getBytes(java.nio.charset.StandardCharsets.UTF_8).length<=4096;
+            boolean fixture = approvalFixture || "recovery_probe".equals(call.name()) && call.arguments().keySet().equals(Set.of("text"));
             Capability fileCapability = switch (call.name()) {
                 case "workspace_file_list" -> Capability.LIST;
                 case "workspace_file_read" -> Capability.READ;
@@ -173,9 +175,12 @@ final class PermissionPersistence extends ChatPersistenceSupport {
                 } catch (IllegalArgumentException invalid) { authorized = false; }
             }
             var policy = new RiskPolicy().decide(new RiskPolicy.Facts(authorized, p.planMode(), fixture, true,
-                    RiskPolicy.Mandatory.NONE, Mode.valueOf(p.mode()), granted, fixture));
+                    approvalFixture?RiskPolicy.Mandatory.ASK:RiskPolicy.Mandatory.NONE, Mode.valueOf(p.mode()), granted, fixture&&!approvalFixture));
             result = policy.decision();reason = policy.reasonCode();
         }
+        var effective=ApprovalPersistence.apply(c,lease,call,result);
+        if(effective!=result)reason=effective==HarnessData.Decision.ALLOW?"EXACT_APPROVAL_ONCE":"APPROVAL_DENIED_OR_STALE";
+        result=effective;
         if (audit) c.permissions().audit(Uuid7.next(), p, lease.attemptId(), c.permissions().operation(lease.taskId(), lease.attemptId(), call.id()), call.id(), result.name(), reason,
                 hash(MyBatisExecutionLedger.canonicalJson(call)), RequestTrace.current());
         return result;

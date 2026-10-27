@@ -39,12 +39,13 @@ public final class HarnessPorts {
     public interface LoopBoundary {
         CompletionStage<List<Message>> beforeModel(Scope scope, List<Message> history);
         CompletionStage<Void> afterModelCommitted(Scope scope, Turn turn);
-        /** Durable intent boundary, after the full round and before SDK permission/ASK. */
+        /** Durable complete-call intent boundary, after the full round and before SDK permission/ASK. */
         default CompletionStage<Void> beforeControlBatch(Scope scope, List<Call> calls) {
             return java.util.concurrent.CompletableFuture.completedFuture(null);
         }
         default CompletionStage<Void> beforeWaiting(Scope scope,List<Call> calls){return java.util.concurrent.CompletableFuture.completedFuture(null);}
         CompletionStage<Void> beforeTool(Scope scope, Call call);
+        /** Persist either executed SUCCEEDED or SDK DENIED; DENIED never enters beforeTool. */
         CompletionStage<Void> afterToolCommitted(Scope scope, Call call, Observation result);
         CompletionStage<Completion> beforeStop(Scope scope, Message candidate);
         default void cancelPending(Scope scope) {}

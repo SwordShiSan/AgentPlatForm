@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.chat.ApprovalMapper">
+  <sql id="operationColumns">o.id,o.space_id,o.task_id,o.call_id,o.call_json::text call_json,o.call_hash,o.status,o.result_json::text result_json,o.result_hash</sql>
+  <select id="operation" resultType="com.agentplatform.infrastructure.dao.po.ApprovalRows$OperationRow">
+    SELECT <include refid="operationColumns"/> FROM pf.tool_operation o JOIN pf.operation_execution_binding b ON b.operation_id=o.id
+    WHERE o.space_id=#{lease.spaceId} AND o.task_id=#{lease.taskId} AND o.call_id=#{call}
+    AND b.attempt_id=#{lease.attemptId} AND b.fencing_token=#{lease.fence} FOR UPDATE OF o
+  </select>
+  <select id="original" resultType="com.agentplatform.infrastructure.dao.po.ApprovalRows$OperationRow">
+    SELECT <include refid="operationColumns"/> FROM pf.tool_operation o WHERE o.space_id=#{space} AND o.task_id=#{task} AND o.id=#{id}
+  </select>
+  <sql id="bindingColumns">a.interaction_id,a.space_id,a.task_id,a.actor_id,a.source_attempt_id,a.operation_id,a.call_id,a.call_hash,a.fingerprint,a.workspace_id,a.resource_hash,a.permission_version,a.policy_version,a.summary,a.reason_code,i.expires_at,i.status interaction_status</sql>
+  <select id="binding" resultType="com.agentplatform.infrastructure.dao.po.ApprovalRows$BindingRow">
+    SELECT <include refid="bindingColumns"/> FROM pf.tool_approval_binding a JOIN pf.task_interaction i ON i.id=a.interaction_id
+    WHERE a.space_id=#{space} AND a.task_id=#{task} AND a.call_id=#{call} ORDER BY a.created_at DESC,a.interaction_id DESC LIMIT 1
+  </select>
+  <select id="interaction" resultType="com.agentplatform.infrastructure.dao.po.ApprovalRows$BindingRow">
+    SELECT <include refid="bindingColumns"/> FROM pf.tool_approval_binding a JOIN pf.task_interaction i ON i.id=a.interaction_id WHERE a.interaction_id=#{id}
+  </select>
+  <select id="resource" resultType="java.lang.String">
+    SELECT jsonb_build_object('id',id,'actor',actor_id,'space',space_id,'state',state,'version',version,'projectId',project_id)::text
+    FROM pf.workspace WHERE id=#{p.workspaceId} AND space_id=#{p.spaceId} AND actor_id=#{p.actorId}
+  </select>
+  <select id="lockResource" resultType="java.lang.String">SELECT pf.lock_approval_workspace(#{p.actorId},#{p.spaceId},#{p.workspaceId})</select>
+  <insert id="bind">
+    INSERT INTO pf.tool_approval_binding(interaction_id,space_id,task_id,actor_id,source_attempt_id,operation_id,call_id,call_hash,fingerprint,workspace_id,resource_hash,permission_version,policy_version,summary,reason_code)
+    VALUES(#{id},#{lease.spaceId},#{lease.taskId},#{lease.userId},#{lease.attemptId},#{operation.id},#{operation.callId},#{operation.callHash},#{fingerprint},#{p.workspaceId},#{resource},#{p.version},#{p.policyVersion},#{summary},#{reason})
+  </insert>
+  <select id="deniedFingerprint" resultType="int">
+    SELECT count(*) FROM pf.tool_approval_binding a JOIN pf.tool_operation o ON o.id=a.operation_id
+    WHERE a.space_id=#{space} AND a.task_id=#{task} AND a.fingerprint=#{fingerprint} AND o.status='DENIED'
+  </select>
+  <select id="consumption" resultType="com.agentplatform.infrastructure.dao.po.ApprovalRows$ConsumptionRow">
+    SELECT interaction_id,answer_id,operation_id,attempt_id,fence,outcome FROM pf.tool_approval_consumption WHERE operation_id=#{operation}
+  </select>
+  <insert id="consume">
+    INSERT INTO pf.tool_approval_consumption(operation_id,interaction_id,answer_id,space_id,task_id,attempt_id,fence,outcome)
+    VALUES(#{binding.operationId},#{binding.interactionId},#{answer},#{lease.spaceId},#{lease.taskId},#{lease.attemptId},#{lease.fence},#{outcome})
+  </insert>
+  <update id="deny">
+    UPDATE pf.tool_operation o SET status='DENIED',result_json=#{result}::jsonb,result_hash=#{hash},ended_at=clock_timestamp()
+    WHERE o.id=#{operation} AND o.space_id=#{lease.spaceId} AND o.task_id=#{lease.taskId} AND o.status='PREPARED'
+      AND EXISTS(SELECT 1 FROM pf.operation_execution_binding b WHERE b.operation_id=o.id AND b.attempt_id=#{lease.attemptId} AND b.fencing_token=#{lease.fence})
+  </update>
+</mapper>

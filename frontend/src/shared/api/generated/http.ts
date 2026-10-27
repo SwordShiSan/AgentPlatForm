@@ -1280,6 +1280,7 @@ export interface components {
                 id: string;
                 label: string;
             }[];
+            approval?: null;
         } | {
             /** Format: uuid */
             interactionId: string;
@@ -1297,14 +1298,50 @@ export interface components {
                 id: string;
                 label: string;
             }[];
+            approval?: null;
+        } | {
+            /** Format: uuid */
+            interactionId: string;
+            /** Format: uuid */
+            taskId: string;
+            version: number;
+            /** Format: date-time */
+            expiresAt: string;
+            /** @constant */
+            kind: "TOOL_APPROVAL";
+            /** @constant */
+            optional: false;
+            plan: null;
+            question: null;
+            options: {
+                id: string;
+                label: string;
+            }[];
+            approval: components["schemas"]["ToolApprovalPayload"];
+        };
+        ToolApprovalPayload: {
+            /** Format: uuid */
+            operationId: string;
+            toolName: string;
+            summary: string;
+            reasonCode: string;
+            /** Format: uuid */
+            workspaceId: string | null;
+            target: string | null;
+            targetVersion: string | null;
+            callHash: string;
+            stale: boolean;
+            allowedActions: ("ALLOW_ONCE" | "DENY")[];
+            permissionVersion: number;
+            policyVersion: string;
         };
         AnswerInteraction: {
             expectedVersion: number;
             /** @enum {unknown} */
-            decision: "EXECUTE_PLAN" | "REVISE_PLAN" | "REJECT_PLAN" | "DELIVER_PLAN" | "ANSWER" | "SKIP";
+            decision: "EXECUTE_PLAN" | "REVISE_PLAN" | "REJECT_PLAN" | "DELIVER_PLAN" | "ANSWER" | "SKIP" | "ALLOW_ONCE" | "DENY";
             text?: string;
             optionIds?: string[];
-        };
+        } & unknown;
         InteractionAccepted: {
             /** Format: uuid */
             taskId: string;

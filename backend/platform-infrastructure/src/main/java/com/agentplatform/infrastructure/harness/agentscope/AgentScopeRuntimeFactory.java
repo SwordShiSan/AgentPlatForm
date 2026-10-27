@@ -75,6 +75,7 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
         private final AtomicReference<Throwable> failure = new AtomicReference<>();
         private final AtomicReference<Turn> lastTurn = new AtomicReference<>();
         private final AtomicReference<List<Call>> pendingCalls = new AtomicReference<>(List.of());
+        private final Set<String> committedDenials = java.util.concurrent.ConcurrentHashMap.newKeySet();
         private final java.util.concurrent.CopyOnWriteArrayList<CompletableFuture<?>> pendingFutures = new java.util.concurrent.CopyOnWriteArrayList<>();
         private final AtomicLong nextTurn;
         private final CompletableFuture<Outcome> result = new CompletableFuture<>();
@@ -121,7 +122,7 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
             else agent.exitPlanMode(context);
             List<Msg> input = new ArrayList<>(request.input().stream().map(codec::encode).toList());
             if (!request.approvals().isEmpty()) {
-                var approvals = request.approvals().stream().map(approval -> new ConfirmResult(approval.allowed(), codec.toolUse(approval.call()), List.of())).toList();
+                var approvals = AgentScopeConfirmationAdapter.exact(request.approvals(), codec);
                 input.add(Msg.builder().role(MsgRole.TOOL).metadata(Map.of(Msg.METADATA_CONFIRM_RESULTS, approvals)).build());
             }
             run = agent.prepareRun(input, context);
@@ -153,7 +154,7 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
                     List<Call> pending = turn == null ? restoredPending() : turn.round().calls();
                     boolean control = pending.stream().anyMatch(call -> catalog.get(call.name()).category() == ToolCategory.CONTROL);
                     return await(()->boundary.beforeWaiting(request.scope(),pending)).then(Mono.fromCallable(()->{
-                        saveCheckpoint(control ? CheckpointPhase.WAITING_INPUT : CheckpointPhase.TERMINAL);
+                        saveCheckpoint(control ? CheckpointPhase.WAITING_INPUT : CheckpointPhase.WAITING_APPROVAL);
                         return new Outcome(control ? Completion.WAITING_INPUT : Completion.WAITING_APPROVAL,"",pending);
                     }));
                 }
@@ -178,16 +179,16 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
         private void saveCheckpoint(CheckpointPhase phase) {
             active();
             List<Message> canonical=manifests.checkpointHistory(request.scope());
-            if(canonical.isEmpty()) { if(phase==CheckpointPhase.TERMINAL||phase==CheckpointPhase.WAITING_INPUT)manifests.seal(request.scope(),request.bundle());return; }
+            if(canonical.isEmpty()) { if(phase==CheckpointPhase.TERMINAL||phase==CheckpointPhase.WAITING_INPUT||phase==CheckpointPhase.WAITING_APPROVAL)manifests.seal(request.scope(),request.bundle());return; }
             // Explicit public saveAgentState updates the SDK cache version, but an active
             // CallExecution keeps another loadedVersion. Snapshot a private clone instead;
             // never weaken CAS or mutate the running SDK context to force a save.
             var context=RuntimeContext.builder().userId(request.scope().actorId()).sessionId(request.scope().conversationId()).build();
             var privateCodec=new io.agentscope.core.util.JacksonJsonCodec();
             var snapshot=privateCodec.fromJson(privateCodec.toJson(agent.getDelegate().getAgentState(context)),io.agentscope.core.state.AgentState.class);
-            Set<String> finished=canonical.stream().flatMap(message->message.observations().stream()).filter(o->o.status()==OperationStatus.SUCCEEDED).map(Observation::callId).collect(java.util.stream.Collectors.toSet());
+            Set<String> finished=canonical.stream().flatMap(message->message.observations().stream()).filter(o->o.status()==OperationStatus.SUCCEEDED||o.status()==OperationStatus.DENIED).map(Observation::callId).collect(java.util.stream.Collectors.toSet());
             snapshot.contextMutable().clear();
-            Set<String> waiting = phase == CheckpointPhase.WAITING_INPUT
+            Set<String> waiting = phase == CheckpointPhase.WAITING_INPUT || phase == CheckpointPhase.WAITING_APPROVAL
                     ? (pendingCalls.get().isEmpty()?restoredPending():pendingCalls.get()).stream().map(Call::id).collect(java.util.stream.Collectors.toSet()) : Set.of();
             canonical.stream().map(codec::encode).map(message->message.withContent(message.getContent().stream().map(block->{
                 if(block instanceof ToolUseBlock tool) {
@@ -249,7 +250,9 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
             @Override public int order() { return Integer.MAX_VALUE; }
             @Override public Flux<AgentEvent> onReasoning(Agent agent, RuntimeContext context, ReasoningInput input,
                                                         Function<ReasoningInput, Flux<AgentEvent>> next) {
-                return await(() -> boundary.beforeModel(request.scope(), input.messages().stream().map(msg -> codec.decodeTyped(msg, catalog)).toList()))
+                // SDK ConfirmResult(false) is applied before ordinary acting middleware. Reconcile
+                // its actual DENIED result before platform context assembly or another model call.
+                return persistDeniedResults(input.messages()).then(await(() -> boundary.beforeModel(request.scope(), input.messages().stream().map(msg -> codec.decodeTyped(msg, catalog)).toList())))
                         .flatMapMany(messages -> next.apply(new ReasoningInput(messages.stream().map(codec::encode).toList(), input.tools(), input.options())))
                         .concatWith(Mono.defer(() -> {
                             Turn turn = lastTurn.get();
@@ -267,11 +270,48 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
                     pendingCalls.set(pending);
                     if (turn != null && !turn.round().calls().equals(pending)) return Flux.error(new IllegalStateException("TOOL_BATCH_MISMATCH"));
                     long controls = pending.stream().filter(call -> catalog.get(call.name()).category() == ToolCategory.CONTROL).count();
+                    long business = pending.stream().filter(call -> catalog.get(call.name()).category() == ToolCategory.BUSINESS).count();
+                    if (manifests.atomicCheckpoints(request.scope()) && (business > 1 || (business > 0 && controls > 0)))
+                        return Flux.error(new IllegalArgumentException("TOOL_BATCH_UNSUPPORTED"));
                     if (controls > 1 || (controls == 1 && pending.size() != 1))
                         return Flux.error(new IllegalArgumentException("CONTROL_BATCH_LIMIT"));
                     // Restored calls are checked against their canonical intent and answer before acting.
-                    return await(() -> boundary.beforeControlBatch(request.scope(), pending)).thenMany(next.apply(input)).concatWith(Mono.fromRunnable(()->saveCheckpoint(CheckpointPhase.TOOL_COMMITTED)).then(Mono.<AgentEvent>empty()));
+                    return await(() -> boundary.beforeControlBatch(request.scope(), pending))
+                            .thenMany(next.apply(input).concatMap(event -> persistDenied(event, pending)))
+                            .concatWith(Mono.fromRunnable(()->saveCheckpoint(CheckpointPhase.TOOL_COMMITTED)).then(Mono.<AgentEvent>empty()));
                 });
+            }
+            private Mono<AgentEvent> persistDenied(AgentEvent event, List<Call> pending) {
+                if (!(event instanceof io.agentscope.core.event.ToolResultEndEvent end) || end.getState() != ToolResultState.DENIED)
+                    return Mono.just(event);
+                List<Call> matches = pending.stream().filter(call -> call.id().equals(end.getToolCallId()) && call.name().equals(end.getToolCallName())).toList();
+                if (matches.size() != 1) return Mono.error(new IllegalStateException("DENIED_CALL_MISMATCH"));
+                Call call = matches.getFirst();
+                return persistDenial(call).thenReturn(event);
+            }
+            private Mono<Void> persistDenial(Call call) {
+                if (committedDenials.contains(call.id())) return Mono.empty();
+                Observation denied = new Observation(call.id(), call.name(), "Tool operation was denied. No operation was executed.", OperationStatus.DENIED);
+                return await(() -> boundary.afterToolCommitted(request.scope(), call, denied)).doOnSuccess(ignored -> committedDenials.add(call.id()));
+            }
+            private Mono<Void> persistDeniedResults(List<Msg> messages) {
+                Set<String> current = new java.util.HashSet<>();
+                pendingCalls.get().forEach(call -> current.add(call.id()));
+                request.approvals().forEach(approval -> current.add(approval.call().id()));
+                Map<String, Call> calls = new LinkedHashMap<>();
+                List<Call> denied = new ArrayList<>();
+                for (Msg message : messages) for (ContentBlock block : message.getContent()) {
+                    if (block instanceof ToolUseBlock tool && current.contains(tool.getId())) calls.put(tool.getId(), codec.decodeTypedCall(tool, catalog));
+                    if (block instanceof ToolResultBlock result && result.getState() == ToolResultState.DENIED
+                            && current.contains(result.getId()) && !committedDenials.contains(result.getId())) {
+                        Call call = calls.get(result.getId());
+                        if (call == null || !call.name().equals(result.getName())) return Mono.error(new IllegalStateException("DENIED_CALL_MISMATCH"));
+                        denied.add(call);
+                    }
+                }
+                if (denied.isEmpty()) return Mono.empty();
+                return Flux.fromIterable(denied).concatMap(this::persistDenial)
+                        .then(Mono.fromRunnable(() -> saveCheckpoint(CheckpointPhase.TOOL_COMMITTED)));
             }
         }
 

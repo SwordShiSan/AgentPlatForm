@@ -3,6 +3,7 @@ import ModelSettings from './ModelSettings.vue';
 import PlanCard from './PlanCard.vue';
 import TaskPermissions from './TaskPermissions.vue';
 import QuestionCard from './QuestionCard.vue';
+import ApprovalCard from './ApprovalCard.vue';
 import RecoveryNotice from './RecoveryNotice.vue';
 import { useChatDrafts, type PendingSubmission } from './drafts';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
@@ -237,7 +238,8 @@ async function cancel() {
       </div>
       <template v-for="interaction in snapshot.data.value?.pending" :key="interaction.interactionId">
         <PlanCard v-if="interaction.kind === 'PLAN_APPROVAL'" :interaction="{ ...interaction, question: null }" :actor="actor" :space="space" :ready="snapshot.data.value?.tasks.find(task => task.taskId === interaction.taskId)?.status === 'WAITING_INPUT'" @refresh="refreshInteractions" />
-        <QuestionCard v-else :interaction="{ ...interaction, plan: null }" :ready="interaction.optional || snapshot.data.value?.tasks.find(task => task.taskId === interaction.taskId)?.status === 'WAITING_INPUT'" @refresh="refreshInteractions" />
+        <QuestionCard v-else-if="interaction.kind === 'QUESTION'" :interaction="{ ...interaction, plan: null }" :ready="interaction.optional || snapshot.data.value?.tasks.find(task => task.taskId === interaction.taskId)?.status === 'WAITING_INPUT'" @refresh="refreshInteractions" />
+        <ApprovalCard v-else-if="interaction.kind === 'TOOL_APPROVAL'" :interaction="{ ...interaction, plan: null, question: null }" :ready="snapshot.data.value?.tasks.find(task => task.taskId === interaction.taskId)?.status === 'WAITING_INPUT'" @refresh="refreshInteractions" />
       </template>
       <p v-if="lastTask" role="status">{{ labels[lastTask.status] }}{{ lastTask.cancelRequested && running ? ' · 正在取消' : '' }}<span v-if="reason"> · {{ reason }}</span></p>
       <p v-if="stopLabel" role="status" data-testid="stop-stage">{{ stopLabel }}</p>

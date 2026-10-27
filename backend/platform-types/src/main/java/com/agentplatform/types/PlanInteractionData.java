@@ -8,16 +8,28 @@ import java.util.UUID;
 /** Public plan projections contain no private SDK state or permission grants. */
 public final class PlanInteractionData {
     private PlanInteractionData() {}
-    public enum Kind { PLAN_APPROVAL, QUESTION }
-    public enum Decision { EXECUTE_PLAN, REVISE_PLAN, REJECT_PLAN, DELIVER_PLAN, ANSWER, SKIP }
+    public enum Kind { PLAN_APPROVAL, QUESTION, TOOL_APPROVAL }
+    public enum Decision { EXECUTE_PLAN, REVISE_PLAN, REJECT_PLAN, DELIVER_PLAN, ANSWER, SKIP, ALLOW_ONCE, DENY }
     public record Revision(UUID id, long revision, String title, String markdown, String source, String hash, Instant createdAt) {}
     public record Plan(UUID taskId, String status, long version, Revision current, List<Revision> revisions) {
         public Plan { revisions=List.copyOf(revisions); }
     }
     public record Option(String id,String label) {}
+    /** Redacted approval projection; arguments and framework state remain server-owned. */
+    public record ToolApprovalPayload(UUID operationId, String toolName, String summary, String reasonCode,
+                                      UUID workspaceId, String target, String targetVersion, String callHash,
+                                      boolean stale, List<Decision> allowedActions, long permissionVersion,
+                                      String policyVersion) {
+        public ToolApprovalPayload { allowedActions=List.copyOf(allowedActions); }
+    }
     public record Pending(UUID interactionId, UUID taskId, Kind kind, boolean optional, long version,
-                          Instant expiresAt, Revision plan, String question, List<Option> options) {
+                          Instant expiresAt, Revision plan, String question, List<Option> options,
+                          ToolApprovalPayload approval) {
         public Pending { options=List.copyOf(options); }
+        public Pending(UUID interactionId, UUID taskId, Kind kind, boolean optional, long version,
+                       Instant expiresAt, Revision plan, String question, List<Option> options) {
+            this(interactionId,taskId,kind,optional,version,expiresAt,plan,question,options,null);
+        }
     }
     public record Edit(String title,String markdown) {
         public Edit {

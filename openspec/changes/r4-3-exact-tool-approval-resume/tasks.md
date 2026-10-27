@@ -1,5 +1,5 @@
 - [x] 1. Approved Plan, baseline and formal architecture/OpenSpec gate
-- [ ] 2. SDK ASK→JVM exit→exact ALLOW_ONCE/DENY experiment and batch guard
+- [x] 2. SDK ASK→JVM exit→exact ALLOW_ONCE/DENY experiment and batch guard
 - [ ] 3. V17, typed approval ledger/Mapper and transaction ownership integration
 - [ ] 4. Waiting checkpoint/stop/restore, single-use admission and DENIED canonical results
 - [ ] 5. Compatible OpenAPI/events/client, application services and ApprovalCard

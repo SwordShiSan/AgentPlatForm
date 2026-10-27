@@ -5,6 +5,7 @@ import com.agentplatform.domain.chat.*;
 import com.agentplatform.domain.chat.ChatData.*;
 import com.agentplatform.infrastructure.chat.ChatCursor;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public final class ChatService implements ChatApi {
@@ -64,7 +65,11 @@ public final class ChatService implements ChatApi {
     }
     public com.agentplatform.types.PlanInteractionData.Plan plan(Caller c,String task){return repository.plan(actor(c),id(task));}
     public com.agentplatform.types.PlanInteractionData.Plan editPlan(Caller c,String task,long expected,com.agentplatform.types.PlanInteractionData.Edit edit){return repository.editPlan(actor(c),id(task),expected,edit);}
-    public com.agentplatform.types.PlanInteractionData.Accepted answer(Caller c,String task,String interaction,String key,com.agentplatform.types.PlanInteractionData.Answer answer){return repository.answer(actor(c),id(task),id(interaction),id(key),answer);}
+    public com.agentplatform.types.PlanInteractionData.Accepted answer(Caller c,String task,String interaction,String key,com.agentplatform.types.PlanInteractionData.Answer answer){
+        return Set.of(com.agentplatform.types.PlanInteractionData.Decision.ALLOW_ONCE,com.agentplatform.types.PlanInteractionData.Decision.DENY).contains(answer.decision())
+                ?new ApprovalResumeService(repository).answer(actor(c),id(task),id(interaction),id(key),answer)
+                :repository.answer(actor(c),id(task),id(interaction),id(key),answer);
+    }
     public List<QuotaView> quota(Caller c){return repository.quota(actor(c)).stream().map(v->new QuotaView(v.metric().name(),v.unlimited(),v.limit(),v.used(),v.reserved(),v.remaining(),v.resetAt().toString(),v.policyVersion())).toList();}
 
     public com.agentplatform.types.TaskPermissionData.View permissions(Caller c,String t){return new PermissionGrantService(repository).read(actor(c),id(t));}
