@@ -1,0 +1,63 @@
+{
+  "stage": "R4.4",
+  "status": "IMPLEMENTING",
+  "verified": false,
+  "released": false,
+  "baseCommit": "c15cb410228ddb6a6df91796c1e090699eea6546",
+  "supplierPhysicalCalls": 0,
+  "receipts": [
+    {
+      "name": "file-tool-and-sdk-admission",
+      "status": "PASS",
+      "sourceHead": "3bde15a1ecbc8f295d5b11f9c16303d85d7222b8",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "afcef5dfcf9cbb77b9a33a17f9b7113ab8a300561714f73c580c74330ece2dd4",
+      "logSha256": "1be7bde35d30efe44848f5ce07c423014ceea3233d0b8525dadd80b008aaca65",
+      "executions": 16,
+      "note": "Inherited migration cases repeat across classes. Actual PG/SDK, deterministic object transport; not physical S3/runner/shell evidence."
+    },
+    {
+      "name": "file-tool-api-runner-roles",
+      "status": "PASS",
+      "inputUnchanged": true,
+      "inputManifestSha256": "d9d2bd9a25036ca21bd9d203a05039c30da0f4f756961d229dde96ed8acf0061",
+      "logSha256": "ae6034b4da1a858e81bf8d928c8017425818bd49d1d91e86ea08e67cb929bb5b",
+      "executions": 1,
+      "note": "Actual PG restricted roles and grants. Runner predicate permitted; chat, credential, admission and private SDK table reads denied. API file-content revision trigger works without private intent access."
+    },
+    {
+      "name": "cancelled-parent-file-unknown",
+      "status": "PASS",
+      "inputUnchanged": true,
+      "inputManifestSha256": "bf6c8fd8bb3c05ffc053adeb8b1882a97629b68951ad8ea0c73592fe7ed5d362",
+      "logSha256": "e28e6f9b1898f80970bce3420324bda4cb925e70872314de83b9b12d2e067f96",
+      "executions": 1,
+      "note": "Actual PG child admission/outbox binding, parent cancellation denies execution, UNKNOWN keeps lease and reservation; no fabricated termination receipt."
+    },
+    {
+      "name": "native-gvisor-shell-whole-stop-rebuild",
+      "status": "PASS",
+      "source": "a71b6c460c701b80fc89977c34f5ab39de655c94",
+      "sandboxConfigId": "sha256:9e0bd46f894ba4a82682b933a654b888ab3cb6e34f9d28cf39a7c4f65fd09a1d",
+      "probeConfigId": "sha256:b8c7dc2bf9bf06daccccbb4c8a287754e44f96e618a2d015ac9ef93427c34d13",
+      "policyHash": "68b1994cce479fd5bdb79f2296fc16649cfb0e53d7d660440d1796ce42a508d7",
+      "windowResultSha256": "3d6ea22ac7fb3ceb31c4acdf40f99ffbe54ebbe8ea3eb0eea113c9d7d46575b8",
+      "protectedReceiptArchiveSha256": "f328632533ee0ce701218d57d0a789880c3d7788f961b6c762781318dde15602",
+      "receiptFileCount": 18,
+      "r3Restored": true,
+      "testResourcesStopped": true,
+      "note": "Actual Docker-java/gVisor Python+Node+general shell, background descendants and callback stop, nonzero exit, new-generation same-file readback. Native feasibility only; no SDK/persistent job chain or output-version sealing claim."
+    }
+  ],
+  "notRun": [
+    "production signed shell job",
+    "declared output capture and immutable sealing",
+    "safe operation APIs and ToolCard",
+    "complete engineering and browser regression",
+    "bounded real Flash end-to-end",
+    "protected promotion and cloud release/observation/restore/rollback"
+  ],
+  "production": "Same R3 release/containers/images restored, schema14/readiness200, legacy stopped. Its pre-existing OOM runner was restarted after preserving evidence; original unaccepted SCAN converged through the existing reconciler to NOT_APPLIED/FAILED with no manual ledger edits. This does not prove the OOM cause or R4 full resource capacity.",
+  "history": "Retain original failed logs in protected local stage records; failures are not overwritten by later passes."
+}
