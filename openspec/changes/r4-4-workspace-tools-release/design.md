@@ -41,6 +41,16 @@ stdout/stderr合计64KiB并标截断；结果>32KiB入私有S3，模型摘要≤
 
 文件worker和runner通过窄的数据库谓词复核父task所有权、实时授权、凭据、权限修订和原批准Plan；runner不获得聊天/凭据/checkpoint表读取权。带父任务的文件作业先锁额度及task所有权，再取资源子集锁；停止事实的观察和持久化不要求父任务仍可执行，取消后仍能证明实际终止。文件读取只读明确不可变版本，分块校验全对象长度/hash与严格UTF-8，内存中仅保留有界codepoint页，序列化结果不超过8KiB；目录分页同样受结果字节限制，不能把过长结果静默当成完整列表。
 
+### shell可靠交接与旧协议兼容细化
+
+shell沿用父task已经完成的outbox/MQ持久领取及串行Harness；在原operation准入事务中建立唯一shell-use及父attempt/owner/task-generation/task-fence绑定，提交后才允许一次签名POST。结果不明仅查原use，不新增数据库直跑兜底或第二个shell调度器。自动准备/唤醒仍使用既有environment outbox/MQ，写入与采集仍使用file outbox/MQ；所有交接都必须在公开可执行动作前持久化原operation关联。
+
+保留`EnvironmentUseData.Request(file,probe)`的原JSON字段和旧命令/请求hash。shell使用独立版本的类型化请求及内部路由，不能给旧record直接追加shell字段。可抽取纯Java请求公共端口和共享所有权/stop投影实现，但旧HTTP必须仍仅接受file/probe，旧状态codec/序列化fixture必须逐字节回归；新版本才接受shell和显式父任务身份。父task fence与environment fence分别命名、分别校验，不把任一数值当作另一个租约。Nimbus签名继续绑定完整正文摘要和原use身份，runner窄谓词复核对应父账本，而不读取聊天/凭据/SDK状态。
+
+每次shell先持久化真实whole-container/exec/callback停止事实，再允许受信helper采集。封存声明输出期间仍保留该原use的数据面独占和容量所有权；只有原operation关联的CAPTURE作业且已有精确停止事实才允许进入，独立上传/扫描/环境生命周期继续排队。采集/额度/版本事实提交后，才收敛use、移除原容器并释放槽，防止stop与capture之间出现另一写入者。不另建与现有use/file lease并行竞争的第二套工作区状态权威。
+
+取消/超时的内部停止请求绑定原operation/use和原owner，停止观察不要求仍有业务执行权限。关闭HTTP/Future或仅停止SDK不能替代这个停止请求及实际回执。文件传输同样必须拒绝新的物理动作，但允许失权后保留UNKNOWN/预留及写入真实停止事实；完整停止屏障纳入这些原作业，无法确认时不释放父执行槽。
+
 ## 3. API、事件与界面
 
 先契约再生成。新增GET /api/v1/tasks/{id}/operations分页与GET /api/v1/operations/{id}/result有界读回；现有answer端点继续精确ALLOW_ONCE/DENY。Plan/snapshot加执行phase和类型化工具投影；operation事件和状态同一账本同事务提交。
