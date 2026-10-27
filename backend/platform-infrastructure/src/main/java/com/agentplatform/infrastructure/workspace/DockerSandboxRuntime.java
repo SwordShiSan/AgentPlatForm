@@ -604,15 +604,25 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
                 }
                 authority.check();
                 var state = docker.inspectExecCmd(exec).exec();
+                if(stopAfter&&Boolean.FALSE.equals(state.isRunning())&&state.getExitCodeLong()!=null) {
+                    // Descendants may retain stdout/stderr after the shell process
+                    // exits. Stop the exact container before awaiting stream EOF;
+                    // waiting for EOF first would let a background process keep
+                    // the command alive until its timeout. stop() proves both.
+                    authority.check();
+                    Stop stopped=stop(identity);
+                    if(capture.failure!=null)throw unavailable("SANDBOX_EXEC_RESULT_UNKNOWN");
+                    completed=true;
+                    return capture.output(state.getExitCodeLong(),false,false,stopped);
+                }
                 if (Boolean.FALSE.equals(state.isRunning()) && capture.finished.getCount() == 0) {
                     if (capture.failure != null || state.getExitCodeLong() == null) throw unavailable("SANDBOX_EXEC_RESULT_UNKNOWN");
                     authority.check();
                     if(!Boolean.TRUE.equals(exact(identity).getState().getRunning()))throw unavailable("SANDBOX_CONTAINER_EXITED");
                     // Shell descendants can outlive the parent exec. Only stopping the
                     // entire exact generation provides a sealing boundary for its files.
-                    Stop stopped=stopAfter?stop(identity):null;
                     completed = true;
-                    return capture.output(state.getExitCodeLong(), false, false, stopped);
+                    return capture.output(state.getExitCodeLong(), false, false, null);
                 }
                 Thread.sleep(250);
             }
