@@ -20,4 +20,5 @@ public interface WorkspaceToolLedger {
     default FileAdmission recordWorkspaceFileAdmission(Lease lease,Call call,UUID upload,String failure){throw new ChatFailure(422,"WORKSPACE_TOOLS_NOT_AVAILABLE");}
     default void bindWorkspaceFileOperation(Lease lease,Call call,UUID fileOperation){throw new ChatFailure(422,"WORKSPACE_TOOLS_NOT_AVAILABLE");}
     default boolean workspaceFileStopped(Lease lease,Call call){return false;}
+    default com.agentplatform.domain.workspace.WorkspaceShellData.Request workspaceShellRequest(Lease lease,Call call){throw new ChatFailure(422,"WORKSPACE_TOOLS_NOT_AVAILABLE");}
 }

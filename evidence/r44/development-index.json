@@ -58,6 +58,26 @@
       "inputManifestSha256": "8b993a1634d3db689808f72b67c5d564553e681c359a951e8a010b54207cae9c",
       "logSha256": "e749731f2fea6ef41dc3702ef20024ab7cfaf52ab03d51e78a83952a85f1746f",
       "note": "Legacy concrete request JSON/hash retained; framework-selected shell family rejects cross-family/unknown payloads. Existing use application and signature units regress. New production shell dispatch/parent admission remains NOT_RUN."
+    },
+    {
+      "name": "shell-parent-admission",
+      "status": "PASS",
+      "sourceHead": "c00794ec2ee3797ec1e42967e2e0b3be831c631a",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "f0ff57eaee6ff4fd9711fb2282bf135291ef72edcde47102b0a9d73e07efcf87",
+      "logSha256": "2ae32e9b393eecb3a791980188b133f15a58aa2f02a1e8d70167d8d6a1f6d8a5",
+      "note": "Actual PG/SDK parent ownership, command identity and activity deadline; no physical signed dispatch."
+    },
+    {
+      "name": "signed-shell-wire",
+      "status": "PASS",
+      "sourceHead": "c00794ec2ee3797ec1e42967e2e0b3be831c631a",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "28bb539ef0c07b21b85dda8cd3048986c5b4d6e1326c8c3fc36de729fdd2be84",
+      "logSha256": "64d6aacf3d466218c706d028fa50027dda914157f44d28e56def6ff33aed5e33",
+      "note": "Actual HTTP/JOSE, deterministic repository/runtime. Duplicate/cross-family/tampering/in-flight-stop checks, legacy regression. No integrated native job or sealing claim."
     }
   ],
   "notRun": [

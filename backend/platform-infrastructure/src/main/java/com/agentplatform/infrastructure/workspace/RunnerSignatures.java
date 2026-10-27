@@ -28,6 +28,7 @@ public final class RunnerSignatures {
                         || path.equals("/internal/operations/v2/environments") || path.equals("/internal/operations/v2/environments/" + operationId)
                         || path.equals("/internal/operations/v3/environments") || path.equals("/internal/operations/v3/environments/" + operationId)
                         || path.equals("/internal/workspace-uses/v1") || path.equals("/internal/workspace-uses/v1/" + operationId)
+                        || path.equals("/internal/workspace-shell/v1") || path.equals("/internal/workspace-shell/v1/" + operationId)
                         || path.equals("/internal/file-operations/v1") || path.equals("/internal/file-operations/v1/"+operationId)) || path.contains("?")
                     || path.contains("#") || path.contains("..") || generation < 1 || fence < 1) {
                 throw new IllegalArgumentException("Invalid runner binding");
@@ -67,7 +68,7 @@ public final class RunnerSignatures {
         }
     }
     public String sign(Binding binding, byte[] body) {
-        bounded(body);
+        bounded(binding,body);
         var now = clock.instant();
         var claims = JwtClaimsSet.builder().issuer(issuer).audience(List.of(audience))
                 .issuedAt(now).notBefore(now).expiresAt(now.plusSeconds(60)).id(binding.commandId().toString())
@@ -99,7 +100,7 @@ public final class RunnerSignatures {
         };
     }
     public void verify(String token, Binding binding, byte[] body) {
-        bounded(body);
+        bounded(binding,body);
         Jwt jwt = authenticate(token);
         try {
             boolean equal = binding.commandId().toString().equals(jwt.getId())
@@ -135,7 +136,10 @@ public final class RunnerSignatures {
         if (value instanceof Integer number) return number.longValue();
         throw new IllegalArgumentException("Integer claim required");
     }
-    private static void bounded(byte[] body) {
-        if (body == null || body.length > 65536) throw new WorkspaceFailure(413, "RUNNER_BODY_TOO_LARGE");
+    public static int bodyLimit(String method,String path) {
+        return "POST".equals(method)&&"/internal/workspace-shell/v1".equals(path)?131072:65536;
+    }
+    private static void bounded(Binding binding,byte[] body) {
+        if (body == null || body.length > bodyLimit(binding.method(),binding.path())) throw new WorkspaceFailure(413, "RUNNER_BODY_TOO_LARGE");
     }
 }

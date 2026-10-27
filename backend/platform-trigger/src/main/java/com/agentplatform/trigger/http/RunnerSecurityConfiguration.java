@@ -18,6 +18,7 @@ public class RunnerSecurityConfiguration {
                         "/internal/operations/v2/environments","/internal/operations/v2/environments/*",
                         "/internal/operations/v3/environments","/internal/operations/v3/environments/*",
                         "/internal/workspace-uses/v1","/internal/workspace-uses/v1/*",
+                        "/internal/workspace-shell/v1","/internal/workspace-shell/v1/*",
                         "/internal/file-operations/v1","/internal/file-operations/v1/*").authenticated().anyRequest().denyAll())
                 .oauth2ResourceServer(resource->resource.jwt(jwt->jwt.decoder(decoder)));
         http.addFilterAfter(new OncePerRequestFilter() {
@@ -26,8 +27,9 @@ public class RunnerSecurityConfiguration {
                     throws java.io.IOException,jakarta.servlet.ServletException {
                 boolean environment="/internal/operations/v2/environments".equals(request.getRequestURI())
                         ||"/internal/operations/v3/environments".equals(request.getRequestURI());
-                long bound=environment?16384:65536;
-                if("POST".equals(request.getMethod())&&("/internal/operations".equals(request.getRequestURI())||environment||"/internal/workspace-uses/v1".equals(request.getRequestURI())||"/internal/file-operations/v1".equals(request.getRequestURI()))
+                boolean shell="/internal/workspace-shell/v1".equals(request.getRequestURI());
+                long bound=environment?16384:shell?131072:65536;
+                if("POST".equals(request.getMethod())&&("/internal/operations".equals(request.getRequestURI())||environment||shell||"/internal/workspace-uses/v1".equals(request.getRequestURI())||"/internal/file-operations/v1".equals(request.getRequestURI()))
                         &&(request.getContentLengthLong()<0||request.getContentLengthLong()>bound)) {
                     response.setStatus(request.getContentLengthLong()<0?411:413);
                     response.setContentType("application/problem+json");

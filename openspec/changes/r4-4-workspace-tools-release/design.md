@@ -47,6 +47,8 @@ shell沿用父task已经完成的outbox/MQ持久领取及串行Harness；在原o
 
 保留`EnvironmentUseData.Request(file,probe)`的原JSON字段和旧命令/请求hash。shell使用独立版本的类型化请求及内部路由，不能给旧record直接追加shell字段。可抽取纯Java请求公共端口和共享所有权/stop投影实现，但旧HTTP必须仍仅接受file/probe，旧状态codec/序列化fixture必须逐字节回归；新版本才接受shell和显式父任务身份。父task fence与environment fence分别命名、分别校验，不把任一数值当作另一个租约。Nimbus签名继续绑定完整正文摘要和原use身份，runner窄谓词复核对应父账本，而不读取聊天/凭据/SDK状态。
 
+独立内部路由为`/internal/workspace-shell/v1`及其原use查询。仅该版本POST的JSON传输信封上限为128KiB，以容纳64KiB以内参数的JSON转义与服务端身份字段；原参数上限不变，其他路由及所有签名响应继续64KiB。路由对应的具体请求类型在反序列化时固定，跨版本正文拒绝，不能由客户端类名选择实现。一次POST丢失响应后只查询原use；查询不能停止当前仍在退出的同一进程调用。
+
 每次shell先持久化真实whole-container/exec/callback停止事实，再允许受信helper采集。封存声明输出期间仍保留该原use的数据面独占和容量所有权；只有原operation关联的CAPTURE作业且已有精确停止事实才允许进入，独立上传/扫描/环境生命周期继续排队。采集/额度/版本事实提交后，才收敛use、移除原容器并释放槽，防止stop与capture之间出现另一写入者。不另建与现有use/file lease并行竞争的第二套工作区状态权威。
 
 取消/超时的内部停止请求绑定原operation/use和原owner，停止观察不要求仍有业务执行权限。关闭HTTP/Future或仅停止SDK不能替代这个停止请求及实际回执。文件传输同样必须拒绝新的物理动作，但允许失权后保留UNKNOWN/预留及写入真实停止事实；完整停止屏障纳入这些原作业，无法确认时不释放父执行槽。

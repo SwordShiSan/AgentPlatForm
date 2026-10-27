@@ -57,6 +57,7 @@ final class MyBatisExecutionLedger {
     static void startTool(ChatMappers c,Lease l,com.agentplatform.types.harness.HarnessData.Call call) {
         if(com.agentplatform.domain.chat.WorkspaceTools.NAMES.contains(call.name())) {
             WorkspaceToolPersistence.resourceGuard(c,l);
+            if("workspace_shell".equals(call.name())&&c.workspaceTools().lockSandboxSlot()==null)throw new ChatFailure(409,"SANDBOX_CAPACITY_UNAVAILABLE");
             var catalog=c.workspaceTools().catalog(l.spaceId(),l.taskId());
             if(catalog==null||c.workspaceTools().lockWorkspace(l.spaceId(),catalog.workspaceId(),l.userId())==null)
                 throw new ChatFailure(409,"WORKSPACE_NOT_READY");

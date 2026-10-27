@@ -13,7 +13,9 @@ import tools.jackson.databind.json.JsonMapper;
 /** One accepted use is executed once; queries can confirm termination but cannot reconstruct or replay work. */
 public final class EnvironmentUseRunnerService implements EnvironmentUseRunnerApi {
     public static final String PATH="/internal/workspace-uses/v1";
-    private static final JsonMapper JSON=com.agentplatform.infrastructure.workspace.EnvironmentUseCodecs.legacy();
+    private final JsonMapper json;
+    private final String path;
+    private final boolean shell;
     private final EnvironmentUseRepository repository;
     private final RunnerSignatures signatures;
     private final SandboxRuntime runtime;
@@ -31,20 +33,27 @@ public final class EnvironmentUseRunnerService implements EnvironmentUseRunnerAp
     }
     public EnvironmentUseRunnerService(EnvironmentUseRepository repository,RunnerSignatures signatures,SandboxRuntime runtime,RunnerInstance instance,
             WorkspaceEffectBoundary boundary,FileHelperRepository fileHelpers) {
+        this(repository,signatures,runtime,instance,boundary,fileHelpers,false);
+    }
+    EnvironmentUseRunnerService(EnvironmentUseRepository repository,RunnerSignatures signatures,SandboxRuntime runtime,RunnerInstance instance,
+            WorkspaceEffectBoundary boundary,FileHelperRepository fileHelpers,boolean shell) {
         this.repository=repository;this.signatures=signatures;this.runtime=runtime;this.instance=instance;this.boundary=boundary;this.fileHelpers=fileHelpers;
+        this.shell=shell;this.path=shell?WorkspaceShellRunnerService.PATH:PATH;
+        this.json=shell?com.agentplatform.infrastructure.workspace.EnvironmentUseCodecs.shell():com.agentplatform.infrastructure.workspace.EnvironmentUseCodecs.legacy();
     }
     public static RunnerSignatures.Binding binding(Command command,String method,String path) {
         return new RunnerSignatures.Binding(method,path,command.id(),command.id(),command.spaceId(),command.workspaceId(),command.generation(),command.fence());
     }
     private SignedResult signed(Command command,String path) {
-        byte[] body=JSON.writeValueAsBytes(repository.receipt(command));
+        byte[] body=json.writeValueAsBytes(repository.receipt(command));
         return new SignedResult(body,signatures.sign(binding(command,"RESPONSE",path),body));
     }
     private void validate(Command command) {
         if(command==null||command.id()==null||command.spaceId()==null||command.workspaceId()==null||command.environmentId()==null
                 ||command.actorId()==null||command.ownerId()==null||command.request()==null||command.executeUntil()==null||command.deadline()==null
                 ||command.creationCommandId()==null||command.generation()<1||command.fence()<1||command.creationFence()<1||command.projectId()<200001
-                ||!(command.request() instanceof Request)||!command.request().kind().equals(command.kind()))throw new WorkspaceFailure(400,"INVALID_WORKSPACE_USE");
+                ||(shell?!(command.request() instanceof WorkspaceShellData.Request):!(command.request() instanceof Request))
+                ||!command.request().kind().equals(command.kind()))throw new WorkspaceFailure(400,"INVALID_WORKSPACE_USE");
     }
     private Fact unknown(Command command,SandboxRuntime.Stop stop) {
         return new Fact(command.id(),command.environmentId(),command.generation(),command.fence(),command.requestHash(),instance.id(),
@@ -82,17 +91,17 @@ public final class EnvironmentUseRunnerService implements EnvironmentUseRunnerAp
     }
     @Override public SignedResult operate(String token,byte[] body) {
         signatures.authenticate(token);
-        if(body==null||body.length>65536)throw new WorkspaceFailure(413,"RUNNER_BODY_TOO_LARGE");
+        if(body==null||body.length>RunnerSignatures.bodyLimit("POST",path))throw new WorkspaceFailure(413,"RUNNER_BODY_TOO_LARGE");
         Command command;
-        try {command=JSON.readValue(body,Command.class);}catch(RuntimeException invalid) {throw new WorkspaceFailure(400,"INVALID_WORKSPACE_USE");}
-        validate(command);signatures.verify(token,binding(command,"POST",PATH),body);
+        try {command=json.readValue(body,Command.class);}catch(RuntimeException invalid) {throw new WorkspaceFailure(400,"INVALID_WORKSPACE_USE");}
+        validate(command);signatures.verify(token,binding(command,"POST",path),body);
         if(!command.equals(repository.lookup(command.id())))throw new WorkspaceFailure(409,"RUNNER_COMMAND_CONFLICT");
         if(!inFlight.compareAndSet(null,command.id())) {
             if(!command.id().equals(inFlight.get()))throw new WorkspaceFailure(409,"ENVIRONMENT_USE_BUSY");
-            return signed(command,PATH);
+            return signed(command,path);
         }
         try {
-            if(!repository.accept(command,instance.id()))return signed(command,PATH);
+            if(!repository.accept(command,instance.id()))return signed(command,path);
             var authority=new SandboxRuntime.UseAuthority() {
                 @Override public void check() {repository.check(command,instance.id());}
                 @Override public void recordExec(String container,String exec) {repository.recordExec(command,instance.id(),container,exec);}
@@ -106,7 +115,8 @@ public final class EnvironmentUseRunnerService implements EnvironmentUseRunnerAp
                     var fileAuthority=fileAuthority(command);
                     fileHelpers.intent(command,instance.id(),fileAuthority.intent());
                     output=runtime.file(command.physicalIdentity(),command.id(),command.request().file(),fileAuthority,cancelled);
-                } else output=runtime.probe(command.physicalIdentity(),command.id(),command.request().probe(),authority,cancelled);
+                } else if(shell) output=runtime.shell(command.physicalIdentity(),command.id(),command.request().shell(),authority,cancelled);
+                else output=runtime.probe(command.physicalIdentity(),command.id(),command.request().probe(),authority,cancelled);
                 fact=output.timedOut()||output.cancelled()?unknown(command,output.stopReceipt()):
                         new Fact(command.id(),command.environmentId(),command.generation(),command.fence(),command.requestHash(),instance.id(),"KNOWN",output,output.stopReceipt(),null);
             } catch(SandboxRuntime.Terminated terminated) {fact=unknown(command,terminated.receipt());}
@@ -115,7 +125,7 @@ public final class EnvironmentUseRunnerService implements EnvironmentUseRunnerAp
                 // and storage/owner failure may prevent recording it until later query.
                 SandboxRuntime.Stop stop=null;
                 try {stop=runtime.stop(command.physicalIdentity());}catch(RuntimeException unconfirmed) { /* Keep slot. */ }
-                if(stop==null)return signed(command,PATH);
+                if(stop==null)return signed(command,path);
                 fact=unknown(command,stop);
             }
             boundary.await("use-output-before-result");
@@ -127,11 +137,11 @@ public final class EnvironmentUseRunnerService implements EnvironmentUseRunnerAp
                 repository.commitFact(command,instance.id(),unknown(command,stop));
             }
             boundary.await("use-result-before-response");
-            return signed(command,PATH);
+            return signed(command,path);
         } finally {inFlight.compareAndSet(command.id(),null);}
     }
     @Override public SignedResult query(String token,String id) {
-        String path=PATH+"/"+id;
+        String path=this.path+"/"+id;
         var binding=signatures.verifiedQuery(token,path); // Authenticate all bindings before database access.
         var command=repository.lookup(binding.operationId());validate(command);
         signatures.verify(token,binding(command,"GET",path),new byte[0]);

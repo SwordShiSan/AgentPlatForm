@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.agentplatform.infrastructure.dao.chat.WorkspaceToolMapper">
+  <select id="lockSandboxSlot" resultType="java.lang.Integer">SELECT id FROM pf.workspace_sandbox_slot WHERE id=1 FOR UPDATE</select>
+  <select id="taskGeneration" resultType="java.lang.Long">SELECT generation FROM pf.execution_dispatch WHERE task_id=#{lease.taskId} AND lease_owner=#{lease.ownerId} AND fencing_token=#{lease.fence} AND status='CLAIMED'</select>
   <select id="fileAdmission" resultType="com.agentplatform.domain.chat.WorkspaceToolLedger$FileAdmission">
     SELECT a.operation_id,a.upload_id,b.file_operation_id,a.failure_code FROM pf.workspace_tool_file_admission a
     LEFT JOIN pf.workspace_tool_job_binding b ON b.operation_id=a.operation_id AND b.file_operation_id IS NOT NULL

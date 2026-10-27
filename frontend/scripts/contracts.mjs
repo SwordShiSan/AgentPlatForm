@@ -150,6 +150,35 @@ if (process.env.API_BASE_URL) {
 }
 console.log('Contracts valid; generation and normal/invalid fixtures passed.');
 
+// R4.4 public tool projections deliberately exclude private parameter/state maps.
+const toolExpanded = await SwaggerParser.dereference(structuredClone(api));
+const operationSchema = ajv.compile(toolExpanded.components.schemas.TaskToolOperation);
+const resultSchema = ajv.compile(toolExpanded.components.schemas.WorkspaceToolResult);
+const shellReview = { kind: 'SHELL', command: 'printf 666', cwd: '', path: null, fileId: null, versionId: null,
+  writeMode: null, textSha256: null, bytes: null, outputs: [], impact: 'ENTIRE_BOUND_WORKSPACE', network: 'NONE', stopsAfterEachCall: true };
+const operationFixture = { operationId: fixture.eventId, taskId: fixture.payload.taskId, toolName: 'workspace_shell',
+  status: 'RUNNING', phase: 'STOPPING', summary: 'Stopping the exact environment', createdAt: fixture.occurredAt,
+  endedAt: null, errorCode: null, traceId: fixture.eventId, review: shellReview, resultAvailable: false };
+assert(operationSchema(operationFixture));
+for (const patch of [{ containerId: 'private' }, { hostPath: '/private' }, { callJson: {} }, { checkpoint: {} },
+  { review: { ...shellReview, dockerArguments: [] } }, { review: { ...shellReview, network: 'HOST' } }]) {
+  assert(!operationSchema({ ...operationFixture, ...patch }), 'Unsafe tool projection accepted');
+}
+const resultFixture = { operationId: fixture.eventId, taskId: fixture.payload.taskId, status: 'SUCCEEDED', summary: '666',
+  exitCode: 0, stdout: '666', stderr: '', truncated: false, errorCode: null, files: [] };
+assert(resultSchema(resultFixture));
+for (const patch of [{ objectKey: 'private' }, { apiKey: 'forbidden' }, { arguments: {} }, { stdout: 'x'.repeat(65537) }]) {
+  assert(!resultSchema({ ...resultFixture, ...patch }), 'Private or oversized tool result accepted');
+}
+const toolEvent = { ...fixture, taskId: fixture.payload.taskId, type: 'tool.started', payload: {
+  taskId: fixture.payload.taskId, operationId: fixture.eventId, toolName: 'workspace_shell', status: 'RUNNING', phase: 'RUNNING' } };
+assert(validateEvent(toolEvent));
+for (const patch of [{ command: 'private' }, { containerId: 'private' }, { apiKey: 'forbidden' }, { phase: 'GUESS_STOPPED' }]) {
+  assert(!validateEvent({ ...toolEvent, payload: { ...toolEvent.payload, ...patch } }), 'Unsafe tool event accepted');
+}
+assert(!validateEvent({ ...toolEvent, conversationId: null }), 'A tool cannot lose its actual conversation identity');
+assert(!validateEvent({ ...toolEvent, taskId: null }), 'A tool cannot fabricate an absent task binding');
+
 // R4.1 rejects secret/permission fields and closed interaction decisions at the public boundary.
 const expanded = await SwaggerParser.dereference(structuredClone(api));
 const answerInteraction = ajv.compile(expanded.components.schemas.AnswerInteraction);

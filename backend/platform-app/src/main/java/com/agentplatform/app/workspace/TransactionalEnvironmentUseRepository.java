@@ -11,6 +11,12 @@ import org.springframework.transaction.support.*;
 
 /** Short fact transactions; guards recheck database time immediately before commit. */
 public final class TransactionalEnvironmentUseRepository implements EnvironmentUseRepository {
+    @Override public Admission admitShell(Actor actor,UUID workspace,UUID request,UUID owner,com.agentplatform.domain.workspace.WorkspaceShellData.Request body){
+        return tx(null,()->{var admitted=delegate.admitShell(actor,workspace,request,owner,body);
+            if(admitted.fresh())TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization(){
+                @Override public void beforeCommit(boolean readOnly){delegate.checkOwnership(admitted.command());}
+            });return admitted;});
+    }
     private final EnvironmentUseRepository delegate;
     private final TransactionTemplate transactions;
     public TransactionalEnvironmentUseRepository(EnvironmentUseRepository delegate,TransactionTemplate transactions) {

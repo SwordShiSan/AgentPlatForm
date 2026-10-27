@@ -220,3 +220,107 @@ BEGIN
    AND o.task_id=admission.task_id AND o.status='RUNNING');
 END $$;
 REVOKE ALL ON FUNCTION pf.file_tool_parent_allowed(uuid,uuid,boolean) FROM PUBLIC;
+
+CREATE TABLE pf.workspace_tool_shell_admission (
+ operation_id uuid PRIMARY KEY, space_id uuid NOT NULL, task_id uuid NOT NULL, workspace_id uuid NOT NULL,
+ attempt_id uuid NOT NULL, owner_id uuid NOT NULL, task_generation bigint NOT NULL CHECK(task_generation>0), task_fence bigint NOT NULL CHECK(task_fence>0),
+ environment_id uuid NOT NULL, use_id uuid NOT NULL UNIQUE, created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ FOREIGN KEY(space_id,task_id,workspace_id,operation_id) REFERENCES pf.workspace_tool_intent(space_id,task_id,workspace_id,operation_id),
+ FOREIGN KEY(space_id,task_id,attempt_id) REFERENCES pf.attempt(space_id,task_id,id),
+ FOREIGN KEY(space_id,workspace_id,environment_id,use_id) REFERENCES pf.workspace_environment_use(space_id,workspace_id,environment_id,id)
+);
+CREATE TRIGGER workspace_tool_shell_admission_immutable BEFORE UPDATE OR DELETE ON pf.workspace_tool_shell_admission
+ FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
+CREATE TABLE pf.workspace_tool_stop_request (
+ operation_id uuid PRIMARY KEY, space_id uuid NOT NULL, task_id uuid NOT NULL, workspace_id uuid NOT NULL,
+ attempt_id uuid NOT NULL, owner_id uuid NOT NULL, task_fence bigint NOT NULL CHECK(task_fence>0),
+ reason_code text NOT NULL CHECK(reason_code IN('CANCEL','TIMEOUT','AUTHORIZATION','OWNER_LOST')),
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ FOREIGN KEY(space_id,task_id,workspace_id,operation_id) REFERENCES pf.workspace_tool_intent(space_id,task_id,workspace_id,operation_id),
+ FOREIGN KEY(space_id,task_id,attempt_id) REFERENCES pf.attempt(space_id,task_id,id)
+);
+CREATE TRIGGER workspace_tool_stop_request_immutable BEFORE UPDATE OR DELETE ON pf.workspace_tool_stop_request
+ FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
+REVOKE ALL ON pf.workspace_tool_shell_admission,pf.workspace_tool_stop_request FROM PUBLIC;
+
+-- Evaluate an already admitted operation without revealing private task or key data.
+-- Physical environment generation/fence remain independent of these task tokens.
+CREATE FUNCTION pf.workspace_tool_owner_allowed(selected_operation uuid,selected_attempt uuid,selected_owner uuid,
+ selected_generation bigint,selected_fence bigint,take_locks boolean)
+ RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
+DECLARE intent pf.workspace_tool_intent; parent pf.task;
+BEGIN
+ SELECT * INTO intent FROM pf.workspace_tool_intent WHERE operation_id=selected_operation;
+ IF NOT FOUND THEN RETURN false; END IF;
+ SELECT * INTO parent FROM pf.task WHERE space_id=intent.space_id AND id=intent.task_id;
+ IF take_locks THEN
+  PERFORM 1 FROM pf.quota_principal WHERE user_id=intent.actor_id FOR UPDATE;
+  PERFORM 1 FROM pf.space_storage WHERE space_id=intent.space_id FOR UPDATE;
+  PERFORM 1 FROM pf.execution_slot WHERE id=1 FOR UPDATE;
+  PERFORM 1 FROM pf.conversation WHERE space_id=parent.space_id AND id=parent.conversation_id FOR UPDATE;
+  PERFORM 1 FROM pf.task WHERE space_id=parent.space_id AND id=parent.id FOR UPDATE;
+  PERFORM 1 FROM pf.execution_dispatch WHERE task_id=parent.id FOR UPDATE;
+  PERFORM 1 FROM pf.attempt WHERE id=selected_attempt FOR UPDATE;
+  PERFORM 1 FROM pf.conversation_lease WHERE space_id=parent.space_id AND conversation_id=parent.conversation_id FOR UPDATE;
+ END IF;
+ RETURN pf.authorize_workspace_actor(intent.actor_id,intent.space_id)
+ AND NOT EXISTS(SELECT 1 FROM pf.workspace_tool_stop_request s WHERE s.operation_id=intent.operation_id)
+ AND EXISTS(SELECT 1 FROM pf.workspace w WHERE w.space_id=intent.space_id AND w.id=intent.workspace_id AND w.actor_id=intent.actor_id AND w.state='READY')
+ AND EXISTS(SELECT 1 FROM pf.task t JOIN pf.task_permission p ON p.space_id=t.space_id AND p.task_id=t.id
+   JOIN pf.chat_config_snapshot cfg ON cfg.space_id=t.space_id AND cfg.id=t.config_snapshot_id
+   JOIN pf.model_definition m ON m.id=cfg.model_id AND m.status='ACTIVE'
+   WHERE t.space_id=intent.space_id AND t.id=intent.task_id AND t.creator_id=intent.actor_id
+   AND t.status='RUNNING' AND NOT t.cancel_requested AND NOT t.plan_mode AND t.execution_deadline_at>clock_timestamp()
+   AND p.version=intent.permission_version AND p.policy_version=intent.policy_version
+   AND pf.authorize_chat_credential(cfg.credential_id,cfg.credential_revision,t.space_id,t.creator_id))
+ AND (NOT EXISTS(SELECT 1 FROM pf.task_plan tp WHERE tp.space_id=intent.space_id AND tp.task_id=intent.task_id)
+   OR EXISTS(SELECT 1 FROM pf.task_plan tp JOIN pf.plan_revision pr ON pr.plan_id=tp.id AND pr.revision=tp.current_revision
+     JOIN pf.plan_execution_acceptance a ON a.space_id=tp.space_id AND a.task_id=tp.task_id AND a.revision_id=pr.id
+     WHERE tp.space_id=intent.space_id AND tp.task_id=intent.task_id AND tp.status='APPROVED'))
+ AND EXISTS(SELECT 1 FROM pf.execution_slot s WHERE s.id=1 AND s.task_id=intent.task_id AND s.owner_id=selected_owner
+   AND s.fencing_token=selected_fence AND s.lease_until>clock_timestamp())
+ AND EXISTS(SELECT 1 FROM pf.execution_dispatch d JOIN pf.attempt a ON a.task_id=d.task_id
+   JOIN pf.conversation_lease v ON v.attempt_id=a.id
+   WHERE d.task_id=intent.task_id AND d.generation=selected_generation AND d.status='CLAIMED'
+   AND d.lease_owner=selected_owner AND d.fencing_token=selected_fence AND d.lease_until>clock_timestamp()
+   AND a.id=selected_attempt AND a.space_id=intent.space_id AND a.owner_id=selected_owner AND a.fencing_token=selected_fence
+   AND a.dispatch_generation=selected_generation AND a.status='RUNNING' AND v.task_id=intent.task_id
+   AND v.owner_id=selected_owner AND v.fencing_token=selected_fence AND v.generation=selected_generation AND v.lease_until>clock_timestamp())
+ AND EXISTS(SELECT 1 FROM pf.tool_operation o WHERE o.id=intent.operation_id AND o.space_id=intent.space_id
+   AND o.task_id=intent.task_id AND o.status='RUNNING' AND o.call_hash=intent.args_hash);
+END $$;
+REVOKE ALL ON FUNCTION pf.workspace_tool_owner_allowed(uuid,uuid,uuid,bigint,bigint,boolean) FROM PUBLIC;
+
+CREATE FUNCTION pf.workspace_shell_admission_allowed(actor uuid,selected_space uuid,selected_workspace uuid,request jsonb)
+ RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
+DECLARE p jsonb; intent pf.workspace_tool_intent;
+BEGIN
+ IF request->>'protocol'<>'WORKSPACE_SHELL_V1' THEN RETURN false; END IF;
+ p=request->'parent';SELECT * INTO intent FROM pf.workspace_tool_intent WHERE operation_id=(p->>'operationId')::uuid;
+ IF NOT FOUND OR intent.tool_name<>'workspace_shell' OR intent.space_id<>selected_space OR intent.workspace_id<>selected_workspace
+   OR intent.actor_id<>actor OR intent.task_id<>(p->>'taskId')::uuid OR intent.args_hash<>p->>'argumentsHash'
+   OR intent.content_revision<>(p->>'contentRevision')::bigint OR intent.permission_version<>(p->>'permissionVersion')::bigint THEN RETURN false; END IF;
+ IF NOT pf.workspace_tool_owner_allowed(intent.operation_id,(p->>'attemptId')::uuid,(p->>'ownerId')::uuid,
+   (p->>'taskGeneration')::bigint,(p->>'taskFence')::bigint,true) THEN RETURN false; END IF;
+ RETURN pf.current_tool_resource_hash(actor,selected_space,intent.task_id,intent.operation_id) IS NOT NULL
+ AND EXISTS(SELECT 1 FROM pf.tool_operation o WHERE o.id=intent.operation_id
+   AND o.call_json#>'{arguments,command}'=request#>'{shell,command}'
+   AND o.call_json#>'{arguments,cwd}'=request#>'{shell,cwd}'
+   AND o.call_json#>'{arguments,timeoutSeconds}'=request#>'{shell,timeoutSeconds}')
+ AND EXISTS(SELECT 1 FROM pf.workspace_environment e WHERE e.space_id=selected_space AND e.workspace_id=selected_workspace
+   AND e.state='READY' AND e.image_id=intent.expected_image_id AND e.policy_hash=intent.expected_policy_hash);
+END $$;
+REVOKE ALL ON FUNCTION pf.workspace_shell_admission_allowed(uuid,uuid,uuid,jsonb) FROM PUBLIC;
+
+CREATE FUNCTION pf.workspace_shell_parent_allowed(selected_use uuid,take_locks boolean)
+ RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
+DECLARE a pf.workspace_tool_shell_admission;
+BEGIN
+ SELECT s.* INTO a FROM pf.workspace_tool_shell_admission s JOIN pf.workspace_environment_use u ON u.id=s.use_id
+  JOIN pf.workspace_tool_job_binding b ON b.operation_id=s.operation_id AND b.environment_use_id=u.id
+  WHERE s.use_id=selected_use AND u.kind='SHELL' AND u.space_id=s.space_id AND u.workspace_id=s.workspace_id
+    AND u.environment_id=s.environment_id AND u.owner_id=s.owner_id;
+ IF NOT FOUND THEN RETURN false; END IF;
+ RETURN pf.workspace_tool_owner_allowed(a.operation_id,a.attempt_id,a.owner_id,a.task_generation,a.task_fence,take_locks);
+END $$;
+REVOKE ALL ON FUNCTION pf.workspace_shell_parent_allowed(uuid,boolean) FROM PUBLIC;

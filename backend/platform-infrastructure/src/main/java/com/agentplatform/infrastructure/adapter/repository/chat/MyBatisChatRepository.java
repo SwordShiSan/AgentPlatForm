@@ -47,6 +47,7 @@ public final class MyBatisChatRepository implements ChatRepository {
     @Override public WorkspaceToolLedger.FileAdmission recordWorkspaceFileAdmission(Lease lease,HarnessData.Call call,UUID upload,String failure){return new WorkspaceToolPersistence(mappers).recordFileAdmission(lease,call,upload,failure);}
     @Override public void bindWorkspaceFileOperation(Lease lease,HarnessData.Call call,UUID operation){new WorkspaceToolPersistence(mappers).bindFileOperation(lease,call,operation);}
     @Override public boolean workspaceFileStopped(Lease lease,HarnessData.Call call){return new WorkspaceToolPersistence(mappers).fileStopped(lease,call);}
+    @Override public com.agentplatform.domain.workspace.WorkspaceShellData.Request workspaceShellRequest(Lease lease,HarnessData.Call call){return new WorkspaceToolPersistence(mappers).shellRequest(lease,call);}
     @Override public List<Model> models(Actor a) { return conversations.models(a); }
     @Override public Conversation create(Actor a,UUID key,String title) { return conversations.create(a, key, title); }
     @Override public List<Conversation> conversations(Actor a,UUID before,int limit) { return conversations.conversations(a, before, limit); }

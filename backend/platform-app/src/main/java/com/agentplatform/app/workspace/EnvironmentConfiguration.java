@@ -61,5 +61,11 @@ public class EnvironmentConfiguration {
             var instance=runtime.runnerInstance();execution.registerRunner(instance);
             return new EnvironmentUseRunnerService(repository,signatures,runtime,instance,barrier,fileHelpers);
         }
+        @Bean @ConditionalOnProperty(name="platform.workspace.tools.enabled",havingValue="true")
+        WorkspaceShellRunnerApi workspaceShellRunnerApi(EnvironmentUseRepository repository,EnvironmentExecutionRepository execution,
+                RunnerSignatures signatures,SandboxRuntime runtime,WorkspaceFixtureBarrier barrier) {
+            var instance=runtime.runnerInstance();execution.registerRunner(instance);
+            return new WorkspaceShellRunnerService(repository,signatures,runtime,instance,barrier);
+        }
     }
 }

@@ -7,6 +7,9 @@ import java.util.UUID;
 /** Protected application/runner data plane; not a public file or command execution API. */
 public interface EnvironmentUseRepository {
     Admission admit(Actor actor,UUID workspaceId,UUID requestId,UUID ownerId,Request request);
+    default Admission admitShell(Actor actor,UUID workspaceId,UUID requestId,UUID ownerId,WorkspaceShellData.Request request) {
+        throw new WorkspaceFailure(422,"WORKSPACE_SHELL_NOT_AVAILABLE");
+    }
     Command lookup(UUID useId);
     Command lookup(Actor actor,UUID useId);
     void renew(Command command);

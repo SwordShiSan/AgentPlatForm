@@ -2,8 +2,7 @@ openapi: 3.1.0
 info:
   title: Agent PlatForm API
   version: 0.1.0
-  description: R0 health/readiness, local opt-in identity and R1.2 ordinary queued
-    text chat. Cloud R0 does not enable identity/chat.
+  description: "Contracts for released R3 and opt-in R4 Plan, permissions and workspace tools. Deployment flags control available capabilities."
 servers:
   - url: /
 paths:
@@ -1449,6 +1448,64 @@ paths:
                 $ref: "#/components/schemas/TaskPermissions"
         default:
           $ref: "#/components/responses/IdentityProblem"
+  /api/v1/tasks/{id}/operations:
+    get:
+      operationId: getTaskOperations
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: Authorized committed tool projection; UNKNOWN never grants replay.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskToolOperations"
+        default:
+          $ref: "#/components/responses/IdentityProblem"
+  /api/v1/operations/{id}/result:
+    get:
+      operationId: getOperationResult
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Authorized committed tool projection; UNKNOWN never grants replay.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceToolResult"
+        default:
+          $ref: "#/components/responses/IdentityProblem"
 components:
   securitySchemes:
     session:
@@ -2258,6 +2315,13 @@ components:
           type: array
           maxItems: 0
           items: {}
+        operations:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/TaskToolOperation"
+          description: Bounded committed tool projection in the snapshot transaction. More
+            operations use the authorized per-task page.
     ChatUsage:
       type: object
       additionalProperties: false
@@ -2734,10 +2798,310 @@ components:
             - "null"
           format: uuid
     PlanRevision: {"type": "object", "additionalProperties": false, "required": ["id", "revision", "title", "markdown", "source", "hash", "createdAt"], "properties": {"id": {"type": "string", "format": "uuid"}, "revision": {"type": "integer", "minimum": 1}, "title": {"type": "string", "minLength": 1, "maxLength": 1024}, "markdown": {"type": "string", "minLength": 1, "maxLength": 131072}, "source": {"enum": ["MODEL", "USER"]}, "hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "createdAt": {"type": "string", "format": "date-time"}}}
-    TaskPlan: {"type": "object", "additionalProperties": false, "required": ["taskId", "status", "version", "current", "revisions"], "properties": {"taskId": {"type": "string", "format": "uuid"}, "status": {"enum": ["NOT_CREATED", "DRAFT", "REVIEW", "APPROVED", "DELIVERED", "REJECTED"]}, "version": {"type": "integer", "minimum": 0}, "current": {"oneOf": [{"$ref": "#/components/schemas/PlanRevision"}, {"type": "null"}]}, "revisions": {"type": "array", "items": {"$ref": "#/components/schemas/PlanRevision"}}}}
+    TaskPlan: {"type": "object", "additionalProperties": false, "required": ["taskId", "status", "version", "current", "revisions"], "properties": {"taskId": {"type": "string", "format": "uuid"}, "status": {"enum": ["NOT_CREATED", "DRAFT", "REVIEW", "APPROVED", "DELIVERED", "REJECTED"]}, "version": {"type": "integer", "minimum": 0}, "current": {"oneOf": [{"$ref": "#/components/schemas/PlanRevision"}, {"type": "null"}]}, "revisions": {"type": "array", "items": {"$ref": "#/components/schemas/PlanRevision"}}, "executionPhase": {"enum":["TEXT_ONLY","PLANNING","AWAITING_REVIEW","EXECUTING","COMPLETED","DELIVERED"],"description":"Derived from the frozen capability catalog, current accepted plan revision and task state. Plan consent does not grant tool or resource permission."}}}
     EditTaskPlan: {"type": "object", "additionalProperties": false, "required": ["title", "markdown"], "properties": {"title": {"type": "string", "minLength": 1, "maxLength": 1024}, "markdown": {"type": "string", "minLength": 1, "maxLength": 131072}}}
     PendingInteraction: {"oneOf": [{"type": "object", "additionalProperties": false, "required": ["interactionId", "taskId", "version", "expiresAt", "kind", "optional", "plan", "question", "options"], "properties": {"interactionId": {"type": "string", "format": "uuid"}, "taskId": {"type": "string", "format": "uuid"}, "version": {"type": "integer", "minimum": 1}, "expiresAt": {"type": "string", "format": "date-time"}, "kind": {"const": "PLAN_APPROVAL"}, "optional": {"const": false}, "plan": {"$ref": "#/components/schemas/PlanRevision"}, "question": {"type": "null"}, "options": {"type": "array", "maxItems": 0, "items": {"type": "object", "additionalProperties": false, "required": ["id", "label"], "properties": {"id": {"type": "string", "minLength": 1, "maxLength": 128}, "label": {"type": "string", "minLength": 1, "maxLength": 1024}}}}, "approval": {"type": "null"}}}, {"type": "object", "additionalProperties": false, "required": ["interactionId", "taskId", "version", "expiresAt", "kind", "optional", "plan", "question", "options"], "properties": {"interactionId": {"type": "string", "format": "uuid"}, "taskId": {"type": "string", "format": "uuid"}, "version": {"type": "integer", "minimum": 1}, "expiresAt": {"type": "string", "format": "date-time"}, "kind": {"const": "QUESTION"}, "optional": {"type": "boolean"}, "plan": {"type": "null"}, "question": {"type": "string", "minLength": 1, "maxLength": 32768}, "options": {"type": "array", "maxItems": 16, "items": {"type": "object", "additionalProperties": false, "required": ["id", "label"], "properties": {"id": {"type": "string", "minLength": 1, "maxLength": 128}, "label": {"type": "string", "minLength": 1, "maxLength": 1024}}}}, "approval": {"type": "null"}}}, {"type": "object", "additionalProperties": false, "required": ["interactionId", "taskId", "version", "expiresAt", "kind", "optional", "plan", "question", "options", "approval"], "properties": {"interactionId": {"type": "string", "format": "uuid"}, "taskId": {"type": "string", "format": "uuid"}, "version": {"type": "integer", "minimum": 1}, "expiresAt": {"type": "string", "format": "date-time"}, "kind": {"const": "TOOL_APPROVAL"}, "optional": {"const": false}, "plan": {"type": "null"}, "question": {"type": "null"}, "options": {"type": "array", "maxItems": 0, "items": {"type": "object", "additionalProperties": false, "required": ["id", "label"], "properties": {"id": {"type": "string", "minLength": 1, "maxLength": 128}, "label": {"type": "string", "minLength": 1, "maxLength": 1024}}}}, "approval": {"$ref": "#/components/schemas/ToolApprovalPayload"}}}]}
-    ToolApprovalPayload: {"type": "object", "additionalProperties": false, "required": ["operationId", "toolName", "summary", "reasonCode", "workspaceId", "target", "targetVersion", "callHash", "stale", "allowedActions", "permissionVersion", "policyVersion"], "properties": {"operationId": {"type": "string", "format": "uuid"}, "toolName": {"type": "string", "minLength": 1, "maxLength": 128}, "summary": {"type": "string", "minLength": 1, "maxLength": 4096}, "reasonCode": {"type": "string", "minLength": 1, "maxLength": 128}, "workspaceId": {"type": ["string", "null"], "format": "uuid"}, "target": {"type": ["string", "null"], "maxLength": 2048}, "targetVersion": {"type": ["string", "null"], "maxLength": 256}, "callHash": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "stale": {"type": "boolean"}, "allowedActions": {"type": "array", "items": {"enum": ["ALLOW_ONCE", "DENY"]}, "maxItems": 2, "uniqueItems": true}, "permissionVersion": {"type": "integer", "minimum": 1}, "policyVersion": {"type": "string", "minLength": 1, "maxLength": 128}}}
+    ToolApprovalPayload: {"type": "object", "additionalProperties": false, "required": ["operationId", "toolName", "summary", "reasonCode", "workspaceId", "target", "targetVersion", "callHash", "stale", "allowedActions", "permissionVersion", "policyVersion"], "properties": {"operationId": {"type": "string", "format": "uuid"}, "toolName": {"type": "string", "minLength": 1, "maxLength": 128}, "summary": {"type": "string", "minLength": 1, "maxLength": 4096}, "reasonCode": {"type": "string", "minLength": 1, "maxLength": 128}, "workspaceId": {"type": ["string", "null"], "format": "uuid"}, "target": {"type": ["string", "null"], "maxLength": 2048}, "targetVersion": {"type": ["string", "null"], "maxLength": 256}, "callHash": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "stale": {"type": "boolean"}, "allowedActions": {"type": "array", "items": {"enum": ["ALLOW_ONCE", "DENY"]}, "maxItems": 2, "uniqueItems": true}, "permissionVersion": {"type": "integer", "minimum": 1}, "policyVersion": {"type": "string", "minLength": 1, "maxLength": 128}, "review": {"oneOf":[{"$ref":"#/components/schemas/WorkspaceToolReview"},{"type":"null"}]}}}
     AnswerInteraction: {"type": "object", "additionalProperties": false, "required": ["expectedVersion", "decision"], "properties": {"expectedVersion": {"type": "integer", "minimum": 1}, "decision": {"enum": ["EXECUTE_PLAN", "REVISE_PLAN", "REJECT_PLAN", "DELIVER_PLAN", "ANSWER", "SKIP", "ALLOW_ONCE", "DENY"]}, "text": {"type": "string", "maxLength": 32768}, "optionIds": {"type": "array", "maxItems": 16, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 128}}}, "allOf": [{"if": {"properties": {"decision": {"enum": ["ALLOW_ONCE", "DENY"]}}, "required": ["decision"]}, "then": {"properties": {"text": {"type": "string", "maxLength": 0}, "optionIds": {"type": "array", "maxItems": 0}}}}]}
     InteractionAccepted: {"type": "object", "additionalProperties": false, "required": ["taskId", "interactionId", "status", "version"], "properties": {"taskId": {"type": "string", "format": "uuid"}, "interactionId": {"type": "string", "format": "uuid"}, "status": {"enum": ["QUEUED", "WAITING_INPUT", "RUNNING", "SUCCEEDED"]}, "version": {"type": "integer", "minimum": 1}}}
     QuotaView: {"type": "object", "additionalProperties": false, "required": ["metric", "unlimited", "limit", "used", "reserved", "remaining", "resetAt", "policyVersion"], "properties": {"metric": {"enum": ["TOKENS", "COST_MICROS"]}, "unlimited": {"type": "boolean"}, "limit": {"type": ["integer", "null"], "minimum": 0}, "used": {"type": "integer", "minimum": 0}, "reserved": {"type": "integer", "minimum": 0}, "remaining": {"type": ["integer", "null"], "minimum": 0}, "resetAt": {"type": "string", "format": "date-time"}, "policyVersion": {"type": "integer", "minimum": 1}}}
+    WorkspaceToolReview:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - command
+        - cwd
+        - path
+        - fileId
+        - versionId
+        - writeMode
+        - textSha256
+        - bytes
+        - outputs
+        - impact
+        - network
+        - stopsAfterEachCall
+      properties:
+        kind:
+          enum:
+            - LIST
+            - READ
+            - WRITE
+            - SHELL
+        command:
+          type:
+            - string
+            - "null"
+          maxLength: 32768
+        cwd:
+          type:
+            - string
+            - "null"
+          maxLength: 4096
+        path:
+          type:
+            - string
+            - "null"
+          maxLength: 4096
+        fileId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        versionId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        writeMode:
+          type:
+            - string
+            - "null"
+          enum:
+            - CREATE
+            - REPLACE
+            - null
+        textSha256:
+          type:
+            - string
+            - "null"
+          pattern: ^[a-f0-9]{64}$
+        bytes:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+          maximum: 32768
+        outputs:
+          type: array
+          maxItems: 16
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - path
+              - maxBytes
+            properties:
+              path:
+                type: string
+                maxLength: 4096
+              maxBytes:
+                type: integer
+                minimum: 0
+                maximum: 104857600
+        impact:
+          enum:
+            - WORKSPACE_INDEX
+            - EXPLICIT_VERSION
+            - NAMED_FILE
+            - ENTIRE_BOUND_WORKSPACE
+        network:
+          const: NONE
+        stopsAfterEachCall:
+          type: boolean
+    TaskToolOperation:
+      type: object
+      additionalProperties: false
+      required:
+        - operationId
+        - taskId
+        - toolName
+        - status
+        - phase
+        - summary
+        - createdAt
+        - endedAt
+        - errorCode
+        - traceId
+        - review
+        - resultAvailable
+      properties:
+        operationId:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        toolName:
+          enum:
+            - workspace_list
+            - workspace_read
+            - workspace_write
+            - workspace_shell
+        status:
+          enum:
+            - PREPARED
+            - RUNNING
+            - SUCCEEDED
+            - FAILED
+            - UNKNOWN
+            - DENIED
+        phase:
+          enum:
+            - PREPARED
+            - WAITING_APPROVAL
+            - ENVIRONMENT_PREPARING
+            - RUNNING
+            - STOPPING
+            - SEALING
+            - SUCCEEDED
+            - FAILED
+            - UNKNOWN
+            - DENIED
+        summary:
+          type: string
+          maxLength: 4096
+        createdAt:
+          type: string
+          format: date-time
+        endedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        errorCode:
+          type:
+            - string
+            - "null"
+          pattern: ^[A-Z][A-Z0-9_]{1,95}$
+        traceId:
+          type:
+            - string
+            - "null"
+          maxLength: 128
+        review:
+          oneOf:
+            - $ref: "#/components/schemas/WorkspaceToolReview"
+            - type: "null"
+        resultAvailable:
+          type: boolean
+    TaskToolOperations:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+        - nextCursor
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/TaskToolOperation"
+        nextCursor:
+          type:
+            - string
+            - "null"
+          format: uuid
+    WorkspaceToolArtifact:
+      type: object
+      additionalProperties: false
+      required:
+        - fileId
+        - versionId
+        - path
+        - bytes
+        - sha256
+      properties:
+        fileId:
+          type: string
+          format: uuid
+        versionId:
+          type: string
+          format: uuid
+        path:
+          type: string
+          maxLength: 4096
+        bytes:
+          type: integer
+          minimum: 0
+          maximum: 104857600
+        sha256:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+    WorkspaceToolResult:
+      type: object
+      additionalProperties: false
+      required:
+        - operationId
+        - taskId
+        - status
+        - summary
+        - exitCode
+        - stdout
+        - stderr
+        - truncated
+        - errorCode
+        - files
+      properties:
+        operationId:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        status:
+          enum:
+            - PREPARED
+            - RUNNING
+            - SUCCEEDED
+            - FAILED
+            - UNKNOWN
+            - DENIED
+        summary:
+          type: string
+          maxLength: 8192
+        exitCode:
+          type:
+            - integer
+            - "null"
+        stdout:
+          type:
+            - string
+            - "null"
+          maxLength: 65536
+        stderr:
+          type:
+            - string
+            - "null"
+          maxLength: 65536
+        truncated:
+          type: boolean
+        errorCode:
+          type:
+            - string
+            - "null"
+          pattern: ^[A-Z][A-Z0-9_]{1,95}$
+        files:
+          type: array
+          maxItems: 16
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - fileId
+              - versionId
+              - path
+              - bytes
+              - sha256
+            properties:
+              fileId:
+                type: string
+                format: uuid
+              versionId:
+                type: string
+                format: uuid
+              path:
+                type: string
+                maxLength: 4096
+              bytes:
+                type: integer
+                minimum: 0
+                maximum: 104857600
+              sha256:
+                type: string
+                pattern: ^[a-f0-9]{64}$
+      description: Live-authorized bounded tool result. Raw stdout/stderr UTF-8 bytes
+        combined are at most64KiB; a large result is fetched from private storage
+        without exposing its key. Model summary is at most8KiB UTF-8. No host paths,
+        credentials, SDK state or private parameter maps.
