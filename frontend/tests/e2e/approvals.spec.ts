@@ -28,8 +28,8 @@ async function begin(page: Page, prompt = 'fixture:approval') {
   const workspaces = await (await page.request.get('/api/v1/workspaces?limit=100')).json();
   const workspace = workspaces.items.find((value: { state: string }) => value.state === 'READY');
   expect(workspace).toBeTruthy();
-  await page.getByLabel('本次工作区', { exact: true }).selectOption(workspace.id);
-  await page.getByLabel('本次权限', { exact: true }).selectOption('RISK_BASED');
+  await page.getByRole('combobox', { name: '本次工作区', exact: true }).selectOption(workspace.id);
+  await page.getByRole('combobox', { name: '本次权限', exact: true }).selectOption('RISK_BASED');
   await page.getByLabel('消息', { exact: true }).fill(prompt);
   await page.getByLabel('消息', { exact: true }).press('Control+Enter');
   await expect(page).toHaveURL(/\/app\/chat\/[0-9a-f-]+$/);

@@ -9,6 +9,7 @@ selection.add_argument('--broker-only',action='store_true')
 selection.add_argument('--full',action='store_true',help='Full reactor verify plus exact R4.3 PG/MQ cases')
 selection.add_argument('--approval-only',action='store_true',help='First run the R4.3 vertical approval gate')
 selection.add_argument('--smoke',action='store_true',help='One real SDK/PG original-operation approval before expanding the matrix')
+selection.add_argument('--crash-only',action='store_true',help='Three actual child-JVM answer transaction exit windows')
 args=parser.parse_args()
 DATA = ROOT / '.cache/r43-local'
 out = DATA / ('postgres-tests-' + str(time.time_ns()))
@@ -25,6 +26,7 @@ env = dict(os.environ, JAVA_HOME=str(java), PATH=str(java / 'bin') + os.pathsep 
 tests='PlanQuotaPostgresTest#acceptedAnswerUsesRealRabbitConfirmAckAndDuplicateHandoffWithoutSecondOwner' if args.broker_only else 'ApprovalPostgresTest,PermissionPostgresTest,PlanQuotaPostgresTest'
 if args.approval_only:tests='ApprovalPostgresTest'
 if args.smoke:tests='ApprovalPostgresTest#allowRestoresOriginalOperationAndConsumesExactlyOnce'
+if args.crash_only:tests='ApprovalAnswerCrashPostgresTest#processStopsBeforeAnswerThenOriginalCommandCanComplete+processDiesDuringAnswerAndTransactionRollsBack+processStopsAfterCommitAndOriginalCommandIsNotDuplicated'
 command = [str(ROOT / 'backend/mvnw.cmd'), '-B', '-ntp', '-f', str(ROOT / 'backend/pom.xml'),
            '-pl', 'platform-app', '-am']
 command += ['verify'] if args.full else ['-Dtest='+tests, '-Dsurefire.failIfNoSpecifiedTests=false', 'test']
