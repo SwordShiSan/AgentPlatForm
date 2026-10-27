@@ -13,7 +13,7 @@ import tools.jackson.databind.json.JsonMapper;
 /** One accepted use is executed once; queries can confirm termination but cannot reconstruct or replay work. */
 public final class EnvironmentUseRunnerService implements EnvironmentUseRunnerApi {
     public static final String PATH="/internal/workspace-uses/v1";
-    private static final JsonMapper JSON=JsonMapper.builder().build();
+    private static final JsonMapper JSON=com.agentplatform.infrastructure.workspace.EnvironmentUseCodecs.legacy();
     private final EnvironmentUseRepository repository;
     private final RunnerSignatures signatures;
     private final SandboxRuntime runtime;
@@ -44,7 +44,7 @@ public final class EnvironmentUseRunnerService implements EnvironmentUseRunnerAp
         if(command==null||command.id()==null||command.spaceId()==null||command.workspaceId()==null||command.environmentId()==null
                 ||command.actorId()==null||command.ownerId()==null||command.request()==null||command.executeUntil()==null||command.deadline()==null
                 ||command.creationCommandId()==null||command.generation()<1||command.fence()<1||command.creationFence()<1||command.projectId()<200001
-                ||!command.request().kind().equals(command.kind()))throw new WorkspaceFailure(400,"INVALID_WORKSPACE_USE");
+                ||!(command.request() instanceof Request)||!command.request().kind().equals(command.kind()))throw new WorkspaceFailure(400,"INVALID_WORKSPACE_USE");
     }
     private Fact unknown(Command command,SandboxRuntime.Stop stop) {
         return new Fact(command.id(),command.environmentId(),command.generation(),command.fence(),command.requestHash(),instance.id(),

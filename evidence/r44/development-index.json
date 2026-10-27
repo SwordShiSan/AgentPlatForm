@@ -48,6 +48,16 @@
       "r3Restored": true,
       "testResourcesStopped": true,
       "note": "Actual Docker-java/gVisor Python+Node+general shell, background descendants and callback stop, nonzero exit, new-generation same-file readback. Native feasibility only; no SDK/persistent job chain or output-version sealing claim."
+    },
+    {
+      "name": "legacy-and-new-shell-wire-compatibility",
+      "status": "PASS",
+      "inputUnchanged": true,
+      "sourceHead": "792fbf82eda0ca7e5cf32fa414ec3f54f93f24f6",
+      "workingTreeImplementation": true,
+      "inputManifestSha256": "8b993a1634d3db689808f72b67c5d564553e681c359a951e8a010b54207cae9c",
+      "logSha256": "e749731f2fea6ef41dc3702ef20024ab7cfaf52ab03d51e78a83952a85f1746f",
+      "note": "Legacy concrete request JSON/hash retained; framework-selected shell family rejects cross-family/unknown payloads. Existing use application and signature units regress. New production shell dispatch/parent admission remains NOT_RUN."
     }
   ],
   "notRun": [

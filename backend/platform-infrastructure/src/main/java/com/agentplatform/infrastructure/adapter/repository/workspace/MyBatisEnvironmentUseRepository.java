@@ -52,7 +52,7 @@ public final class MyBatisEnvironmentUseRepository implements EnvironmentUseRepo
     private Command command(Use row) {
         return new Command(row.id(),row.spaceId(),row.workspaceId(),row.environmentId(),row.actorId(),row.ownerId(),row.generation(),row.fence(),
                 row.creationCommandId(),row.creationFence(),row.projectId(),row.imageId(),row.policyHash(),row.containerId(),row.containerStartedAt(),
-                row.kind(),row.requestHash(),JSON.readValue(row.requestText(),Request.class),row.executeUntil(),row.deadlineAt());
+                row.kind(),row.requestHash(),com.agentplatform.infrastructure.workspace.EnvironmentUseCodecs.stored(row.kind(),row.requestText()),row.executeUntil(),row.deadlineAt());
     }
     private static void validateRequest(Request request,String text) {
         if(request==null||text.getBytes(StandardCharsets.UTF_8).length>65536)throw new WorkspaceFailure(400,"INVALID_WORKSPACE_USE");
