@@ -1,7 +1,7 @@
 {
   "stage": "R4.3",
-  "status": "ACCEPTANCE_PASS_PENDING_PROTECTED_PROMOTION",
-  "verified": false,
+  "status": "VERIFIED",
+  "verified": true,
   "released": false,
   "baselineMain": "b9b89638d444dc6f19f111c1d48e1722feea0c3b",
   "runtimeSource": "1d84f4ed93b11ef2fad40edfd91838d44e3063eb",
@@ -168,6 +168,30 @@
   "delivery": {
     "bodyRemoteSync": false,
     "protectedCopiesRequired": 2,
-    "minimumRetentionDays": 30
-  }
+    "minimumRetentionDays": 30,
+    "copies": [
+      ".cache/protected-r43-delivery-a",
+      ".cache/protected-r43-delivery-b"
+    ],
+    "finalIdentity": "MANIFEST.json written after clean final main checkout"
+  },
+  "r4Progress": "3/4",
+  "implementationPromotion": {
+    "step": {
+      "number": 118,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/118",
+      "head": "71901b4410b2f3f0be96f13a5502ec0aae79c174",
+      "base": "phase/r4-plan-permissions",
+      "mergeSha": "1ab6ff024e10f210a081b182569160d9c5d2c764"
+    },
+    "main": {
+      "number": 119,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/119",
+      "head": "1ab6ff024e10f210a081b182569160d9c5d2c764",
+      "base": "main",
+      "mergeSha": "2270bc80b4c0a65c4407aa6b76e5236fa1119245"
+    }
+  },
+  "cloud": "R3 unchanged",
+  "localAcceptanceServices": "ALL_STOPPED_VOLUMES_IMAGES_RETAINED"
 }

@@ -1,3 +1,7 @@
+## R4.3 VERIFIED
+
+原工具调用的持久审批与精确恢复已通过本地验收，并经[PR118](https://github.com/SwordShiSan/AgentPlatForm/pull/118)／[PR119](https://github.com/SwordShiSan/AgentPlatForm/pull/119)两级保护晋级。**R4完成3/4、未RELEASED；云端继续R3。** 一次允许或拒绝绑定原操作，恢复不重新生成工具调用，UNKNOWN不重放；审批卡不授予目录范围权限。业务工具目录仍关闭，真实供应商调用0。见[验收索引](evidence/r43/acceptance-index.json)、[本地验收](deploy/R4.3-LOCAL.md)和[正式计划](../项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R4.3-原工具调用持久审批与精确恢复实施计划.md)。R4.4另行Plan/OpenSpec，云沙箱继续DEFERRED。下方早期状态保留为历史。
+
 ## R4.2 VERIFIED
 
 任务工作区绑定、RISK_BASED/FULL与可撤销目录授权已通过本地验收，并经[PR113](https://github.com/SwordShiSan/AgentPlatForm/pull/113)／[PR114](https://github.com/SwordShiSan/AgentPlatForm/pull/114)晋级。**R4完成2/4、未RELEASED；云端继续R3。** 业务工具仍关闭，真实供应商调用0。见[验收索引](evidence/r42/acceptance-index.json)、[本地验收](deploy/R4.2-LOCAL.md)及[正式计划](../项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R4.2-风险策略任务资源绑定与范围授权实施计划.md)。云沙箱继续DEFERRED；R4.3另行Plan/OpenSpec。下方状态为历史。
