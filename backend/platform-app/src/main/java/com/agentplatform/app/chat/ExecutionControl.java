@@ -3,6 +3,7 @@ package com.agentplatform.app.chat;
 import com.agentplatform.domain.chat.ChatFailure;
 import com.agentplatform.domain.chat.ChatProvider.Exchange;
 import com.agentplatform.domain.harness.HarnessPorts.PreparedRun;
+import com.agentplatform.domain.harness.HarnessPorts.ToolExchange;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.*;
@@ -14,6 +15,7 @@ public final class ExecutionControl {
     private final Executor cancellationExecutor;
     private final Phaser work=new Phaser(1);
     private final List<Exchange> exchanges=new CopyOnWriteArrayList<>();
+    private final List<ToolExchange> toolExchanges=new CopyOnWriteArrayList<>();
     private final List<Future<?>> timers=new CopyOnWriteArrayList<>();
     private final AtomicBoolean closing=new AtomicBoolean(),cancelled=new AtomicBoolean();
     private final CompletableFuture<Void> cancellation=new CompletableFuture<>();
@@ -24,6 +26,7 @@ public final class ExecutionControl {
     public ExecutionControl(Executor cancellationExecutor) { this.cancellationExecutor=cancellationExecutor; }
     public void run(PreparedRun value) { run=value;if(cancelled.get())dispatch(value::cancel); }
     public void exchange(Exchange value) { exchanges.add(value);if(closing.get())dispatch(value::cancel); }
+    public void tool(ToolExchange value) { toolExchanges.add(Objects.requireNonNull(value));if(closing.get())dispatch(value::cancel); }
     public void timer(Future<?> value) { timers.add(value);if(closing.get())value.cancel(false); }
     public boolean closing() { return closing.get(); }
     public CompletionStage<Void> cancellation() { return cancellation; }
@@ -47,7 +50,7 @@ public final class ExecutionControl {
         if(cancelled.compareAndSet(false,true)) {
             deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);closing.set(true);cancellation.complete(null);
             timers.forEach(timer->timer.cancel(false));
-            dispatch(()->{if(run!=null)run.cancel();for(var exchange:exchanges)exchange.cancel();});
+            dispatch(()->{if(run!=null)run.cancel();for(var exchange:exchanges)exchange.cancel();for(var tool:toolExchanges)tool.cancel();});
         }
     }
     public boolean quiesce(boolean cancel) {
@@ -61,6 +64,7 @@ public final class ExecutionControl {
             for(var action:shutdownActions)action.get(remaining(),TimeUnit.NANOSECONDS);
             if(run!=null)run.terminated().toCompletableFuture().get(remaining(),TimeUnit.NANOSECONDS);
             for(var exchange:exchanges)exchange.terminated().toCompletableFuture().get(remaining(),TimeUnit.NANOSECONDS);
+            for(var tool:toolExchanges)tool.terminated().toCompletableFuture().get(remaining(),TimeUnit.NANOSECONDS);
             quiescent=true;return true;
         }catch(Exception unconfirmed){return false;}
     }
@@ -69,7 +73,7 @@ public final class ExecutionControl {
     }
     public String receipt(String scope) {
         if(!quiescent)throw new ChatFailure(409,"EXECUTION_STOP_NOT_CONFIRMED");
-        try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest((scope+":SDK_PROVIDER_CALLBACK_TIMERS_QUIESCED:"+exchanges.size()).getBytes(StandardCharsets.UTF_8)));}
+        try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest((scope+":SDK_PROVIDER_CALLBACK_TIMERS_QUIESCED:"+exchanges.size()+":TOOLS:"+toolExchanges.size()).getBytes(StandardCharsets.UTF_8)));}
         catch(Exception impossible){throw new IllegalStateException(impossible);}
     }
 }

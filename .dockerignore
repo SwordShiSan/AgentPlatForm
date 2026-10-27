@@ -14,6 +14,7 @@
 !deploy/scripts/file-scan-bridge.py
 !deploy/scripts/sandbox-entrypoint.py
 !deploy/scripts/sandbox-resource-probe.py
+!deploy/scripts/sandbox-shell.py
 !deploy/scripts/workspace-quota-verifier.py
 !deploy/security/**
 !.cache/foundation/**

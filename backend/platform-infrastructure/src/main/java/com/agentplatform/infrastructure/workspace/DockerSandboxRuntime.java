@@ -556,7 +556,17 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
         return execute(identity, use, program, null, authority, cancelled);
     }
 
+    @Override public Output shell(Identity identity,UUID use,ShellRequest request,UseAuthority authority,BooleanSupplier cancelled) {
+        Objects.requireNonNull(request);
+        return execute(identity,use,new String[]{"python3","/opt/platform/sandbox-shell.py",request.cwd(),request.command()},
+                null,authority,cancelled,request.timeoutSeconds(),true);
+    }
+
     private Output execute(Identity identity, UUID use, String[] program, byte[] input, UseAuthority authority, BooleanSupplier cancelled) {
+        return execute(identity,use,program,input,authority,cancelled,120,false);
+    }
+
+    private Output execute(Identity identity, UUID use, String[] program, byte[] input, UseAuthority authority, BooleanSupplier cancelled,int timeoutSeconds,boolean stopAfter) {
         Objects.requireNonNull(use);
         authority.check();
         runtime();
@@ -583,7 +593,7 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
                 capture.startRequested = true;
             }
             start.exec(capture);
-            long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(120);
+            long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(timeoutSeconds);
             while (true) {
                 boolean cancelledNow = cancelled.getAsBoolean();
                 boolean timedOut = System.nanoTime() >= until;
@@ -598,8 +608,11 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
                     if (capture.failure != null || state.getExitCodeLong() == null) throw unavailable("SANDBOX_EXEC_RESULT_UNKNOWN");
                     authority.check();
                     if(!Boolean.TRUE.equals(exact(identity).getState().getRunning()))throw unavailable("SANDBOX_CONTAINER_EXITED");
+                    // Shell descendants can outlive the parent exec. Only stopping the
+                    // entire exact generation provides a sealing boundary for its files.
+                    Stop stopped=stopAfter?stop(identity):null;
                     completed = true;
-                    return capture.output(state.getExitCodeLong(), false, false, null);
+                    return capture.output(state.getExitCodeLong(), false, false, stopped);
                 }
                 Thread.sleep(250);
             }

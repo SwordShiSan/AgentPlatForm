@@ -147,7 +147,7 @@ public final class ChatExecution implements AutoCloseable {
                 });}
                 public CompletionStage<Completion> beforeStop(Scope s,Message message){return CompletableFuture.completedFuture(message.text().isBlank()||scope.planMode()?Completion.INCOMPLETE:Completion.PASS);}
             };
-            PreparedRun prepared=factory.prepare(new Request(scope,ChatRuntime.bundle(),startup.restoring()?List.of():List.of(history.getLast()),startup.restoring(),approvals,startup.nextTurn()),boundary);active=prepared;control.run(prepared);
+            PreparedRun prepared=factory.prepare(new Request(scope,repository.executionBundle(lease),startup.restoring()?List.of():List.of(history.getLast()),startup.restoring(),approvals,startup.nextTurn()),boundary);active=prepared;control.run(prepared);
             control.timer(timers.scheduleAtFixedRate(()->{
                 try(var ticket=control.enter()){batch.flush();repository.check(lease);}
                 catch(Throwable error){if(!control.closing()){asynchronousFailure.compareAndSet(null,error);control.cancel();}}

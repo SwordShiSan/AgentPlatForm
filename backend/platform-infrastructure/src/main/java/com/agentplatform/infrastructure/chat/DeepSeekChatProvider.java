@@ -18,6 +18,7 @@ public final class DeepSeekChatProvider implements ChatProvider, AutoCloseable {
     private final String endpoint;
     private final boolean real;
     private final boolean fixtureTools;
+    private final boolean workspaceTools;
     private final ThreadPoolExecutor cleanup = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS,
             new ArrayBlockingQueue<>(16), task -> { var thread = new Thread(task, "provider-teardown"); thread.setDaemon(true); return thread; },
             new ThreadPoolExecutor.AbortPolicy());
@@ -25,8 +26,12 @@ public final class DeepSeekChatProvider implements ChatProvider, AutoCloseable {
         this(endpoint,fixture,false);
     }
     public DeepSeekChatProvider(String endpoint,boolean fixture,boolean fixtureTools){
+        this(endpoint,fixture,fixtureTools,false);
+    }
+    public DeepSeekChatProvider(String endpoint,boolean fixture,boolean fixtureTools,boolean workspaceTools){
         if(fixtureTools&&!fixture)throw new IllegalArgumentException("FIXTURE_TOOLS_REQUIRE_DETERMINISTIC_PROVIDER");
         this.fixtureTools=fixtureTools;
+        this.workspaceTools=workspaceTools;
         URI uri=URI.create(endpoint);this.real=!fixture;
         if((!fixture&&!"https://api.deepseek.com".equals(endpoint))||(fixture&&(!"http".equals(uri.getScheme())||!List.of("fixture","127.0.0.1","localhost").contains(uri.getHost()))))throw new IllegalArgumentException("Provider endpoint is not allowlisted");
         this.endpoint=endpoint;
@@ -44,7 +49,8 @@ public final class DeepSeekChatProvider implements ChatProvider, AutoCloseable {
     }
     @Override public Exchange openTyped(String modelName,String key,List<Message> input,List<ToolDefinition> definitions,Consumer<String> onText){
         if(definitions.stream().anyMatch(d->!(d.category()==ToolCategory.CONTROL&&PlanControls.NAMES.contains(d.name()))
-                && !(fixtureTools&&RecoveryFixtureTool.DEFINITIONS.stream().anyMatch(f->f.name().equals(d.name())))))
+                && !(fixtureTools&&RecoveryFixtureTool.DEFINITIONS.stream().anyMatch(f->f.name().equals(d.name())))
+                && !(workspaceTools&&WorkspaceTools.registered(d))))
             throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");
         return exchange(modelName,key,input,definitions,onText);
     }
@@ -62,6 +68,7 @@ public final class DeepSeekChatProvider implements ChatProvider, AutoCloseable {
         StringBuilder text=new StringBuilder();AtomicReference<String> finish=new AtomicReference<>(),id=new AtomicReference<>();
         AtomicLong in=new AtomicLong(),out=new AtomicLong();AtomicBoolean usage=new AtomicBoolean();
         var accumulatedTools=new io.agentscope.core.agent.accumulator.ToolCallsAccumulator();
+        var argumentBytes=new AtomicLong();
         var messageCodec=new com.agentplatform.infrastructure.harness.agentscope.PlatformMessageCodec();
         var result=new CompletableFuture<Result>();
         var terminated=new CompletableFuture<Void>();
@@ -79,7 +86,13 @@ public final class DeepSeekChatProvider implements ChatProvider, AutoCloseable {
                     if(response.getId()!=null)id.set(response.getId());if(response.getFinishReason()!=null)finish.set(response.getFinishReason());
                     for(var block:response.getContent()){
                         if(block instanceof TextBlock b&&!b.getText().isEmpty()){if(text.length()+b.getText().length()>65536)throw new ChatFailure(422,"MODEL_OUTPUT_LIMIT");text.append(b.getText());onText.accept(b.getText());}
-                        else if(block instanceof ToolUseBlock tool){if(catalog.isEmpty())throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");accumulatedTools.add(tool);}
+                        else if(block instanceof ToolUseBlock tool){
+                            if(catalog.isEmpty())throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");
+                            String fragment=tool.getContent()!=null?tool.getContent():tool.getInput()==null?"":messageCodec.json(tool.getInput());
+                            if(argumentBytes.addAndGet(fragment.getBytes(java.nio.charset.StandardCharsets.UTF_8).length)>WorkspaceTools.ARGUMENT_BYTES)
+                                throw new ChatFailure(422,"MODEL_TOOL_ARGUMENTS_LIMIT");
+                            accumulatedTools.add(tool);
+                        }
                         // Thinking blocks are deliberately not copied into any platform buffer.
                     }
                     if(response.getUsage()!=null){usage.set(true);in.set(response.getUsage().getInputTokens());out.set(response.getUsage().getOutputTokens());}

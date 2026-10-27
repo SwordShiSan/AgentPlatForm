@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
-/** Private data plane; there is deliberately no user-program or host-path argument. */
+/** Private runner data plane. User programs are permitted only through the owned versioned shell command. */
 public interface SandboxRuntime extends AutoCloseable {
     record Identity(UUID environmentId, UUID spaceId, UUID workspaceId, UUID commandId,
                     long generation, long fence, int projectId) {
@@ -28,6 +28,15 @@ public interface SandboxRuntime extends AutoCloseable {
         CPU_BOUND, PID_BOUND, MEMORY_BOUND, NETWORK_BOUND, TMP_BOUND, BYTE_QUOTA, INODE_QUOTA }
     enum FileAction { READ, WRITE, LIST }
     record FileRequest(FileAction action, String path, String contentBase64) {}
+    record ShellRequest(String command,String cwd,int timeoutSeconds) {
+        public ShellRequest {
+            if(command==null||command.isBlank()||command.indexOf('\0')>=0
+                    ||command.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>32768)
+                throw new IllegalArgumentException("INVALID_SHELL_COMMAND");
+            cwd=com.agentplatform.domain.chat.RiskPolicy.path(cwd);
+            if(timeoutSeconds<1||timeoutSeconds>120)throw new IllegalArgumentException("INVALID_SHELL_TIMEOUT");
+        }
+    }
     @FunctionalInterface interface Authority { void check(); }
     interface UseAuthority extends Authority {
         /** Must persist this exact exec identity before execStart is permitted. */
@@ -61,6 +70,10 @@ public interface SandboxRuntime extends AutoCloseable {
     Container prepare(Identity identity, Authority authority);
     RunnerInstance runnerInstance();
     Container inspect(Identity identity);
+    /** Must return an actual whole-container stop receipt, including descendants and callbacks. */
+    default Output shell(Identity identity,UUID useId,ShellRequest request,UseAuthority authority,BooleanSupplier cancelled) {
+        throw new UnsupportedOperationException("VERSIONED_SHELL_NOT_SUPPORTED");
+    }
     /** Query original startup facts without re-executing a lost preparation command. */
     Container verifyReady(Identity identity, Authority authority);
     FileHelperData.Intent fileHelperIntent(Identity identity, UUID useId);

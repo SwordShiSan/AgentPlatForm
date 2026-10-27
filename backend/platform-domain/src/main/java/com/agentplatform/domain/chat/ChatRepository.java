@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ChatRepository extends ExecutionLedger, CancellationLedger, RecoveryLedger, PlanLedger, PermissionLedger, ApprovalLedger {
+    default HarnessData.Bundle executionBundle(Lease lease) { return ChatRuntime.bundle(); }
     List<Model> models(Actor actor);
     Conversation create(Actor actor, UUID key, String title);
     Conversation conversation(Actor actor, UUID id);

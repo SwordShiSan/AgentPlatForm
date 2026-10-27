@@ -30,7 +30,19 @@ public final class HarnessPorts {
     public interface RetrievalPort { CompletionStage<List<Message>> search(Scope scope); }
     public interface CompletionPolicy { CompletionStage<Completion> evaluate(Scope scope, Message candidate); }
     public interface PolicyPort { Decision decide(Scope scope, Call call); }
-    public interface ToolExecutionPort { CompletionStage<Observation> execute(Scope scope, Call call); }
+    /** Physical termination is independent of result delivery or cancellation of a Java Future. */
+    public interface ToolExchange {
+        CompletionStage<Observation> result();
+        CompletionStage<Void> terminated();
+        void cancel();
+    }
+    public interface ToolExecutionPort {
+        CompletionStage<Observation> execute(Scope scope, Call call);
+        /** Legacy probes have no remote termination proof and cannot be used as production exchanges. */
+        default ToolExchange open(Scope scope, Call call) {
+            throw new IllegalStateException("TOOL_TERMINATION_NOT_SUPPORTED");
+        }
+    }
     public interface LedgerPort {
         CompletionStage<Void> commitRound(Scope scope, Turn turn);
         CompletionStage<Void> beforeTool(Scope scope, Call call);

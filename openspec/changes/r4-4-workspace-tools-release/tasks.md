@@ -1,4 +1,4 @@
-- [ ] 1. Approved formal Plan/ADR/contracts and this unique change strict before implementation
+- [x] 1. Approved formal Plan/ADR/contracts and this unique change strict before implementation
 - [ ] 2. Minimal actual SDK/general-shell/stop/output-seal vertical feasibility experiment
 - [ ] 3. V18 typed tool intent, content revision, activation binding and uniform resource ownership transactions
 - [ ] 4. Versioned production tool catalog, Provider bounds and Plan execution-phase compatibility

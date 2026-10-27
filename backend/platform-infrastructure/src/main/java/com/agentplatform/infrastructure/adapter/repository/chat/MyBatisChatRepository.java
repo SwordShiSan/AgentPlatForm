@@ -25,14 +25,20 @@ public final class MyBatisChatRepository implements ChatRepository {
     private final ExecutionPersistence executions;
     private final CheckpointPersistence checkpoints;
     public MyBatisChatRepository(ChatMappers mappers) {
+        this(mappers,false);
+    }
+    public MyBatisChatRepository(ChatMappers mappers,boolean workspaceTools) {
         this.mappers=mappers;plans=new PlanPersistence(mappers);
         controls = new ControlPersistence(mappers);
         recovery = new RecoveryPersistence(mappers);
-        conversations = new ConversationPersistence(mappers);
+        conversations = new ConversationPersistence(mappers,workspaceTools);
         configurations = new ConfigurationPersistence(mappers);
         dispatches = new DispatchPersistence(mappers);
         executions = new ExecutionPersistence(mappers);
         checkpoints = new CheckpointPersistence(mappers);
+    }
+    @Override public HarnessData.Bundle executionBundle(Lease lease) {
+        return new WorkspaceToolPersistence(mappers).tx(c->{MyBatisExecutionLedger.guard(c,lease);return WorkspaceToolPersistence.bundle(c,lease.spaceId(),lease.taskId());});
     }
     @Override public List<Model> models(Actor a) { return conversations.models(a); }
     @Override public Conversation create(Actor a,UUID key,String title) { return conversations.create(a, key, title); }

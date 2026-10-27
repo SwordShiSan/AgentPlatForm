@@ -29,12 +29,14 @@ public class ChatConfiguration {
             com.agentplatform.infrastructure.dao.chat.ExecutionPolicyMapper executionPolicy,
             com.agentplatform.infrastructure.dao.chat.PlanMapper plan,
             com.agentplatform.infrastructure.dao.chat.PermissionMapper permissions,
-            com.agentplatform.infrastructure.dao.chat.ApprovalMapper approvals) {
-        return new com.agentplatform.infrastructure.dao.chat.ChatMappers(ledger, conversation, dispatch, accounting, configuration, event, control, recovery, quota, executionPolicy,plan,permissions,approvals);
+            com.agentplatform.infrastructure.dao.chat.ApprovalMapper approvals,
+            com.agentplatform.infrastructure.dao.chat.WorkspaceToolMapper workspaceTools) {
+        return new com.agentplatform.infrastructure.dao.chat.ChatMappers(ledger, conversation, dispatch, accounting, configuration, event, control, recovery, quota, executionPolicy,plan,permissions,approvals,workspaceTools);
     }
     @Bean ChatRepository chatRepository(com.agentplatform.infrastructure.dao.chat.ChatMappers mappers,
-            org.springframework.transaction.support.TransactionTemplate transactions) {
-        return new TransactionalChatRepository(new MyBatisChatRepository(mappers), transactions);
+            org.springframework.transaction.support.TransactionTemplate transactions,
+            @Value("${platform.workspace.tools.enabled:false}")boolean workspaceTools) {
+        return new TransactionalChatRepository(new MyBatisChatRepository(mappers,workspaceTools), transactions);
     }
     @Configuration(proxyBeanMethods=false)
     @Profile({"chat-local","chat-worker"})

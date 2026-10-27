@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.chat.WorkspaceToolMapper">
+  <select id="catalog" resultType="com.agentplatform.infrastructure.dao.po.WorkspaceToolRows$Catalog">
+    SELECT task_id,space_id,workspace_id,actor_id,catalog_version,runtime_bundle_id
+    FROM pf.task_tool_catalog WHERE space_id=#{space} AND task_id=#{task}
+  </select>
+  <insert id="freezeCatalog">
+    INSERT INTO pf.task_tool_catalog(task_id,space_id,workspace_id,actor_id,catalog_version,runtime_bundle_id)
+    SELECT b.task_id,b.space_id,b.workspace_id,b.actor_id,#{version},#{bundle} FROM pf.task_resource_binding b
+    JOIN pf.workspace w ON w.space_id=b.space_id AND w.id=b.workspace_id AND w.actor_id=b.actor_id AND w.state='READY'
+    WHERE b.space_id=#{space} AND b.task_id=#{task} AND b.actor_id=#{actor} AND b.workspace_id=#{workspace}
+  </insert>
+  <select id="resource" resultType="com.agentplatform.infrastructure.dao.po.WorkspaceToolRows$Resource">
+    SELECT w.id workspace_id,w.space_id,w.actor_id,w.state,w.content_revision,w.quota_bytes,w.quota_inodes,w.project_id,
+      e.version environment_version,e.state environment_state,e.image_id environment_image_id,e.policy_hash environment_policy_hash
+    FROM pf.workspace w LEFT JOIN pf.workspace_environment e ON e.space_id=w.space_id AND e.workspace_id=w.id
+    WHERE w.space_id=#{space} AND w.id=#{workspace} AND w.actor_id=#{actor}
+  </select>
+  <select id="intent" resultType="com.agentplatform.infrastructure.dao.po.WorkspaceToolRows$Intent">
+    SELECT operation_id,space_id,task_id,workspace_id,actor_id,tool_name,catalog_version,args_hash,content_revision,permission_version,policy_version,
+      resource_hash,resource_json::text resource_json,review_json::text review_json,activation_request_id,expected_environment_version,
+      expected_image_id,expected_policy_hash,created_at FROM pf.workspace_tool_intent
+    WHERE space_id=#{space} AND task_id=#{task} AND operation_id=#{operation}
+  </select>
+  <insert id="insertIntent">
+    INSERT INTO pf.workspace_tool_intent(operation_id,space_id,task_id,workspace_id,actor_id,tool_name,catalog_version,args_hash,
+      content_revision,permission_version,policy_version,resource_hash,resource_json,review_json,activation_request_id,
+      expected_environment_version,expected_image_id,expected_policy_hash)
+    VALUES(#{row.operationId},#{row.spaceId},#{row.taskId},#{row.workspaceId},#{row.actorId},#{row.toolName},#{row.catalogVersion},#{row.argsHash},
+      #{row.contentRevision},#{row.permissionVersion},#{row.policyVersion},#{row.resourceHash},#{row.resourceJson}::jsonb,#{row.reviewJson}::jsonb,
+      #{row.activationRequestId},#{row.expectedEnvironmentVersion},#{row.expectedImageId},#{row.expectedPolicyHash})
+  </insert>
+  <insert id="acceptPlan">
+    INSERT INTO pf.plan_execution_acceptance(task_id,space_id,revision_id,answer_id)
+    VALUES(#{task},#{space},#{revision},#{answer}) ON CONFLICT(task_id,revision_id) DO NOTHING
+  </insert>
+  <select id="hasAcceptedCurrentPlan" resultType="int">
+    SELECT count(*) FROM pf.task_plan p JOIN pf.plan_revision r ON r.plan_id=p.id AND r.revision=p.current_revision
+    JOIN pf.plan_execution_acceptance a ON a.space_id=p.space_id AND a.task_id=p.task_id AND a.revision_id=r.id
+    WHERE p.space_id=#{space} AND p.task_id=#{task} AND p.status='APPROVED'
+  </select>
+</mapper>

@@ -23,6 +23,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /** Application atomic boundaries; network and provider calls never run inside these transactions. */
 public final class TransactionalChatRepository implements ChatRepository {
+    @Override public Bundle executionBundle(Lease lease){return tx(transactions,()->delegate.executionBundle(lease));}
     private final ChatRepository delegate;
     private final TransactionTemplate transactions;
     private final TransactionTemplate snapshots;
