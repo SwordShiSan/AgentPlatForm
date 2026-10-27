@@ -1,6 +1,6 @@
-# Functional acceptance PASS — protected promotion pending
+# Final functional acceptance: VERIFIED
 
-Runtime and test source: `1d84f4ed93b11ef2fad40edfd91838d44e3063eb`. All mandatory functional gates PASS; VERIFIED is recorded only after protected promotion. R4 remains unreleased; cloud R3 is unchanged. Public source/image/command/hash index: `evidence/r43/acceptance-index.json`.
+Runtime and test source: `1d84f4ed93b11ef2fad40edfd91838d44e3063eb`. All mandatory functional gates PASS; protected step→phase→main promotion has completed. R4 remains unreleased; cloud R3 is unchanged. Public source/image/command/hash index: `evidence/r43/acceptance-index.json`.
 
 - Final clean-source full Maven verify/DDD/Enforcer/Mapper/XML and compatibility PASS. Real PG/MQ base coverage: 11 approval + 8 permissions + 16 Plan/quota = 35 unique cases, plus three actual child-JVM answer-crash windows. The crash class inherits and reruns the 11 approval cases; those repeats are not additional unique coverage. New install/V16→V17 and legacy fixture/Jackson coverage are included in the final suite.
 - SDK actual 2.0.4: five exact experiment cases and 46 compatibility cases PASS. ASK→actual termination→JVM exit→new attempt restores the original call; empty rules; ALLOW_ONCE effect1/DENY effect0; unsupported batches execute0. SDK-generated DENIED is committed before next reasoning even when ordinary acting callbacks are skipped.
@@ -13,4 +13,4 @@ Runtime and test source: `1d84f4ed93b11ef2fad40edfd91838d44e3063eb`. All mandato
 
 Historical compilation, test-bootstrap/MQ credential-file, SDK DENIED-hook and first browser projection failures are retained with hashes in the public index. Raw browser DOM, fixture credentials and SQL are protected and excluded from delivery. XFS/gVisor physical boundaries are unchanged and were not rerun; no new30-minute physical observation was required. Production business tools/shell/network remain closed, cloud sandbox remains DEFERRED.
 
-Remaining closure: protected step→phase→main, archive/synchronize, current canonical ledgers/Skill and final clean-checkout protected delivery copies. Exact final identities are recorded in the delivery MANIFEST.json.
+Functional promotion completed via PR118/119; implementation main 2270bc80b4c0a65c4407aa6b76e5236fa1119245. Archive/synchronization and final clean-checkout delivery identities are recorded separately in MANIFEST.json. Canonical ledgers and Skill have been updated; acceptance services are stopped. Exact final identities are recorded in the delivery MANIFEST.json.
