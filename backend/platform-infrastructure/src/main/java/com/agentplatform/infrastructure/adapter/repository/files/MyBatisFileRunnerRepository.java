@@ -60,7 +60,7 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
     }
     private void active(Command command,UUID instance,boolean accepted) {
         var operation=command.operation();
-        if(!instances.runnerActive(instance)||!files.current(command)
+        if(!files.toolParentAllowed(operation.uploadId(),operation.id(),false)||!instances.runnerActive(instance)||!files.current(command)
                 ||!workspaces.authorized(new com.agentplatform.domain.workspace.WorkspaceData.Actor(operation.actorId(),operation.spaceId())))throw stale();
         if(accepted) {
             var row=runner.command(operation.commandId());
@@ -68,6 +68,7 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
         }
     }
     @Override public boolean accept(Command command,RunnerInstance instance,String requestHash) {
+        if(!files.toolParentAllowed(command.operation().uploadId(),command.operation().id(),true))throw stale();
         lock(command);active(command,instance.id(),false);
         var previous=runner.command(command.operation().commandId());
         if(previous!=null) {
@@ -77,7 +78,10 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
         }
         one(runner.accept(command,instance.id(),requestHash));beforeCommit(()->active(command,instance.id(),true));return true;
     }
-    @Override public void guard(Command command,UUID instance) {lock(command);active(command,instance,true);}
+    @Override public void guard(Command command,UUID instance) {
+        if(!files.toolParentAllowed(command.operation().uploadId(),command.operation().id(),true))throw stale();
+        lock(command);active(command,instance,true);
+    }
     @Override public FileRuntime.Physical physical(Command command) {
         tx();var row=runner.command(command.operation().commandId());
         return row==null?null:new FileRuntime.Physical(row.containerId(),row.startedAt(),row.execId());
@@ -152,6 +156,7 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
                 ||Instant.parse(stop.finishedAt()).isAfter(stop.observedAt()))throw stale();
     }
     @Override public void recordResult(Command command,UUID observer,FileRuntime.Result result) {
+        if(!"UNKNOWN".equals(result.state())&&!files.toolParentAllowed(command.operation().uploadId(),command.operation().id(),true))throw stale();
         // Result persistence may release a transport. Take that capacity row before workspace locks.
         tx();if(transfers.lockSlot()==null)throw stale();
         var physical=observation(command,observer);

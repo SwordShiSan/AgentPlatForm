@@ -154,6 +154,8 @@ final class PermissionPersistence extends ChatPersistenceSupport {
             result = HarnessData.Decision.DENY;reason = "PERMISSION_POLICY_CHANGED";
         } else if (PlanControls.NAMES.contains(call.name())) {
             result = new PlanPersistence(c).controlDecision(lease, call);reason = "PLATFORM_CONTROL";
+        } else if(WorkspaceTools.NAMES.contains(call.name())) {
+            var policy=WorkspaceToolPersistence.decision(c,lease,call);result=policy.decision();reason=policy.reasonCode();
         } else {
             // Only the fixed deterministic probe can be supplied by the protected fixture composition.
             // Production has no business definitions. Neither FULL nor a grant registers a capability.

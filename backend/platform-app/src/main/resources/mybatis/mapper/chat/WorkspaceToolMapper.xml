@@ -1,6 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.agentplatform.infrastructure.dao.chat.WorkspaceToolMapper">
+  <select id="fileAdmission" resultType="com.agentplatform.domain.chat.WorkspaceToolLedger$FileAdmission">
+    SELECT a.operation_id,a.upload_id,b.file_operation_id,a.failure_code FROM pf.workspace_tool_file_admission a
+    LEFT JOIN pf.workspace_tool_job_binding b ON b.operation_id=a.operation_id AND b.file_operation_id IS NOT NULL
+    WHERE a.operation_id=#{operation}
+  </select>
+  <select id="fileStopped" resultType="boolean">
+    SELECT EXISTS(SELECT 1 FROM pf.workspace_tool_file_admission a JOIN pf.tool_operation o ON o.id=a.operation_id
+      LEFT JOIN pf.workspace_tool_job_binding b ON b.operation_id=a.operation_id AND b.file_operation_id IS NOT NULL
+      LEFT JOIN pf.file_operation f ON f.id=b.file_operation_id
+      LEFT JOIN pf.file_runner_receipt r ON r.command_id=f.command_id AND r.space_id=f.space_id AND r.workspace_id=f.workspace_id
+      WHERE a.space_id=#{lease.spaceId} AND a.task_id=#{lease.taskId} AND a.attempt_id=#{lease.attemptId}
+      AND a.owner_id=#{lease.ownerId} AND a.fence=#{lease.fence} AND o.call_id=#{call}
+      AND (b.file_operation_id IS NULL OR(r.stop_text::jsonb->>'commandId'=f.command_id::text
+        AND r.stop_text::jsonb->>'execStopped'='true' AND r.stop_text::jsonb->>'callbacksStopped'='true'
+        AND (r.stop_text::jsonb->>'neverStarted'='true' OR r.stop_text::jsonb->>'finishedAt' IS NOT NULL))))
+  </select>
+  <insert id="insertFileAdmission">
+    INSERT INTO pf.workspace_tool_file_admission(operation_id,space_id,task_id,workspace_id,attempt_id,owner_id,generation,fence,upload_id,failure_code)
+    SELECT i.operation_id,i.space_id,i.task_id,i.workspace_id,#{lease.attemptId},#{lease.ownerId},d.generation,#{lease.fence},#{upload,jdbcType=OTHER},#{failure,jdbcType=VARCHAR}
+    FROM pf.workspace_tool_intent i JOIN pf.execution_dispatch d ON d.task_id=i.task_id
+    JOIN pf.tool_operation o ON o.id=i.operation_id AND o.status='RUNNING'
+    WHERE i.operation_id=#{operation} AND i.space_id=#{lease.spaceId} AND i.task_id=#{lease.taskId}
+      AND i.tool_name='workspace_write' AND d.status='CLAIMED' AND d.lease_owner=#{lease.ownerId} AND d.fencing_token=#{lease.fence}
+      AND (CAST(#{upload,jdbcType=OTHER} AS uuid) IS NULL OR EXISTS(SELECT 1 FROM pf.upload_session u WHERE u.id=#{upload,jdbcType=OTHER}
+        AND u.space_id=i.space_id AND u.workspace_id=i.workspace_id AND u.actor_id=i.actor_id AND u.request_id=i.operation_id))
+  </insert>
+  <insert id="bindFileOperation">
+    INSERT INTO pf.workspace_tool_job_binding(id,operation_id,space_id,task_id,workspace_id,file_operation_id)
+    SELECT #{id},a.operation_id,a.space_id,a.task_id,a.workspace_id,u.operation_id
+    FROM pf.workspace_tool_file_admission a JOIN pf.upload_session u ON u.id=a.upload_id
+    WHERE a.operation_id=#{operation} AND a.failure_code IS NULL AND u.operation_id=#{fileOperation}
+    ON CONFLICT(file_operation_id) DO NOTHING
+  </insert>
+  <select id="operationId" resultType="java.util.UUID">
+    SELECT id FROM pf.tool_operation WHERE space_id=#{space} AND task_id=#{task} AND call_id=#{call}
+  </select>
+  <select id="currentResourceHash" resultType="java.lang.String">
+    SELECT pf.current_tool_resource_hash(#{actor},#{space},#{task},#{operation})
+  </select>
+  <select id="lockObjectQuota" resultType="java.util.UUID">
+    SELECT space_id FROM pf.space_storage WHERE space_id=#{space} FOR UPDATE
+  </select>
+  <select id="lockWorkspace" resultType="java.util.UUID">
+    SELECT id FROM pf.workspace WHERE space_id=#{space} AND id=#{workspace} AND actor_id=#{actor} AND state='READY' FOR UPDATE
+  </select>
+  <select id="targetById" resultType="java.lang.String">
+    SELECT jsonb_build_object('fileId',f.id,'path',f.relative_path,'kind',f.kind,'revision',f.revision,
+      'currentVersionId',f.current_version_id,'versionId',v.id,'sha256',v.sha256,'bytes',v.size_bytes)::text
+    FROM pf.file_entry f LEFT JOIN pf.file_version v ON v.space_id=f.space_id AND v.workspace_id=f.workspace_id AND v.file_id=f.id AND v.id=#{version}
+    WHERE f.space_id=#{space} AND f.workspace_id=#{workspace} AND f.id=#{file}
+  </select>
+  <select id="targetByPath" resultType="java.lang.String">
+    SELECT jsonb_build_object('fileId',id,'path',relative_path,'kind',kind,'revision',revision,
+      'currentVersionId',current_version_id,'collectionState',collection_state)::text FROM pf.file_entry
+    WHERE space_id=#{space} AND workspace_id=#{workspace} AND relative_path=#{path}
+  </select>
   <select id="catalog" resultType="com.agentplatform.infrastructure.dao.po.WorkspaceToolRows$Catalog">
     SELECT task_id,space_id,workspace_id,actor_id,catalog_version,runtime_bundle_id
     FROM pf.task_tool_catalog WHERE space_id=#{space} AND task_id=#{task}

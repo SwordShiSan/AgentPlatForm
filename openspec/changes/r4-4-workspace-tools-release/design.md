@@ -35,6 +35,12 @@ shell执行后停止整个generation并确认exec/容器/回调退出，独立he
 
 stdout/stderr合计64KiB并标截断；结果>32KiB入私有S3，模型摘要≤8KiB。无完整文件byte[]/Base64/DB正文大字段；工具原始参数有明确32/64KiB协议边界，不成为大文件上传旁路。
 
+### 文件工具事务细化
+
+`WorkspaceFileToolService`复用现有FileRepository、FileApplicationService、AssetStore及file outbox/worker/runner，不创建第二条物理写入路径。V18的`workspace_tool_file_admission`只记录原工具operation到upload的不可变绑定、原attempt/owner/generation/fence，或尚未产生副作用的明确拒绝；文件状态仍以既有file_operation为准。原工具RUNNING、批准消费、对象额度预留、upload和绑定同事务提交。已知冲突用Spring嵌套事务保存点撤销本次文件准入，再保留FAILED观察；数据库故障则完整回滚，不伪造成业务冲突。传输后，file_operation/outbox与原工具绑定再次同事务提交，禁止先发布未绑定作业。
+
+文件worker和runner通过窄的数据库谓词复核父task所有权、实时授权、凭据、权限修订和原批准Plan；runner不获得聊天/凭据/checkpoint表读取权。带父任务的文件作业先锁额度及task所有权，再取资源子集锁；停止事实的观察和持久化不要求父任务仍可执行，取消后仍能证明实际终止。文件读取只读明确不可变版本，分块校验全对象长度/hash与严格UTF-8，内存中仅保留有界codepoint页，序列化结果不超过8KiB；目录分页同样受结果字节限制，不能把过长结果静默当成完整列表。
+
 ## 3. API、事件与界面
 
 先契约再生成。新增GET /api/v1/tasks/{id}/operations分页与GET /api/v1/operations/{id}/result有界读回；现有answer端点继续精确ALLOW_ONCE/DENY。Plan/snapshot加执行phase和类型化工具投影；operation事件和状态同一账本同事务提交。

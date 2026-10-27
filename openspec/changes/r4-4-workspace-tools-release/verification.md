@@ -1,5 +1,17 @@
-# Current status: NOT_RUN
+# Current status: IMPLEMENTING (not VERIFIED / not RELEASED)
 No R4.4 functional or release gate is implied by prior stages. Evidence binds exact source/config/image/command/exit/assertions/hash.
+
+## Incremental results (2026-10-27)
+
+- PASS: actual PG V17→V18 foundation, typed production catalog and old/new runtime bundle selection; SDK known-failure and exact-approval compatibility. Frozen-source receipt: `.cache/r44-local/foundation-1793084644490743400/result.json`, source `3bde15a1ecbc8f295d5b11f9c16303d85d7222b8`, log SHA256 `fbd856cd457f6bca543e086e37ffe8e2894d2dc4702c11c70326d7e3686b1752`.
+- PASS: SDK + actual PG FULL admission, RISK approval/resume of the original call, changed content invalidates approval. Preliminary dirty-source receipt: `.cache/r44-local/admission-1793086871593725000/result.json`, log SHA256 `7e3e09e6c5e48beb6bf0917df005df17b42e1e091c0d5b1a4b7aead891127a72`. Deterministic tool transport only, no physical shell claim; final exact-input regression still required.
+- PASS: Linux guest launcher Python/Node same-directory IO, Unicode/666, exit/stdin/environment and directory-handle checks, four tests. `.cache/r44-local/shell-spike-1793085050607314600/result.json`; sandbox spike image config ID `sha256:147fdc0fe7ab911d503e78a570e649cd50ff98ca90781f3528d3cea061d0f2de`. This is a launcher unit test in a trusted temporary runc fixture, **not** gVisor isolation or runner stop proof.
+- File admission/ownership/hash projections are under targeted regression. Preserve failure receipts: `file-tools-1793089124856905500` (repository delegation compile repair), `file-tools-1793089289159160900` (restricted-process loopback access), `file-tools-1793089456251022600` (fixture owner/file-state isolation), `files-verify-1793089605805821900` (nullable UUID mapping plus immutable-object fixture status). These are not PASS receipts.
+- Fixed local entry: `deploy/scripts/verify-workspace-tool-admission.py --group files`. It checks loopback before Maven, records input manifest before/after, never calls suppliers or production, and does not silently skip unavailable PG.
+- Cloud preflight is read-only: R3 runner was already stopped with OOMKilled/137; gateway/API/worker and dependencies remained running. No R4 deployment or blind restart has occurred. Full-composition memory allocation/cold-start must resolve this observed resource failure before release.
+- Real supplier calls in R4.4: **0**. Physical runner, output capture, full APIs/UI, release/restore/rollback/observation remain NOT_RUN.
+- Subsequent actual PG file/SDK group PASS16 executions (inherited cases repeat), frozen input manifest `afcef5dfcf9cbb77b9a33a17f9b7113ab8a300561714f73c580c74330ece2dd4`, log `1be7bde35d30efe44848f5ce07c423014ceea3233d0b8525dadd80b008aaca65`. Restricted API/runner roles PASS1, log `ae6034b4da1a858e81bf8d928c8017425818bd49d1d91e86ea08e67cb929bb5b`; original-parent cancellation/child UNKNOWN preservation PASS1, log `e28e6f9b1898f80970bce3420324bda4cb925e70872314de83b9b12d2e067f96`. Scopes and input identities: `evidence/r44/development-index.json`. These incremental passes do not satisfy the physical shell, full-stage or release gates.
+
 ## Required cases
 - SDK actual typed production catalog, full streaming calls, schema/aggregate bounds, one business call/no mixed control, approved Plan same-task transition and legacy text-only bundle.
 - General shell actual command/Python/Node, no host interpretation, approved RISK/FULL, automatic activation, exact entire-process stop including background children, missing/false stop blocks.

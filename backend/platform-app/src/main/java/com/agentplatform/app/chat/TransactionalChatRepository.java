@@ -24,6 +24,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 /** Application atomic boundaries; network and provider calls never run inside these transactions. */
 public final class TransactionalChatRepository implements ChatRepository {
     @Override public Bundle executionBundle(Lease lease){return tx(transactions,()->delegate.executionBundle(lease));}
+    @Override public boolean workspaceToolTask(Lease lease){return tx(transactions,()->delegate.workspaceToolTask(lease));}
+    @Override public void prepareWorkspaceTools(Lease lease,List<HarnessData.Call> calls,String image,String policy){tx(transactions,()->{delegate.prepareWorkspaceTools(lease,calls,image,policy);return null;});}
+    @Override public com.agentplatform.domain.chat.WorkspaceToolLedger.Intent workspaceToolIntent(Lease lease,HarnessData.Call call){return tx(transactions,()->delegate.workspaceToolIntent(lease,call));}
+    @Override public com.agentplatform.domain.chat.WorkspaceToolLedger.FileAdmission workspaceFileAdmission(Lease lease,HarnessData.Call call){return tx(transactions,()->delegate.workspaceFileAdmission(lease,call));}
+    @Override public com.agentplatform.domain.chat.WorkspaceToolLedger.FileAdmission recordWorkspaceFileAdmission(Lease lease,HarnessData.Call call,UUID upload,String failure){return tx(transactions,()->delegate.recordWorkspaceFileAdmission(lease,call,upload,failure));}
+    @Override public void bindWorkspaceFileOperation(Lease lease,HarnessData.Call call,UUID operation){tx(transactions,()->{delegate.bindWorkspaceFileOperation(lease,call,operation);return null;});}
+    @Override public boolean workspaceFileStopped(Lease lease,HarnessData.Call call){return tx(transactions,()->delegate.workspaceFileStopped(lease,call));}
     private final ChatRepository delegate;
     private final TransactionTemplate transactions;
     private final TransactionTemplate snapshots;

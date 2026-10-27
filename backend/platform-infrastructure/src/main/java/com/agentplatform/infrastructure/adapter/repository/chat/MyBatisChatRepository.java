@@ -40,6 +40,13 @@ public final class MyBatisChatRepository implements ChatRepository {
     @Override public HarnessData.Bundle executionBundle(Lease lease) {
         return new WorkspaceToolPersistence(mappers).tx(c->{MyBatisExecutionLedger.guard(c,lease);return WorkspaceToolPersistence.bundle(c,lease.spaceId(),lease.taskId());});
     }
+    @Override public boolean workspaceToolTask(Lease lease){return new WorkspaceToolPersistence(mappers).available(lease);}
+    @Override public void prepareWorkspaceTools(Lease lease,List<HarnessData.Call> calls,String image,String policy){new WorkspaceToolPersistence(mappers).prepare(lease,calls,image,policy);}
+    @Override public WorkspaceToolLedger.Intent workspaceToolIntent(Lease lease,HarnessData.Call call){return new WorkspaceToolPersistence(mappers).intent(lease,call);}
+    @Override public WorkspaceToolLedger.FileAdmission workspaceFileAdmission(Lease lease,HarnessData.Call call){return new WorkspaceToolPersistence(mappers).fileAdmission(lease,call);}
+    @Override public WorkspaceToolLedger.FileAdmission recordWorkspaceFileAdmission(Lease lease,HarnessData.Call call,UUID upload,String failure){return new WorkspaceToolPersistence(mappers).recordFileAdmission(lease,call,upload,failure);}
+    @Override public void bindWorkspaceFileOperation(Lease lease,HarnessData.Call call,UUID operation){new WorkspaceToolPersistence(mappers).bindFileOperation(lease,call,operation);}
+    @Override public boolean workspaceFileStopped(Lease lease,HarnessData.Call call){return new WorkspaceToolPersistence(mappers).fileStopped(lease,call);}
     @Override public List<Model> models(Actor a) { return conversations.models(a); }
     @Override public Conversation create(Actor a,UUID key,String title) { return conversations.create(a, key, title); }
     @Override public List<Conversation> conversations(Actor a,UUID before,int limit) { return conversations.conversations(a, before, limit); }

@@ -34,6 +34,11 @@ public final class ChatExecution implements AutoCloseable {
     private UUID acceptanceRun;
     private boolean executionStarted;
     private boolean toolApprovalsEnabled;
+    private WorkspaceToolRuntime workspaceTools;
+    public synchronized void configureWorkspaceTools(WorkspaceToolRuntime runtime) {
+        if(executionStarted||fixtureTools!=null||workspaceTools!=null)throw new IllegalStateException("WORKSPACE_TOOL_COMPOSITION_CONFLICT");
+        workspaceTools=Objects.requireNonNull(runtime);
+    }
     /** Deterministic acceptance only; production has no business tool catalog in R4.3. */
     public synchronized void configureToolApprovals(){
         if(executionStarted||fixtureTools==null||provider.real())throw new IllegalStateException("APPROVAL_FIXTURE_REQUIRED");
@@ -67,22 +72,32 @@ public final class ChatExecution implements AutoCloseable {
             Scope scope=new Scope(lease.spaceId().toString(),lease.userId().toString(),lease.conversationId().toString(),lease.taskId().toString(),lease.attemptId().toString(),lease.fence(),repository.planMode(lease));
             List<Approval> controlApprovals=repository.controlApprovals(lease);
             List<Approval> approvals=new ArrayList<>(controlApprovals);approvals.addAll(repository.toolApprovals(lease));
-            boolean controls=scope.planMode()||!controlApprovals.isEmpty()||repository.plan(new ChatData.Actor(lease.userId(),lease.spaceId()),lease.taskId()).current()!=null;
-            // Plan confirmation remains text-only. A retained Plan is not a business-tool grant.
+            boolean workspaceCapable=workspaceTools!=null&&repository.workspaceToolTask(lease);
+            boolean controls=scope.planMode()||!controlApprovals.isEmpty()||(!workspaceCapable&&repository.plan(new ChatData.Actor(lease.userId(),lease.spaceId()),lease.taskId()).current()!=null);
+            // Historic tasks retain their text-only Plan contract. Only a new frozen
+            // workspace composition can expose business tools after Plan approval.
             List<com.agentplatform.types.harness.HarnessData.Call> businessDefinitions=controls||fixtureTools==null?List.of():RecoveryFixtureTool.DEFINITIONS.stream()
                     .filter(c->toolApprovalsEnabled||!"approval_probe".equals(c.name())).toList();
+            var workspaceDefinitions=workspaceCapable&&!scope.planMode()?List.copyOf(workspaceTools.definitions(lease)):List.<ToolDefinition>of();
+            var modelDefinitions=new ArrayList<ToolDefinition>();
+            if(scope.planMode()||controls)modelDefinitions.addAll(PlanControls.DEFINITIONS);
+            else if(workspaceCapable)modelDefinitions.add(PlanControls.DEFINITIONS.stream().filter(d->"platform_ask_user".equals(d.name())).findFirst().orElseThrow());
+            modelDefinitions.addAll(workspaceDefinitions);
+            modelDefinitions.addAll(businessDefinitions.stream().map(ToolDefinition::legacy).toList());
             AtomicReference<UUID> turnId=new AtomicReference<>();String frozenModelName=repository.modelName(lease);final Instant executionDeadline=deadline;
             ModelGateway metered=new ModelGateway(){
                 @Override public String modelName(Scope ignored){return frozenModelName;}
                 public CompletionStage<Round> complete(Scope s,List<Message> messages,List<com.agentplatform.types.harness.HarnessData.Call> tools){return stream(s,messages,tools,text->{});}
                 public CompletionStage<Round> stream(Scope s,List<Message> messages,List<com.agentplatform.types.harness.HarnessData.Call> tools,Consumer<String> onText){
-                    if(!tools.isEmpty()&&fixtureTools==null)return CompletableFuture.failedFuture(new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH"));
+                    if(!tools.isEmpty()&&fixtureTools==null&&!workspaceCapable)return CompletableFuture.failedFuture(new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH"));
                     return streamTyped(s,messages,tools.stream().map(ToolDefinition::legacy).toList(),onText);
                 }
                 @Override public CompletionStage<Round> streamTyped(Scope s,List<Message> messages,List<ToolDefinition> definitions,Consumer<String> onText){
                     var result=new CompletableFuture<Round>();AtomicReference<CompletableFuture<?>> pending=new AtomicReference<>();
                     result.whenComplete((v,e)->{if(result.isCancelled()&&pending.get()!=null)pending.get().cancel(true);});
-                    physical(lease,messages,definitions,text->{if(control.closing())throw new ChatFailure(409,"TASK_CANCEL_REQUESTED");batch.append(text);onText.accept(text);},result,pending,executionDeadline,0,false,accepted,acceptedRound,control);
+                    var actualDefinitions=definitions.stream().filter(d->scope.planMode()||!workspaceCapable
+                            ||!("platform_plan_write".equals(d.name())||"platform_plan_review".equals(d.name()))).toList();
+                    physical(lease,messages,actualDefinitions,text->{if(control.closing())throw new ChatFailure(409,"TASK_CANCEL_REQUESTED");batch.append(text);onText.accept(text);},result,pending,executionDeadline,0,false,accepted,acceptedRound,control);
                     return result;
                 }
             };
@@ -115,34 +130,37 @@ public final class ChatExecution implements AutoCloseable {
             };
             var factory=new AgentScopeRuntimeFactory(metered,(s,c)->new OperationAuthorization(repository).decide(lease,c),
                     (s,c)->PlanControls.NAMES.contains(c.name())?CompletableFuture.completedFuture(repository.executeControl(lease,c)):
+                            WorkspaceTools.NAMES.contains(c.name())&&workspaceCapable?control.during(()->{var exchange=workspaceTools.open(lease,c);control.tool(exchange);return exchange.result();}):
                             fixtureTools==null?CompletableFuture.failedFuture(new ChatFailure(422,"TOOLS_NOT_AVAILABLE")):fixtureTools.execute(s,c),
                     attemptState,manifests,new ToolCatalogPort(){
                         public List<com.agentplatform.types.harness.HarnessData.Call> definitions(){return businessDefinitions;}
-                        public List<ToolDefinition> typedDefinitions(){var result=new ArrayList<ToolDefinition>();if(controls)result.addAll(PlanControls.DEFINITIONS);result.addAll(ToolCatalogPort.super.typedDefinitions());return List.copyOf(result);}
+                        public List<ToolDefinition> typedDefinitions(){return List.copyOf(modelDefinitions);}
                     },work);
             LoopBoundary boundary=new LoopBoundary(){
                 public CompletionStage<List<Message>> beforeModel(Scope s,List<Message> ignored){return control.during(()->{
-                    if(controls)repository.consumeOptional(lease);
+                    if(controls||workspaceCapable)repository.consumeOptional(lease);
                     var context=repository.checkpointHistory(lease);
                     var json=tools.jackson.databind.json.JsonMapper.builder().build();
                     long upperBound=json.writeValueAsString(context).getBytes(java.nio.charset.StandardCharsets.UTF_8).length+512L;
-                    if(controls)upperBound+=json.writeValueAsString(PlanControls.DEFINITIONS.stream().map(ToolDefinition::inputSchema).toList()).getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+                    upperBound+=json.writeValueAsString(modelDefinitions.stream().filter(d->scope.planMode()||!workspaceCapable
+                            ||!("platform_plan_write".equals(d.name())||"platform_plan_review".equals(d.name()))).map(ToolDefinition::inputSchema).toList()).getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
                     if(upperBound>7168)throw new ChatFailure(422,"CONTEXT_REQUIRED_TOO_LARGE");
                     turnId.set(repository.beginTurn(lease));return CompletableFuture.completedFuture(context);
                 });}
                 public CompletionStage<Void> afterModelCommitted(Scope s,Turn t){return control.during(()->{var call=accepted.get();if(call==null)throw new ChatFailure(409,"ACCEPTED_CALL_MISSING");repository.commitRound(lease,turnId.get(),t,call);FixtureFaults.pause("round-before-checkpoint");return CompletableFuture.completedFuture(null);});}
                 public CompletionStage<Void> beforeControlBatch(Scope s,List<com.agentplatform.types.harness.HarnessData.Call> calls){
-                    return control.during(()->{if(calls.stream().anyMatch(c->PlanControls.NAMES.contains(c.name())))repository.stageControls(lease,calls);else repository.stageToolApprovals(lease,calls);return CompletableFuture.completedFuture(null);});
+                    return control.during(()->{if(calls.stream().anyMatch(c->PlanControls.NAMES.contains(c.name())))repository.stageControls(lease,calls);else {if(workspaceCapable&&calls.stream().anyMatch(c->WorkspaceTools.NAMES.contains(c.name())))workspaceTools.prepare(lease,calls);repository.stageToolApprovals(lease,calls);}return CompletableFuture.completedFuture(null);});
                 }
                 public CompletionStage<Void> beforeWaiting(Scope s,List<com.agentplatform.types.harness.HarnessData.Call> calls){
                     return control.during(()->{if(calls.stream().anyMatch(c->PlanControls.NAMES.contains(c.name())))repository.stageControls(lease,calls);else repository.stageToolApprovals(lease,calls);return CompletableFuture.completedFuture(null);});
                 }
                 public CompletionStage<Void> beforeTool(Scope s,com.agentplatform.types.harness.HarnessData.Call c){return control.during(()->{
-                    if(fixtureTools==null&&!controls)throw new ChatFailure(422,"TOOLS_NOT_AVAILABLE");
-                    repository.startTool(lease,c);FixtureFaults.pause("tool-after-start");return CompletableFuture.completedFuture(null);
+                    if(fixtureTools==null&&!controls&&!workspaceCapable)throw new ChatFailure(422,"TOOLS_NOT_AVAILABLE");
+                    if(workspaceCapable&&WorkspaceTools.NAMES.contains(c.name()))workspaceTools.admit(lease,c);else repository.startTool(lease,c);
+                    FixtureFaults.pause("tool-after-start");return CompletableFuture.completedFuture(null);
                 });}
                 public CompletionStage<Void> afterToolCommitted(Scope s,com.agentplatform.types.harness.HarnessData.Call c,Observation o){return control.during(()->{
-                    if(fixtureTools==null&&!controls)throw new ChatFailure(422,"TOOLS_NOT_AVAILABLE");
+                    if(fixtureTools==null&&!controls&&!workspaceCapable)throw new ChatFailure(422,"TOOLS_NOT_AVAILABLE");
                     FixtureFaults.pause("tool-before-result");repository.commitTool(lease,c,o);FixtureFaults.pause("tool-after-result");return CompletableFuture.completedFuture(null);
                 });}
                 public CompletionStage<Completion> beforeStop(Scope s,Message message){return CompletableFuture.completedFuture(message.text().isBlank()||scope.planMode()?Completion.INCOMPLETE:Completion.PASS);}

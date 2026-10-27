@@ -85,6 +85,7 @@ public final class MyBatisFileRepository implements FileRepository {
         return files.upload(id);
     }
     private Upload ownedUpload(Actor actor, UUID id, boolean lock) {
+        if(lock&&!files.toolParentAllowed(id,null,true))throw new FileFailure(409,"TOOL_PARENT_NO_LONGER_AUTHORIZED");
         authorized(actor);
         var row = lock ? files.lockUpload(id) : files.upload(id);
         if (row == null || !row.spaceId().equals(actor.spaceId()) || !row.actorId().equals(actor.userId()))
@@ -108,6 +109,7 @@ public final class MyBatisFileRepository implements FileRepository {
         ownedUpload(actor,id,true);one(files.transferRejected(id,owner));onCommit(()->authorized(actor));
     }
     @Override public void guardTransfer(Actor actor,UUID id,UUID owner) {
+        if(!files.toolParentAllowed(id,null,false))throw new FileFailure(409,"TOOL_PARENT_NO_LONGER_AUTHORIZED");
         var row=ownedUpload(actor,id,false);var now=files.databaseTime();
         if(!"UPLOADING".equals(row.status())||!owner.equals(row.transferOwner())||row.transferUntil()==null
                 ||!row.transferUntil().isAfter(now)||!row.expiresAt().isAfter(now))throw new FileFailure(409,"UPLOAD_TRANSFER_OWNER_EXPIRED");
@@ -138,6 +140,7 @@ public final class MyBatisFileRepository implements FileRepository {
         one(files.recoverVerifiedUpload(fenced.id(),fenced.revision()));onCommit(()->authorized(actor));
     }
     @Override public Operation completeUpload(Actor actor, UUID id) {
+        if(!files.toolParentAllowed(id,null,true))throw new FileFailure(409,"TOOL_PARENT_NO_LONGER_AUTHORIZED");
         // Inspect identity without taking a lower-order upload lock first.
         var before = ownedUpload(actor, id, false);storage(actor);workspace(actor, before.workspaceId(), true);
         var row = ownedUpload(actor, id, true);
@@ -176,6 +179,7 @@ public final class MyBatisFileRepository implements FileRepository {
     @Override public List<Publication> publications(UUID owner) { tx();return files.publications(owner); }
     @Override public void published(Publication item, boolean success) { tx();one(files.published(item, success)); }
     @Override public Command claim(Publication item, UUID owner) {
+        if(!files.toolParentAllowed(null,item.operationId(),true))throw new FileFailure(409,"TOOL_PARENT_NO_LONGER_AUTHORIZED");
         tx();
         if (!files.knownPublication(item)) {files.quarantine(Uuid7.next(),"UNKNOWN_FILE_PUBLICATION",RunnerSignatures.sha256(JSON.writeValueAsBytes(item)));return null;}
         var observed = files.operation(item.operationId());
@@ -206,6 +210,7 @@ public final class MyBatisFileRepository implements FileRepository {
         onCommit(() -> guard(command));return command;
     }
     @Override public void guard(Command command) {
+        if(!files.toolParentAllowed(command.operation().uploadId(),command.operation().id(),false))throw new FileFailure(409,"TOOL_PARENT_NO_LONGER_AUTHORIZED");
         tx();var operation = command.operation();authorized(new Actor(operation.actorId(), operation.spaceId()));
         if (!files.current(command)) throw new FileFailure(409, "FILE_STALE_OWNER");
     }
@@ -213,6 +218,7 @@ public final class MyBatisFileRepository implements FileRepository {
         lockOwned(command);one(files.renew(command));one(files.renewLease(command));onCommit(() -> guard(command));
     }
     private void lockOwned(Command command) {
+        if(!files.toolParentAllowed(command.operation().uploadId(),command.operation().id(),true))throw new FileFailure(409,"TOOL_PARENT_NO_LONGER_AUTHORIZED");
         var operation = command.operation();storage(new Actor(operation.actorId(), operation.spaceId()));environments.lockSlot();
         workspace(new Actor(operation.actorId(), operation.spaceId()), operation.workspaceId(), true);
         files.lockLease(operation.spaceId(), operation.workspaceId());files.lockOperation(operation.id());guard(command);
@@ -252,6 +258,7 @@ public final class MyBatisFileRepository implements FileRepository {
             projectionGuard(command,recovery);refund(upload);one(files.failOperation(command));one(files.releaseLease(command));
             onCommit(()->{
                 authorized(new Actor(command.operation().actorId(),command.operation().spaceId()));
+                if(!files.toolParentAllowed(command.operation().uploadId(),command.operation().id(),false))throw new FileFailure(409,"TOOL_PARENT_NO_LONGER_AUTHORIZED");
                 if(!files.committedOwned(command,recovery))throw new FileFailure(409,"FILE_STALE_OWNER");
             });return;
         }
@@ -275,11 +282,19 @@ public final class MyBatisFileRepository implements FileRepository {
         projectionGuard(command,recovery);one(files.completeOperation(command));one(files.releaseLease(command));
         onCommit(() -> {
             authorized(new Actor(command.operation().actorId(), command.operation().spaceId()));
+            if(!files.toolParentAllowed(command.operation().uploadId(),command.operation().id(),false))throw new FileFailure(409,"TOOL_PARENT_NO_LONGER_AUTHORIZED");
             if (!files.committedOwned(command,recovery)) throw new FileFailure(409, "FILE_STALE_OWNER");
         });
     }
     @Override public void uncertain(Command command, String code) {
-        lockOwned(command);one(files.uncertain(command, code));one(files.blockLease(command));if(command.upload()!=null)files.reconcileReservation(command.upload().id());
+        // Blocking a precisely owned child grants no execution or quota release.
+        // It must remain possible after its parent is cancelled/revoked; the
+        // ordinary active-parent guard would prevent safe convergence here.
+        tx();var operation=command.operation();storage(new Actor(operation.actorId(),operation.spaceId()));environments.lockSlot();
+        if(workspaces.lockWorkspace(operation.spaceId(),operation.workspaceId())==null)throw new FileFailure(409,"FILE_STALE_OWNER");
+        files.lockLease(operation.spaceId(),operation.workspaceId());files.lockOperation(operation.id());
+        if(!files.current(command))throw new FileFailure(409,"FILE_STALE_OWNER");
+        one(files.uncertain(command, code));one(files.blockLease(command));if(command.upload()!=null)files.reconcileReservation(command.upload().id());
     }
     private void refund(Upload upload) {
         one(files.abortUpload(upload));one(files.releaseReservation(upload));one(files.refundSpace(upload));

@@ -103,7 +103,7 @@ ALTER TABLE pf.file_operation DROP CONSTRAINT file_operation_kind_check;
 ALTER TABLE pf.file_operation ADD CONSTRAINT file_operation_kind_check CHECK(kind IN('APPLY_UPLOAD','SCAN','CAPTURE'));
 
 CREATE FUNCTION pf.advance_workspace_content_revision() RETURNS trigger
- LANGUAGE plpgsql SET search_path=pg_catalog,pf AS $$
+ LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
 BEGIN
  IF TG_OP='DELETE' THEN
   UPDATE pf.workspace SET content_revision=content_revision+1 WHERE space_id=OLD.space_id AND id=OLD.workspace_id;
@@ -112,6 +112,7 @@ BEGIN
  END IF;
  RETURN NULL;
 END $$;
+REVOKE ALL ON FUNCTION pf.advance_workspace_content_revision() FROM PUBLIC;
 CREATE TRIGGER file_content_insert AFTER INSERT ON pf.file_entry
  FOR EACH ROW EXECUTE FUNCTION pf.advance_workspace_content_revision();
 CREATE TRIGGER file_content_change AFTER UPDATE ON pf.file_entry FOR EACH ROW
@@ -122,3 +123,100 @@ CREATE TRIGGER file_content_remove AFTER DELETE ON pf.file_entry
  FOR EACH ROW EXECUTE FUNCTION pf.advance_workspace_content_revision();
 REVOKE ALL ON pf.task_tool_catalog,pf.plan_execution_acceptance,pf.workspace_tool_intent,pf.workspace_tool_job_binding,
  pf.tool_output_capture,pf.tool_result_object FROM PUBLIC;
+
+-- Public approval validation returns only an opaque hash. Private call parameters
+-- and environment/job details never need to be granted to the API role.
+CREATE FUNCTION pf.current_tool_resource_hash(actor uuid,selected_space uuid,selected_task uuid,selected_operation uuid)
+ RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
+DECLARE result text;
+BEGIN
+ IF NOT pf.authorize_workspace_actor(actor,selected_space) THEN RETURN NULL; END IF;
+ SELECT i.resource_hash INTO result FROM pf.workspace_tool_intent i
+ JOIN pf.task t ON t.space_id=i.space_id AND t.id=i.task_id AND t.creator_id=i.actor_id
+ JOIN pf.task_permission p ON p.space_id=i.space_id AND p.task_id=i.task_id
+ JOIN pf.workspace w ON w.space_id=i.space_id AND w.id=i.workspace_id AND w.actor_id=i.actor_id
+ LEFT JOIN pf.workspace_environment e ON e.space_id=w.space_id AND e.workspace_id=w.id
+ WHERE i.space_id=selected_space AND i.task_id=selected_task AND i.operation_id=selected_operation AND i.actor_id=actor
+ AND w.state='READY' AND w.content_revision=i.content_revision
+ AND p.version=i.permission_version AND p.policy_version=i.policy_version
+ AND NOT t.cancel_requested AND NOT t.plan_mode AND t.status IN('QUEUED','RUNNING','WAITING_INPUT')
+ AND (NOT EXISTS(SELECT 1 FROM pf.task_plan tp WHERE tp.space_id=i.space_id AND tp.task_id=i.task_id)
+   OR EXISTS(SELECT 1 FROM pf.task_plan tp JOIN pf.plan_revision pr ON pr.plan_id=tp.id AND pr.revision=tp.current_revision
+     JOIN pf.plan_execution_acceptance pa ON pa.space_id=tp.space_id AND pa.task_id=tp.task_id AND pa.revision_id=pr.id
+     WHERE tp.space_id=i.space_id AND tp.task_id=i.task_id AND tp.status='APPROVED'))
+ AND (i.tool_name<>'workspace_shell' OR coalesce(e.version,0)=i.expected_environment_version
+   OR EXISTS(SELECT 1 FROM pf.workspace_tool_job_binding jb
+     JOIN pf.workspace_environment_operation op ON op.space_id=jb.space_id AND op.workspace_id=jb.workspace_id
+       AND op.environment_id=jb.environment_id AND op.id=jb.activation_operation_id
+     WHERE jb.operation_id=i.operation_id AND jb.space_id=i.space_id AND jb.task_id=i.task_id
+       AND e.id=jb.environment_id AND e.operation_id=op.id AND e.image_id=i.expected_image_id AND e.policy_hash=i.expected_policy_hash));
+ RETURN result;
+END $$;
+REVOKE ALL ON FUNCTION pf.current_tool_resource_hash(uuid,uuid,uuid,uuid) FROM PUBLIC;
+
+-- The original tool owner admits the upload in the same transaction as RUNNING.
+-- This is a link and immutable admission outcome, never another file job status.
+CREATE TABLE pf.workspace_tool_file_admission (
+ operation_id uuid PRIMARY KEY, space_id uuid NOT NULL, task_id uuid NOT NULL, workspace_id uuid NOT NULL,
+ attempt_id uuid NOT NULL, owner_id uuid NOT NULL, generation bigint NOT NULL CHECK(generation>0), fence bigint NOT NULL CHECK(fence>0),
+ upload_id uuid UNIQUE REFERENCES pf.upload_session(id), failure_code text CHECK(failure_code ~ '^[A-Z][A-Z0-9_]{1,95}$'),
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ FOREIGN KEY(space_id,task_id,workspace_id,operation_id) REFERENCES pf.workspace_tool_intent(space_id,task_id,workspace_id,operation_id),
+ FOREIGN KEY(space_id,task_id,attempt_id) REFERENCES pf.attempt(space_id,task_id,id),
+ CHECK(num_nonnulls(upload_id,failure_code)=1)
+);
+CREATE TRIGGER workspace_tool_file_admission_immutable BEFORE UPDATE OR DELETE ON pf.workspace_tool_file_admission
+ FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
+REVOKE ALL ON pf.workspace_tool_file_admission FROM PUBLIC;
+
+-- Runner gets only this predicate, never SELECT on chat/credentials/checkpoints.
+-- The locked form precedes sandbox/workspace/file locks. Stop observations do not
+-- require an active parent: revoked owners must still be able to prove a stop.
+CREATE FUNCTION pf.file_tool_parent_allowed(selected_upload uuid,selected_operation uuid,take_locks boolean)
+ RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
+DECLARE admission pf.workspace_tool_file_admission; intent pf.workspace_tool_intent; parent pf.task;
+BEGIN
+ SELECT a.* INTO admission FROM pf.workspace_tool_file_admission a
+ WHERE a.upload_id=selected_upload OR EXISTS(SELECT 1 FROM pf.workspace_tool_job_binding b
+   WHERE b.operation_id=a.operation_id AND b.file_operation_id=selected_operation);
+ IF NOT FOUND THEN RETURN true; END IF; -- historical/public file jobs keep their own guards
+ SELECT * INTO intent FROM pf.workspace_tool_intent WHERE operation_id=admission.operation_id;
+ SELECT * INTO parent FROM pf.task WHERE space_id=admission.space_id AND id=admission.task_id;
+ IF take_locks THEN
+  PERFORM 1 FROM pf.quota_principal WHERE user_id=intent.actor_id FOR UPDATE;
+  PERFORM 1 FROM pf.space_storage WHERE space_id=admission.space_id FOR UPDATE;
+  PERFORM 1 FROM pf.execution_slot WHERE id=1 FOR UPDATE;
+  PERFORM 1 FROM pf.conversation WHERE space_id=parent.space_id AND id=parent.conversation_id FOR UPDATE;
+  PERFORM 1 FROM pf.task WHERE space_id=parent.space_id AND id=parent.id FOR UPDATE;
+  PERFORM 1 FROM pf.execution_dispatch WHERE task_id=parent.id FOR UPDATE;
+  PERFORM 1 FROM pf.attempt WHERE id=admission.attempt_id FOR UPDATE;
+  PERFORM 1 FROM pf.conversation_lease WHERE space_id=parent.space_id AND conversation_id=parent.conversation_id FOR UPDATE;
+ END IF;
+ RETURN pf.authorize_workspace_actor(intent.actor_id,admission.space_id)
+ AND EXISTS(SELECT 1 FROM pf.workspace w WHERE w.space_id=admission.space_id AND w.id=admission.workspace_id
+   AND w.actor_id=intent.actor_id AND w.state='READY')
+ AND EXISTS(SELECT 1 FROM pf.task t JOIN pf.task_permission p ON p.space_id=t.space_id AND p.task_id=t.id
+   JOIN pf.chat_config_snapshot cfg ON cfg.space_id=t.space_id AND cfg.id=t.config_snapshot_id
+   JOIN pf.model_definition m ON m.id=cfg.model_id AND m.status='ACTIVE'
+   WHERE t.space_id=admission.space_id AND t.id=admission.task_id AND t.creator_id=intent.actor_id
+   AND t.status='RUNNING' AND NOT t.cancel_requested AND NOT t.plan_mode
+   AND p.version=intent.permission_version AND p.policy_version=intent.policy_version
+   AND pf.authorize_chat_credential(cfg.credential_id,cfg.credential_revision,t.space_id,t.creator_id))
+ AND (NOT EXISTS(SELECT 1 FROM pf.task_plan tp WHERE tp.space_id=admission.space_id AND tp.task_id=admission.task_id)
+   OR EXISTS(SELECT 1 FROM pf.task_plan tp JOIN pf.plan_revision pr ON pr.plan_id=tp.id AND pr.revision=tp.current_revision
+     JOIN pf.plan_execution_acceptance pa ON pa.space_id=tp.space_id AND pa.task_id=tp.task_id AND pa.revision_id=pr.id
+     WHERE tp.space_id=admission.space_id AND tp.task_id=admission.task_id AND tp.status='APPROVED'))
+ AND EXISTS(SELECT 1 FROM pf.execution_slot s WHERE s.id=1 AND s.task_id=admission.task_id
+   AND s.owner_id=admission.owner_id AND s.fencing_token=admission.fence AND s.lease_until>clock_timestamp())
+ AND EXISTS(SELECT 1 FROM pf.execution_dispatch d JOIN pf.attempt a ON a.task_id=d.task_id
+   JOIN pf.conversation_lease v ON v.attempt_id=a.id
+   WHERE d.task_id=admission.task_id AND d.generation=admission.generation AND d.status='CLAIMED'
+   AND d.lease_owner=admission.owner_id AND d.fencing_token=admission.fence AND d.lease_until>clock_timestamp()
+   AND a.id=admission.attempt_id AND a.space_id=admission.space_id AND a.owner_id=admission.owner_id
+   AND a.fencing_token=admission.fence AND a.dispatch_generation=admission.generation AND a.status='RUNNING'
+   AND v.task_id=admission.task_id AND v.owner_id=admission.owner_id AND v.fencing_token=admission.fence
+   AND v.generation=admission.generation AND v.lease_until>clock_timestamp())
+ AND EXISTS(SELECT 1 FROM pf.tool_operation o WHERE o.id=admission.operation_id AND o.space_id=admission.space_id
+   AND o.task_id=admission.task_id AND o.status='RUNNING');
+END $$;
+REVOKE ALL ON FUNCTION pf.file_tool_parent_allowed(uuid,uuid,boolean) FROM PUBLIC;
