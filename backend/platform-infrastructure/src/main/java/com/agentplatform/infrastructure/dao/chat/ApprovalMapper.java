@@ -10,6 +10,7 @@ import org.apache.ibatis.annotations.*;
 public interface ApprovalMapper {
     OperationRow operation(@Param("lease") Lease lease, @Param("call") String call);
     OperationRow original(@Param("space") UUID space, @Param("task") UUID task, @Param("id") UUID id);
+    OperationRow metadata(@Param("space") UUID space, @Param("task") UUID task, @Param("id") UUID id);
     BindingRow binding(@Param("space") UUID space, @Param("task") UUID task, @Param("call") String call);
     BindingRow interaction(@Param("id") UUID id);
     String resource(@Param("p") PermissionRow permission);

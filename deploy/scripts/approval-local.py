@@ -1,7 +1,7 @@
 from pathlib import Path
 import json,os,re,secrets,subprocess,sys,time,uuid,socket,argparse
 ROOT=Path.cwd();DATA=ROOT/'.cache/r43-local';PRIVATE=DATA/'fixture'
-parser=argparse.ArgumentParser(description='Operate only the isolated R4.3 local fixture; never production.');parser.add_argument('action',choices=['prepare','migrate','grant','seed','metadata','start','status','stop']);MODE=parser.parse_args().action;STAMP=str(time.time_ns());LOG=DATA/('app-'+MODE+'-'+STAMP);LOG.mkdir()
+parser=argparse.ArgumentParser(description='Operate only the isolated R4.3 local fixture; never production.');parser.add_argument('action',choices=['prepare','migrate','grant','seed','metadata','start','status','pause','stop']);MODE=parser.parse_args().action;STAMP=str(time.time_ns());LOG=DATA/('app-'+MODE+'-'+STAMP);LOG.mkdir()
 record=json.loads((DATA/'images.json').read_text());images=record['images']
 ENV=dict(os.environ,R43_ROOT=PRIVATE.as_posix(),R43_API_IMAGE=images['api']['tag'],R43_GATEWAY_IMAGE=images['gateway']['tag'],R43_FIXTURE_IMAGE=images['provider-fixture']['tag'])
 COMPOSE=['docker','compose','-p','agentplatform-r43-local','-f',str(ROOT/'deploy/compose.approval-local.yaml')]
@@ -77,10 +77,10 @@ elif MODE=='start':
     assert caps<=2887*1024**2,'R43 resource admission failed'
     output=call(COMPOSE+['--profile','fixture','up','-d','--no-build','--wait','--wait-timeout','150','api','worker','fixture','gateway']);(LOG/'start.log').write_text(output)
     print('R43_HTTP_GATEWAY_READY_127_0_0_1_18103')
-elif MODE=='stop':
+elif MODE in ['pause','stop']:
     call(COMPOSE+['--profile','fixture','stop','gateway','api','worker','fixture'])
-    call(['docker','compose','-f',str(PRIVATE/'compose.yaml'),'-f',str(PRIVATE/'mq.compose.yaml'),'stop','postgres','rabbitmq'])
-    print('R43_ALL_ACCEPTANCE_SERVICES_STOPPED_VOLUMES_PRESERVED')
+    if MODE=='stop':call(['docker','compose','-f',str(PRIVATE/'compose.yaml'),'-f',str(PRIVATE/'mq.compose.yaml'),'stop','postgres','rabbitmq'])
+    print('R43_ALL_ACCEPTANCE_SERVICES_STOPPED_VOLUMES_PRESERVED' if MODE=='stop' else 'R43_APPLICATION_PAUSED_DEPENDENCIES_RETAINED')
 elif MODE=='status':
     print(call(['docker','ps','-a','--filter','label=com.docker.compose.project=agentplatform-r43-local','--format','{{.Names}} {{.Status}}']))
 else:raise SystemExit('Unsupported local fixture action')

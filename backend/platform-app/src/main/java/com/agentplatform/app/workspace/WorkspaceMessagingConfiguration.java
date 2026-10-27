@@ -40,7 +40,8 @@ public class WorkspaceMessagingConfiguration {
     @Bean @Profile("workspace-worker") WorkspaceExecution workspaceExecution(WorkspaceRepository repository,RunnerControlPort runner,@org.springframework.beans.factory.annotation.Qualifier("workspaceTimers") ThreadPoolTaskScheduler workspaceTimers) {
         return new WorkspaceExecution(repository,runner,workspaceTimers.getScheduledExecutor());
     }
-    @Bean SmartLifecycle workspaceLifecycle(WorkspaceRepository repository,SpringWorkspaceMessaging messaging,
+    @Bean @ConditionalOnProperty(name="platform.workspace.lifecycle-enabled",havingValue="true",matchIfMissing=true)
+    SmartLifecycle workspaceLifecycle(WorkspaceRepository repository,SpringWorkspaceMessaging messaging,
             @org.springframework.beans.factory.annotation.Qualifier("workspaceTimers") ThreadPoolTaskScheduler workspaceTimers,Environment environment,org.springframework.beans.factory.ObjectProvider<WorkspaceExecution> execution,WorkspaceFixtureBarrier barrier) {
         return new SmartLifecycle() {
             private boolean running;

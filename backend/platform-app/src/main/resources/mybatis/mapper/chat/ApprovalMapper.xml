@@ -10,6 +10,10 @@
   <select id="original" resultType="com.agentplatform.infrastructure.dao.po.ApprovalRows$OperationRow">
     SELECT <include refid="operationColumns"/> FROM pf.tool_operation o WHERE o.space_id=#{space} AND o.task_id=#{task} AND o.id=#{id}
   </select>
+  <select id="metadata" resultType="com.agentplatform.infrastructure.dao.po.ApprovalRows$OperationRow">
+    SELECT id,space_id,task_id,call_id,NULL::text call_json,call_hash,status,NULL::text result_json,NULL::text result_hash
+    FROM pf.tool_operation WHERE space_id=#{space} AND task_id=#{task} AND id=#{id}
+  </select>
   <sql id="bindingColumns">a.interaction_id,a.space_id,a.task_id,a.actor_id,a.source_attempt_id,a.operation_id,a.call_id,a.call_hash,a.fingerprint,a.workspace_id,a.resource_hash,a.permission_version,a.policy_version,a.summary,a.reason_code,i.expires_at,i.status interaction_status</sql>
   <select id="binding" resultType="com.agentplatform.infrastructure.dao.po.ApprovalRows$BindingRow">
     SELECT <include refid="bindingColumns"/> FROM pf.tool_approval_binding a JOIN pf.task_interaction i ON i.id=a.interaction_id

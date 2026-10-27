@@ -70,7 +70,7 @@ final class ApprovalPersistence extends ChatPersistenceSupport implements Approv
         var p=permission(c,lease.spaceId(),lease.taskId());String resource=resourceHash(c,p);
         if(resource==null)throw new ChatFailure(409,"APPROVAL_TARGET_UNAVAILABLE");
         UUID interaction=Uuid7.next();
-        c.plan().insertInteraction(interaction,lease.spaceId(),lease.taskId(),lease.attemptId(),call.id(),"TOOL_APPROVAL",false,"{}",null,null);
+        c.plan().insertInteraction(interaction,lease.spaceId(),lease.taskId(),lease.attemptId(),call.id(),"TOOL_APPROVAL",false,json(Map.of("toolName",call.name())),null,null);
         c.approvals().bind(interaction,lease,operation,p,resource,fingerprint(c,p,call),"Run one protected deterministic acceptance operation.","MANDATORY_ASK");
         var row=c.plan().interaction(lease.spaceId(),lease.taskId(),interaction);
         event(c,new Actor(lease.userId(),lease.spaceId()),lease.conversationId(),lease.taskId(),"interaction.opened",row.version(),
@@ -81,10 +81,12 @@ final class ApprovalPersistence extends ChatPersistenceSupport implements Approv
     ToolApprovalPayload projection(InteractionRow interaction) {
         var b=mappers.approvals().interaction(interaction.id());
         if(b==null)throw new ChatFailure(409,"APPROVAL_BINDING_MISSING");
-        var o=mappers.approvals().original(b.spaceId(),b.taskId(),b.operationId());
+        var o=mappers.approvals().metadata(b.spaceId(),b.taskId(),b.operationId());
         if(o==null)throw new ChatFailure(409,"APPROVAL_OPERATION_MISMATCH");
         boolean changed=stale(mappers,b)||!"PREPARED".equals(o.status());
-        return new ToolApprovalPayload(b.operationId(),original(o).name(),b.summary(),b.reasonCode(),b.workspaceId(),null,
+        Object toolName=object(interaction.payloadJson()).get("toolName");
+        String safeToolName=toolName instanceof String name&&!name.isBlank()?name:"Protected operation";
+        return new ToolApprovalPayload(b.operationId(),safeToolName,b.summary(),b.reasonCode(),b.workspaceId(),null,
                 b.workspaceId()==null?null:b.resourceHash(),b.callHash(),changed,
                 changed?List.of(PlanInteractionData.Decision.DENY):List.of(PlanInteractionData.Decision.ALLOW_ONCE,PlanInteractionData.Decision.DENY),b.permissionVersion(),b.policyVersion());
     }
@@ -93,7 +95,7 @@ final class ApprovalPersistence extends ChatPersistenceSupport implements Approv
                 ||!answer.text().isEmpty()||!answer.optionIds().isEmpty())throw new ChatFailure(422,"INTERACTION_ANSWER_INVALID");
         var b=mappers.approvals().interaction(interaction.id());
         if(b==null||!b.sourceAttemptId().equals(interaction.sourceAttemptId())||!b.callId().equals(interaction.callId()))throw new ChatFailure(409,"APPROVAL_BINDING_MISMATCH");
-        var operation=mappers.approvals().original(b.spaceId(),b.taskId(),b.operationId());
+        var operation=mappers.approvals().metadata(b.spaceId(),b.taskId(),b.operationId());
         if(operation==null||!operation.callHash().equals(b.callHash())||!"PREPARED".equals(operation.status()))throw new ChatFailure(409,"APPROVAL_OPERATION_NOT_PREPARED");
         if(answer.decision()==PlanInteractionData.Decision.ALLOW_ONCE&&stale(mappers,b))throw new ChatFailure(412,"APPROVAL_STALE");
     }
