@@ -1,0 +1,173 @@
+{
+  "stage": "R4.3",
+  "status": "ACCEPTANCE_PASS_PENDING_PROTECTED_PROMOTION",
+  "verified": false,
+  "released": false,
+  "baselineMain": "b9b89638d444dc6f19f111c1d48e1722feea0c3b",
+  "runtimeSource": "1d84f4ed93b11ef2fad40edfd91838d44e3063eb",
+  "testAndOpsSource": "1d84f4ed93b11ef2fad40edfd91838d44e3063eb",
+  "productionTreeUnchangedSinceRuntime": true,
+  "runtimeBaseline": "schema1",
+  "migration": "V17",
+  "migrationSha256": "675b5e9e9a0302c7ba8986f9714d992bbcc2b57346f24c95f0f03a3a8881d035",
+  "images": {
+    "api": {
+      "tag": "agentplatform-api:r43-1d84f4ed93b1",
+      "configId": "sha256:51ca2e207bc1f6b46597d5eb394ccdc393e68e61e58fc5ee97ff05aae17dcd8f",
+      "source": "1d84f4ed93b11ef2fad40edfd91838d44e3063eb",
+      "architecture": "linux/amd64"
+    },
+    "gateway": {
+      "tag": "agentplatform-gateway:r43-1d84f4ed93b1",
+      "configId": "sha256:074726b4cf4024011e8d95d2e579fed0f47955fd7dd7a094b90aef2298520be4",
+      "source": "1d84f4ed93b11ef2fad40edfd91838d44e3063eb",
+      "architecture": "linux/amd64"
+    },
+    "provider-fixture": {
+      "tag": "agentplatform-provider-fixture:r43-1d84f4ed93b1",
+      "configId": "sha256:506cfe6bb9762d4f6365e86c766bfe00f99b6c124ebe613543f0fa882c1335f4",
+      "source": "1d84f4ed93b11ef2fad40edfd91838d44e3063eb",
+      "architecture": "linux/amd64"
+    }
+  },
+  "jarSha256": "2914617ddca9d94a99ee62fab9050f7038db867f8e0b9ba14de036393bc929e0",
+  "gates": {
+    "mavenAndRealDependencies": {
+      "status": "PASS",
+      "source": "1d84f4ed93b11ef2fad40edfd91838d44e3063eb",
+      "workingTreeClean": true,
+      "exitCode": 0,
+      "logSha256": "b3e211a9c3bed1a28b49006e005c67f84891be1fc280962f58730bc1ce83a672",
+      "realPgMqUniqueBaseCases": 35,
+      "actualJvmAnswerCrashWindows": 3,
+      "inheritedCaseRerunNotExtraUniqueCoverage": true
+    },
+    "sdk": {
+      "status": "PASS",
+      "compatibilityTests": 46,
+      "exactExperimentTests": 5,
+      "compatibilityLogSha256": "812ef281fb7fbebaa6dab78e8b9bb79819e941876bc94aa8195d2907c942e820",
+      "experimentLogSha256": "ccc895d87905a1879b82cea550c7008460b0c0ec04df70c266791362275a9355"
+    },
+    "frontendAndContracts": {
+      "status": "PASS",
+      "source": "9c23acf167989cca0cf7d49c7f9c3e4b7bb57885",
+      "vueTests": 46,
+      "commands": [
+        {
+          "name": "typecheck",
+          "exitCode": 0,
+          "seconds": 9.27,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "vue",
+          "exitCode": 0,
+          "seconds": 2.74,
+          "sha256": "ba2fd69e72304683dd60eaf95ca80a8a42614445ecd34d4235217b692cf3ea2e"
+        },
+        {
+          "name": "contracts",
+          "exitCode": 0,
+          "seconds": 2.78,
+          "sha256": "347d966427f256ee3b642071bed0945d1eb5b7887bdec278ae5300c42e81c80e"
+        },
+        {
+          "name": "contract-fixtures",
+          "exitCode": 0,
+          "seconds": 2.04,
+          "sha256": "347d966427f256ee3b642071bed0945d1eb5b7887bdec278ae5300c42e81c80e"
+        },
+        {
+          "name": "frontend-build",
+          "exitCode": 0,
+          "seconds": 9.7,
+          "sha256": "86b801f2731b1588ba13242809a5dfa3e6d470449bb402b1fc0116120ee8a882"
+        },
+        {
+          "name": "links",
+          "exitCode": 0,
+          "seconds": 3.26,
+          "sha256": "004b811f8a6c3df9ecf3d0a8b24cbaa053e400e08f305b9b032b1e5c334cb7c2"
+        },
+        {
+          "name": "openspec",
+          "exitCode": 0,
+          "seconds": 2.15,
+          "sha256": "74b478747c76a1bcc9f3e371e1bf6f93d9909a07d7e34861e03e52c77c5e08dc"
+        }
+      ],
+      "frontendTreeUnchanged": true
+    },
+    "browser": {
+      "status": "PASS",
+      "source": "1d84f4ed93b11ef2fad40edfd91838d44e3063eb",
+      "runtimeSource": "1d84f4ed93b11ef2fad40edfd91838d44e3063eb",
+      "cases": 5,
+      "reportSha256": "133568e7ca50631b1f12419df49a733a9a4f93c7f86bec39e1a6f86666f2960c",
+      "stats": {
+        "startTime": "2026-10-27T00:57:02.593Z",
+        "duration": 58349.981999999996,
+        "expected": 5,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    },
+    "leastPrivilege": {
+      "status": "PASS",
+      "metadataColumnsReadable": true,
+      "apiPrivateCallAndResultReadable": false,
+      "apiExecutionBindingsReadable": false,
+      "apiPrivateCheckpointReadable": false,
+      "apiTargetLockExecutable": false,
+      "workerTargetLockExecutable": true,
+      "fixtureWorkspaceBackgroundDisabled": true,
+      "source": "1d84f4ed93b11ef2fad40edfd91838d44e3063eb"
+    },
+    "resources": {
+      "status": "PASS",
+      "receiptSha256": "c332539e9b9981663346f31d82e423acf8c8df9f800940bd54ec758282af2c84",
+      "containerLimitMiB": 2080,
+      "supplierCalls": 0,
+      "physicalMinimumHostVerified": false,
+      "sandboxStarted": false,
+      "observation30min": "NOT_REQUIRED_BY_APPROVED_R43_PLAN"
+    }
+  },
+  "historicalFailures": [
+    {
+      "receipt": ".cache/r43-local/postgres-tests-1793060310569563500/result.json",
+      "sha256": "85280fa9e7712a196cdc794dc3b586617a65fd8f5b95f77f2d1fe822b94f7bb2",
+      "status": "FAIL_HISTORICAL"
+    },
+    {
+      "receipt": ".cache/r43-local/postgres-tests-1793060435529387700/result.json",
+      "sha256": "4acf08a19243e70968fa1c20800466b1d4f0578d095171910a1a93b9c675e106",
+      "status": "FAIL_HISTORICAL"
+    },
+    {
+      "receipt": ".cache/r43-local/browser-1793061569319585200/result.json",
+      "sha256": "a4909f29d9cdf1735dc9fc93ddf860ea0de9930337b529b749fe9db8db9a13e9",
+      "status": "FAIL_HISTORICAL"
+    }
+  ],
+  "notRun": {
+    "realSupplier": "REQUIRED_ZERO_CALLS",
+    "cloudDeployment": "NOT_IN_SCOPE_CLOUD_R3_UNCHANGED",
+    "productionBusinessTools": "CLOSED",
+    "physicalXfsGvisor": "NOT_RUN_UNCHANGED_R3_BOUNDARIES",
+    "newThirtyMinuteObservation": "NOT_REQUIRED"
+  },
+  "evidenceReceipts": {
+    "maven": ".cache\\r43-local\\postgres-tests-1793062085625106300\\result.json",
+    "browser": ".cache\\r43-local\\browser-1793062620884388000\\result.json",
+    "engineering": ".cache\\r43-local\\engineering-1793060743277193500\\result.json",
+    "resource": ".cache\\r43-local\\resources-1793062647300114400.json"
+  },
+  "delivery": {
+    "bodyRemoteSync": false,
+    "protectedCopiesRequired": 2,
+    "minimumRetentionDays": 30
+  }
+}
