@@ -1,0 +1,562 @@
+{
+  "releaseStatus": "RELEASED",
+  "stage": "R4.4",
+  "R4": "4/4 VERIFIED, RELEASED",
+  "productionTag": "production-r4-57e1d081e2bb",
+  "releaseAcceptedMain": "57e1d081e2bb30418c8b8fba8773d976d5abc570",
+  "applicationSource": "b676b5f933dd6375fcef72628776f0007b8ec3db",
+  "frontendSource": "115f865a8434b98638a33f72c23c39092b43be8a",
+  "configurationSource": "77535b6375b9b69441c77f318b8caa79e79525ef",
+  "recordedAtUtc": "2026-10-28T23:14:20.884948+00:00",
+  "immutableArtifacts": {
+    "gateway": {
+      "source": "115f865a8434b98638a33f72c23c39092b43be8a",
+      "platform": "linux/amd64",
+      "indexDigest": "sha256:b3e6a2bbc07a38cd97cecec3241bd979197229a6eb7d3a2aa99c82223b04536a",
+      "manifestDigest": "sha256:33a38c1feb8ffa8f8f7cb18f4ae8c36e3405ad6a99cbb4b48743498d480bb46f",
+      "configId": "sha256:05d2b8f62f116471a3b0ebb9f59865f5c43c30e2d32157fa6837b9e47a803d8f",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/05d2b8f62f116471a3b0ebb9f59865f5c43c30e2d32157fa6837b9e47a803d8f",
+          "RepoTags": [
+            "agentplatform-gateway:r44-115f865a8434"
+          ],
+          "Layers": [
+            "blobs/sha256/e2de96513ba9eb53b431787ec8a65cdde380ac4772a3e4c4b714dcfde2a102b5",
+            "blobs/sha256/655cdf110ce6cc8b81dc0bf0d471a4fb200eac950a7a108ed5335b91ed3ef07b",
+            "blobs/sha256/cb3dcaeaef3012c03cc5ba44f04289e06247ee28b0396073f0c1aa4667e08cd6",
+            "blobs/sha256/c792e3f2c3b45eb2b0ab9ca191eb1c881394ef80dc9b03a728d4241709cfd309",
+            "blobs/sha256/dfd17a001b4375f4b03069aa2c6c03e965543d91589d9f7399dae7c3798037bd",
+            "blobs/sha256/69146b4a52cfd86bdd87919b33fc3c6afd168c7911c27d3805d48212887b2e4f",
+            "blobs/sha256/1f9e9a0fcad78d32ce75d315476a02e8c85818e0db3191e375796df6d1594dda",
+            "blobs/sha256/db0e3cd9a4f71fb319f83c2b8da0c7ba756419e6d8a8671e117dcba315656b39",
+            "blobs/sha256/ab0d6d0b8f06a2555ffb7e2777729ed4c2c656d62a2869414c9df71b527c4b41",
+            "blobs/sha256/94f932578196432faa0132e1ba0523393c5670f0caa3654e24f6944c1b1d3577",
+            "blobs/sha256/297ac21793452ec26c3e5bb8cfccbf475a2c2d1ae46b276769bddcd10cdcbd8c"
+          ]
+        }
+      ]
+    },
+    "file-helper": {
+      "source": "b3d1a36bfc072dd455be282973e2b36f8f6e22d9",
+      "platform": "linux/amd64",
+      "indexDigest": "sha256:3fcc92d4263d8874995ef0ceadc505691d7952f54c50f3494e8b4c50c35108bf",
+      "manifestDigest": "sha256:a900b052a7fdf1ba8c73c22ce1b9fa93af7116a56140d8b899450794912c07fe",
+      "configId": "sha256:5bb3aba335f2b11f40be2f05dbcce9044f995d6696e47734390a82c3911c9680",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/5bb3aba335f2b11f40be2f05dbcce9044f995d6696e47734390a82c3911c9680",
+          "RepoTags": [
+            "agentplatform-file-helper:r44-b3d1a36bfc07"
+          ],
+          "Layers": [
+            "blobs/sha256/ecc510c1e359bdc007b39802570bb7e4dec7d6ebccf357c3201a74299113e05e",
+            "blobs/sha256/75b6a36c64a1cf3520fc4b4aae4739d5caa8a6a05c27835a920a61784c9c32f8",
+            "blobs/sha256/6912e23eb44595b44dc6d9882b34f305ad6f6e9667cec70b13e5dbc4f8cd97f4",
+            "blobs/sha256/bbc5a12237474ec0b23b5051260d56d6436a24d70d9cad961adebe7a037ed813",
+            "blobs/sha256/eb84d8ec33a3ee38efe4de9effc0ba184bcf4de1a55f1faab6c403f4fd42c2c0",
+            "blobs/sha256/f92ff6b749365c06eb9aaa5d3347a551774efeaedaeefcf2bd01c7e68e742356",
+            "blobs/sha256/4b15a00103db5e4eb060dfea5043f770461963dcc1fc2a74487dfc0ed4b1229b",
+            "blobs/sha256/deaa44815117525d1bfc309cf6c0bb071fc371d53f975c67e8c3999502639d6a",
+            "blobs/sha256/36c2c596255ef07cfe0e1da4e41b61a8019f335b89e2b837b16ef8c8c2780226",
+            "blobs/sha256/452c27b64c0cbdd5dfba89bc29b9ed04cb679d6d979f37f51778c287128402c3"
+          ]
+        }
+      ]
+    },
+    "provider-fixture": {
+      "source": "b3d1a36bfc072dd455be282973e2b36f8f6e22d9",
+      "platform": "linux/amd64",
+      "indexDigest": "sha256:4ff9c018e132bf4eac760043721533de7e2454eda8c5132ad955038dda1c625e",
+      "manifestDigest": "sha256:c7902ab4dd4b72bd193f05786a3dc8ec548fd8fee3bdc26c352a24d633ae8e6d",
+      "configId": "sha256:dcec4c8e84e978bda58eb4d979c64c4790dc7b21ccb7b11006da93c7499872d2",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/dcec4c8e84e978bda58eb4d979c64c4790dc7b21ccb7b11006da93c7499872d2",
+          "RepoTags": [
+            "agentplatform-provider-fixture:r44-b3d1a36bfc07"
+          ],
+          "Layers": [
+            "blobs/sha256/ecc510c1e359bdc007b39802570bb7e4dec7d6ebccf357c3201a74299113e05e",
+            "blobs/sha256/75b6a36c64a1cf3520fc4b4aae4739d5caa8a6a05c27835a920a61784c9c32f8",
+            "blobs/sha256/6912e23eb44595b44dc6d9882b34f305ad6f6e9667cec70b13e5dbc4f8cd97f4",
+            "blobs/sha256/bbc5a12237474ec0b23b5051260d56d6436a24d70d9cad961adebe7a037ed813",
+            "blobs/sha256/3fc7e024d781c920a7ebc9fd125e5b035753f5df78cefbb0b1552c2e4044a6b6"
+          ]
+        }
+      ]
+    },
+    "api": {
+      "source": "b676b5f933dd6375fcef72628776f0007b8ec3db",
+      "platform": "linux/amd64",
+      "indexDigest": "sha256:9ea2e1673169ec179d06394705747c52650d7b4417f0ac44925394fc2a815d70",
+      "manifestDigest": "sha256:fbdec902b06979c5f6eedb1ba89fb368d79d6446a4b7daacd521f79478af3d95",
+      "configId": "sha256:68b218b04bdb995fbc610157b02fc89f7c6e7443369fdcbf68f26c43e0709dee",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/68b218b04bdb995fbc610157b02fc89f7c6e7443369fdcbf68f26c43e0709dee",
+          "RepoTags": [
+            "agentplatform-api:r44-b676b5f933dd"
+          ],
+          "Layers": [
+            "blobs/sha256/a60ef8ec184edb5ed91f5983f00261359fb2fe20f603e8d488b9477d32fcad70",
+            "blobs/sha256/49b14164d4d96e593cb68db980906b691931cdcde6f60b918280317c89e55462",
+            "blobs/sha256/7c48d168a51b541814c6814256cd298e11114f5f088e4511cffb4f6b3622d1b6",
+            "blobs/sha256/5165dac19553999758e23bf9247e5bac05f0d26ee503d13bf70c1e8873eb8d37",
+            "blobs/sha256/02e0e048361058af7411fe47569c4d90b68a917dba037514c3831b7bf7029c7b",
+            "blobs/sha256/acc93b257e6f2400f5e3fdf64cb0c7955e37069bb80a6235b95c9484a9ec0643",
+            "blobs/sha256/09b2350ca72e0dab5680d7ce2b8449ca6683ac99b0e26e76a18a72907db54593",
+            "blobs/sha256/de00cd92a546655f8d71edb1772809b3bb98b82b305e96cde14844d9c24d3781"
+          ]
+        }
+      ]
+    }
+  },
+  "archiveSha256": "8a4fc70ff1362632aa4cf9d0984d2e39ea1463d46547981448bb748d1f171403",
+  "migration": 18,
+  "runtimeBaseline": 1,
+  "resourceBudgetMiB": 2880,
+  "hostReserveMiB": 768,
+  "rootReserveGiB": 5,
+  "sampledResources": {
+    "samples": 361,
+    "minMemAvailableMiB": 1347,
+    "minRootFreeGiB": 10.654,
+    "sampledMaxContainerLimitsAndRuntimeMiB": 2816,
+    "swapUsedFirstBytes": 202448896,
+    "swapUsedLastBytes": 203124736,
+    "activeRunscSamples": 3,
+    "samplesAreNotAbsolutePeaks": true
+  },
+  "runtimeServices": [
+    {
+      "id": "794c947fc9977f3873fa443fea2320ef3ab028a8a61a0042a3298026a1aefec0",
+      "name": "agentplatform-r4-app-worker-1",
+      "image": "sha256:68b218b04bdb995fbc610157b02fc89f7c6e7443369fdcbf68f26c43e0709dee",
+      "running": true,
+      "restart": {
+        "Name": "no",
+        "MaximumRetryCount": 0
+      },
+      "project": "agentplatform-r4-app",
+      "service": "worker",
+      "limits": {
+        "Memory": 352321536,
+        "MemorySwap": 352321536,
+        "PidsLimit": 128
+      }
+    },
+    {
+      "id": "60737a28879f142f67d2e76f93345ca19933dd7d7e3f85e944af71040601356d",
+      "name": "agentplatform-r4-app-api-1",
+      "image": "sha256:68b218b04bdb995fbc610157b02fc89f7c6e7443369fdcbf68f26c43e0709dee",
+      "running": true,
+      "restart": {
+        "Name": "no",
+        "MaximumRetryCount": 0
+      },
+      "project": "agentplatform-r4-app",
+      "service": "api",
+      "limits": {
+        "Memory": 503316480,
+        "MemorySwap": 503316480,
+        "PidsLimit": 128
+      }
+    },
+    {
+      "id": "e82228023b397e5a568ed6f896f14f88bd2431d8029979f41bec2668c589a9db",
+      "name": "agentplatform-r4-app-runner-1",
+      "image": "sha256:68b218b04bdb995fbc610157b02fc89f7c6e7443369fdcbf68f26c43e0709dee",
+      "running": true,
+      "restart": {
+        "Name": "no",
+        "MaximumRetryCount": 0
+      },
+      "project": "agentplatform-r4-app",
+      "service": "runner",
+      "limits": {
+        "Memory": 352321536,
+        "MemorySwap": 352321536,
+        "PidsLimit": 128
+      }
+    },
+    {
+      "id": "f5a86c6845493fa3419a966691c498de2789c0a9b3da0ae201f7346ddbce30da",
+      "name": "agentplatform-r4-app-gateway-1",
+      "image": "sha256:05d2b8f62f116471a3b0ebb9f59865f5c43c30e2d32157fa6837b9e47a803d8f",
+      "running": true,
+      "restart": {
+        "Name": "no",
+        "MaximumRetryCount": 0
+      },
+      "project": "agentplatform-r4-app",
+      "service": "gateway",
+      "limits": {
+        "Memory": 33554432,
+        "MemorySwap": 33554432,
+        "PidsLimit": null
+      }
+    },
+    {
+      "id": "ad06dc9c5ad043ad70dda1446379efa24e08f745da79ee2e0f75b08bc8aa3d45",
+      "name": "agentplatform-env-s3-1",
+      "image": "sha256:7b5ca1f11aa4c91593612d2d4a9e253ec9152a4bd13a19e551290a042a4c52f5",
+      "running": true,
+      "restart": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      },
+      "project": "agentplatform-env",
+      "service": "s3",
+      "limits": {
+        "Memory": 234881024,
+        "MemorySwap": 234881024,
+        "PidsLimit": 128
+      }
+    },
+    {
+      "id": "7407f880d25f40b5e80c9064ba6d85e3df13266f0340d7bb6cdeaea827bb4ff7",
+      "name": "agentplatform-env-filer-1",
+      "image": "sha256:7b5ca1f11aa4c91593612d2d4a9e253ec9152a4bd13a19e551290a042a4c52f5",
+      "running": true,
+      "restart": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      },
+      "project": "agentplatform-env",
+      "service": "filer",
+      "limits": {
+        "Memory": 100663296,
+        "MemorySwap": 100663296,
+        "PidsLimit": 128
+      }
+    },
+    {
+      "id": "90b4aaba1150e9a357fa75206966d2ea1eccf755516f241f03da6b2f96c8c97e",
+      "name": "agentplatform-env-volume-1",
+      "image": "sha256:7b5ca1f11aa4c91593612d2d4a9e253ec9152a4bd13a19e551290a042a4c52f5",
+      "running": true,
+      "restart": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      },
+      "project": "agentplatform-env",
+      "service": "volume",
+      "limits": {
+        "Memory": 100663296,
+        "MemorySwap": 100663296,
+        "PidsLimit": 128
+      }
+    },
+    {
+      "id": "4561fc2dadd1d5a545ca2c15f184d57866dbd2d29acd004838e2bd43c6fa8551",
+      "name": "agentplatform-env-postgres-1",
+      "image": "sha256:514d02824b061f651960912cf3f7a58b3dbebda9755fe5b70579fda90c0ad566",
+      "running": true,
+      "restart": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      },
+      "project": "agentplatform-env",
+      "service": "postgres",
+      "limits": {
+        "Memory": 201326592,
+        "MemorySwap": 201326592,
+        "PidsLimit": 128
+      }
+    },
+    {
+      "id": "f4cfa5ff492330a7c0c50a24a5ac3f943607b810b8b2c1eb792b2a14becf8fd8",
+      "name": "agentplatform-env-rabbitmq-1",
+      "image": "sha256:30fb3e92f938ed166ba72c2bb9fe5b71c80a3b2d75e0f335f81c113eb8cee90e",
+      "running": true,
+      "restart": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      },
+      "project": "agentplatform-env",
+      "service": "rabbitmq",
+      "limits": {
+        "Memory": 268435456,
+        "MemorySwap": 268435456,
+        "PidsLimit": 256
+      }
+    },
+    {
+      "id": "8cf6666ef1b89ead296eac2e818a5fd5814754713d816447ed2ff56707d5eba2",
+      "name": "agentplatform-env-redis-1",
+      "image": "sha256:f84b0c4678011602b9b98c227a4dcd5468bf8b088b02fdd4165cb7758bad8058",
+      "running": true,
+      "restart": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      },
+      "project": "agentplatform-env",
+      "service": "redis",
+      "limits": {
+        "Memory": 16777216,
+        "MemorySwap": 16777216,
+        "PidsLimit": 128
+      }
+    },
+    {
+      "id": "5e0b11055a3b214e2b949e314941ea113171cc847e827e86f07f9770edd3975a",
+      "name": "agentplatform-env-master-1",
+      "image": "sha256:7b5ca1f11aa4c91593612d2d4a9e253ec9152a4bd13a19e551290a042a4c52f5",
+      "running": true,
+      "restart": {
+        "Name": "on-failure",
+        "MaximumRetryCount": 3
+      },
+      "project": "agentplatform-env",
+      "service": "master",
+      "limits": {
+        "Memory": 117440512,
+        "MemorySwap": 117440512,
+        "PidsLimit": 128
+      }
+    }
+  ],
+  "gates": {
+    "start": {
+      "status": "PASS",
+      "sha256": "4df302c227b78196d567aa8ea430cd6eae38e634adb7f5e565a3858b62a75981"
+    },
+    "backup-r3": {
+      "status": "PASS",
+      "sha256": "0c56096a1c764f55612e130dc8e03826579f4b2bc747a8751d726b50c83e5ea6"
+    },
+    "activate": {
+      "status": "PASS",
+      "sha256": "beda8d0d3cbb2b62fe06fbf975d464b578460aebbdf31fc15549ee58eec94375"
+    },
+    "smoke": {
+      "status": "PASS",
+      "sha256": "1b1ec8a4a93f92fb27a32215d30b0cccb7a3af736ae04e40b2cf9eb00d1ef1ed"
+    },
+    "observation": {
+      "status": "PASS",
+      "sha256": "f3131747608b44fd0f1f83aee1514cabf8cd437b4a2e143b550eac6709baa323"
+    },
+    "backup-r4": {
+      "status": "PASS",
+      "sha256": "7b2bdf4423d8f2c15b535e204b10519e9ff49a0f4be4d2d1f833d6dec70c3c34"
+    },
+    "restore": {
+      "status": "PASS",
+      "sha256": "fb171f1d8d820a9431c66695f2da3a84ec77eefabefa13639d2ec80820eafe1d"
+    },
+    "rollback-drill": {
+      "status": "PASS",
+      "sha256": "9906d0fa1617835c7e39f3c8477e00bcbf18a6cc3e98efcefef39e6dbb14473b"
+    },
+    "redeploy": {
+      "status": "PASS",
+      "sha256": "01f71307acd25af7e24669f48c34af1fde53a20634fb7c69ff72ead751ebdb93"
+    },
+    "rollback-browser": {
+      "status": "PASS",
+      "sha256": "a26366ee42dc66489d28aec769e8d33308ead0e4c95bb69f90272e25dad78d08"
+    },
+    "final-smoke": {
+      "status": "PASS",
+      "sha256": "05acf98707ab999371da4024fc16a9af9408f80a6a6a885d4abd36556bf1410e"
+    },
+    "switch-selection": {
+      "status": "PASS",
+      "sha256": "f9624380a5fdcd02173b972c8d43c9442abaf42613cba6100b9e103dce429700"
+    },
+    "continuous-resources": {
+      "status": "PASS",
+      "sha256": "105ea7259b4541c98a2d6db891ecae38038c0249ecb0f13e06233d426e8f1a17"
+    }
+  },
+  "productionObservationSeconds": 1817.7680101394653,
+  "physicalRequestsShared": 19,
+  "historicalNativeUnknownCallsRetained": 2,
+  "productionSmokeUnknownCalls": 0,
+  "priorProductionFailure": {
+    "taskId": "01a18475-bf55-7b5b-a317-9a735c622008",
+    "physicalCalls": 3,
+    "shellEffects": 0,
+    "preservedNotReplayed": true,
+    "correction": "Historical Plan codecs retained across subsequent business approval; provider still excludes Plan write/review after approval"
+  },
+  "evidenceScope": {
+    "nativeFoundationSource": "b3d1a36bfc072dd455be282973e2b36f8f6e22d9",
+    "correctedPgSdkComposition": "PASS",
+    "productionRealPlanRiskShell": "PASS",
+    "productionExtraFullProviderCalls": 0,
+    "fullModeEvidence": "Actual native physical FULL plus corrected local PG/SDK FULL; no redundant production paid FULL rerun",
+    "unchangedComponentsReused": [
+      "gateway",
+      "file-helper",
+      "provider-fixture",
+      "sandbox",
+      "runsc",
+      "quota-helper",
+      "XFS"
+    ]
+  },
+  "production": "R4 running, R3 rollback and legacy business stopped/retained",
+  "cloudSandbox": "DEFERRED",
+  "R5": "NOT_STARTED",
+  "actions": "DISABLED; protected PRs with exact-source local/cloud evidence",
+  "promotion": {
+    "stepPr": 125,
+    "phasePr": 126,
+    "stepHead": "77535b6375b9b69441c77f318b8caa79e79525ef",
+    "phaseMerge": "91cae73cd6d9d7ba9383782219b912249d98d999",
+    "mainMerge": "57e1d081e2bb30418c8b8fba8773d976d5abc570",
+    "status": "R4.4_VERIFIED_R4_NOT_RELEASED",
+    "priorPromotion": {
+      "stepPr": 123,
+      "phasePr": 124,
+      "stepHead": "c6c8a6e817983b42cce8312ba3162ae0e4648f63",
+      "phaseMerge": "873e27e8709416aef337541cad15e52cf09dcb2e",
+      "mainMerge": "bee6881a2490d6cab9b348320c88f8d1b4b1d35f",
+      "status": "R4.4_VERIFIED_R4_NOT_RELEASED"
+    },
+    "appSource": "b676b5f933dd6375fcef72628776f0007b8ec3db"
+  },
+  "delivery": "Canonical body outside Git; protected current-r4.json and delivery hash receipts are authoritative, retain >=30 days",
+  "runtimeImageBindings": [
+    {
+      "binding": "PLATFORM_WORKSPACE_ENVIRONMENT_IMAGE_ID",
+      "configId": "sha256:9e0bd46f894ba4a82682b933a654b888ab3cb6e34f9d28cf39a7c4f65fd09a1d",
+      "source": "3bde15a1ecbc8f295d5b11f9c16303d85d7222b8",
+      "platform": "linux/amd64",
+      "registryDigests": []
+    },
+    {
+      "binding": "PLATFORM_WORKSPACE_FILES_HELPER_IMAGE",
+      "configId": "sha256:5bb3aba335f2b11f40be2f05dbcce9044f995d6696e47734390a82c3911c9680",
+      "source": "b3d1a36bfc072dd455be282973e2b36f8f6e22d9",
+      "platform": "linux/amd64",
+      "registryDigests": []
+    },
+    {
+      "binding": "PLATFORM_WORKSPACE_RUNNER_HELPER_IMAGE",
+      "configId": "sha256:fa1ad6e67dde1a36b3807d56db307dee71ce70a20bb92f79dbeb9956e7a34864",
+      "source": "88395340b1501dc1f146c3d7816412824685ae76",
+      "platform": "linux/amd64",
+      "registryDigests": []
+    }
+  ],
+  "r3RollbackBaseline": {
+    "productionTag": "production-r3-95ffaf3b7137",
+    "services": [
+      {
+        "id": "0b9aff137c262c376edd5f30497731540233054f3776e5c28c2d2863bb3accda",
+        "image": "sha256:556f88c54119aaf55db4fddda48d4fddf09bf502bbfc549e44cd5fa954874fc7",
+        "service": "worker",
+        "source": "b8dd176a763b4ecae7a8599baa8cd7695098220b",
+        "originalRestartPolicy": {
+          "Name": "no",
+          "MaximumRetryCount": 0
+        }
+      },
+      {
+        "id": "cc1437e7aadffbbecbbf3649fdd8e09164a79eb96de19bd180fe4c21033e2e15",
+        "image": "sha256:556f88c54119aaf55db4fddda48d4fddf09bf502bbfc549e44cd5fa954874fc7",
+        "service": "api",
+        "source": "b8dd176a763b4ecae7a8599baa8cd7695098220b",
+        "originalRestartPolicy": {
+          "Name": "no",
+          "MaximumRetryCount": 0
+        }
+      },
+      {
+        "id": "a3e0a097975fbaf9e6ea7c52bb3608da695e2398837094967bb383bf7162b84a",
+        "image": "sha256:556f88c54119aaf55db4fddda48d4fddf09bf502bbfc549e44cd5fa954874fc7",
+        "service": "runner",
+        "source": "b8dd176a763b4ecae7a8599baa8cd7695098220b",
+        "originalRestartPolicy": {
+          "Name": "no",
+          "MaximumRetryCount": 0
+        }
+      },
+      {
+        "id": "1abbff82de27ef43c0081247c630737e89ba7a0d212c289e908bd0d3230d0bb1",
+        "image": "sha256:431f32c46d6e8dcf7ea29309db89eb6162a2eb781c58b4b47bdd0af07cd76a14",
+        "service": "gateway",
+        "source": "fd2aa8a30ad6a907702e446b2bceafa8118090df",
+        "originalRestartPolicy": {
+          "Name": "no",
+          "MaximumRetryCount": 0
+        }
+      }
+    ],
+    "browserReceiptSourceMeaning": "The browser receipt source identifies the R4 candidate being evaluated for rollback compatibility, not the retained R3 binary; exact R3 identities are listed here and validated by rollback-drill"
+  },
+  "modelMeter": {
+    "productionPhysicalCalls": 7,
+    "productionUnknownCalls": 0,
+    "knownInputTokens": 10039,
+    "knownOutputTokens": 808,
+    "knownCostMicros": 26542,
+    "status": "PASS",
+    "nativePhysicalCalls": 12,
+    "historicalNativeUnknownCallsRetained": 2,
+    "stagePhysicalCalls": 19,
+    "budgetLimit": 20,
+    "chargesAreEstimatesNotProviderInvoice": true
+  },
+  "observationHostTools": {
+    "driver": {
+      "status": "RUNNING",
+      "pid": 1613065,
+      "startTicks": "2492816997",
+      "scriptSha256": "be1b1b3ca329ba4df5fd55716e9e75b7cca3f721d205270f2f68f88d7526a773",
+      "freshFullObservation": true
+    },
+    "sampler": {
+      "pid": 1613230,
+      "sha256": "90f4526360017999db079b61c06debce6d3f836ec251d3ed1afec894ebe71c7c"
+    }
+  },
+  "migrationHistory": {
+    "initialAttempt": {
+      "from": 14,
+      "to": 18,
+      "retainedBackup": "Initial production release folder; not overwritten"
+    },
+    "correctedCandidateBackupMigration": 18,
+    "v1ThroughV17Unmodified": true
+  },
+  "frozenSourceFileHashes": {
+    "backend/platform-api/pom.xml": "897a1294c975ac62cf2e126f366f15ec6a68cdfc83c5aa2ee0f76e5662089966",
+    "backend/platform-app/pom.xml": "f169b611ae983fd5b9fa2bc0c5137cd08818e69a7d53ab71cd08c42e9668197e",
+    "backend/platform-app/src/main/resources/db/migration/README.md": "5645eeed2a3b0f08368bfa0d5a0e531b6c851fe3e6d6f4ee27a75e444d4e163c",
+    "backend/platform-app/src/main/resources/db/migration/V10__workspace_control.sql": "9dd3fafd0d606516c2067ebb87e9ec855be81111a301f936765683f2d567eaae",
+    "backend/platform-app/src/main/resources/db/migration/V11__workspace_environment.sql": "d08568b59f046d44ee21beedc7089da426c7a8f6563729bcdc32a315b79bea9a",
+    "backend/platform-app/src/main/resources/db/migration/V12__trusted_file_helper.sql": "4eb4cab8be963bf4c76df6d4abcf67bc6c3457083f771d8b96a5df86aa16dd2f",
+    "backend/platform-app/src/main/resources/db/migration/V13__file_assets_quota.sql": "6421930cae7ef37a13b91b2aac86a7c85975ec341fa36ec266c673c802ac12a9",
+    "backend/platform-app/src/main/resources/db/migration/V14__environment_lifecycle.sql": "0a796d1b047be6c0e2925852b57d7963406913733ad40a99b40f27973ad2d8a4",
+    "backend/platform-app/src/main/resources/db/migration/V15__durable_plan_interactions_and_daily_quota.sql": "f0c7b87e8acdb356bfb15f509848d9aae51ca3b258bfb2c20902b97d05a6921e",
+    "backend/platform-app/src/main/resources/db/migration/V16__task_resources_and_scoped_permissions.sql": "4dcaa53192cc01c8b1b9c50c1808ba9d8a6416bd4765c8d2b240a22d515f350d",
+    "backend/platform-app/src/main/resources/db/migration/V17__exact_tool_approval_resume.sql": "675b5e9e9a0302c7ba8986f9714d992bbcc2b57346f24c95f0f03a3a8881d035",
+    "backend/platform-app/src/main/resources/db/migration/V18__workspace_business_tools.sql": "8bd07304e71a41a1db47c0916a5f95cd1192046683c43afdebe411fd7702d536",
+    "backend/platform-app/src/main/resources/db/migration/V1__runtime_state_baseline.sql": "e303b2300876948409e1278e1eee40861d56afca133cecde8960d388d71abe6f",
+    "backend/platform-app/src/main/resources/db/migration/V2__identity_personal_space.sql": "7875cdec0ade473d97407a63d9a8b78fab13b96a769fe121e0b0618990a8e705",
+    "backend/platform-app/src/main/resources/db/migration/V3__queued_text_chat.sql": "95689cd61a21f3e0aedcd633f41479f0380943c92c37ef20acceded47ffa83ca",
+    "backend/platform-app/src/main/resources/db/migration/V4__chat_configuration.sql": "b935400c970cf0710f141d1cd3f072961cc696fa0304198a256a9a7a96da743a",
+    "backend/platform-app/src/main/resources/db/migration/V5__trace_failure_diagnostics.sql": "e24d97043aff269e612b62a47b12ccaee6a561767c8309316c096b6584fa99dd",
+    "backend/platform-app/src/main/resources/db/migration/V6__execution_ownership_ledger.sql": "7e1f76d35d7ac54aa654c228d05b3471e8e53ba7f70c0f9899631590482f3d90",
+    "backend/platform-app/src/main/resources/db/migration/V7__conversation_replay_retention.sql": "ba9a1c82207365b397904d3911b3d063abe8e67c54456a2538c3362f18f06975",
+    "backend/platform-app/src/main/resources/db/migration/V8__cancellation_reconciliation.sql": "b11990d520c97125cf07714260a0b24dc9d1715bf0bf1810a5ebb03ac10c26e4",
+    "backend/platform-app/src/main/resources/db/migration/V9__checkpoint_recovery.sql": "1889b7ef31abab0107586651cf9caf68e5126751e5841552e88900f47f930ff2",
+    "backend/platform-domain/pom.xml": "ec376c797a3b7af9fd849e23052f692276041444870077ca25e68c4648b391f5",
+    "backend/platform-infrastructure/pom.xml": "c1560885e1d16601c7f0a32a96b553e2b7016a05ccc21439079e585cfd69dd5e",
+    "backend/platform-trigger/pom.xml": "2c27faa9e9ddcb542cc99ec043addc989217cf268d03a067b5a9745e39b20154",
+    "backend/platform-types/pom.xml": "f340f4c28e9cb273aa5c3e2d689a81cec750d600eb7b4b5e343bb447a065cda4",
+    "backend/pom.xml": "109d9969a7f11f4d20e02dfd14a35ce371cce04ae9678d8990b453c91b3853d9",
+    "frontend/pnpm-lock.yaml": "5b569a72683bdfe471d716060fd51c0c3a269352333e4ccb735f6fc500ee2cb1"
+  },
+  "observerHistory": {
+    "initialObservationStatus": "FAIL",
+    "exactFailedTransientIdentity": "NOT_RETAINED",
+    "classificationRegressionCases": 5,
+    "freshCompleteObservationAfterCorrection": true
+  }
+}
