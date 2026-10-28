@@ -46,17 +46,25 @@ public final class WorkspaceToolsApplicationService implements WorkspaceToolRunt
     private static WorkspaceData.Actor actor(Lease l){return new WorkspaceData.Actor(l.userId(),l.spaceId());}
     private static FileData.Actor fileActor(Lease l){return new FileData.Actor(l.userId(),l.spaceId());}
     public List<ToolDefinition> definitions(Lease lease){return chat.workspaceToolTask(lease)?WorkspaceTools.DEFINITIONS:List.of();}
-    public void prepare(Lease lease,List<Call> calls){chat.prepareWorkspaceTools(lease,calls,image,policy);}
+    public void prepare(Lease lease,List<Call> calls){
+        if(calls.size()==1&&"workspace_shell".equals(calls.getFirst().name())&&!chat.planMode(lease)) {
+            var permissions=chat.permissions(new ChatData.Actor(lease.userId(),lease.spaceId()),lease.taskId());
+            if(permissions.workspaceId()!=null) {
+                UUID workspace=UUID.fromString(permissions.workspaceId());
+                while(true) {
+                    chat.check(lease);
+                    var state=environments.get(actor(lease),workspace);
+                    if(Set.of("BLOCKED","ERROR").contains(state.state()))throw new ChatFailure(409,"ENVIRONMENT_PREPARATION_FAILED");
+                    if(state.sleepAllowed()||state.wakeAllowed()||state.prepareAllowed())break;
+                    try{Thread.sleep(100);}catch(InterruptedException interrupted){Thread.currentThread().interrupt();throw new ChatFailure(409,"TASK_CANCEL_REQUESTED");}
+                }
+            }
+        }
+        chat.prepareWorkspaceTools(lease,calls,image,policy);
+    }
     public void admit(Lease lease,Call call) {
         if(!"workspace_shell".equals(call.name())){fileTools.admit(lease,call);return;}
-        var admitted=transactions.execute(status->{
-            chat.startTool(lease,call);var intent=chat.workspaceToolIntent(lease,call);
-            var snapshot=environments.get(actor(lease),intent.workspaceId());
-            if("READY".equals(snapshot.state()))return uses.admitShell(actor(lease),intent.workspaceId(),intent.operationId(),lease.ownerId(),chat.workspaceShellRequest(lease,call));
-            activate(lease,intent,snapshot);
-            return null;
-        });
-        if(admitted!=null&&admitted.fresh())fresh.put(admitted.command().id(),admitted);
+        chat.startTool(lease,call);
     }
     private void activate(Lease lease,WorkspaceToolLedger.Intent intent,EnvironmentPreparationRepository.Snapshot snapshot) {
         String hash=RunnerSignatures.sha256((intent.operationId()+"\n"+intent.imageId()+"\n"+intent.policyHash()).getBytes(StandardCharsets.UTF_8));
@@ -78,7 +86,11 @@ public final class WorkspaceToolsApplicationService implements WorkspaceToolRunt
                 jobs.lockQuota(lease.userId(),lease.spaceId());chat.check(lease);var intent=chat.workspaceToolIntent(lease,call);
                 var state=environments.get(actor(lease),intent.workspaceId());
                 if(Set.of("BLOCKED","ERROR").contains(state.state()))throw new ChatFailure(409,"ENVIRONMENT_PREPARATION_FAILED");
-                if(!"READY".equals(state.state()))return null;
+                if(!"READY".equals(state.state())) {
+                    if(state.wakeAllowed()||state.prepareAllowed())activate(lease,intent,state);
+                    return null;
+                }
+                if(!state.sleepAllowed())return null;
                 var physical=jobs.environment(lease.spaceId(),intent.workspaceId());
                 if(physical==null||!image.equals(physical.imageId())||!policy.equals(physical.policyHash()))throw new ChatFailure(409,"ENVIRONMENT_POLICY_CHANGED");
                 return uses.admitShell(actor(lease),intent.workspaceId(),intent.operationId(),lease.ownerId(),chat.workspaceShellRequest(lease,call));

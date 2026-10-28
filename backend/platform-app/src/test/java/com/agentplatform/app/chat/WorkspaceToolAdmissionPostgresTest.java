@@ -160,11 +160,14 @@ class WorkspaceToolAdmissionPostgresTest extends WorkspaceToolsMigrationPostgres
             var instance=new com.agentplatform.domain.workspace.RunnerInstance(UUID.randomUUID(),com.agentplatform.infrastructure.workspace.RunnerSignatures.sha256(UUID.randomUUID().toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)),"sha256:"+"f".repeat(64),"2026-10-28T00:00:00Z");
             tx.executeWithoutResult(status->session.getMapper(com.agentplatform.infrastructure.dao.workspace.EnvironmentExecutionMapper.class).registerRunner(instance));
             var lifecycle=org.mockito.Mockito.mock(com.agentplatform.domain.workspace.EnvironmentLifecycleRepository.class);
-            org.mockito.Mockito.when(lifecycle.get(new com.agentplatform.domain.workspace.WorkspaceData.Actor(lease.userId(),lease.spaceId()),workspace)).thenReturn(
-                new com.agentplatform.domain.workspace.EnvironmentPreparationRepository.Snapshot(environment,workspace,"READY",1,1,operation,"PREPARE","COMMITTED",null,false,false));
+            var readinessChecks=new AtomicInteger();
+            org.mockito.Mockito.when(lifecycle.get(new com.agentplatform.domain.workspace.WorkspaceData.Actor(lease.userId(),lease.spaceId()),workspace)).thenAnswer(invocation->{
+                int check=readinessChecks.incrementAndGet();if(check<=2)assertEquals(0,executions.get(),"Resource contention must not start a physical operation");
+                return new com.agentplatform.domain.workspace.EnvironmentPreparationRepository.Snapshot(environment,workspace,"READY",1,1,operation,"PREPARE","COMMITTED",null,false,false,check>2,false,check>2);
+            });
             var wire=new com.agentplatform.domain.workspace.WorkspaceShellRunnerPort(){
                 public com.agentplatform.domain.workspace.EnvironmentUseData.Receipt executeShell(com.agentplatform.domain.workspace.EnvironmentUseData.Command cmd){
-                    executions.incrementAndGet();assertTrue(uses.accept(cmd,instance.id()));String exec=com.agentplatform.infrastructure.workspace.RunnerSignatures.sha256(cmd.id().toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));uses.recordExec(cmd,instance.id(),cmd.containerId(),exec);
+                    assertTrue(readinessChecks.get()>2);executions.incrementAndGet();assertTrue(uses.accept(cmd,instance.id()));String exec=com.agentplatform.infrastructure.workspace.RunnerSignatures.sha256(cmd.id().toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));uses.recordExec(cmd,instance.id(),cmd.containerId(),exec);
                     var stop=new com.agentplatform.domain.workspace.SandboxRuntime.Stop(cmd.containerId(),cmd.imageId(),cmd.containerStartedAt(),java.time.Instant.now().minusMillis(10).toString(),true,true,java.time.Instant.now());
                     uses.commitFact(cmd,instance.id(),new com.agentplatform.domain.workspace.EnvironmentUseData.Fact(cmd.id(),cmd.environmentId(),cmd.generation(),cmd.fence(),cmd.requestHash(),instance.id(),"KNOWN",
                         new com.agentplatform.domain.workspace.SandboxRuntime.Output(exec,0,"666","",false,false,false,stop),stop,null));return uses.receipt(cmd);

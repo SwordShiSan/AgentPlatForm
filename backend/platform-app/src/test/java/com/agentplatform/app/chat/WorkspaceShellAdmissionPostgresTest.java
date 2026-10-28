@@ -199,7 +199,7 @@ class WorkspaceShellAdmissionPostgresTest extends WorkspaceToolsMigrationPostgre
         };
         var lifecycle=org.mockito.Mockito.mock(EnvironmentLifecycleRepository.class);
         org.mockito.Mockito.when(lifecycle.get(workspaceActor(),workspace)).thenReturn(new EnvironmentPreparationRepository.Snapshot(
-            UUID.randomUUID(),workspace,"READY",1,1,UUID.randomUUID(),"PREPARE","COMMITTED",null,false,false));
+            UUID.randomUUID(),workspace,"READY",1,1,UUID.randomUUID(),"PREPARE","COMMITTED",null,false,false,true,false,true));
         var content=new java.util.concurrent.ConcurrentHashMap<String,byte[]>();var resultTransfers=new java.util.concurrent.atomic.AtomicInteger();
         var assets=new com.agentplatform.domain.files.AssetStore(){
             public Identity put(String key,long size,String hash,java.io.InputStream stream){if(resultTransfers.incrementAndGet()==1)throw new com.agentplatform.domain.files.FileFailure(423,"FILE_TRANSFER_BUSY");try{var bytes=stream.readAllBytes();assertEquals(size,bytes.length);content.put(key,bytes);return new Identity(key,size,hash);}catch(java.io.IOException failure){throw new IllegalStateException(failure);}}
