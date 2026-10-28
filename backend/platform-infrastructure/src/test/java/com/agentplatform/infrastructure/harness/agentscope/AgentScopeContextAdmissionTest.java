@@ -24,4 +24,10 @@ class AgentScopeContextAdmissionTest {
         assertEquals("CONTEXT_REQUIRED_TOO_LARGE",assertThrows(ChatFailure.class,
                 () -> AgentScopeContextAdmission.requireFits(longText,WorkspaceTools.DEFINITIONS)).code());
     }
+    @Test void aModestChinesePlanAndItsApprovedCopyFitWithoutRemovingEither() {
+        String plan="在绑定工作区写入666并封存输出文件。".repeat(32);
+        var history=List.of(Message.text(Role.USER,"请制定计划，确认后实际执行。"),
+                Message.text(Role.ASSISTANT,plan),Message.text(Role.TOOL,"已批准的完整计划："+plan));
+        assertDoesNotThrow(()->AgentScopeContextAdmission.requireFits(history,WorkspaceTools.DEFINITIONS));
+    }
 }

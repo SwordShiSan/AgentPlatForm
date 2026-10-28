@@ -7,7 +7,6 @@ import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.message.TextBlock;
 import io.agentscope.harness.agent.memory.compaction.TokenCounterUtil;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -24,10 +23,10 @@ public final class AgentScopeContextAdmission {
         messages.add(Msg.builder().role(MsgRole.SYSTEM).content(TextBlock.builder().text(schemas).build()).build());
         long sdk = TokenCounterUtil.calculateToken(messages);
         // The SDK's character estimate is optimistic for multilingual content.
-        // Count additional non-ASCII bytes rather than silently truncating it.
+        // Add multilingual codepoint padding without counting UTF-8 width twice.
         String content = codec.json(history) + schemas;
         long nonAscii = content.codePoints().filter(c -> c > 127)
-                .mapToLong(c -> new String(Character.toChars(c)).getBytes(StandardCharsets.UTF_8).length).sum();
+                .mapToLong(c -> Character.charCount(c) == 2 ? 3 : 1).sum();
         return (sdk * 5 + 3) / 4 + nonAscii + 512;
     }
 
