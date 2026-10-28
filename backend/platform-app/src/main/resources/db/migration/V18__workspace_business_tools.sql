@@ -481,7 +481,10 @@ DECLARE b pf.workspace_tool_job_binding; a pf.attempt;
 BEGIN
  SELECT * INTO b FROM pf.workspace_tool_job_binding WHERE activation_operation_id=selected_activation;
  IF NOT FOUND THEN RETURN true; END IF;
- SELECT x.* INTO a FROM pf.operation_execution_binding e JOIN pf.attempt x ON x.id=e.attempt_id WHERE e.operation_id=b.operation_id;
+ SELECT x.* INTO a FROM pf.operation_execution_binding e JOIN pf.attempt x ON x.id=e.attempt_id
+ JOIN pf.execution_dispatch d ON d.task_id=x.task_id AND d.status='CLAIMED'
+  AND d.generation=x.dispatch_generation AND d.fencing_token=e.fencing_token AND d.lease_owner=x.owner_id
+ WHERE e.operation_id=b.operation_id AND x.status='RUNNING' AND x.fencing_token=e.fencing_token;
  IF NOT FOUND THEN RETURN false; END IF;
  RETURN pf.workspace_tool_owner_allowed(b.operation_id,a.id,a.owner_id,a.dispatch_generation,a.fencing_token,take_locks);
 END $$;

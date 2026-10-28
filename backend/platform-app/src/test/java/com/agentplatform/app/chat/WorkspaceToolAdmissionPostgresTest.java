@@ -67,6 +67,25 @@ class WorkspaceToolAdmissionPostgresTest extends WorkspaceToolsMigrationPostgres
         run(claim(task),provider,admissions);assertEquals("SUCCEEDED",repository.task(actor,task.id()).status());assertEquals(1,admissions.get());assertEquals(2,calls.get());
         assertEquals("1",scalar("SELECT count(*) FROM pf.tool_approval_consumption WHERE task_id='"+task.id()+"'"));
     }
+    @Test void activationAfterApprovalUsesTheLiveAttemptRatherThanTheFirstHistoricalBinding() throws Exception {
+        var task=enabled(Mode.RISK_BASED);var calls=new AtomicInteger();var admissions=new AtomicInteger();
+        run(claim(task),provider(calls),admissions);
+        var pending=repository.pending(actor,task.conversationId()).getFirst();
+        repository.answer(actor,task.id(),pending.interactionId(),UUID.randomUUID(),new Answer(pending.version(),Decision.ALLOW_ONCE,"",List.of()));
+        var current=claim(task);
+        var call=new HarnessData.Call("shell-one","workspace_shell",Map.of("command","printf 666","cwd","","timeoutSeconds",20,"outputs",List.of()),false);
+        repository.startTool(current,call);
+        var intent=repository.workspaceToolIntent(current,call);
+        UUID environment=UUID.randomUUID(),activation=UUID.randomUUID(),command=UUID.randomUUID();
+        sql("BEGIN;INSERT INTO pf.workspace_environment(id,space_id,workspace_id,generation,fence,state,image_id,policy_hash,creation_command_id,creation_fence,operation_id) VALUES('"+environment+"','"+actor.spaceId()+"','"+workspace+"',1,1,'PREPARING','sha256:"+"a".repeat(64)+"','"+"b".repeat(64)+"','"+command+"',1,'"+activation+"');"
+            +"INSERT INTO pf.workspace_environment_operation(id,space_id,workspace_id,environment_id,kind,initiator,actor_id,command_id,generation,fence,status,effect_state) VALUES('"+activation+"','"+actor.spaceId()+"','"+workspace+"','"+environment+"','PREPARE','USER','"+actor.userId()+"','"+command+"',1,1,'PENDING','NOT_STARTED');"
+            +"INSERT INTO pf.workspace_tool_job_binding(id,operation_id,space_id,task_id,workspace_id,environment_id,activation_operation_id) VALUES('"+UUID.randomUUID()+"','"+intent.operationId()+"','"+actor.spaceId()+"','"+task.id()+"','"+workspace+"','"+environment+"','"+activation+"');COMMIT;");
+        assertEquals("2",scalar("SELECT count(*) FROM pf.operation_execution_binding WHERE operation_id='"+intent.operationId()+"'"));
+        assertEquals("t",scalar("SELECT pf.workspace_tool_activation_allowed('"+activation+"',false)"));
+        sql("UPDATE pf.execution_dispatch SET lease_until=clock_timestamp()-interval '1 second' WHERE task_id='"+task.id()+"'");
+        assertEquals("f",scalar("SELECT pf.workspace_tool_activation_allowed('"+activation+"',false)"));
+        assertEquals(0,admissions.get());
+    }
     @Test void contentChangeInvalidatesThePendingCommandButNotItsImmutableIntent() throws Exception {
         var task=enabled(Mode.RISK_BASED);var calls=new AtomicInteger();var admissions=new AtomicInteger();run(claim(task),provider(calls),admissions);
         var pending=repository.pending(actor,task.conversationId()).getFirst();

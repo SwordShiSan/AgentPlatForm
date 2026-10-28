@@ -83,3 +83,9 @@ Legacy/new shell wire compatibility plus use-application/signature units PASS, f
 - FAIL history retained: changed direct-bean signature, test-local asset variable, repeated synthetic runner/exec IDs, historical exact-port/schema assertions and duplicated endpoint guard in the child crash JVM. Fixtures retain explicit R44 endpoint/flag/private password-file boundaries. No arbitrary JDBC URL acceptance. Original protected logs retained.
 - Same R3 runner OOM repeated27Oct. Restored original container/image and reconciled only its never-accepted SCAN; no ledger edits or supplier calls. Protected rollback snapshot refreshed. Memory root cause remains unproven; R4 full-profile observation remains required.
 - Native/API/browser/real S3+MQ/resource/recovery/release still pending. Supplier requests0; no promotion/tag/deployment.
+# Native integration correction — 2026-10-28
+
+The first full Linux candidate passed cold-start/resource admission, actual gVisor shell output `666`, whole-container stop, signed CAPTURE, private S3 immutable-version download/hash, production write/list/read, and cross-user/admin denial. The following RISK_BASED approval resume failed: activation selected the first historical `operation_execution_binding`, rejecting the newly claimed attempt as revoked. This candidate remains FAIL, not VERIFIED; the original operation is UNKNOWN and is not replayed.
+
+V18's unreleased activation predicate now joins the current CLAIMED dispatch, RUNNING attempt, owner, generation and fence before delegating to the unchanged live ownership guard. The regression retains both historical bindings, accepts only the current one, and rejects its expired lease. `WorkspaceToolAdmissionPostgresTest` PASS: input `1f8ad157aa73188af1d886d490c9b235eb814e62fcc930854a091f03daca7251`, log `9ae5b3a104b76d3e51c7f988fff15956407fbc2f0f117325ae7de87ae2c09698`, 75.32s, supplier calls 0. Native reacceptance and release remain NOT_RUN for the corrected image.
+
