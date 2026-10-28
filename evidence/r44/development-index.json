@@ -4,7 +4,7 @@
   "verified": false,
   "released": false,
   "baseCommit": "c15cb410228ddb6a6df91796c1e090699eea6546",
-  "supplierPhysicalCalls": 0,
+  "supplierPhysicalCalls": 2,
   "receipts": [
     {
       "name": "file-tool-and-sdk-admission",
@@ -351,5 +351,6 @@
     "protected promotion and cloud release/observation/restore/rollback"
   ],
   "production": "Same R3 release/images. Original runner restarted after second preserved OOM; second unaccepted expired SCAN converged via existing receipt reconciliation to NOT_APPLIED/FAILED. No SQL repair/replay. Memory cause and R4 capacity unproven. Receipt /srv/agentplatform/operations/r44-r3-runner-recovery-1793191334160114315.",
-  "history": "Retain original failed logs in protected local stage records; failures are not overwritten by later passes."
+  "history": "Retain original failed logs in protected local stage records; failures are not overwritten by later passes.",
+  "realAcceptanceNote": "Two completed Flash requests retained from the blocked short-Plan context candidate; not reset. Corrected candidate reacceptance pending."
 }
