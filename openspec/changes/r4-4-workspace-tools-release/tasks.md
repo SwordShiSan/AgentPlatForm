@@ -4,7 +4,7 @@
 - [x] 4. Versioned production tool catalog, Provider bounds and Plan execution-phase compatibility
 - [x] 5. Durable file and signed runner jobs, actual cancellation/termination, FAILED/UNKNOWN and output capture
 - [x] 6. Safe operation APIs/events/generated client, Approval/Plan/ToolCard UI
-- [ ] 7. Engineering and actual PG/MQ/S3/Linux/browser/resource acceptance with bounded real-model metering
+- [x] 7. Engineering and actual PG/MQ/S3/Linux/browser/resource acceptance with bounded real-model metering
 - [ ] 8. Immutable candidate and protected step→phase→main, R4.4 VERIFIED
 - [ ] 9. Consistent production backup/migration/deploy,30min observation, isolated restore/R3 rollback/same candidate restart, R4 RELEASED
 - [ ] 10. Archive/sync, canonical ledgers/Skill, protected delivery hashes and acceptance stack stop
