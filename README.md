@@ -1,6 +1,8 @@
-## R4.4 实施中
+## R4 已发行
 
-工作区业务工具正在贯通，尚未完成整合验收或发行；云端继续运行 R3。工具作业、停止确认、产物封存与安全结果接口的增量证据见[开发索引](evidence/r44/development-index.json)。本地组件测试通过不代表 R4 已上线，只有完成全部功能、恢复和云端发行门禁后才创建 R4 生产标签。云沙箱方案继续 DEFERRED。
+**R4.4 VERIFIED，R4四步VERIFIED、RELEASED。** 生产已上线Plan、原工具审批、工作区文件和shell闭环：[打开平台](http://agentplatform.lailihao.cloud)。生产标签`production-r4-57e1d081e2bb`；一致备份、1818秒生产观察、独立恢复、R3回退及同一R4重启通过。见[发行证据](deploy/r4-release-acceptance.json)、[验收索引](evidence/r44/acceptance-index.json)及[运维说明](deploy/R4-RELEASE.md)。
+
+普通用户默认可配置100万token/日，管理员不限额但计量且不越权。继续本地gVisor/XFS与2880MiB预算；云方案DEFERRED。旧平台停机保留，R5尚未开始。下方早期状态为历史。
 
 ## R4.3 VERIFIED
 

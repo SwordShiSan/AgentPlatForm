@@ -1,3 +1,7 @@
+# R4 released current conclusion (2026-10-29)
+
+R4.4 VERIFIED, R4 4/4 VERIFIED and RELEASED; production tag `production-r4-57e1d081e2bb`. Cloud runs the accepted R4 application source `b676b5f933dd6375fcef72628776f0007b8ec3db` and the separately pinned gateway. Plan, scoped permissions, exact approval and four workspace tools are open within their frozen task catalogs; RISK_BASED asks for each shell, FULL does not bypass live rights or sandbox boundaries. Keep R3 rollback and legacy business containers/data stopped and retained. V18/runtime baseline1; do not change V1-V18. Cloud sandbox remains DEFERRED and unmerged; R5 requires its own Plan/OpenSpec and is not started. Exact public receipts: deploy/r4-release-acceptance.json. Prior dates below are historical.
+
 # R4.3 current conclusion (2026-10-27)
 
 R4.3 VERIFIED after exact-source local acceptance and protected two-level PR promotion. R4 is3/4, not RELEASED; cloud remains R3. Exact original-call approval uses ALLOW_ONCE/DENY and empty SDK rules; directory grants remain R4.2, production business catalogs/shell/network stay closed. UNKNOWN never replays. Real supplier calls0; all acceptance services including fixtures/dependencies stopped, volumes/images retained. R4.4 requires a separate Plan/OpenSpec. Keep local sandbox2880MiB full budget and the deferred cloud change unmerged. Evidence: evidence/r43/acceptance-index.json. Earlier conclusions below are historical.

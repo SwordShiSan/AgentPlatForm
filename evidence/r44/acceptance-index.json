@@ -1,36 +1,118 @@
 {
   "stage": "R4.4",
-  "status": "PASS_PENDING_PROTECTED_PROMOTION",
-  "verified": false,
-  "released": false,
-  "source": "b3d1a36bfc072dd455be282973e2b36f8f6e22d9",
-  "headAtRecording": "03e61bf2249faba5a978e4ac99493b756d9170c6",
+  "status": "RELEASED",
+  "verified": true,
+  "released": true,
+  "source": "b676b5f933dd6375fcef72628776f0007b8ec3db",
+  "headAtRecording": "cb774f57845ee32189f64e8d161180f4ab1c3d97",
   "images": {
     "gateway": {
       "source": "115f865a8434b98638a33f72c23c39092b43be8a",
+      "platform": "linux/amd64",
+      "indexDigest": "sha256:b3e6a2bbc07a38cd97cecec3241bd979197229a6eb7d3a2aa99c82223b04536a",
+      "manifestDigest": "sha256:33a38c1feb8ffa8f8f7cb18f4ae8c36e3405ad6a99cbb4b48743498d480bb46f",
       "configId": "sha256:05d2b8f62f116471a3b0ebb9f59865f5c43c30e2d32157fa6837b9e47a803d8f",
-      "platform": "linux/amd64"
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/05d2b8f62f116471a3b0ebb9f59865f5c43c30e2d32157fa6837b9e47a803d8f",
+          "RepoTags": [
+            "agentplatform-gateway:r44-115f865a8434"
+          ],
+          "Layers": [
+            "blobs/sha256/e2de96513ba9eb53b431787ec8a65cdde380ac4772a3e4c4b714dcfde2a102b5",
+            "blobs/sha256/655cdf110ce6cc8b81dc0bf0d471a4fb200eac950a7a108ed5335b91ed3ef07b",
+            "blobs/sha256/cb3dcaeaef3012c03cc5ba44f04289e06247ee28b0396073f0c1aa4667e08cd6",
+            "blobs/sha256/c792e3f2c3b45eb2b0ab9ca191eb1c881394ef80dc9b03a728d4241709cfd309",
+            "blobs/sha256/dfd17a001b4375f4b03069aa2c6c03e965543d91589d9f7399dae7c3798037bd",
+            "blobs/sha256/69146b4a52cfd86bdd87919b33fc3c6afd168c7911c27d3805d48212887b2e4f",
+            "blobs/sha256/1f9e9a0fcad78d32ce75d315476a02e8c85818e0db3191e375796df6d1594dda",
+            "blobs/sha256/db0e3cd9a4f71fb319f83c2b8da0c7ba756419e6d8a8671e117dcba315656b39",
+            "blobs/sha256/ab0d6d0b8f06a2555ffb7e2777729ed4c2c656d62a2869414c9df71b527c4b41",
+            "blobs/sha256/94f932578196432faa0132e1ba0523393c5670f0caa3654e24f6944c1b1d3577",
+            "blobs/sha256/297ac21793452ec26c3e5bb8cfccbf475a2c2d1ae46b276769bddcd10cdcbd8c"
+          ]
+        }
+      ]
     },
     "file-helper": {
       "source": "b3d1a36bfc072dd455be282973e2b36f8f6e22d9",
+      "platform": "linux/amd64",
+      "indexDigest": "sha256:3fcc92d4263d8874995ef0ceadc505691d7952f54c50f3494e8b4c50c35108bf",
+      "manifestDigest": "sha256:a900b052a7fdf1ba8c73c22ce1b9fa93af7116a56140d8b899450794912c07fe",
       "configId": "sha256:5bb3aba335f2b11f40be2f05dbcce9044f995d6696e47734390a82c3911c9680",
-      "platform": "linux/amd64"
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/5bb3aba335f2b11f40be2f05dbcce9044f995d6696e47734390a82c3911c9680",
+          "RepoTags": [
+            "agentplatform-file-helper:r44-b3d1a36bfc07"
+          ],
+          "Layers": [
+            "blobs/sha256/ecc510c1e359bdc007b39802570bb7e4dec7d6ebccf357c3201a74299113e05e",
+            "blobs/sha256/75b6a36c64a1cf3520fc4b4aae4739d5caa8a6a05c27835a920a61784c9c32f8",
+            "blobs/sha256/6912e23eb44595b44dc6d9882b34f305ad6f6e9667cec70b13e5dbc4f8cd97f4",
+            "blobs/sha256/bbc5a12237474ec0b23b5051260d56d6436a24d70d9cad961adebe7a037ed813",
+            "blobs/sha256/eb84d8ec33a3ee38efe4de9effc0ba184bcf4de1a55f1faab6c403f4fd42c2c0",
+            "blobs/sha256/f92ff6b749365c06eb9aaa5d3347a551774efeaedaeefcf2bd01c7e68e742356",
+            "blobs/sha256/4b15a00103db5e4eb060dfea5043f770461963dcc1fc2a74487dfc0ed4b1229b",
+            "blobs/sha256/deaa44815117525d1bfc309cf6c0bb071fc371d53f975c67e8c3999502639d6a",
+            "blobs/sha256/36c2c596255ef07cfe0e1da4e41b61a8019f335b89e2b837b16ef8c8c2780226",
+            "blobs/sha256/452c27b64c0cbdd5dfba89bc29b9ed04cb679d6d979f37f51778c287128402c3"
+          ]
+        }
+      ]
     },
     "provider-fixture": {
       "source": "b3d1a36bfc072dd455be282973e2b36f8f6e22d9",
+      "platform": "linux/amd64",
+      "indexDigest": "sha256:4ff9c018e132bf4eac760043721533de7e2454eda8c5132ad955038dda1c625e",
+      "manifestDigest": "sha256:c7902ab4dd4b72bd193f05786a3dc8ec548fd8fee3bdc26c352a24d633ae8e6d",
       "configId": "sha256:dcec4c8e84e978bda58eb4d979c64c4790dc7b21ccb7b11006da93c7499872d2",
-      "platform": "linux/amd64"
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/dcec4c8e84e978bda58eb4d979c64c4790dc7b21ccb7b11006da93c7499872d2",
+          "RepoTags": [
+            "agentplatform-provider-fixture:r44-b3d1a36bfc07"
+          ],
+          "Layers": [
+            "blobs/sha256/ecc510c1e359bdc007b39802570bb7e4dec7d6ebccf357c3201a74299113e05e",
+            "blobs/sha256/75b6a36c64a1cf3520fc4b4aae4739d5caa8a6a05c27835a920a61784c9c32f8",
+            "blobs/sha256/6912e23eb44595b44dc6d9882b34f305ad6f6e9667cec70b13e5dbc4f8cd97f4",
+            "blobs/sha256/bbc5a12237474ec0b23b5051260d56d6436a24d70d9cad961adebe7a037ed813",
+            "blobs/sha256/3fc7e024d781c920a7ebc9fd125e5b035753f5df78cefbb0b1552c2e4044a6b6"
+          ]
+        }
+      ]
     },
     "api": {
-      "source": "b3d1a36bfc072dd455be282973e2b36f8f6e22d9",
-      "configId": "sha256:64d09ef55a23381e338a164ca919a9b8779f727b76c91154b4c0ece7d44c0cf7",
-      "platform": "linux/amd64"
+      "source": "b676b5f933dd6375fcef72628776f0007b8ec3db",
+      "platform": "linux/amd64",
+      "indexDigest": "sha256:9ea2e1673169ec179d06394705747c52650d7b4417f0ac44925394fc2a815d70",
+      "manifestDigest": "sha256:fbdec902b06979c5f6eedb1ba89fb368d79d6446a4b7daacd521f79478af3d95",
+      "configId": "sha256:68b218b04bdb995fbc610157b02fc89f7c6e7443369fdcbf68f26c43e0709dee",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/68b218b04bdb995fbc610157b02fc89f7c6e7443369fdcbf68f26c43e0709dee",
+          "RepoTags": [
+            "agentplatform-api:r44-b676b5f933dd"
+          ],
+          "Layers": [
+            "blobs/sha256/a60ef8ec184edb5ed91f5983f00261359fb2fe20f603e8d488b9477d32fcad70",
+            "blobs/sha256/49b14164d4d96e593cb68db980906b691931cdcde6f60b918280317c89e55462",
+            "blobs/sha256/7c48d168a51b541814c6814256cd298e11114f5f088e4511cffb4f6b3622d1b6",
+            "blobs/sha256/5165dac19553999758e23bf9247e5bac05f0d26ee503d13bf70c1e8873eb8d37",
+            "blobs/sha256/02e0e048361058af7411fe47569c4d90b68a917dba037514c3831b7bf7029c7b",
+            "blobs/sha256/acc93b257e6f2400f5e3fdf64cb0c7955e37069bb80a6235b95c9484a9ec0643",
+            "blobs/sha256/09b2350ca72e0dab5680d7ce2b8449ca6683ac99b0e26e76a18a72907db54593",
+            "blobs/sha256/de00cd92a546655f8d71edb1772809b3bb98b82b305e96cde14844d9c24d3781"
+          ]
+        }
+      ]
     }
   },
-  "archiveSha256": "633ba3b5f80b12d87d9634d6529c10a4478a1bff1fcaaf211d246317042248ae",
-  "engineeringReceiptSha256": "2dea4a30613875686305b8e99cc71850fe1903a787699c2354bbfe4202dabe5c",
+  "archiveSha256": "8a4fc70ff1362632aa4cf9d0984d2e39ea1463d46547981448bb748d1f171403",
+  "engineeringReceiptSha256": "0ec66e195e2c9cbf433ec244d5da2c730a26be0a01588b478d5fa18dcfdd748d",
   "nativeAcceptanceSha256": "e50e274b780bcabdafb1acf802fdb2f984ec3f2e265ace9dc4e08e489f054b3e",
-  "restoreReceiptSha256": "5eae048d59c9cd49d371376a4dd221ea716c4359236b6b180e1e15cb5dae9ed6",
+  "restoreReceiptSha256": "fb171f1d8d820a9431c66695f2da3a84ec77eefabefa13639d2ec80820eafe1d",
   "nativeAssertions": {
     "functional-result": [
       "actual-quota-workspace-and-two-user-admin-isolation",
@@ -60,10 +142,16 @@
       "actual-running-exec-cancel-converges-and-exact-sandbox-slot-released"
     ]
   },
-  "observationSeconds": 1811.172147512436,
-  "physicalRequestsShared": 12,
+  "observationSeconds": 1817.7680101394653,
+  "physicalRequestsShared": 19,
   "historicalUnknownCallsRetained": 2,
   "successfulRealTaskUnknownCalls": 0,
-  "production": "R3 remains online; R4 deployment not yet performed",
-  "scope": "Public redacted index. Raw credentials, model text, SQL and logs remain protected. Historical failed candidate receipts and reservations are retained."
+  "production": "R4 running after consistent backup, observation, isolated restore, original R3 rollback and same-candidate restart",
+  "scope": "Public redacted index. Raw credentials, model text, SQL and logs remain protected. Historical failed candidate receipts and reservations are retained.",
+  "historicalNativeRestoreReceiptSha256": "5eae048d59c9cd49d371376a4dd221ea716c4359236b6b180e1e15cb5dae9ed6",
+  "historicalEngineeringReceiptSha256": "2dea4a30613875686305b8e99cc71850fe1903a787699c2354bbfe4202dabe5c",
+  "nativeObservationSeconds": 1811.172147512436,
+  "productionRecord": "production-release.json",
+  "historicalNativeSource": "b3d1a36bfc072dd455be282973e2b36f8f6e22d9",
+  "nativeEvidenceReusedWithCorrectedComposition": true
 }
