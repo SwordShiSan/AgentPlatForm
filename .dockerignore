@@ -12,6 +12,7 @@
 !deploy/scripts/sandbox-file-bridge.py
 !deploy/scripts/file-stream-bridge.py
 !deploy/scripts/file-scan-bridge.py
+!deploy/scripts/file-capture-bridge.py
 !deploy/scripts/sandbox-entrypoint.py
 !deploy/scripts/sandbox-resource-probe.py
 !deploy/scripts/sandbox-shell.py
