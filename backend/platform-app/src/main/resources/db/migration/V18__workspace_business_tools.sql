@@ -172,12 +172,7 @@ BEGIN
    OR EXISTS(SELECT 1 FROM pf.task_plan tp JOIN pf.plan_revision pr ON pr.plan_id=tp.id AND pr.revision=tp.current_revision
      JOIN pf.plan_execution_acceptance pa ON pa.space_id=tp.space_id AND pa.task_id=tp.task_id AND pa.revision_id=pr.id
      WHERE tp.space_id=i.space_id AND tp.task_id=i.task_id AND tp.status='APPROVED'))
- AND (i.tool_name<>'workspace_shell' OR coalesce(e.version,0)=i.expected_environment_version
-   OR EXISTS(SELECT 1 FROM pf.workspace_tool_job_binding jb
-     JOIN pf.workspace_environment_operation op ON op.space_id=jb.space_id AND op.workspace_id=jb.workspace_id
-       AND op.environment_id=jb.environment_id AND op.id=jb.activation_operation_id
-     WHERE jb.operation_id=i.operation_id AND jb.space_id=i.space_id AND jb.task_id=i.task_id
-       AND e.id=jb.environment_id AND e.operation_id=op.id AND e.image_id=i.expected_image_id AND e.policy_hash=i.expected_policy_hash));
+;
  RETURN result;
 END $$;
 REVOKE ALL ON FUNCTION pf.current_tool_resource_hash(uuid,uuid,uuid,uuid) FROM PUBLIC;
@@ -263,7 +258,8 @@ BEGIN
    AND a.dispatch_generation=selected_generation AND a.status='RUNNING' AND v.task_id=intent.task_id
    AND v.owner_id=selected_owner AND v.fencing_token=selected_fence AND v.generation=selected_generation AND v.lease_until>clock_timestamp())
  AND EXISTS(SELECT 1 FROM pf.tool_operation o WHERE o.id=intent.operation_id AND o.space_id=intent.space_id
-   AND o.task_id=intent.task_id AND o.status='RUNNING' AND o.call_hash=intent.args_hash);
+   AND o.task_id=intent.task_id AND o.status='RUNNING' AND o.call_hash=intent.args_hash
+   AND EXISTS(SELECT 1 FROM pf.operation_execution_binding b WHERE b.operation_id=o.id AND b.attempt_id=selected_attempt AND b.fencing_token=selected_fence));
 END $$;
 REVOKE ALL ON FUNCTION pf.workspace_tool_owner_allowed(uuid,uuid,uuid,bigint,bigint,boolean) FROM PUBLIC;
 
@@ -335,6 +331,17 @@ LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
    AND r.result_text::jsonb#>>'{stop,finishedAt}' IS NOT NULL)
 $$;
 REVOKE ALL ON FUNCTION pf.workspace_shell_stopped_source(uuid) FROM PUBLIC;
+CREATE FUNCTION pf.workspace_shell_termination_confirmed(selected_use uuid) RETURNS boolean
+LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
+ SELECT EXISTS(SELECT 1 FROM pf.workspace_environment_use u
+ JOIN pf.workspace_environment_use_result r ON r.use_id=u.id
+ WHERE u.id=selected_use AND u.kind='SHELL'
+   AND r.result_text::jsonb#>>'{stop,containerId}'=u.container_id
+   AND r.result_text::jsonb#>>'{stop,image}'=u.image_id AND r.result_text::jsonb#>>'{stop,startedAt}'=u.container_started_at
+   AND r.result_text::jsonb#>>'{stop,execStopped}'='true' AND r.result_text::jsonb#>>'{stop,callbacksStopped}'='true'
+   AND r.result_text::jsonb#>>'{stop,finishedAt}' IS NOT NULL)
+$$;
+REVOKE ALL ON FUNCTION pf.workspace_shell_termination_confirmed(uuid) FROM PUBLIC;
 CREATE FUNCTION pf.workspace_capture_ready(selected_file_operation uuid) RETURNS boolean
 LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
  SELECT EXISTS(SELECT 1 FROM pf.tool_output_capture c JOIN pf.workspace_tool_shell_admission a
@@ -396,3 +403,142 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
  WHERE i.operation_id=selected_operation AND i.space_id=selected_space AND i.actor_id=actor AND pf.authorize_workspace_actor(actor,selected_space)
 $$;
 REVOKE ALL ON FUNCTION pf.workspace_tool_public_result(uuid,uuid,uuid) FROM PUBLIC;
+
+-- Stopped source observation is idempotent and separate from authorization to execute.
+CREATE TABLE pf.workspace_tool_content_observation(
+ operation_id uuid PRIMARY KEY REFERENCES pf.workspace_tool_intent(operation_id),
+ use_id uuid NOT NULL UNIQUE REFERENCES pf.workspace_environment_use(id),
+ observed_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE TRIGGER workspace_tool_content_observation_immutable BEFORE UPDATE OR DELETE ON pf.workspace_tool_content_observation
+ FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
+REVOKE ALL ON pf.workspace_tool_content_observation FROM PUBLIC;
+CREATE FUNCTION pf.workspace_tool_observe_stopped(selected_operation uuid,selected_use uuid) RETURNS boolean
+ LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
+DECLARE i pf.workspace_tool_intent; inserted integer;
+BEGIN
+ SELECT * INTO i FROM pf.workspace_tool_intent WHERE operation_id=selected_operation;
+ IF NOT FOUND OR NOT EXISTS(SELECT 1 FROM pf.workspace_tool_shell_admission a WHERE a.operation_id=i.operation_id AND a.use_id=selected_use)
+   OR NOT pf.workspace_shell_termination_confirmed(selected_use) THEN RETURN false; END IF;
+ PERFORM 1 FROM pf.workspace_sandbox_slot WHERE id=1 FOR UPDATE;
+ PERFORM 1 FROM pf.workspace WHERE space_id=i.space_id AND id=i.workspace_id FOR UPDATE;
+ INSERT INTO pf.workspace_tool_content_observation(operation_id,use_id) VALUES(selected_operation,selected_use) ON CONFLICT(operation_id) DO NOTHING;
+ GET DIAGNOSTICS inserted=ROW_COUNT;
+ IF inserted=1 THEN
+  UPDATE pf.file_entry SET collection_state='CHANGED',observed_sha256=NULL,observed_bytes=NULL,revision=revision+1
+   WHERE space_id=i.space_id AND workspace_id=i.workspace_id AND collection_state<>'CHANGED';
+  UPDATE pf.workspace SET content_revision=content_revision+1 WHERE space_id=i.space_id AND id=i.workspace_id;
+ END IF;
+ RETURN EXISTS(SELECT 1 FROM pf.workspace_tool_content_observation WHERE operation_id=selected_operation AND use_id=selected_use);
+END $$;
+CREATE FUNCTION pf.workspace_tool_settle_result(selected_operation uuid,selected_key text,selected_hash text,stdout integer,stderr integer) RETURNS boolean
+ LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
+DECLARE i pf.workspace_tool_intent; r pf.tool_result_reservation; old pf.tool_result_object; size bigint;
+BEGIN
+ SELECT * INTO i FROM pf.workspace_tool_intent WHERE operation_id=selected_operation;
+ IF NOT FOUND OR NOT EXISTS(SELECT 1 FROM pf.workspace_tool_shell_admission a WHERE a.operation_id=i.operation_id AND pf.workspace_shell_stopped_source(a.use_id)) THEN RETURN false; END IF;
+ size=stdout::bigint+stderr::bigint;
+ IF stdout IS NULL OR stderr IS NULL OR stdout<0 OR stderr<0 OR size>65536 OR selected_hash IS NULL OR selected_hash !~ '^[a-f0-9]{64}$'
+  OR selected_key IS DISTINCT FROM 'spaces/'||i.space_id::text||'/tool-result/'||i.operation_id::text||'/content' THEN RETURN false; END IF;
+ PERFORM 1 FROM pf.space_storage WHERE space_id=i.space_id FOR UPDATE;
+ SELECT * INTO r FROM pf.tool_result_reservation WHERE operation_id=i.operation_id FOR UPDATE;
+ IF NOT FOUND THEN RETURN false; END IF;
+ IF r.status='COMMITTED' THEN
+  SELECT * INTO old FROM pf.tool_result_object WHERE operation_id=i.operation_id;
+  RETURN FOUND AND old.status='AVAILABLE' AND old.object_key=selected_key AND old.sha256=selected_hash AND old.stdout_bytes=stdout AND old.stderr_bytes=stderr;
+ END IF;
+ IF r.status<>'RESERVED' THEN RETURN false; END IF;
+ INSERT INTO pf.tool_result_object(operation_id,space_id,task_id,workspace_id,object_key,sha256,size_bytes,stdout_bytes,stderr_bytes,reserved_bytes,status)
+ VALUES(i.operation_id,i.space_id,i.task_id,i.workspace_id,selected_key,selected_hash,size,stdout,stderr,r.reserved_bytes,'AVAILABLE');
+ UPDATE pf.space_storage SET reserved_bytes=reserved_bytes-r.reserved_bytes,committed_bytes=committed_bytes+size,version=version+1
+ WHERE space_id=i.space_id AND reserved_bytes>=r.reserved_bytes;
+ IF NOT FOUND THEN RAISE EXCEPTION 'RESULT_RESERVATION_MISMATCH'; END IF;
+ UPDATE pf.tool_result_reservation SET status='COMMITTED',actual_bytes=size,revision=revision+1 WHERE operation_id=i.operation_id;
+ RETURN true;
+END $$;
+CREATE TABLE pf.workspace_tool_unclaimed_child(
+ file_operation_id uuid PRIMARY KEY REFERENCES pf.file_operation(id),
+ operation_id uuid NOT NULL REFERENCES pf.workspace_tool_intent(operation_id),
+ command_id uuid NOT NULL UNIQUE,observed_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE TRIGGER workspace_tool_unclaimed_child_immutable BEFORE UPDATE OR DELETE ON pf.workspace_tool_unclaimed_child
+ FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
+REVOKE ALL ON pf.workspace_tool_unclaimed_child FROM PUBLIC;
+CREATE FUNCTION pf.workspace_tool_children_stopped(selected_operation uuid) RETURNS boolean
+ LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
+ SELECT EXISTS(SELECT 1 FROM pf.workspace_tool_intent WHERE operation_id=selected_operation)
+ AND NOT EXISTS(SELECT 1 FROM pf.workspace_tool_job_binding b JOIN pf.workspace_environment_operation e ON e.id=b.activation_operation_id
+  WHERE b.operation_id=selected_operation AND e.status NOT IN('COMMITTED','FAILED'))
+ AND NOT EXISTS(SELECT 1 FROM pf.workspace_tool_shell_admission a WHERE a.operation_id=selected_operation AND NOT pf.workspace_shell_termination_confirmed(a.use_id))
+ AND NOT EXISTS(SELECT 1 FROM pf.workspace_tool_job_binding b JOIN pf.file_operation f ON f.id=b.file_operation_id
+  WHERE b.operation_id=selected_operation AND NOT EXISTS(SELECT 1 FROM pf.workspace_tool_unclaimed_child n WHERE n.file_operation_id=f.id AND n.operation_id=selected_operation AND n.command_id=f.command_id) AND NOT EXISTS(SELECT 1 FROM pf.file_runner_receipt r WHERE r.command_id=f.command_id
+   AND r.stop_text::jsonb->>'commandId'=f.command_id::text AND r.stop_text::jsonb->>'execStopped'='true'
+   AND r.stop_text::jsonb->>'callbacksStopped'='true' AND (r.stop_text::jsonb->>'neverStarted'='true' OR r.stop_text::jsonb->>'finishedAt' IS NOT NULL)))
+$$;
+CREATE FUNCTION pf.workspace_tool_activation_allowed(selected_activation uuid,take_locks boolean) RETURNS boolean
+ LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
+DECLARE b pf.workspace_tool_job_binding; a pf.attempt;
+BEGIN
+ SELECT * INTO b FROM pf.workspace_tool_job_binding WHERE activation_operation_id=selected_activation;
+ IF NOT FOUND THEN RETURN true; END IF;
+ SELECT x.* INTO a FROM pf.operation_execution_binding e JOIN pf.attempt x ON x.id=e.attempt_id WHERE e.operation_id=b.operation_id;
+ IF NOT FOUND THEN RETURN false; END IF;
+ RETURN pf.workspace_tool_owner_allowed(b.operation_id,a.id,a.owner_id,a.dispatch_generation,a.fencing_token,take_locks);
+END $$;
+REVOKE ALL ON FUNCTION pf.workspace_tool_observe_stopped(uuid,uuid),pf.workspace_tool_settle_result(uuid,text,text,integer,integer),
+ pf.workspace_tool_children_stopped(uuid),pf.workspace_tool_activation_allowed(uuid,boolean) FROM PUBLIC;
+
+CREATE FUNCTION pf.workspace_tool_public_artifacts(actor uuid,selected_space uuid,selected_operation uuid)
+ RETURNS TABLE(file_id uuid,version_id uuid,path text,bytes bigint,sha256 text)
+ LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
+ SELECT c.file_id,c.version_id,c.relative_path,c.actual_bytes,c.content_sha256 FROM pf.tool_output_capture c
+ JOIN pf.workspace_tool_intent i ON i.operation_id=c.operation_id AND i.space_id=c.space_id
+ JOIN pf.tool_operation o ON o.id=i.operation_id AND o.space_id=i.space_id AND o.task_id=i.task_id
+ JOIN pf.file_version v ON v.id=c.version_id AND v.file_id=c.file_id AND v.space_id=c.space_id AND v.workspace_id=c.workspace_id
+ WHERE c.operation_id=selected_operation AND c.space_id=selected_space AND i.actor_id=actor
+ AND c.status='COMMITTED' AND o.status IN('SUCCEEDED','FAILED') AND pf.authorize_workspace_actor(actor,selected_space) ORDER BY c.ordinal
+$$;
+REVOKE ALL ON FUNCTION pf.workspace_tool_public_artifacts(uuid,uuid,uuid) FROM PUBLIC;
+
+-- A never-claimed child has a negative handoff fact, not a fabricated runner stop receipt.
+CREATE FUNCTION pf.workspace_tool_abandon_unclaimed(selected_file uuid) RETURNS boolean
+ LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
+DECLARE b pf.workspace_tool_job_binding; f pf.file_operation; released bigint;
+BEGIN
+ SELECT * INTO b FROM pf.workspace_tool_job_binding WHERE file_operation_id=selected_file;
+ IF NOT FOUND THEN RETURN false; END IF;
+ IF pf.file_tool_parent_allowed(NULL,selected_file,true) THEN RETURN false; END IF;
+ PERFORM 1 FROM pf.space_storage WHERE space_id=b.space_id FOR UPDATE;
+ PERFORM 1 FROM pf.workspace_sandbox_slot WHERE id=1 FOR UPDATE;
+ PERFORM 1 FROM pf.workspace WHERE space_id=b.space_id AND id=b.workspace_id FOR UPDATE;
+ SELECT * INTO f FROM pf.file_operation WHERE id=selected_file FOR UPDATE;
+ IF f.status<>'PENDING' OR f.owner_id IS NOT NULL OR f.effect_state<>'NOT_STARTED'
+  OR EXISTS(SELECT 1 FROM pf.file_runner_command WHERE command_id=f.command_id) THEN
+  RETURN EXISTS(SELECT 1 FROM pf.workspace_tool_unclaimed_child WHERE file_operation_id=selected_file);
+ END IF;
+ INSERT INTO pf.workspace_tool_unclaimed_child(file_operation_id,operation_id,command_id) VALUES(f.id,b.operation_id,f.command_id);
+ IF f.kind='CAPTURE' THEN
+  SELECT reserved_bytes INTO released FROM pf.tool_output_capture WHERE file_operation_id=f.id AND status='RESERVED' AND content_sha256 IS NULL FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'CHILD_RESERVATION_MISMATCH'; END IF;
+  UPDATE pf.tool_output_capture SET status='RELEASED',revision=revision+1 WHERE file_operation_id=f.id;
+ ELSIF f.kind='APPLY_UPLOAD' THEN
+  SELECT bytes INTO released FROM pf.object_reservation WHERE upload_id=f.upload_id AND status='RESERVED' FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'CHILD_RESERVATION_MISMATCH'; END IF;
+  UPDATE pf.object_reservation SET status='RELEASED',revision=revision+1 WHERE upload_id=f.upload_id;
+  UPDATE pf.upload_session SET status='ABORTED',revision=revision+1 WHERE id=f.upload_id AND status='QUEUED';
+  IF NOT FOUND THEN RAISE EXCEPTION 'CHILD_UPLOAD_MISMATCH'; END IF;
+ ELSE RETURN false; END IF;
+ UPDATE pf.space_storage SET reserved_bytes=reserved_bytes-released,version=version+1 WHERE space_id=f.space_id AND reserved_bytes>=released;
+ IF NOT FOUND THEN RAISE EXCEPTION 'CHILD_RESERVATION_MISMATCH'; END IF;
+ UPDATE pf.file_operation SET status='FAILED',effect_state='CONFIRMED',error_code='TOOL_PARENT_REVOKED_BEFORE_CLAIM',revision=revision+1 WHERE id=f.id;
+ RETURN true;
+END $$;
+CREATE FUNCTION pf.workspace_tool_abandon_on_stop() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
+DECLARE child uuid;
+BEGIN
+ FOR child IN SELECT file_operation_id FROM pf.workspace_tool_job_binding WHERE operation_id=NEW.operation_id AND file_operation_id IS NOT NULL
+ LOOP PERFORM pf.workspace_tool_abandon_unclaimed(child); END LOOP;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER workspace_tool_stop_abandon_children AFTER INSERT ON pf.workspace_tool_stop_request FOR EACH ROW EXECUTE FUNCTION pf.workspace_tool_abandon_on_stop();
+REVOKE ALL ON FUNCTION pf.workspace_tool_abandon_unclaimed(uuid),pf.workspace_tool_abandon_on_stop() FROM PUBLIC;

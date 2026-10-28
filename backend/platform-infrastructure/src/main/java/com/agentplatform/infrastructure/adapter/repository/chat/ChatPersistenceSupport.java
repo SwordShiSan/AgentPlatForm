@@ -221,6 +221,7 @@ abstract class ChatPersistenceSupport {
          }
         if(proof.startedAt().isAfter(attemptStarted)||proof.stoppedAt().isBefore(attemptStarted))throw new ChatFailure(409,"STOPPED_OWNER_PROOF_MISMATCH");
         Actor actor=new Actor(user,space);conversation(c,actor,conversation,true);task(c,actor,slotTask,true);
+        WorkspaceToolPersistence.requireStoppedChildren(c,space,slotTask);
         c.dispatch().updateExecutionDispatch141(slotTask);
         c.dispatch().updateAttempt142(proof.attemptId());
         c.conversation().insertStoppedOwnerProof143(slotOwner, space, slotTask, proof.attemptId(), fence, proof.containerId(), proof.imageId(), proof.startedAt(), proof.stoppedAt(), proof.observedAt(), proof.evidenceHash());

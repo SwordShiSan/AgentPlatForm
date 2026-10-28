@@ -107,6 +107,7 @@ final class WorkspaceToolPersistence extends ChatPersistenceSupport {
         if(row==null||!row.argsHash().equals(hash(MyBatisExecutionLedger.canonicalJson(call))))throw new ChatFailure(409,"TOOL_INTENT_MISSING");
         return new WorkspaceToolLedger.Intent(row.operationId(),row.spaceId(),row.taskId(),row.workspaceId(),row.toolName(),row.argsHash(),row.contentRevision(),row.permissionVersion(),row.resourceHash(),row.resourceJson(),row.reviewJson(),row.activationRequestId(),row.expectedEnvironmentVersion(),row.expectedImageId(),row.expectedPolicyHash());
     });}
+    static void requireStoppedChildren(ChatMappers c,UUID space,UUID task){if(c.workspaceTools().catalog(space,task)!=null&&!c.workspaceTools().childrenStopped(space,task))throw new ChatFailure(409,"WORKSPACE_TOOL_STOP_UNCONFIRMED");}
     static RiskPolicy.Result decision(ChatMappers c,Lease lease,Call call) {
         var p=c.permissions().permission(lease.spaceId(),lease.taskId());
         if(p==null||p.workspaceId()==null||!enabled(c,lease.spaceId(),lease.taskId()))

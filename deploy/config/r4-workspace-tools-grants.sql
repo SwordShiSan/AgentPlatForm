@@ -23,4 +23,9 @@ GRANT SELECT(id,operation_id,space_id,workspace_id,file_operation_id,relative_pa
     asset_id,object_key,status,actual_bytes,content_sha256,helper_stop_text,helper_stop_hash,revision) ON pf.tool_output_capture TO ap_runner;
 GRANT UPDATE(actual_bytes,content_sha256,helper_stop_text,helper_stop_hash,revision) ON pf.tool_output_capture TO ap_runner;
 GRANT INSERT(id,space_id,category,version_id,object_key,sha256,size_bytes,status,created_by) ON pf.asset_object TO ap_runner;
+GRANT EXECUTE ON FUNCTION pf.workspace_tool_observe_stopped(uuid,uuid),pf.workspace_tool_settle_result(uuid,text,text,integer,integer),pf.workspace_tool_children_stopped(uuid) TO ap_worker;
+GRANT EXECUTE ON FUNCTION pf.workspace_tool_activation_allowed(uuid,boolean) TO ap_worker,ap_runner;
+GRANT EXECUTE ON FUNCTION pf.workspace_tool_public_artifacts(uuid,uuid,uuid) TO ap_api,ap_worker;
+GRANT EXECUTE ON FUNCTION pf.workspace_tool_abandon_unclaimed(uuid) TO ap_worker;
+GRANT SELECT ON pf.workspace_tool_unclaimed_child TO ap_worker;
 COMMIT;

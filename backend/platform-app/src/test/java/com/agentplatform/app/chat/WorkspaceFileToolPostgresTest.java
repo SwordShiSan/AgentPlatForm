@@ -185,4 +185,20 @@ class WorkspaceFileToolPostgresTest extends WorkspaceToolsMigrationPostgresTest 
         assertTrue(files.usage(fileActor,workspace).reservedBytes()>0);assertFalse(repository.workspaceFileStopped(lease,tool));
         assertEquals("1",scalar(scoped("workspace_tool_job_binding")));assertEquals("1",scalar(scoped("file_outbox")));
     }
+    @Test void cancelBeforeFileClaimPersistsANegativeHandoffWithoutInventingARunnerReceipt()throws Exception {
+        var tool=create("cancel-unclaimed.txt");var lease=prepare(tool);service.admit(lease,tool);
+        var admission=repository.workspaceFileAdmission(lease,tool);var owner=new FileData.Actor(actor.userId(),actor.spaceId());
+        var bytes="666😀".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        UUID transfer=UUID.randomUUID();files.beginTransfer(owner,admission.uploadId(),transfer);
+        files.transferVerified(owner,admission.uploadId(),transfer);
+        var child=files.completeUpload(owner,admission.uploadId());repository.bindWorkspaceFileOperation(lease,tool,child.id());
+        var publication=files.publications(UUID.randomUUID()).stream().filter(p->p.operationId().equals(child.id())).findFirst().orElseThrow();
+        repository.cancel(actor,lease.taskId(),UUID.randomUUID());repository.requestWorkspaceToolStop(lease,tool,WorkspaceToolLedger.StopReason.CANCEL);
+        assertNull(files.claim(publication,UUID.randomUUID()));
+        assertEquals("FAILED",files.operation(owner,child.id()).status());assertTrue(repository.workspaceFileStopped(lease,tool));
+        assertEquals("0",scalar("SELECT count(*) FROM pf.file_runner_receipt WHERE command_id='"+child.commandId()+"'"));
+        assertEquals("1",scalar("SELECT count(*) FROM pf.workspace_tool_unclaimed_child WHERE file_operation_id='"+child.id()+"'"));
+        assertEquals("0",scalar("SELECT reserved_bytes FROM pf.space_storage WHERE space_id='"+actor.spaceId()+"'"));
+    }
+
 }

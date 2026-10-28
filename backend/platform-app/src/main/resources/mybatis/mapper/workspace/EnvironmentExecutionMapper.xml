@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.agentplatform.infrastructure.dao.workspace.EnvironmentExecutionMapper">
+    <select id="activationAllowed" resultType="boolean">SELECT pf.workspace_tool_activation_allowed(#{operation},#{locks})</select>
     <select id="publications" resultType="com.agentplatform.domain.workspace.EnvironmentExecutionData$Publication" affectData="true" flushCache="true"><![CDATA[
         WITH picked AS(SELECT id FROM pf.workspace_environment_outbox WHERE status='PENDING'
             OR(status='PUBLISHING' AND relay_until<clock_timestamp()) ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 10)

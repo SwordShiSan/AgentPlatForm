@@ -6,6 +6,8 @@ import org.apache.ibatis.annotations.*;
 
 @Mapper
 public interface WorkspaceToolMapper {
+    java.util.List<com.agentplatform.types.WorkspaceOperationData.Artifact> publicArtifacts(@Param("actor")com.agentplatform.domain.chat.ChatData.Actor actor,@Param("operation")UUID operation);
+    boolean childrenStopped(@Param("space")UUID space,@Param("task")UUID task);
     int reserveToolBytes(@Param("space")UUID space,@Param("bytes")long bytes);
     int insertCaptureReservation(@Param("row")CaptureReservation row);
     int insertResultReservation(@Param("operation")UUID operation);

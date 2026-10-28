@@ -182,4 +182,65 @@ class WorkspaceShellAdmissionPostgresTest extends WorkspaceToolsMigrationPostgre
         org.mockito.Mockito.verify(runtime,org.mockito.Mockito.times(1)).capture(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any());
         assertFalse(uses.stopCommitted(source.command().id()),"Capture completion cannot by itself release the original use/sandbox slot");
     }
+    @Test void productionCompositionQueriesLostShellResponseAndSettlesResultExactlyOnce()throws Exception {
+        var request=prepared();
+        var runnerInstance=new RunnerInstance(UUID.randomUUID(),randomHash(),"sha256:"+"6".repeat(64),"2026-10-28T00:00:00Z");
+        transactions.executeWithoutResult(status->mapperSession.getMapper(EnvironmentExecutionMapper.class).registerRunner(runnerInstance));
+        var invocations=new java.util.concurrent.atomic.AtomicInteger();
+        var wire=new WorkspaceShellRunnerPort(){
+            public EnvironmentUseData.Receipt executeShell(EnvironmentUseData.Command command){
+                invocations.incrementAndGet();assertTrue(uses.accept(command,runnerInstance.id()));String exec=randomHash();uses.recordExec(command,runnerInstance.id(),command.containerId(),exec);
+                var stop=new SandboxRuntime.Stop(command.containerId(),command.imageId(),command.containerStartedAt(),java.time.Instant.now().minusMillis(10).toString(),true,true,java.time.Instant.now());
+                uses.commitFact(command,runnerInstance.id(),new EnvironmentUseData.Fact(command.id(),command.environmentId(),command.generation(),command.fence(),command.requestHash(),runnerInstance.id(),"KNOWN",
+                    new SandboxRuntime.Output(exec,0,"666","",false,false,false,stop),stop,null));
+                throw new WorkspaceFailure(503,"FIXTURE_RESPONSE_LOST");
+            }
+            public EnvironmentUseData.Receipt queryShell(EnvironmentUseData.Command command){return uses.receipt(command);}
+        };
+        var lifecycle=org.mockito.Mockito.mock(EnvironmentLifecycleRepository.class);
+        org.mockito.Mockito.when(lifecycle.get(workspaceActor(),workspace)).thenReturn(new EnvironmentPreparationRepository.Snapshot(
+            UUID.randomUUID(),workspace,"READY",1,1,UUID.randomUUID(),"PREPARE","COMMITTED",null,false,false));
+        var content=new java.util.concurrent.ConcurrentHashMap<String,byte[]>();var resultTransfers=new java.util.concurrent.atomic.AtomicInteger();
+        var assets=new com.agentplatform.domain.files.AssetStore(){
+            public Identity put(String key,long size,String hash,java.io.InputStream stream){if(resultTransfers.incrementAndGet()==1)throw new com.agentplatform.domain.files.FileFailure(423,"FILE_TRANSFER_BUSY");try{var bytes=stream.readAllBytes();assertEquals(size,bytes.length);content.put(key,bytes);return new Identity(key,size,hash);}catch(java.io.IOException failure){throw new IllegalStateException(failure);}}
+            public Content open(String key,Long first,Long last){var bytes=Objects.requireNonNull(content.get(key));return new Content(new java.io.ByteArrayInputStream(bytes),bytes.length,bytes.length);}
+            public Identity inspect(String key){var bytes=Objects.requireNonNull(content.get(key));return new Identity(key,bytes.length,com.agentplatform.infrastructure.workspace.RunnerSignatures.sha256(bytes));}
+            public void deleteUncommitted(String key){throw new AssertionError("No result deletion");}
+        };
+        var jobs=new com.agentplatform.infrastructure.adapter.repository.chat.MyBatisWorkspaceToolJobs(mapperSession.getMapper(com.agentplatform.infrastructure.dao.chat.WorkspaceToolJobMapper.class));
+        try(var executor=java.util.concurrent.Executors.newSingleThreadExecutor();var timers=java.util.concurrent.Executors.newScheduledThreadPool(2)) {
+            var service=new WorkspaceToolsApplicationService(repository,captureFiles(),assets,lifecycle,uses,wire,jobs,transactions,executor,timers,"sha256:"+"a".repeat(64),"b".repeat(64));
+            var exchange=service.open(current,tool);var result=exchange.result().toCompletableFuture().get(10,java.util.concurrent.TimeUnit.SECONDS);
+            exchange.terminated().toCompletableFuture().get(1,java.util.concurrent.TimeUnit.SECONDS);
+            assertEquals(OperationStatus.SUCCEEDED,result.status());assertTrue(result.text().contains("666"));assertEquals(1,invocations.get());assertEquals(2,resultTransfers.get());
+            repository.commitTool(current,tool,result);
+            assertEquals("3",scalar("SELECT committed_bytes FROM pf.space_storage WHERE space_id='"+actor.spaceId()+"'"));
+            assertEquals("0",scalar("SELECT reserved_bytes FROM pf.space_storage WHERE space_id='"+actor.spaceId()+"'"));
+            assertEquals("1",scalar("SELECT count(*) FROM pf.tool_result_object WHERE operation_id='"+request.parent().operationId()+"'"));
+            assertEquals("0",scalar("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE workspace_id='"+workspace+"'"));
+            assertEquals("666",new WorkspaceOperationsService(repository,assets).result(new com.agentplatform.api.chat.ChatApi.Caller(actor.userId().toString(),actor.spaceId().toString()),request.parent().operationId().toString()).stdout());
+        }
+    }
+
+    @Test void workerStopReceiptCannotReleaseATaskWhileItsRunnerChildHasNoTerminationProof()throws Exception {
+        var request=prepared();uses.admitShell(workspaceActor(),workspace,request.parent().operationId(),current.ownerId(),request);
+        assertEquals("WORKSPACE_TOOL_STOP_UNCONFIRMED",assertThrows(ChatFailure.class,()->repository.stopped(current,"FAILED","FIXTURE_INTERRUPTED",null,randomHash())).code());
+        assertEquals("1",scalar("SELECT count(*) FROM pf.execution_slot WHERE task_id='"+current.taskId()+"'"));
+        assertEquals("0",scalar("SELECT count(*) FROM pf.execution_stop_receipt WHERE task_id='"+current.taskId()+"'"));
+    }
+    @Test void cancelledUnknownShellCanReleaseOnlyAfterTheOriginalWholeContainerStopAndKeepsAccountingHolds()throws Exception {
+        var request=prepared();var use=uses.admitShell(workspaceActor(),workspace,request.parent().operationId(),current.ownerId(),request).command();
+        var runner=new RunnerInstance(UUID.randomUUID(),randomHash(),"sha256:"+"6".repeat(64),"2026-10-28T00:00:00Z");
+        transactions.executeWithoutResult(status->mapperSession.getMapper(EnvironmentExecutionMapper.class).registerRunner(runner));
+        assertTrue(uses.accept(use,runner.id()));uses.recordExec(use,runner.id(),use.containerId(),randomHash());
+        repository.cancel(actor,current.taskId(),UUID.randomUUID());repository.requestWorkspaceToolStop(current,tool,WorkspaceToolLedger.StopReason.CANCEL);
+        var stop=new SandboxRuntime.Stop(use.containerId(),use.imageId(),use.containerStartedAt(),java.time.Instant.now().minusMillis(10).toString(),true,true,java.time.Instant.now());
+        uses.commitFact(use,runner.id(),new EnvironmentUseData.Fact(use.id(),use.environmentId(),use.generation(),use.fence(),use.requestHash(),runner.id(),"UNKNOWN",null,stop,"EXECUTION_INTERRUPTED"));
+        uses.complete(use);repository.stopped(current,"CANCELLED","TASK_CANCEL_REQUESTED",null,randomHash());
+        assertEquals("BLOCKED",repository.task(actor,current.taskId()).status());
+        assertEquals("0",scalar("SELECT count(*) FROM pf.execution_slot WHERE task_id='"+current.taskId()+"'"));
+        assertEquals("65536",scalar("SELECT reserved_bytes FROM pf.space_storage WHERE space_id='"+actor.spaceId()+"'"));
+        assertEquals("UNKNOWN",scalar("SELECT status FROM pf.tool_operation WHERE task_id='"+current.taskId()+"'"));
+    }
+
 }

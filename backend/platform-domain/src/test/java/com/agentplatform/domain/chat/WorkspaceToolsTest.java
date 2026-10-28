@@ -32,4 +32,12 @@ class WorkspaceToolsTest {
         assertThrows(IllegalArgumentException.class,()->new WorkspaceTools.WriteFile("CREATE","a","中".repeat(11000),null,null,null));
         assertDoesNotThrow(()->new WorkspaceTools.WriteFile("REPLACE","a","",file,version,1L));
     }
+    @Test void workspacePlanMetadataKeepsTheLegacyTextContractAndNeverGrantsPermissions() {
+        var legacy=PlanControls.DEFINITIONS.stream().filter(d->d.name().equals("platform_plan_review")).findFirst().orElseThrow();
+        var scoped=PlanControls.workspaceDefinitions().stream().filter(d->d.name().equals("platform_plan_review")).findFirst().orElseThrow();
+        assertTrue(legacy.description().contains("only text"));assertTrue(scoped.description().contains("same task"));
+        assertTrue(scoped.description().contains("separate live policy admission"));assertEquals(legacy.inputSchema(),scoped.inputSchema());assertEquals(legacy.category(),scoped.category());
+        assertEquals("scoped-plan-review-v2",ChatRuntime.workspaceBundle().components().get("plan-controls"));assertFalse(ChatRuntime.bundle().components().containsKey("plan-controls"));
+    }
+
 }

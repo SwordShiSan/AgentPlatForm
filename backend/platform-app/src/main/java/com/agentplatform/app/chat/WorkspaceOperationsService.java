@@ -63,7 +63,8 @@ public final class WorkspaceOperationsService implements WorkspaceOperationsApi 
             if((stdout==null?0:stdout.getBytes(StandardCharsets.UTF_8).length)+(long)(stderr==null?0:stderr.getBytes(StandardCharsets.UTF_8).length)>65536)
                 throw new IOException("Combined result bound");
             var files=new ArrayList<Artifact>();
-            if(content.path("files").isArray())for(var file:content.path("files")) {
+            if("workspace_shell".equals(record.toolName()))files.addAll(repository.workspaceOperationArtifacts(actor,record.operationId()));
+            else if(content.path("files").isArray())for(var file:content.path("files")) {
                 if(files.size()==16)throw new IOException("Artifact count bound");
                 String path=com.agentplatform.domain.files.FileRules.path(file.path("path").asString(),false);
                 String hash=com.agentplatform.domain.files.FileRules.sha256(file.path("sha256").asString());

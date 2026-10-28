@@ -17,8 +17,12 @@ public final class MyBatisEnvironmentExecutionRepository implements EnvironmentE
     private final EnvironmentExecutionMapper mapper;
     private final EnvironmentPreparationMapper environments;
     private final WorkspaceMapper workspaces;
+    private final boolean workspaceTools;
     public MyBatisEnvironmentExecutionRepository(EnvironmentExecutionMapper mapper,EnvironmentPreparationMapper environments,WorkspaceMapper workspaces) {
-        this.mapper=mapper;this.environments=environments;this.workspaces=workspaces;
+        this(mapper,environments,workspaces,false);
+    }
+    public MyBatisEnvironmentExecutionRepository(EnvironmentExecutionMapper mapper,EnvironmentPreparationMapper environments,WorkspaceMapper workspaces,boolean workspaceTools) {
+        this.mapper=mapper;this.environments=environments;this.workspaces=workspaces;this.workspaceTools=workspaceTools;
     }
     private static void tx() {
         if(!TransactionSynchronizationManager.isActualTransactionActive())throw new IllegalStateException("Environment execution transaction required");
@@ -42,7 +46,7 @@ public final class MyBatisEnvironmentExecutionRepository implements EnvironmentE
     @Override public List<Publication> publications(UUID owner) {tx();return mapper.publications(owner);}
     @Override public void published(Publication item,boolean confirmed) {tx();mapper.published(item,confirmed);}
     @Override public Command claim(Publication item,UUID owner) {
-        tx();var slot=environments.lockSlot();
+        tx();boolean parentAllowed=!workspaceTools||mapper.activationAllowed(item.operationId(),true);var slot=environments.lockSlot();
         if(!mapper.knownPublication(item)) {quarantine(Uuid7.next(),"INVALID_ENVIRONMENT_DELIVERY",RunnerSignatures.sha256(JSON.writeValueAsBytes(item)));return null;}
         var environment=lock(item.spaceId(),item.workspaceId());
         var operation=environments.operation(item.operationId());
@@ -50,7 +54,7 @@ public final class MyBatisEnvironmentExecutionRepository implements EnvironmentE
                 ||environment.generation()!=item.generation()||environment.fence()!=item.fence()||!"PENDING".equals(operation.status())
                 ||!environment.id().equals(slot.environmentId())||!Objects.equals(slot.generation(),item.generation()))return null;
         var pending=mapper.command(operation.id());
-        if(!authorized(pending)) {
+        if(!parentAllowed||!authorized(pending)) {
             if(mapper.rejectBeforeClaim(operation.id())!=1)throw new WorkspaceFailure(409,"ENVIRONMENT_CONCURRENT_CHANGE");
             mapper.projectRejected(environment.id());mapper.projectWorkspace(pending,"ERROR");mapper.releaseSlot(pending);
             event(environments.environment(environment.spaceId(),environment.workspaceId()));return null;
@@ -109,7 +113,7 @@ public final class MyBatisEnvironmentExecutionRepository implements EnvironmentE
         if("RUNNING".equals(receipt.state()))throw new WorkspaceFailure(503,"RUNNER_RECEIPT_CORRUPT");return receipt;
     }
     private void guard(Command command,boolean active) {
-        tx();var slot=environments.lockSlot();var row=lock(command.spaceId(),command.workspaceId());environments.operation(command.operationId());
+        tx();if(workspaceTools&&!mapper.activationAllowed(command.operationId(),true))throw new WorkspaceFailure(403,"TOOL_PARENT_NO_LONGER_AUTHORIZED");var slot=environments.lockSlot();var row=lock(command.spaceId(),command.workspaceId());environments.operation(command.operationId());
         var actual=mapper.command(command.operationId());
         if(!row.operationId().equals(command.operationId())||!command.equals(actual)||!mapper.owned(command,active)
                 ||active&&(!row.id().equals(slot.environmentId())||!Objects.equals(slot.generation(),command.generation())))

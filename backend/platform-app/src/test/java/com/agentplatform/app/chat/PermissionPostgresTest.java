@@ -22,12 +22,12 @@ class PermissionPostgresTest {
     com.agentplatform.domain.identity.IdentityStore identity;Actor user, admin;
     @BeforeAll static void migrate() throws Exception {
         url=System.getenv("R42_TEST_JDBC_URL");Assumptions.assumeTrue(url!=null,"R42 database not configured: NOT_RUN");
-        assertTrue("jdbc:postgresql://127.0.0.1:15455/r42_test?connectTimeout=2&socketTimeout=5".equals(url)
+        assertTrue(FixtureDatabaseScope.r44(url)||"jdbc:postgresql://127.0.0.1:15455/r42_test?connectTimeout=2&socketTimeout=5".equals(url)
                 || ("1".equals(System.getenv("R43_ACCEPTANCE")) && "jdbc:postgresql://127.0.0.1:15456/r43_test?connectTimeout=2&socketTimeout=5".equals(url)));
         password=Files.readString(Path.of(System.getenv("R42_TEST_PASSWORD_FILE"))).strip();
         var flyway=Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").cleanDisabled(false).load();flyway.clean();
         var old=Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").target("15").load();old.migrate();assertEquals("15",old.info().current().getVersion().toString());
-        flyway.migrate();flyway.validate();assertEquals("17",flyway.info().current().getVersion().toString());
+        flyway.migrate();flyway.validate();assertEquals("18",flyway.info().current().getVersion().toString());
     }
     @BeforeEach void setup() {
         var config=new com.zaxxer.hikari.HikariConfig();config.setJdbcUrl(url);config.setUsername("postgres");config.setPassword(password);config.setMaximumPoolSize(4);config.setMinimumIdle(1);

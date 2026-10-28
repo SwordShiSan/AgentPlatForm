@@ -80,7 +80,7 @@ public final class ChatExecution implements AutoCloseable {
                     .filter(c->toolApprovalsEnabled||!"approval_probe".equals(c.name())).toList();
             var workspaceDefinitions=workspaceCapable&&!scope.planMode()?List.copyOf(workspaceTools.definitions(lease)):List.<ToolDefinition>of();
             var modelDefinitions=new ArrayList<ToolDefinition>();
-            if(scope.planMode()||controls)modelDefinitions.addAll(PlanControls.DEFINITIONS);
+            if(scope.planMode()||controls)modelDefinitions.addAll(workspaceCapable?PlanControls.workspaceDefinitions():PlanControls.DEFINITIONS);
             else if(workspaceCapable)modelDefinitions.add(PlanControls.DEFINITIONS.stream().filter(d->"platform_ask_user".equals(d.name())).findFirst().orElseThrow());
             modelDefinitions.addAll(workspaceDefinitions);
             modelDefinitions.addAll(businessDefinitions.stream().map(ToolDefinition::legacy).toList());

@@ -65,18 +65,19 @@ public class ChatConfiguration {
     @Bean @Profile("chat-local") ReadinessProbe chatReadiness(ChatRepository repository,IdentityStore identity,DispatchTransport transport){return ()->identity.ready()&&repository.ready()&&transport.connected();}
     @Bean @Profile({"chat-local","chat-worker","chat-ops"}) CredentialCipher credentialCipher(@Value("${platform.chat.master-key-file}")String file)throws Exception{return new CredentialCipher(Files.readAllBytes(Path.of(file)));}
     @Bean @Profile("chat-worker") ChatProvider chatProvider(@Value("${platform.chat.provider-base:https://api.deepseek.com}")String base,@Value("${platform.chat.fixture-provider:false}")boolean fixture,
-            @Value("${platform.chat.fixture-tools:false}")boolean tools,org.springframework.core.env.Environment environment){
+            @Value("${platform.chat.fixture-tools:false}")boolean tools,@Value("${platform.workspace.tools.enabled:false}")boolean workspaceTools,org.springframework.core.env.Environment environment){
         if(tools&&!environment.acceptsProfiles(org.springframework.core.env.Profiles.of("recovery-fixture")))throw new IllegalArgumentException("FIXTURE_PROFILE_REQUIRED");
-        return new DeepSeekChatProvider(base,fixture,tools);
+        return new DeepSeekChatProvider(base,fixture,tools,workspaceTools);
     }
     @Bean @Profile("chat-worker") ChatExecution chatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,DispatchTransport transport,
             @org.springframework.beans.factory.annotation.Qualifier("executionTimers") org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler timers,
             @Value("${platform.chat.workspace-root:/tmp/chat-runtime}")String root,
             @Value("${platform.chat.fixture-tools:false}")boolean tools,
             @Value("${platform.chat.approvals-enabled:false}")boolean approvals,
-            @Value("${platform.chat.acceptance-run:}")String acceptanceRun,org.springframework.core.env.Environment environment){
+            @Value("${platform.chat.acceptance-run:}")String acceptanceRun,org.springframework.beans.factory.ObjectProvider<WorkspaceToolRuntime> workspaceTools,org.springframework.core.env.Environment environment){
         var execution=new ChatExecution(repository,provider,cipher,Path.of(root),timers.getScheduledExecutor(),
                     tools?new com.agentplatform.infrastructure.chat.RecoveryFixtureTool(Path.of(root).resolve("fixture-effects")):null);
+        var workspaceRuntime=workspaceTools.getIfAvailable();if(workspaceRuntime!=null)execution.configureWorkspaceTools(workspaceRuntime);
         if(approvals){
             if(!environment.acceptsProfiles(org.springframework.core.env.Profiles.of("recovery-fixture")))throw new IllegalArgumentException("FIXTURE_PROFILE_REQUIRED");
             execution.configureToolApprovals();

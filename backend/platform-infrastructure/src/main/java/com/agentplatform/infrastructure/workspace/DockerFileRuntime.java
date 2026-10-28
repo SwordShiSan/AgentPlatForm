@@ -269,6 +269,19 @@ public final class DockerFileRuntime implements FileRuntime {
             return new Result("CAPTURED",JSON.writeValueAsString(Map.of("protocol","file-capture-v1","operationId",command.operation().id(),
                     "state","CAPTURED","bytes",value.bytes(),"sha256",value.sha256())),JSON.writeValueAsString(stopped.get()));
         }catch(RuntimeException problem){
+            // No descriptor means no S3 sink was invoked. A nonzero fixed-helper
+            // exit plus actual callback/IO stop proves a known capture rejection.
+            if(descriptor.get()==null&&capture!=null&&capture.quiescent()&&verifierStopped.get()) {
+                var physical=authority.physical();
+                if(physical!=null&&physical.execId()!=null) {
+                    var execution=docker.inspectExecCmd(physical.execId()).exec();
+                    if(Boolean.FALSE.equals(execution.isRunning())&&execution.getExitCodeLong()!=null&&execution.getExitCodeLong()!=0) {
+                        var fact=stop(command,physical,true);
+                        if(fact!=null){stopped.set(fact);sink.stopped(fact);release=true;
+                            return new Result("NOT_APPLIED",JSON.writeValueAsString(Map.of("state","NOT_APPLIED","code","FILE_CAPTURE_REJECTED")),JSON.writeValueAsString(fact));}
+                    }
+                }
+            }
             if(!createInvoked&&originalAbsent&&verifierStopped.get()) {
                 var fact=new Stop(command.operation().commandId(),null,policy.image(),null,null,null,true,true,true,Instant.now());
                 stopped.set(fact);sink.stopped(fact);release=true;

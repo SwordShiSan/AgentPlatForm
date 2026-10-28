@@ -11,6 +11,11 @@ import time
 ROOT = Path(__file__).resolve().parents[2]
 JDBC = 'jdbc:postgresql://127.0.0.1:15457/r44_test?connectTimeout=2&socketTimeout=5'
 GROUPS = {
+    'plan-metadata': 'WorkspaceToolsTest,WorkspaceToolAdmissionPostgresTest,PlanQuotaPostgresTest#fullPlanWaitEditAndAnswerResumeSameTaskAndRejectStaleOrOtherUser+deliverPlanCompletesWithoutAnotherProviderCall,ArchitectureTest',
+    'approval-crash': 'ApprovalAnswerCrashPostgresTest#processStopsBeforeAnswerThenOriginalCommandCanComplete+processDiesDuringAnswerAndTransactionRollsBack+processStopsAfterCommitAndOriginalCommandIsNotDuplicated',
+    'historical-fixtures': 'PlanQuotaPostgresTest,PermissionPostgresTest,ApprovalPostgresTest,ApprovalAnswerCrashPostgresTest#processStopsBeforeAnswerThenOriginalCommandCanComplete+processDiesDuringAnswerAndTransactionRollsBack+processStopsAfterCommitAndOriginalCommandIsNotDuplicated,FileReconciliationTest',
+    'sdk-production': 'WorkspaceToolAdmissionPostgresTest#sdkFullUsesTheProductionCompositionAndReturnsToTheSameTask+sdkApprovalResumesExactOriginalOperationIntoTheProductionComposition',
+    'production-composition': 'WorkspaceShellAdmissionPostgresTest,WorkspaceToolAdmissionPostgresTest,WorkspaceFileToolPostgresTest,RecoveryFixtureProfileTest',
     'capture-persistence': 'WorkspaceShellAdmissionPostgresTest#capturesCannotQueueBeforeTheOriginalShellHasACommittedWholeStop+signedCaptureJobPublishesOneImmutableVersionAndSettlesOnlyItsOriginalReservationDespiteResponseLoss',
     'capture-runner-wire': 'FileCaptureRunnerServiceTest,FileRunnerServiceTest,RunnerSignaturesTest',
     'capture-foundation': 'WorkspaceShellAdmissionPostgresTest,CapturedFileStreamTest,FileCaptureChannelTest,FileRunnerServiceTest',
@@ -64,9 +69,13 @@ def main():
     (folder / 'source.json').write_text(json.dumps(identity, indent=2) + '\n', encoding='utf-8', newline='\n')
     env = os.environ.copy()
     env.update(JAVA_HOME=str(java), R44_TEST_JDBC_URL=JDBC, R44_TEST_PASSWORD_FILE=str(password))
+    if args.group in {'historical-fixtures','approval-crash','plan-metadata'}:
+        env['R44_ACCEPTANCE']='1'
+        for stage in ['R41','R42','R43']:
+            env[stage+'_TEST_JDBC_URL']=JDBC;env[stage+'_TEST_PASSWORD_FILE']=str(password)
     env['PATH'] = str(java / 'bin') + os.pathsep + env['PATH']
     command = [str(ROOT / 'backend/mvnw.cmd'), '-B', '-ntp', '-f', str(ROOT / 'backend/pom.xml'),
-               '-pl', 'platform-app', '-am', '-Dtest=' + GROUPS[args.group], '-Dsurefire.failIfNoSpecifiedTests=false', 'test']
+               '-pl', 'platform-app', '-am', '-Dtest=' + GROUPS[args.group], '-Dsurefire.failIfNoSpecifiedTests=false', 'verify' if args.group=='plan-metadata' else 'test']
     started = time.monotonic()
     with (folder / 'maven.log').open('wb') as log:
         process = subprocess.run(command, cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT)

@@ -23,6 +23,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /** Application atomic boundaries; network and provider calls never run inside these transactions. */
 public final class TransactionalChatRepository implements ChatRepository {
+    @Override public java.util.List<com.agentplatform.types.WorkspaceOperationData.Artifact> workspaceOperationArtifacts(Actor actor,UUID operation){return tx(snapshots,()->delegate.workspaceOperationArtifacts(actor,operation));}
     @Override public Bundle executionBundle(Lease lease){return tx(transactions,()->delegate.executionBundle(lease));}
     @Override public boolean workspaceToolTask(Lease lease){return tx(transactions,()->delegate.workspaceToolTask(lease));}
     @Override public com.agentplatform.domain.chat.WorkspaceToolLedger.ResultRecord workspaceOperationResult(Actor actor,UUID operation){return tx(snapshots,()->delegate.workspaceOperationResult(actor,operation));}

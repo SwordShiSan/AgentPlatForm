@@ -16,6 +16,7 @@ public interface WorkspaceToolLedger {
     record ResultRecord(UUID operationId,UUID taskId,String toolName,String status,String text,String path,
                         String objectKey,String sha256,Long bytes,Integer stdoutBytes,Integer stderrBytes) {}
     default ResultRecord workspaceOperationResult(ChatData.Actor actor,UUID operation){throw new ChatFailure(422,"WORKSPACE_TOOLS_NOT_AVAILABLE");}
+    default List<com.agentplatform.types.WorkspaceOperationData.Artifact> workspaceOperationArtifacts(ChatData.Actor actor,UUID operation){return List.of();}
     default boolean workspaceToolTask(Lease lease){return false;}
     default void prepareWorkspaceTools(Lease lease,List<Call> calls,String imageId,String policyHash){
         throw new ChatFailure(422,"WORKSPACE_TOOLS_NOT_AVAILABLE");

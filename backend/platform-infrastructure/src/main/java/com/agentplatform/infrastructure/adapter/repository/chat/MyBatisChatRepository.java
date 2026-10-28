@@ -37,6 +37,7 @@ public final class MyBatisChatRepository implements ChatRepository {
         executions = new ExecutionPersistence(mappers);
         checkpoints = new CheckpointPersistence(mappers);
     }
+    @Override public java.util.List<com.agentplatform.types.WorkspaceOperationData.Artifact> workspaceOperationArtifacts(Actor actor,UUID operation){return new WorkspaceToolPersistence(mappers).tx(c->{new WorkspaceToolPersistence(c).result(actor,operation);return c.workspaceTools().publicArtifacts(actor,operation);});}
     @Override public HarnessData.Bundle executionBundle(Lease lease) {
         return new WorkspaceToolPersistence(mappers).tx(c->{MyBatisExecutionLedger.guard(c,lease);return WorkspaceToolPersistence.bundle(c,lease.spaceId(),lease.taskId());});
     }

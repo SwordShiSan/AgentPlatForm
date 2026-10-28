@@ -312,16 +312,44 @@
           "logSha256": "347d966427f256ee3b642071bed0945d1eb5b7887bdec278ae5300c42e81c80e"
         }
       ]
+    },
+    {
+      "name": "production-tool-composition",
+      "status": "PASS",
+      "sourceHead": "e9bfc2a27dd3ffc6d350e7fe5e46616833bd85bd",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "3987c54d24082b181c7f638df407566adcfcd97ad96e41d9d018db559f97fb33",
+      "logSha256": "45bf604e1c9f00ee003981d87ac6bb9ea60fa463e3928e625f5dbefddaf81d58",
+      "note": "Actual PG composition/stop/negative handoff; deterministic physical/object ports."
+    },
+    {
+      "name": "full-engineering",
+      "status": "PASS",
+      "sourceHead": "e9bfc2a27dd3ffc6d350e7fe5e46616833bd85bd",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "2a5fa1b39f4f6428059407485b3f5b56f35529ebe86d639d5eac8270ea431d8a",
+      "logSha256": "135319fcfb506a31c25736038d61b0794eb55f0ea39444e9dc507feed18c9b82",
+      "note": "Complete Maven verify; historical broker-dependent tests skipped here, actual MQ gate pending."
+    },
+    {
+      "name": "scoped-plan-metadata",
+      "status": "PASS",
+      "sourceHead": "e9bfc2a27dd3ffc6d350e7fe5e46616833bd85bd",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "9955e09cf6bd17863b98ed28a9e6253e8add56818a10ed63d7cf7f84705613d8",
+      "logSha256": "0105bfc78edf66a4b461b4cfb0168b9d2d0b754b98e0baf0c0023bd9d842c340",
+      "note": "Maven verify metadata increment, SDK, legacy text Plan, domain and architecture; B19 unchanged."
     }
   ],
   "notRun": [
-    "production signed shell job",
-    "native declared output capture and immutable sealing",
-    "safe operation APIs and ToolCard",
-    "complete engineering and browser regression",
+    "native production SDK/signed shell/S3 capture/version/same-task result",
+    "actual full API/browser/resource gates",
     "bounded real Flash end-to-end",
     "protected promotion and cloud release/observation/restore/rollback"
   ],
-  "production": "Same R3 release/containers/images restored, schema14/readiness200, legacy stopped. Its pre-existing OOM runner was restarted after preserving evidence; original unaccepted SCAN converged through the existing reconciler to NOT_APPLIED/FAILED with no manual ledger edits. This does not prove the OOM cause or R4 full resource capacity.",
+  "production": "Same R3 release/images. Original runner restarted after second preserved OOM; second unaccepted expired SCAN converged via existing receipt reconciliation to NOT_APPLIED/FAILED. No SQL repair/replay. Memory cause and R4 capacity unproven. Receipt /srv/agentplatform/operations/r44-r3-runner-recovery-1793191334160114315.",
   "history": "Retain original failed logs in protected local stage records; failures are not overwritten by later passes."
 }

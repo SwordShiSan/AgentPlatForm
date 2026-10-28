@@ -2,6 +2,7 @@
 from collections import Counter
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import re
 import threading
 import time
 
@@ -120,12 +121,38 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     name, arguments = 'platform_plan_write', {'title': '文本处理计划',
                         'markdown': '1. 明确用户提供的文本需求。\n2. 在当前对话中组织并输出文本结果。\n3. 不访问文件、终端或其他业务工具。'}
+                if name=='platform_plan_write' and 'fixture:workspace-' in str(user_text):
+                    arguments={'title':'工作区计划','markdown':'1. 确认后按任务权限执行绑定工作区内的命令。\n2. 封存声明的输出文件并读回真实结果。\n3. 每次操作继续接受权限和隔离检查。'}
                 if name:
                     encoded = json.dumps(arguments, ensure_ascii=False)
                     middle = max(1, len(encoded) // 2)
                     chunk({'tool_calls': [{'index': 0, 'id': 'control-' + str(len(calls) + 1), 'type': 'function',
                         'function': {'name': name, 'arguments': encoded[:middle]}}]})
                     chunk({'tool_calls': [{'index': 0, 'function': {'arguments': encoded[middle:]}}]}, 'tool_calls')
+            elif 'workspace_shell' in control_tools and any(str(message.get('content','')).startswith('fixture:workspace-') for message in messages if message.get('role')=='user'):
+                user_text=next(str(message.get('content','')) for message in reversed(messages) if message.get('role')=='user')
+                calls=[call for message in messages for call in message.get('tool_calls',[])]
+                business=[call for call in calls if call.get('function',{}).get('name','').startswith('workspace_')]
+                if business:
+                    # Only an actual persisted tool observation can produce the fixture's final reply.
+                    ids={call.get('id') for call in business}
+                    results=[message for message in messages if message.get('role')=='tool' and message.get('tool_call_id') in ids]
+                    if not results:raise ValueError('WORKSPACE_OBSERVATION_REQUIRED')
+                    chunk({'content':'工具结果已读回：'+json.dumps(results[-1].get('content',''),ensure_ascii=False)},'stop')
+                else:
+                    name='workspace_shell';arguments={'command':'printf 666 > tool-output.txt; printf 666','cwd':'','timeoutSeconds':20,'outputs':[{'path':'tool-output.txt','maxBytes':4096}]}
+                    if 'workspace-nonzero' in user_text:arguments.update(command='exit 7',outputs=[])
+                    elif 'workspace-cancel' in user_text:arguments.update(command='sleep 30',outputs=[])
+                    elif 'workspace-background' in user_text:arguments.update(command='sleep 120 & printf 666',outputs=[])
+                    elif 'workspace-write' in user_text:name='workspace_write';arguments={'mode':'CREATE','path':'written.txt','text':'666','fileId':None,'baseVersionId':None,'revision':None}
+                    elif 'workspace-list' in user_text:name='workspace_list';arguments={'parent':'','cursor':None,'limit':20}
+                    elif 'workspace-read' in user_text:
+                        ids=re.findall(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',user_text)
+                        if len(ids)!=2:raise ValueError('EXPLICIT_VERSION_REQUIRED')
+                        name='workspace_read';arguments={'fileId':ids[0],'versionId':ids[1],'offsetCodePoints':0,'maxCodePoints':1024}
+                    encoded=json.dumps(arguments,ensure_ascii=False);middle=max(1,len(encoded)//2)
+                    chunk({'tool_calls':[{'index':0,'id':'workspace-operation-'+str(len(calls)+1),'type':'function','function':{'name':name,'arguments':encoded[:middle]}}]})
+                    chunk({'tool_calls':[{'index':0,'function':{'arguments':encoded[middle:]}}]},'tool_calls')
             elif prompt.startswith('fixture:recovery-tool') and not any(message.get('role') == 'tool' for message in messages):
                 chunk({'tool_calls': [{'index': 0, 'id': 'recovery-operation-1', 'type': 'function',
                        'function': {'name': 'recovery_probe', 'arguments': '{"text":"one"}'}}]}, 'tool_calls')

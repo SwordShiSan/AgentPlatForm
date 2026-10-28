@@ -217,10 +217,11 @@ public final class MyBatisFileRepository implements FileRepository {
     @Override public List<Publication> publications(UUID owner) { tx();return files.publications(owner); }
     @Override public void published(Publication item, boolean success) { tx();one(files.published(item, success)); }
     @Override public Command claim(Publication item, UUID owner) {
-        if(!files.toolParentAllowed(null,item.operationId(),true))throw new FileFailure(409,"TOOL_PARENT_NO_LONGER_AUTHORIZED");
         tx();
         if (!files.knownPublication(item)) {files.quarantine(Uuid7.next(),"UNKNOWN_FILE_PUBLICATION",RunnerSignatures.sha256(JSON.writeValueAsBytes(item)));return null;}
         var observed = files.operation(item.operationId());
+        if(!"PENDING".equals(observed.status())){files.inbox(item);return null;}
+        if(!files.toolParentAllowed(null,item.operationId(),true)){if(files.abandonUnclaimed(item.operationId())){files.inbox(item);return null;}throw new FileFailure(409,"TOOL_PARENT_NO_LONGER_AUTHORIZED");}
         var actor = new Actor(observed.actorId(), observed.spaceId());
         storage(actor);environments.lockSlot();var workspace = workspace(actor, item.workspaceId(), true);
         files.ensureLease(actor.spaceId(), workspace.id());var lease = files.lockLease(actor.spaceId(), workspace.id());

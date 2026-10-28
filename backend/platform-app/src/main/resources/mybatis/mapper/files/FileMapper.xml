@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.agentplatform.infrastructure.dao.files.FileMapper">
+    <select id="abandonUnclaimed" resultType="boolean" affectData="true" flushCache="true">SELECT pf.workspace_tool_abandon_unclaimed(#{operation})</select>
     <select id="toolParentAllowed" resultType="boolean">SELECT pf.file_tool_parent_allowed(#{upload,jdbcType=OTHER},#{operation,jdbcType=OTHER},#{locks})</select>
     <select id="databaseTime" resultType="java.time.Instant">SELECT clock_timestamp()</select>
     <select id="lockStorage" resultType="com.agentplatform.infrastructure.dao.po.FileRows$Storage">SELECT object_limit_bytes,reserved_bytes,committed_bytes,version,status FROM pf.space_storage WHERE space_id=#{space} FOR UPDATE</select>

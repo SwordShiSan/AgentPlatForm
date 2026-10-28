@@ -90,3 +90,16 @@ ToolCard显示审批/环境准备/执行/停止/版本封存/结果、耗时、e
 云端身份/历史/Plan/FULL与RISK/真实文件shell/内部端点封闭，单次至少30分钟混合功能及资源观察。新栈停止后串行独立恢复，验证身份/密文key/文件对象hash/quota/readiness，不发模型。回退前收敛R4任务，旧R3不能接管新bundle；演练R3回退后重启同一R4候选、最终冒烟，更新platform-switch身份并创建production-r4-<sha>。
 
 成功：R4.4 VERIFIED、R4 4/4 VERIFIED、R4 RELEASED；云端R4、旧平台停机保留；R5另行Plan。失败优先恢复同一R3，不改main稳定历史，不自动启动旧业务。归档唯一change（云方案除外）、同步phase、局部/全局/交接/ADR/Skill；最终干净检出后正文与脱敏证据分别两份保护本地及云端副本、SHA核对、≥30天。秘密/SQL/原始浏览器DOM不公开。停止验收/恢复资源，保留卷镜像。
+
+
+### Production composition and convergence detail
+
+WorkspaceToolsApplicationService is the single application composition behind WorkspaceToolRuntime. Its one bounded IO executor is not a task scheduler: file writes/captures and environment activation still use the existing outboxes/MQ/claim/ACK; shell uses the already durably handed-off parent attempt and one signed original use. A fresh admission ticket may issue one POST only; lost responses query the same ID. Activation is bound in the admission transaction and checks the original operation_execution_binding (including approval-resume attempt), owner/fence, permission and deadline before execution and commit. Environment version is not an immutable approval identity; image/policy/content/permission remain frozen.
+
+All nonempty or empty bounded shell output is stored uniformly in a private result object (including outputs <=32KiB), independently verified and settled against the original64KiB reservation. This extends the required >32KiB storage path without increasing bounds or exposing object keys. The model receives <=8KiB JSON; authorized version links are queried from canonical capture/version rows rather than relying on a truncated model summary.
+
+A stopped-source observation invalidates old directory/file projections exactly once before capture. The existing managed scan scheduler refreshes undeclared changes after the source use releases its data-plane lease. Capture has no SDK or Agent loop. A fixed helper's nonzero exit before any descriptor, plus actual callback/input/IO exit and precise stop, is a known capture rejection; once a descriptor/upload might exist, ambiguity remains UNKNOWN.
+
+Cancellation of a PENDING never-claimed child can persist an immutable negative handoff fact and release only its unused reservation. It does not manufacture a runner receipt. Any accepted/running child requires its exact physical stop. Local worker stop and signed host worker-stop proof cannot release the task slot while a linked runner child lacks termination evidence. UNKNOWN results retain reservations and are never replayed.
+
+Only B20 uses scoped-plan-review-v2 control descriptions and same-task workspace execution guidance. B19 retains the original text-only descriptions and bundle hash. Control input schemas/categories do not change and no description grants operation or resource authority.

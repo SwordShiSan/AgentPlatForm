@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.agentplatform.infrastructure.dao.chat.WorkspaceToolMapper">
+  <select id="publicArtifacts" resultType="com.agentplatform.types.WorkspaceOperationData$Artifact">SELECT * FROM pf.workspace_tool_public_artifacts(#{actor.userId},#{actor.spaceId},#{operation})</select>
+  <select id="childrenStopped" resultType="boolean">SELECT NOT EXISTS(SELECT 1 FROM pf.workspace_tool_intent WHERE space_id=#{space} AND task_id=#{task} AND NOT pf.workspace_tool_children_stopped(operation_id))</select>
   <update id="reserveToolBytes">
     UPDATE pf.space_storage SET reserved_bytes=reserved_bytes+#{bytes},version=version+1
     WHERE space_id=#{space} AND status='ACTIVE' AND #{bytes}&gt;=0 AND #{bytes}&lt;=object_limit_bytes-reserved_bytes-committed_bytes
@@ -33,7 +35,7 @@
       LEFT JOIN pf.file_runner_receipt r ON r.command_id=f.command_id AND r.space_id=f.space_id AND r.workspace_id=f.workspace_id
       WHERE a.space_id=#{lease.spaceId} AND a.task_id=#{lease.taskId} AND a.attempt_id=#{lease.attemptId}
       AND a.owner_id=#{lease.ownerId} AND a.fence=#{lease.fence} AND o.call_id=#{call}
-      AND (b.file_operation_id IS NULL OR(r.stop_text::jsonb->>'commandId'=f.command_id::text
+      AND (b.file_operation_id IS NULL OR EXISTS(SELECT 1 FROM pf.workspace_tool_unclaimed_child n WHERE n.file_operation_id=f.id AND n.operation_id=a.operation_id AND n.command_id=f.command_id) OR(r.stop_text::jsonb->>'commandId'=f.command_id::text
         AND r.stop_text::jsonb->>'execStopped'='true' AND r.stop_text::jsonb->>'callbacksStopped'='true'
         AND (r.stop_text::jsonb->>'neverStarted'='true' OR r.stop_text::jsonb->>'finishedAt' IS NOT NULL))))
   </select>
@@ -61,10 +63,11 @@
     INSERT INTO pf.workspace_tool_stop_request(operation_id,space_id,task_id,workspace_id,attempt_id,owner_id,task_fence,reason_code)
     SELECT i.operation_id,i.space_id,i.task_id,i.workspace_id,a.id,a.owner_id,a.fencing_token,#{reason}
     FROM pf.workspace_tool_intent i JOIN pf.tool_operation o ON o.id=i.operation_id AND o.space_id=i.space_id AND o.task_id=i.task_id
-    JOIN pf.attempt a ON a.id=o.attempt_id AND a.space_id=o.space_id AND a.task_id=o.task_id
+    JOIN pf.operation_execution_binding eb ON eb.operation_id=o.id
+    JOIN pf.attempt a ON a.id=eb.attempt_id AND a.space_id=o.space_id AND a.task_id=o.task_id
     WHERE i.space_id=#{lease.spaceId} AND i.task_id=#{lease.taskId} AND i.actor_id=#{lease.userId}
       AND o.call_id=#{call} AND o.call_hash=#{hash} AND o.status IN('RUNNING','UNKNOWN')
-      AND o.attempt_id=#{lease.attemptId} AND o.fencing_token=#{lease.fence}
+      AND eb.attempt_id=#{lease.attemptId} AND eb.fencing_token=#{lease.fence}
       AND a.owner_id=#{lease.ownerId} AND a.fencing_token=#{lease.fence}
     ON CONFLICT(operation_id) DO NOTHING
   </insert>
