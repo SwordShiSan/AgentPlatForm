@@ -98,9 +98,22 @@ final class ApprovalPersistence extends ChatPersistenceSupport implements Approv
         boolean changed=stale(mappers,b)||!"PREPARED".equals(o.status());
         Object toolName=object(interaction.payloadJson()).get("toolName");
         String safeToolName=toolName instanceof String name&&!name.isBlank()?name:"Protected operation";
+        com.agentplatform.types.WorkspaceOperationData.Review review=null;
+        if(WorkspaceToolPersistence.enabled(mappers,b.spaceId(),b.taskId())) {
+            // Use the same allowlisted, actor-scoped projection as ToolCard. The API
+            // never receives grants to private call_json, credentials or SDK state.
+            UUID before=null;
+            while(true) {
+                var page=mappers.workspaceTools().publicOperations(new Actor(b.actorId(),b.spaceId()),b.taskId(),before,51);
+                var row=page.stream().filter(value->b.operationId().equals(value.operationId())).findFirst();
+                if(row.isPresent()){review=JSON.readValue(row.get().reviewJson(),com.agentplatform.types.WorkspaceOperationData.Review.class);break;}
+                if(page.size()<51)throw new ChatFailure(409,"APPROVAL_OPERATION_MISMATCH");
+                before=page.getLast().operationId();
+            }
+        }
         return new ToolApprovalPayload(b.operationId(),safeToolName,b.summary(),b.reasonCode(),b.workspaceId(),null,
                 b.workspaceId()==null?null:b.resourceHash(),b.callHash(),changed,
-                changed?List.of(PlanInteractionData.Decision.DENY):List.of(PlanInteractionData.Decision.ALLOW_ONCE,PlanInteractionData.Decision.DENY),b.permissionVersion(),b.policyVersion());
+                changed?List.of(PlanInteractionData.Decision.DENY):List.of(PlanInteractionData.Decision.ALLOW_ONCE,PlanInteractionData.Decision.DENY),b.permissionVersion(),b.policyVersion(),review);
     }
     void validateAnswer(InteractionRow interaction,PlanInteractionData.Answer answer) {
         if(!Set.of(PlanInteractionData.Decision.ALLOW_ONCE,PlanInteractionData.Decision.DENY).contains(answer.decision())

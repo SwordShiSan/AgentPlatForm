@@ -19,8 +19,13 @@ public final class PlanInteractionData {
     public record ToolApprovalPayload(UUID operationId, String toolName, String summary, String reasonCode,
                                       UUID workspaceId, String target, String targetVersion, String callHash,
                                       boolean stale, List<Decision> allowedActions, long permissionVersion,
-                                      String policyVersion) {
+                                      String policyVersion, WorkspaceOperationData.Review review) {
         public ToolApprovalPayload { allowedActions=List.copyOf(allowedActions); }
+        public ToolApprovalPayload(UUID operationId,String toolName,String summary,String reasonCode,UUID workspaceId,
+                String target,String targetVersion,String callHash,boolean stale,List<Decision> allowedActions,
+                long permissionVersion,String policyVersion) {
+            this(operationId,toolName,summary,reasonCode,workspaceId,target,targetVersion,callHash,stale,allowedActions,permissionVersion,policyVersion,null);
+        }
     }
     public record Pending(UUID interactionId, UUID taskId, Kind kind, boolean optional, long version,
                           Instant expiresAt, Revision plan, String question, List<Option> options,

@@ -63,6 +63,10 @@ class WorkspaceToolAdmissionPostgresTest extends WorkspaceToolsMigrationPostgres
         var task=enabled(Mode.RISK_BASED);var calls=new AtomicInteger();var admissions=new AtomicInteger();var provider=provider(calls);
         run(claim(task),provider,admissions);assertEquals("WAITING_INPUT",repository.task(actor,task.id()).status());assertEquals(0,admissions.get());
         var pending=repository.pending(actor,task.conversationId()).getFirst();assertEquals(Kind.TOOL_APPROVAL,pending.kind());
+        assertNotNull(pending.approval().review());assertEquals("SHELL",pending.approval().review().kind());
+        assertEquals("printf 666",pending.approval().review().command());assertEquals("",pending.approval().review().cwd());
+        assertEquals("ENTIRE_BOUND_WORKSPACE",pending.approval().review().impact());assertEquals("NONE",pending.approval().review().network());
+        assertTrue(pending.approval().review().stopsAfterEachCall());assertEquals(List.of(),pending.approval().review().outputs());
         repository.answer(actor,task.id(),pending.interactionId(),UUID.randomUUID(),new Answer(pending.version(),Decision.ALLOW_ONCE,"",List.of()));
         run(claim(task),provider,admissions);assertEquals("SUCCEEDED",repository.task(actor,task.id()).status());assertEquals(1,admissions.get());assertEquals(2,calls.get());
         assertEquals("1",scalar("SELECT count(*) FROM pf.tool_approval_consumption WHERE task_id='"+task.id()+"'"));
