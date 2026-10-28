@@ -48,7 +48,12 @@ public final class SignedRunnerHttpClient implements RunnerControlPort,Environme
         try {
             var response=pending.get(timeout.toMillis(),TimeUnit.MILLISECONDS);
                 byte[] bytes=response.body();
-                if(response.statusCode()!=200||bytes.length>65536)throw new WorkspaceFailure(503,"RUNNER_RESULT_UNAVAILABLE");
+                if(response.statusCode()!=200||bytes.length>65536) {
+                    String code="UNCLASSIFIED";
+                    if(bytes.length<=65536)try{String value=JSON.readTree(bytes).path("code").asString("");if(value.matches("[A-Z][A-Z0-9_]{1,95}"))code=value;}catch(RuntimeException invalidProblem){/* Never log raw response content. */}
+                    System.getLogger(getClass().getName()).log(System.Logger.Level.WARNING,"Runner operation="+requestBinding.operationId()+" httpStatus="+response.statusCode()+" code="+code);
+                    throw new WorkspaceFailure(503,"RUNNER_RESULT_UNAVAILABLE");
+                }
                 String proof=response.headers().firstValue("X-Runner-Signature").orElseThrow(()->new WorkspaceFailure(503,"RUNNER_RESULT_UNAUTHENTICATED"));
                 signatures.verify(proof,responseBinding,bytes);
                 return JSON.readValue(bytes,type);
