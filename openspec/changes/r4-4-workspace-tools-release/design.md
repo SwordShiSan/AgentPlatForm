@@ -1,5 +1,9 @@
 # R4.4：工作区业务工具贯通与R4发行实施计划
 
+## 实施纠正：审批资源版本稳定性（2026-10-29）
+
+目录扫描在工作区根目录排除精确 `.platform-ready-<canonical UUID>` 启动挂载探针；它属于控制面收据，不是用户文件或资产。普通相似名称及子目录同名文件继续扫描，文件种类、链接、分页和挂载校验不放宽。上传版本提交同时写入已核验的 observed_sha256/observed_bytes，避免第一次只读扫描补齐同一内容身份时使审批无故失效。实际内容、版本、缺失及归属变化仍推进修订并拒绝旧批准。helper 镜像和策略身份随改动重新固定，旧活动任务不得热切换。
+
 ## 当前状态与批准决定（2026-10-27）
 
 IMPLEMENTING；全部R4.4新功能门禁NOT_RUN。main基线c15cb410228ddb6a6df91796c1e090699eea6546，phase a9125b211373dd16f4b476fff86c3ab1b14129f3，同树677e39404c79bc47006cf1d746493a0dc74087eb。R4当前3/4 VERIFIED、未RELEASED，累计19/40；仓库记录生产R3，实际上线身份在维护窗口前只读核验。唯一change r4-4-workspace-tools-release，step/r4.4-workspace-tools-release。

@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** Actual PG/Mapper ownership and file transactions; object transport is a deterministic fixture. */
 class WorkspaceFileToolPostgresTest extends WorkspaceToolsMigrationPostgresTest {
-    FileRepository files;WorkspaceFileToolService service;
+    FileRepository files;WorkspaceFileToolService service;FileMapper fileMapper;TransactionTemplate fileTransactions;
     Lease fixtureLease;
     final Map<String,byte[]> objects=new HashMap<>();
     @BeforeEach void fileServices() throws Exception {
@@ -35,6 +35,7 @@ class WorkspaceFileToolPostgresTest extends WorkspaceToolsMigrationPostgresTest 
         configuration.getTypeHandlerRegistry().register(new UuidTypeHandler());factory.setConfiguration(configuration);
         factory.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:mybatis/mapper/**/*.xml"));
         var session=new SqlSessionTemplate(factory.getObject());var tx=new TransactionTemplate(new JdbcTransactionManager(pool));
+        fileMapper=session.getMapper(FileMapper.class);fileTransactions=tx;
         files=new TransactionalFileRepository(new MyBatisFileRepository(session.getMapper(FileMapper.class),session.getMapper(WorkspaceMapper.class),
             session.getMapper(EnvironmentPreparationMapper.class),"sha256:"+"a".repeat(64),"b".repeat(64)),tx);
         var assets=new AssetStore(){
@@ -133,8 +134,17 @@ class WorkspaceFileToolPostgresTest extends WorkspaceToolsMigrationPostgresTest 
         sql("BEGIN;INSERT INTO pf.file_entry(id,space_id,workspace_id,relative_path,parent_path,name,kind,collection_state) VALUES('"+upload.fileId()+"','"+actor.spaceId()+"','"+workspace+"','文档😀.txt','','文档😀.txt','FILE','PENDING');"
             +"INSERT INTO pf.file_version(id,space_id,workspace_id,file_id,asset_id,operation_id,sha256,size_bytes,actor_id) VALUES('"+upload.versionId()+"','"+actor.spaceId()+"','"+workspace+"','"+upload.fileId()+"','"+upload.assetId()+"','"+operation.id()+"','"+upload.sha256()+"',"+bytes.length+",'"+actor.userId()+"');"
             +"UPDATE pf.asset_object SET status='AVAILABLE' WHERE id='"+upload.assetId()+"';"
-            +"UPDATE pf.file_entry SET current_version_id='"+upload.versionId()+"',collection_state='CONFIRMED' WHERE id='"+upload.fileId()+"';COMMIT;");
+            +"COMMIT;");
+        fileTransactions.executeWithoutResult(status->assertEquals(1,fileMapper.commitFile(upload)));
         objects.put(upload.objectKey(),bytes);return upload;
+    }
+    @Test void sealedUploadAlreadyHasItsObservedIdentityAndIdenticalRefreshDoesNotInvalidateApproval() throws Exception {
+        var upload=textFixture("666");
+        assertEquals(upload.sha256(),scalar("SELECT observed_sha256 FROM pf.file_entry WHERE id='"+upload.fileId()+"'"));
+        assertEquals("3",scalar("SELECT observed_bytes FROM pf.file_entry WHERE id='"+upload.fileId()+"'"));
+        String before=scalar("SELECT content_revision FROM pf.workspace WHERE id='"+workspace+"'");
+        sql("UPDATE pf.file_entry SET observed_sha256='"+upload.sha256()+"',observed_bytes=3,collection_state='CONFIRMED' WHERE id='"+upload.fileId()+"'");
+        assertEquals(before,scalar("SELECT content_revision FROM pf.workspace WHERE id='"+workspace+"'"));
     }
     @Test void explicitVersionReadIsUtf8CodepointPagedAndModelResultBounded() throws Exception {
         var upload=textFixture("😀中文".repeat(3500));var tool=new Call("read-one","workspace_read",Map.of("fileId",upload.fileId().toString(),"versionId",upload.versionId().toString(),"offsetCodePoints",2,"maxCodePoints",4096),true);
