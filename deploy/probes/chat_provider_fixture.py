@@ -144,7 +144,9 @@ class Handler(BaseHTTPRequestHandler):
                     if 'workspace-nonzero' in user_text:arguments.update(command='exit 7',outputs=[])
                     elif 'workspace-cancel' in user_text:arguments.update(command='sleep 30',outputs=[])
                     elif 'workspace-background' in user_text:arguments.update(command='sleep 120 & printf 666',outputs=[])
-                    elif 'workspace-write' in user_text:name='workspace_write';arguments={'mode':'CREATE','path':'written.txt','text':'666','fileId':None,'baseVersionId':None,'revision':None}
+                    elif 'workspace-write' in user_text:
+                        selected=re.search(r'fixture:workspace-write ([A-Za-z0-9_-]{1,100}\.txt)\b',user_text)
+                        name='workspace_write';arguments={'mode':'CREATE','path':selected.group(1) if selected else 'written.txt','text':'666','fileId':None,'baseVersionId':None,'revision':None}
                     elif 'workspace-list' in user_text:name='workspace_list';arguments={'parent':'','cursor':None,'limit':20}
                     elif 'workspace-read' in user_text:
                         ids=re.findall(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',user_text)

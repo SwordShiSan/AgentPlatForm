@@ -184,6 +184,37 @@ class WorkspaceToolAdmissionPostgresTest extends WorkspaceToolsMigrationPostgres
         assertEquals("SUCCEEDED",repository.task(actor,task.id()).status());assertEquals(1,effects.get());assertEquals(2,calls.get());
         assertEquals("3",scalar("SELECT committed_bytes FROM pf.space_storage WHERE space_id='"+actor.spaceId()+"'"));
     }
+    @Test void workspacePlanPhaseAndRestrictionsFollowTheFrozenCatalogAndSameTaskApproval()throws Exception {
+        repository=ChatPersistenceFixture.create(pool,true);
+        var created=repository.firstAuthorized(actor,UUID.randomUUID(),"R44 plan projection",UUID.fromString("0199e000-0000-7000-8000-000000000002"),"PLATFORM","Plan then execute",true,workspace,Mode.FULL).task();
+        assertEquals("TEXT_ONLY",repository.plan(actor,task).executionPhase());
+        assertEquals("PLANNING",repository.plan(actor,created.id()).executionPhase());
+        assertTrue(repository.permissions(actor,created.id()).effectiveRestrictions().contains("PLAN_APPROVAL_REQUIRED"));
+        assertFalse(repository.permissions(actor,created.id()).effectiveRestrictions().contains("BUSINESS_TOOLS_NOT_ENABLED"));
+        var calls=new AtomicInteger();var effects=new AtomicInteger();
+        var provider=new ChatProvider(){
+            public boolean real(){return false;}
+            public CompletionStage<Result> stream(String key,List<HarnessData.Message> messages,java.util.function.Consumer<String> text){throw new AssertionError("Typed tools required");}
+            public Exchange openTyped(String model,String key,List<HarnessData.Message> messages,List<HarnessData.ToolDefinition> definitions,java.util.function.Consumer<String> text){
+                int index=calls.getAndIncrement();var call=switch(index){
+                    case 0->new HarnessData.Call("plan-write","platform_plan_write",Map.of("title","Workspace plan","markdown","Run the approved workspace operation."),false);
+                    case 1->new HarnessData.Call("plan-review","platform_plan_review",Map.of(),false);
+                    case 2->new HarnessData.Call("shell-one","workspace_shell",Map.of("command","printf 666","cwd","","timeoutSeconds",20,"outputs",List.of()),false);
+                    default->null;
+                };
+                assertTrue(index<4);var round=new HarnessData.Round(call==null?"Done":"",call==null?List.of():List.of(call),call==null?"stop":"tool_calls",12,8);
+                return new Exchange(){public CompletionStage<Result> result(){return CompletableFuture.completedFuture(new Result(round,true,"plan-"+index));}public CompletionStage<Void> terminated(){return CompletableFuture.completedFuture(null);}public void cancel(){}};
+            }
+        };
+        run(claim(created),provider,effects);assertEquals("WAITING_INPUT",repository.task(actor,created.id()).status());
+        assertEquals("AWAITING_REVIEW",repository.plan(actor,created.id()).executionPhase());
+        var pending=repository.pending(actor,created.conversationId()).getFirst();
+        repository.answer(actor,created.id(),pending.interactionId(),UUID.randomUUID(),new Answer(pending.version(),Decision.EXECUTE_PLAN,"",List.of()));
+        assertEquals("EXECUTING",repository.plan(actor,created.id()).executionPhase());
+        assertFalse(repository.permissions(actor,created.id()).effectiveRestrictions().contains("PLAN_APPROVAL_REQUIRED"));
+        run(claim(created),provider,effects);assertEquals("SUCCEEDED",repository.task(actor,created.id()).status());
+        assertEquals("COMPLETED",repository.plan(actor,created.id()).executionPhase());assertEquals(1,effects.get());assertEquals(4,calls.get());
+    }
     @Test void sdkApprovalResumesExactOriginalOperationIntoTheProductionComposition()throws Exception {
         var task=enabled(Mode.RISK_BASED);var calls=new AtomicInteger();var effects=new AtomicInteger();var provider=provider(calls);
         run(claim(task),provider,effects,true);assertEquals("WAITING_INPUT",repository.task(actor,task.id()).status());assertEquals(0,effects.get());

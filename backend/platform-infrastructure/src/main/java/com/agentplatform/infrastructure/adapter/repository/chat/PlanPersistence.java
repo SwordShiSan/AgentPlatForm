@@ -15,9 +15,18 @@ final class PlanPersistence extends ChatPersistenceSupport implements PlanLedger
     private static Revision revision(RevisionRow row){return row==null?null:new Revision(row.id(),row.revision(),row.title(),row.markdown(),row.source(),row.contentHash(),row.createdAt());}
     private Plan projection(Actor actor,UUID task){
         var p=mappers.plan().plan(actor.spaceId(),task);
-        if(p==null)return new Plan(task,"NOT_CREATED",0,null,List.of());
+        String phase="TEXT_ONLY";
+        if(WorkspaceToolPersistence.enabled(mappers,actor.spaceId(),task)) {
+            var current=task(mappers,actor,task,false);
+            if(p!=null&&"DELIVERED".equals(p.status()))phase="DELIVERED";
+            else if(Set.of("SUCCEEDED","FAILED","CANCELLED").contains(current.status()))phase="COMPLETED";
+            else if(p!=null&&"REVIEW".equals(p.status()))phase="AWAITING_REVIEW";
+            else if(p!=null&&"APPROVED".equals(p.status())&&mappers.workspaceTools().hasAcceptedCurrentPlan(actor.spaceId(),task)==1)phase="EXECUTING";
+            else phase=p==null&&!mappers.executionPolicy().policy(task).planMode()?"EXECUTING":"PLANNING";
+        }
+        if(p==null)return new Plan(task,"NOT_CREATED",0,null,List.of(),phase);
         var revisions=mappers.plan().revisions(p.id()).stream().map(PlanPersistence::revision).toList();
-        return new Plan(task,p.status(),p.version(),revisions.isEmpty()?null:revisions.getLast(),revisions);
+        return new Plan(task,p.status(),p.version(),revisions.isEmpty()?null:revisions.getLast(),revisions,phase);
     }
     public Plan plan(Actor a,UUID id){return tx(c->{auth(c,a);task(c,a,id,false);return projection(a,id);});}
     private Pending pending(InteractionRow row){

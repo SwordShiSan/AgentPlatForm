@@ -11,8 +11,9 @@ public final class PlanInteractionData {
     public enum Kind { PLAN_APPROVAL, QUESTION, TOOL_APPROVAL }
     public enum Decision { EXECUTE_PLAN, REVISE_PLAN, REJECT_PLAN, DELIVER_PLAN, ANSWER, SKIP, ALLOW_ONCE, DENY }
     public record Revision(UUID id, long revision, String title, String markdown, String source, String hash, Instant createdAt) {}
-    public record Plan(UUID taskId, String status, long version, Revision current, List<Revision> revisions) {
+    public record Plan(UUID taskId, String status, long version, Revision current, List<Revision> revisions, String executionPhase) {
         public Plan { revisions=List.copyOf(revisions); }
+        public Plan(UUID taskId,String status,long version,Revision current,List<Revision> revisions){this(taskId,status,version,current,revisions,"TEXT_ONLY");}
     }
     public record Option(String id,String label) {}
     /** Redacted approval projection; arguments and framework state remain server-owned. */
