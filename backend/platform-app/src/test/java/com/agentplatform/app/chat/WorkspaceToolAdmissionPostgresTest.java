@@ -59,6 +59,24 @@ class WorkspaceToolAdmissionPostgresTest extends WorkspaceToolsMigrationPostgres
         assertEquals("0",scalar("SELECT count(*) FROM pf.task_interaction WHERE task_id='"+task.id()+"'"));
         assertEquals("SUCCEEDED",scalar("SELECT status FROM pf.tool_operation WHERE task_id='"+task.id()+"'"));
     }
+    @Test void completelyReceivedInvalidCallSettlesUsageAndNeverStartsATool() throws Exception {
+        var task=enabled(Mode.FULL);var effects=new AtomicInteger();var calls=new AtomicInteger();
+        var provider=new ChatProvider(){
+            public boolean real(){return false;}
+            public CompletionStage<Result> stream(String key,List<HarnessData.Message> messages,java.util.function.Consumer<String> text){throw new AssertionError("Typed catalog required");}
+            public Exchange openTyped(String model,String key,List<HarnessData.Message> messages,List<HarnessData.ToolDefinition> definitions,java.util.function.Consumer<String> text){
+                calls.incrementAndGet();return new Exchange(){
+                    public CompletionStage<Result> result(){return CompletableFuture.completedFuture(new Result(new HarnessData.Round("",List.of(),"tool_calls",120,7),true,"invalid-complete-request","MODEL_TOOL_ARGUMENTS_INVALID"));}
+                    public CompletionStage<Void> terminated(){return CompletableFuture.completedFuture(null);}
+                    public void cancel(){}
+                };
+            }
+        };
+        run(claim(task),provider,effects);assertEquals("FAILED",repository.task(actor,task.id()).status());
+        assertEquals("MODEL_TOOL_ARGUMENTS_INVALID",repository.task(actor,task.id()).reasonCode());assertEquals(1,calls.get());assertEquals(0,effects.get());
+        assertEquals("0",scalar("SELECT count(*) FROM pf.tool_operation WHERE task_id='"+task.id()+"'"));
+        assertEquals("COMPLETED|120|7",scalar("SELECT status||'|'||input_tokens||'|'||output_tokens FROM pf.model_call WHERE task_id='"+task.id()+"'"));
+    }
     @Test void riskModeAsksThenResumesTheOriginalCallWithoutAnotherModelRequest() throws Exception {
         var task=enabled(Mode.RISK_BASED);var calls=new AtomicInteger();var admissions=new AtomicInteger();var provider=provider(calls);
         run(claim(task),provider,admissions);assertEquals("WAITING_INPUT",repository.task(actor,task.id()).status());assertEquals(0,admissions.get());

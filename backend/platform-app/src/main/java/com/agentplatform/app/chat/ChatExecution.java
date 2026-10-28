@@ -228,6 +228,11 @@ public final class ChatExecution implements AutoCloseable {
                             control.timer(timers.schedule(()->physical(l,messages,definitions,text,result,pending,deadline,retries+1,repaired,accepted,acceptedRound,control),retries==0?1:3,TimeUnit.SECONDS));return;
                         }result.completeExceptionally(cause);return;
                     }
+                    if(value.rejectionCode()!=null){
+                        String code=Set.of("MODEL_TOOL_ARGUMENTS_INVALID","CONTROL_BATCH_LIMIT").contains(value.rejectionCode())?value.rejectionCode():"MODEL_TOOL_ARGUMENTS_INVALID";
+                        repository.settle(l,call,value.usageKnown()?value.round():null,value.requestId(),value.usageKnown()?code:"PROVIDER_USAGE_MISSING",provider.real());
+                        result.completeExceptionally(new ChatFailure(422,code));return;
+                    }
                     boolean incompleteTransport="unknown".equals(value.round().finishReason());
                     boolean empty=value.round().text().isBlank()&&value.round().calls().isEmpty()&&!emitted.get();
                     boolean supported="stop".equals(value.round().finishReason())||((fixtureTools!=null||!definitions.isEmpty())&&"tool_calls".equals(value.round().finishReason()));

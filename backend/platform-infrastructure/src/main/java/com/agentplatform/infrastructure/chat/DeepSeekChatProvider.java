@@ -121,7 +121,24 @@ public final class DeepSeekChatProvider implements ChatProvider, AutoCloseable {
                         long controlCalls=calls.stream().filter(call->catalog.get(call.name()).category()==ToolCategory.CONTROL).count();
                         if(controlCalls>1||(controlCalls==1&&calls.size()!=1))throw new ChatFailure(422,"CONTROL_BATCH_LIMIT");
                         result.complete(new Result(new Round(text.toString(),calls,finish.get()==null?"unknown":finish.get(),in.get(),out.get()),usage.get(),id.get()));
-                    } catch(RuntimeException invalid) {result.completeExceptionally(classify(invalid));}
+                    } catch(RuntimeException invalid) {
+                        if(!List.of("tool_calls","stop").contains(finish.get()==null?"unknown":finish.get())) {
+                            result.completeExceptionally(classify(invalid));return;
+                        }
+                        // Transport has completed: an invalid call is not a tool effect.
+                        // Do not discard usage already received with the model response.
+                        String code=invalid instanceof ChatFailure failure?failure.code():"MODEL_TOOL_ARGUMENTS_INVALID";
+                        if(!List.of("MODEL_TOOL_ARGUMENTS_INVALID","CONTROL_BATCH_LIMIT").contains(code))code="MODEL_TOOL_ARGUMENTS_INVALID";
+                        String finalCode=code;
+                        System.getLogger(DeepSeekChatProvider.class.getName()).log(System.Logger.Level.WARNING,
+                                "Complete model response rejected; code="+finalCode+", type="+invalid.getClass().getName());
+                        for(Throwable cause=invalid;cause!=null;cause=cause.getCause()) {
+                            String reason=cause.getMessage();
+                            if(reason!=null&&List.of("INVALID_SCOPE_PATH","MODEL_TOOL_ARGUMENTS_INVALID","COMMAND_TIMEOUT_LIMIT","OUTPUT_BYTES_LIMIT","TOOL_NOT_REGISTERED").contains(reason))
+                                System.getLogger(DeepSeekChatProvider.class.getName()).log(System.Logger.Level.WARNING,"Validation code="+reason);
+                        }
+                        result.complete(new Result(new Round(text.toString(),List.of(),finish.get()==null?"unknown":finish.get(),in.get(),out.get()),usage.get(),id.get(),code));
+                    }
                     finally { callbacks.arriveAndDeregister(); }
                 });
         subscriptionRef.set(subscription);

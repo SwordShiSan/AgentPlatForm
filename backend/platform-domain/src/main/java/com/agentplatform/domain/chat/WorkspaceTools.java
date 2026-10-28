@@ -53,6 +53,7 @@ public final class WorkspaceTools {
     }
     private static Map<String,Object> string(int max) {return Map.of("type","string","maxLength",max);}
     private static Map<String,Object> nullable(String type) {return Map.of("type",List.of(type,"null"));}
+    private static Map<String,Object> cwd() {return Map.of("type","string","maxLength",4096,"description","Relative directory inside the bound workspace. Use the empty string for the workspace root. Absolute paths and dot or dot-dot path segments are invalid.");}
     private static Map<String,Object> object(Map<String,Object> properties) {
         return Map.of("type","object","properties",properties,"required",properties.keySet().stream().sorted().toList(),"additionalProperties",false);
     }
@@ -64,7 +65,7 @@ public final class WorkspaceTools {
         new ToolDefinition("workspace_write","Create a new UTF-8 file or explicitly replace an exact file/version/revision. Maximum32KiB text; conflicts do not overwrite. This seals an immutable version.",ToolCategory.BUSINESS,
             object(Map.of("mode",Map.of("type","string","enum",List.of("CREATE","REPLACE")),"path",string(4096),"text",string(32768),"fileId",nullable("string"),"baseVersionId",nullable("string"),"revision",nullable("integer"))),WriteFile.class,null),
         new ToolDefinition("workspace_shell","Run a noninteractive /bin/sh -c command inside the isolated networkless sandbox. It can change or delete ANY file in the bound workspace. RISK_BASED requires approval; FULL may auto-run. The whole sandbox stops after each call; only workspace files persist. Declare required output files and byte limits for version sealing.",ToolCategory.BUSINESS,
-            object(Map.of("command",string(32768),"cwd",string(4096),"timeoutSeconds",Map.of("type","integer","minimum",1,"maximum",120),"outputs",Map.of("type","array","maxItems",16,"items",object(Map.of("path",string(4096),"maxBytes",Map.of("type","integer","minimum",0,"maximum",OUTPUT_BYTES)))))),Shell.class,null));
+            object(Map.of("command",string(32768),"cwd",cwd(),"timeoutSeconds",Map.of("type","integer","minimum",1,"maximum",120),"outputs",Map.of("type","array","maxItems",16,"items",object(Map.of("path",string(4096),"maxBytes",Map.of("type","integer","minimum",0,"maximum",OUTPUT_BYTES)))))),Shell.class,null));
     public static final Set<String> NAMES=Set.of("workspace_list","workspace_read","workspace_write","workspace_shell");
     public static boolean registered(ToolDefinition definition) {return DEFINITIONS.contains(definition);}
 }
