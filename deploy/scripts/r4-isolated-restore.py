@@ -1,6 +1,6 @@
 """Serial cold restore of R4. No worker, runner, provider or source data writes."""
 from pathlib import Path
-import argparse,copy,fcntl,gzip,hashlib,importlib.util,ipaddress,json,os,re,shutil,socket,subprocess,tarfile,time,traceback
+import argparse,copy,fcntl,gzip,hashlib,importlib.util,ipaddress,json,os,re,shutil,signal,socket,subprocess,tarfile,time,traceback
 ROOT=Path('/srv/agentplatform');MIB=1024**2
 def main():
  p=argparse.ArgumentParser();p.add_argument('folder',type=Path);a=p.parse_args();folder=a.folder.resolve(strict=True)
@@ -9,6 +9,7 @@ def main():
  os.umask(0o077)
  with (ROOT/'operations/platform-switch/switch.lock').open('a') as lock:
   fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+  signal.signal(signal.SIGTERM,mod.interrupted)
   try:restore(folder,window)
   except BaseException:
    (folder/'restore-failure.private.log').write_text(traceback.format_exc())

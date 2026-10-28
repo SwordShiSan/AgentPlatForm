@@ -1,7 +1,9 @@
 """Receipted R3 -> R4 host release. All raw backup/config material stays private."""
 from pathlib import Path
-import argparse,fcntl,gzip,hashlib,importlib.util,json,os,re,shutil,subprocess,tarfile,time,urllib.request
+import argparse,fcntl,gzip,hashlib,importlib.util,json,os,re,shutil,signal,subprocess,tarfile,time,urllib.request
 ROOT=Path('/srv/agentplatform');MIB=1024**2
+def interrupted(signum,frame):
+ raise InterruptedError('Release termination requested; recover exact retained production graph')
 class Window:
  def __init__(self,folder):
   self.folder=folder.resolve(strict=True);assert re.fullmatch('/srv/agentplatform/operations/r4-release-[a-f0-9]{12}-[0-9]{8}',str(self.folder))
@@ -112,6 +114,7 @@ def main():
  p=argparse.ArgumentParser();p.add_argument('action',choices=['start','backup-r4','rollback-drill','redeploy']);p.add_argument('folder',type=Path);a=p.parse_args();os.umask(0o077);w=Window(a.folder)
  with (ROOT/'operations/platform-switch/switch.lock').open('a') as lock:
   fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+  signal.signal(signal.SIGTERM,interrupted)
   try:
    assert not (w.folder/(a.action+'.json')).exists()
    if a.action=='start':w.backup('r3');w.activate();w.receipt('start',{'status':'PASS'})
