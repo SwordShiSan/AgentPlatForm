@@ -160,6 +160,72 @@
       "inputManifestSha256": "e1a9684be4626ed3adfe063e317f71630cc3195f96dbc144d0f9493b1229ec50",
       "logSha256": "fa8d07baff172fe8e1baf3213719e9f78bdbb5075f1d54e432eb2fed0342903f",
       "note": "Lifecycle units only: cancellation waits for synchronous IO exit and original child stop; missing DB facts cannot confirm termination. Initial generic result scope label was too broad; verifier now has a dedicated unit scope. No PG or integrated physical claim from this receipt."
+    },
+    {
+      "name": "public-operation-pg-projection",
+      "status": "PASS",
+      "sourceHead": "1438b54b426bdb18ff238643fe77a9cb1c16550c",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "2330bebae5035b9077cd241d3a2d17a9330b66f7a13275ee05d7f0566ba97015",
+      "note": "Actual PG typed owner-scoped list, cursor, API-role narrow function, write body and private-table denial. Prior cleanup FAIL retained; SET ROLE is reset in finally.",
+      "logSha256": "48440a1c864885a90190f3fef73c23ad9a58307b67b187cacd51ba0bb2c8b7c0"
+    },
+    {
+      "name": "public-operation-results",
+      "status": "PASS",
+      "sourceHead": "1438b54b426bdb18ff238643fe77a9cb1c16550c",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "3fc350c3e2ea0e58faa937f488121d2dbe01dd902d38af700666c11ddafa2362",
+      "note": "Actual PG list/known file conflict result plus application units for bounded object hash, UTF-8 and reauthorization. Not actual S3/browser or signed physical effects.",
+      "logSha256": "24c39b87ccbab0d057b6ed585cdb935e0fac87d447a4e18637549023b910eee1"
+    },
+    {
+      "name": "frontend-operation-list",
+      "status": "PASS",
+      "sourceHead": "1438b54b426bdb18ff238643fe77a9cb1c16550c",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "db63af6aa0e37e3ae1f640b07eda6bb2b2b060402042b7eb9c1db24dc6aff513",
+      "note": "Frontend query list/status polling, type/unit/build/contracts; actual API browser remains NOT_RUN.",
+      "gates": [
+        {
+          "name": "rename-preflight",
+          "exitCode": 0,
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "typecheck",
+          "exitCode": 0,
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "unit",
+          "exitCode": 0,
+          "logSha256": "741ff545b2df1b799a58a1c57bea45f4b039424b634e5e4e8d85f0e6588b9c74"
+        },
+        {
+          "name": "build",
+          "exitCode": 0,
+          "logSha256": "881762e4835ff9401d84572508a1c31c5f8b1d3e14796bc92b691dca0d61f4c9"
+        },
+        {
+          "name": "contracts",
+          "exitCode": 0,
+          "logSha256": "347d966427f256ee3b642071bed0945d1eb5b7887bdec278ae5300c42e81c80e"
+        }
+      ]
+    },
+    {
+      "name": "public-result-safe-fallback",
+      "status": "PASS",
+      "sourceHead": "1438b54b426bdb18ff238643fe77a9cb1c16550c",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "d2cfc099bdff37224ab980ff402837c302008aeab91ed546b410eb5347d16c7d",
+      "logSha256": "2a04d5ef8d25e1514b231b9a8c6623ca3580e51f358905145fa5f2150e8078ae",
+      "note": "Result units: missing summary never reflects private result map; oversized object rejected before transport; hash/UTF8 and live reauthorization."
     }
   ],
   "notRun": [

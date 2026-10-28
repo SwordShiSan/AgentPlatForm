@@ -130,6 +130,20 @@ final class WorkspaceToolPersistence extends ChatPersistenceSupport {
         return null;
     });}
     boolean fileStopped(Lease lease,Call call){return tx(c->c.workspaceTools().fileStopped(lease,call.id()));}
+    WorkspaceToolLedger.ResultRecord result(ChatData.Actor actor,UUID operation){return tx(c->{
+        var result=c.workspaceTools().publicResult(actor,operation);if(result==null)throw new ChatFailure(404,"RESOURCE_NOT_FOUND");
+        if(!Set.of("SUCCEEDED","FAILED").contains(result.status())||result.text()==null)throw new ChatFailure(409,"TOOL_RESULT_PENDING");
+        return result;
+    });}
+    com.agentplatform.types.WorkspaceOperationData.Page operations(ChatData.Actor actor,UUID task,UUID before,int limit){return tx(c->{
+        if(limit<1||limit>50)throw new ChatFailure(400,"INVALID_PAGE_LIMIT");
+        var rows=c.workspaceTools().publicOperations(actor,task,before,limit+1);
+        boolean more=rows.size()>limit;
+        var selected=more?rows.subList(0,limit):rows;
+        var items=selected.stream().map(r->new com.agentplatform.types.WorkspaceOperationData.Operation(r.operationId(),r.taskId(),r.toolName(),r.status(),r.phase(),r.summary(),
+            r.createdAt(),r.endedAt(),r.errorCode(),r.traceId(),JSON.readValue(r.reviewJson(),com.agentplatform.types.WorkspaceOperationData.Review.class),r.resultAvailable())).toList();
+        return new com.agentplatform.types.WorkspaceOperationData.Page(items,more?selected.getLast().operationId():null);
+    });}
     void requestStop(Lease lease,Call call,WorkspaceToolLedger.StopReason reason){tx(c->{
         Objects.requireNonNull(reason);
         String digest=hash(MyBatisExecutionLedger.canonicalJson(call));

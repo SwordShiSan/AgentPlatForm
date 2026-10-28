@@ -41,6 +41,8 @@ public final class MyBatisChatRepository implements ChatRepository {
         return new WorkspaceToolPersistence(mappers).tx(c->{MyBatisExecutionLedger.guard(c,lease);return WorkspaceToolPersistence.bundle(c,lease.spaceId(),lease.taskId());});
     }
     @Override public boolean workspaceToolTask(Lease lease){return new WorkspaceToolPersistence(mappers).available(lease);}
+    @Override public WorkspaceToolLedger.ResultRecord workspaceOperationResult(Actor actor,UUID operation){return new WorkspaceToolPersistence(mappers).result(actor,operation);}
+    @Override public com.agentplatform.types.WorkspaceOperationData.Page workspaceOperations(Actor actor,UUID task,UUID before,int limit){task(actor,task);return new WorkspaceToolPersistence(mappers).operations(actor,task,before,limit);}
     @Override public void prepareWorkspaceTools(Lease lease,List<HarnessData.Call> calls,String image,String policy){new WorkspaceToolPersistence(mappers).prepare(lease,calls,image,policy);}
     @Override public WorkspaceToolLedger.Intent workspaceToolIntent(Lease lease,HarnessData.Call call){return new WorkspaceToolPersistence(mappers).intent(lease,call);}
     @Override public WorkspaceToolLedger.FileAdmission workspaceFileAdmission(Lease lease,HarnessData.Call call){return new WorkspaceToolPersistence(mappers).fileAdmission(lease,call);}

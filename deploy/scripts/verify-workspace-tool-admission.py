@@ -20,6 +20,9 @@ GROUPS = {
     'stop-admission': 'WorkspaceShellAdmissionPostgresTest,WorkspaceFileToolPostgresTest',
     'capture-stream': 'CapturedFileStreamTest,S3AssetStoreTest',
     'file-exchange': 'WorkspaceFileToolExchangeTest',
+    'operation-projection': 'WorkspaceFileToolPostgresTest#publicOperationProjectionIsOwnerScopedTypedAndDoesNotExposeWriteContent',
+    'operation-results': 'WorkspaceFileToolPostgresTest#publicOperationProjectionIsOwnerScopedTypedAndDoesNotExposeWriteContent+knownNameConflictKeepsRunningToolButRollsBackOnlyFileAdmissionAndReturnsFailedObservation,WorkspaceOperationsServiceTest',
+    'operation-result-units': 'WorkspaceOperationsServiceTest',
 }
 
 
@@ -68,7 +71,9 @@ def main():
     result = {'status': 'PASS' if process.returncode == 0 and unchanged else 'FAIL',
               'exitCode': process.returncode, 'inputUnchanged': unchanged, 'source': identity['commit'],
               'inputManifestSha256': identity['inputManifestSha256'], 'supplierCalls': 0,
-              'scope': ('File-tool lifecycle unit tests with deterministic work/stop observer; not actual PG/physical effects'
+              'scope': ('Public result projection units with deterministic object/repository; no physical effect'
+                        if args.group == 'operation-result-units' else
+                        'File-tool lifecycle unit tests with deterministic work/stop observer; not actual PG/physical effects'
                         if args.group == 'file-exchange' else
                         'Bounded capture framing and SDK transport units; no physical helper/S3/version proof'
                         if args.group == 'capture-stream' else

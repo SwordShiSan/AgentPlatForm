@@ -60,6 +60,8 @@ public class ChatConfiguration {
         }
     }
     @Bean @Profile("chat-local") ChatApi chatApi(ChatRepository repository,@Value("${platform.chat.cursor-key-file}")String file,CredentialCipher cipher)throws Exception{return new ChatService(repository,new ChatCursor(Files.readAllBytes(Path.of(file))),cipher);}
+    @Bean @Profile("chat-local") @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="platform.workspace.tools.enabled",havingValue="true")
+    com.agentplatform.api.chat.WorkspaceOperationsApi workspaceOperationsApi(ChatRepository repository,com.agentplatform.domain.files.AssetStore assets){return new WorkspaceOperationsService(repository,assets);}
     @Bean @Profile("chat-local") ReadinessProbe chatReadiness(ChatRepository repository,IdentityStore identity,DispatchTransport transport){return ()->identity.ready()&&repository.ready()&&transport.connected();}
     @Bean @Profile({"chat-local","chat-worker","chat-ops"}) CredentialCipher credentialCipher(@Value("${platform.chat.master-key-file}")String file)throws Exception{return new CredentialCipher(Files.readAllBytes(Path.of(file)));}
     @Bean @Profile("chat-worker") ChatProvider chatProvider(@Value("${platform.chat.provider-base:https://api.deepseek.com}")String base,@Value("${platform.chat.fixture-provider:false}")boolean fixture,

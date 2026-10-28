@@ -9,6 +9,8 @@ GRANT EXECUTE ON FUNCTION pf.current_tool_resource_hash(uuid,uuid,uuid,uuid) TO 
 GRANT EXECUTE ON FUNCTION pf.file_tool_parent_allowed(uuid,uuid,boolean) TO ap_api,ap_worker,ap_runner;
 GRANT EXECUTE ON FUNCTION pf.workspace_shell_admission_allowed(uuid,uuid,uuid,jsonb) TO ap_worker;
 GRANT EXECUTE ON FUNCTION pf.workspace_shell_parent_allowed(uuid,boolean) TO ap_worker,ap_runner;
+GRANT EXECUTE ON FUNCTION pf.workspace_tool_public_operations(uuid,uuid,uuid,uuid,integer) TO ap_api,ap_worker;
+GRANT EXECUTE ON FUNCTION pf.workspace_tool_public_result(uuid,uuid,uuid) TO ap_api,ap_worker;
 -- Runner can evaluate the parent fence predicate without reading chat or keys.
 REVOKE ALL ON pf.workspace_tool_intent,pf.workspace_tool_job_binding,pf.workspace_tool_file_admission,
     pf.task_tool_catalog,pf.plan_execution_acceptance,pf.tool_output_capture,pf.tool_result_object,

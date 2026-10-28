@@ -25,6 +25,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 public final class TransactionalChatRepository implements ChatRepository {
     @Override public Bundle executionBundle(Lease lease){return tx(transactions,()->delegate.executionBundle(lease));}
     @Override public boolean workspaceToolTask(Lease lease){return tx(transactions,()->delegate.workspaceToolTask(lease));}
+    @Override public com.agentplatform.domain.chat.WorkspaceToolLedger.ResultRecord workspaceOperationResult(Actor actor,UUID operation){return tx(snapshots,()->delegate.workspaceOperationResult(actor,operation));}
+    @Override public com.agentplatform.types.WorkspaceOperationData.Page workspaceOperations(Actor actor,UUID task,UUID before,int limit){return tx(snapshots,()->delegate.workspaceOperations(actor,task,before,limit));}
     @Override public void prepareWorkspaceTools(Lease lease,List<HarnessData.Call> calls,String image,String policy){tx(transactions,()->{delegate.prepareWorkspaceTools(lease,calls,image,policy);return null;});}
     @Override public com.agentplatform.domain.chat.WorkspaceToolLedger.Intent workspaceToolIntent(Lease lease,HarnessData.Call call){return tx(transactions,()->delegate.workspaceToolIntent(lease,call));}
     @Override public com.agentplatform.domain.chat.WorkspaceToolLedger.FileAdmission workspaceFileAdmission(Lease lease,HarnessData.Call call){return tx(transactions,()->delegate.workspaceFileAdmission(lease,call));}

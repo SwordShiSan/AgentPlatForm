@@ -83,6 +83,28 @@ class WorkspaceFileToolPostgresTest extends WorkspaceToolsMigrationPostgresTest 
         assertTrue(files.usage(new FileData.Actor(actor.userId(),actor.spaceId()),workspace).reservedBytes()>0,"A stop request must not refund an unresolved reservation");
         assertEquals("0",scalar(scoped("file_runner_receipt")));
     }
+    @Test void publicOperationProjectionIsOwnerScopedTypedAndDoesNotExposeWriteContent() throws Exception {
+        var tool=create("public-metadata.txt");var lease=prepare(tool);service.admit(lease,tool);
+        var page=repository.workspaceOperations(actor,lease.taskId(),null,20);
+        assertEquals(1,page.items().size());var view=page.items().getFirst();assertNull(page.nextCursor());
+        assertEquals("WRITE",view.review().kind());assertEquals("CREATE",view.review().writeMode());
+        assertEquals("public-metadata.txt",view.review().path());assertEquals("NAMED_FILE",view.review().impact());
+        String projection=JsonMapper.builder().build().writeValueAsString(page);
+        assertFalse(projection.contains("666"));assertFalse(projection.contains("call_json"));assertFalse(projection.contains("resourceJson"));
+        assertEquals(0,repository.workspaceOperations(actor,lease.taskId(),view.operationId(),20).items().size());
+        assertThrows(ChatFailure.class,()->repository.workspaceOperations(actor,lease.taskId(),null,0));
+        assertThrows(ChatFailure.class,()->repository.workspaceOperations(new ChatData.Actor(UUID.randomUUID(),actor.spaceId()),lease.taskId(),null,20));
+        sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='ap_api') THEN CREATE ROLE ap_api NOLOGIN;END IF;END $$;GRANT USAGE ON SCHEMA pf TO ap_api;GRANT EXECUTE ON FUNCTION pf.workspace_tool_public_operations(uuid,uuid,uuid,uuid,integer) TO ap_api");
+        try(var connection=pool.getConnection();var statement=connection.createStatement()) {
+            statement.execute("SET ROLE ap_api");
+            try {
+                try(var rows=statement.executeQuery("SELECT review_json FROM pf.workspace_tool_public_operations('"+actor.userId()+"','"+actor.spaceId()+"','"+lease.taskId()+"',NULL,20)")) {
+                    assertTrue(rows.next());assertFalse(rows.getString(1).contains("666"));assertFalse(rows.next());
+                }
+                assertThrows(java.sql.SQLException.class,()->statement.executeQuery("SELECT review_json FROM pf.workspace_tool_intent"));
+            }finally{statement.execute("RESET ROLE");}
+        }
+    }
     @Test void knownNameConflictKeepsRunningToolButRollsBackOnlyFileAdmissionAndReturnsFailedObservation() throws Exception {
         UUID directory=UUID.randomUUID();sql("INSERT INTO pf.file_entry(id,space_id,workspace_id,relative_path,parent_path,name,kind,collection_state) VALUES('"+directory+"','"+actor.spaceId()+"','"+workspace+"','occupied','','occupied','DIRECTORY','CONFIRMED')");
         var tool=create("occupied");var lease=prepare(tool);service.admit(lease,tool);
@@ -91,6 +113,8 @@ class WorkspaceFileToolPostgresTest extends WorkspaceToolsMigrationPostgresTest 
         assertEquals("0",scalar("SELECT reserved_bytes FROM pf.space_storage WHERE space_id='"+actor.spaceId()+"'"));
         var result=service.run(lease,tool,()->false);assertEquals(OperationStatus.FAILED,result.status());repository.commitTool(lease,tool,result);
         assertEquals("FAILED",scalar("SELECT status FROM pf.tool_operation WHERE id='"+admission.operationId()+"'"));
+        var stored=repository.workspaceOperationResult(actor,admission.operationId());assertEquals("FAILED",stored.status());
+        assertTrue(stored.text().contains("FILE_NAME_CONFLICT"));
     }
     @Test void failureToPersistParentBindingRollsBackUploadQuotaAndToolStartTogether() throws Exception {
         var tool=create("atomic.txt");var lease=prepare(tool);

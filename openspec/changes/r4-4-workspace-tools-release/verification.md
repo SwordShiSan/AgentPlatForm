@@ -52,3 +52,11 @@ Legacy/new shell wire compatibility plus use-application/signature units PASS, f
 
 - PASS: file ToolExchange lifecycle units distinguish result/cancel/actual stop; missing DB stop facts do not release termination, local IO must exit and original child stop must be proven. Receipt `file-exchange-verify-1793178934082460700`, input `e1a9684be4626ed3adfe063e317f71630cc3195f96dbc144d0f9493b1229ec50`, log `fa8d07baff172fe8e1baf3213719e9f78bdbb5075f1d54e432eb2fed0342903f`. The original verifier generic scope text overstated this unit group; corrected future scope, retained original receipt and explicitly limited coverage here. Production composition remains pending.
 - PASS: OpenSpec change strict; repository links65 and local canonical references26. External body delivery is not implied by these local checks.
+
+### Public operation API increment (2026-10-28)
+
+- PASS: actual PG owner-scoped typed operation list, cursor and restricted API-role projection, plus persisted known-failure result. Input manifest `2330bebae5035b9077cd241d3a2d17a9330b66f7a13275ee05d7f0566ba97015`, log `48440a1c864885a90190f3fef73c23ad9a58307b67b187cacd51ba0bb2c8b7c0`. Initial cleanup failure `operation-projection-verify-1793179501022807500` retained: test returned pooled connection without RESET ROLE; fixed in finally, no production permission expansion.
+- PASS: actual PG known file-conflict result and application result projection/object-integrity/reauthorization units; receipt `operation-results-verify-1793179975713801500`, input `3fc350c3e2ea0e58faa937f488121d2dbe01dd902d38af700666c11ddafa2362`, log `24c39b87ccbab0d057b6ed585cdb935e0fac87d447a4e18637549023b910eee1`. Object transport remains deterministic here.
+- PASS: frontend operation query/polling integration type/unit/build/contracts, receipt `frontend-verify-1793179568983642400`; actual API/browser integration pending. Feature remains closed by default. No release/promotion/real supplier calls implied.
+
+- PASS: result safe-fallback/oversize/hash/UTF8/reauthorization units after allowlist refinement; receipt `operation-result-units-verify-1793180154268217100`, input `d2cfc099bdff37224ab980ff402837c302008aeab91ed546b410eb5347d16c7d`, log `2a04d5ef8d25e1514b231b9a8c6623ca3580e51f358905145fa5f2150e8078ae`. No raw private result-map fallback.

@@ -288,3 +288,53 @@ BEGIN
  RETURN pf.workspace_tool_owner_allowed(a.operation_id,a.attempt_id,a.owner_id,a.task_generation,a.task_fence,take_locks);
 END $$;
 REVOKE ALL ON FUNCTION pf.workspace_shell_parent_allowed(uuid,boolean) FROM PUBLIC;
+
+-- The API role gets this allowlisted projection, never the private intent,
+-- call_json/result_json, physical identity or SDK state tables.
+CREATE FUNCTION pf.workspace_tool_public_operations(actor uuid,selected_space uuid,selected_task uuid,before_id uuid,page_size integer)
+RETURNS TABLE(operation_id uuid,task_id uuid,tool_name text,status text,phase text,summary text,
+ created_at timestamptz,ended_at timestamptz,error_code text,trace_id text,review_json text,result_available boolean)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
+ SELECT o.id,o.task_id,i.tool_name,o.status,
+ CASE WHEN o.status='PREPARED' AND t.status='WAITING_INPUT' THEN 'WAITING_APPROVAL'
+      WHEN o.status='RUNNING' AND EXISTS(SELECT 1 FROM pf.workspace_tool_stop_request s WHERE s.operation_id=o.id) THEN 'STOPPING'
+      WHEN o.status='RUNNING' AND EXISTS(SELECT 1 FROM pf.tool_output_capture c WHERE c.operation_id=o.id AND c.status='CAPTURING') THEN 'SEALING'
+      WHEN o.status='RUNNING' AND EXISTS(SELECT 1 FROM pf.workspace_tool_job_binding b JOIN pf.workspace_environment_operation e ON e.id=b.activation_operation_id
+        WHERE b.operation_id=o.id AND e.status IN('PENDING','CLAIMED','RUNNING')) THEN 'ENVIRONMENT_PREPARING'
+      ELSE o.status END,
+ CASE i.tool_name WHEN 'workspace_list' THEN '列举工作区文件' WHEN 'workspace_read' THEN '读取明确文件版本'
+      WHEN 'workspace_write' THEN '写入并封存文件' ELSE '执行工作区命令' END,
+ o.created_at,o.ended_at,
+ CASE o.status WHEN 'UNKNOWN' THEN 'TOOL_RESULT_UNKNOWN' WHEN 'FAILED' THEN 'TOOL_EXECUTION_FAILED' ELSE NULL END,
+ NULL::text,
+ jsonb_build_object('kind',CASE i.tool_name WHEN 'workspace_list' THEN 'LIST' WHEN 'workspace_read' THEN 'READ' WHEN 'workspace_write' THEN 'WRITE' ELSE 'SHELL' END,
+  'command',i.review_json->'command','cwd',i.review_json->'cwd','path',i.review_json->'path',
+  'fileId',i.review_json->'fileId','versionId',i.review_json->'versionId','writeMode',i.review_json->'mode',
+  'textSha256',i.review_json->'textSha256','bytes',i.review_json->'bytes',
+  'outputs',coalesce((SELECT jsonb_agg(jsonb_build_object('path',v->'path','maxBytes',v->'maxBytes')) FROM jsonb_array_elements(i.review_json->'outputs') v),'[]'::jsonb),
+  'impact',CASE i.tool_name WHEN 'workspace_list' THEN 'WORKSPACE_INDEX' WHEN 'workspace_read' THEN 'EXPLICIT_VERSION' WHEN 'workspace_write' THEN 'NAMED_FILE' ELSE 'ENTIRE_BOUND_WORKSPACE' END,
+  'network','NONE','stopsAfterEachCall',i.tool_name='workspace_shell')::text,
+ (o.status IN('SUCCEEDED','FAILED') AND o.result_json IS NOT NULL
+   AND NOT EXISTS(SELECT 1 FROM pf.tool_result_object r WHERE r.operation_id=o.id AND r.status<>'AVAILABLE'))
+ FROM pf.workspace_tool_intent i JOIN pf.tool_operation o ON o.id=i.operation_id AND o.space_id=i.space_id AND o.task_id=i.task_id
+ JOIN pf.task t ON t.id=i.task_id AND t.space_id=i.space_id AND t.creator_id=i.actor_id
+ WHERE i.actor_id=actor AND i.space_id=selected_space AND i.task_id=selected_task
+ AND pf.authorize_workspace_actor(actor,selected_space) AND page_size BETWEEN 1 AND 51
+ AND (before_id IS NULL OR o.id<before_id) ORDER BY o.id DESC LIMIT greatest(0,least(page_size,51))
+$$;
+REVOKE ALL ON FUNCTION pf.workspace_tool_public_operations(uuid,uuid,uuid,uuid,integer) FROM PUBLIC;
+
+CREATE FUNCTION pf.workspace_tool_public_result(actor uuid,selected_space uuid,selected_operation uuid)
+RETURNS TABLE(operation_id uuid,task_id uuid,tool_name text,status text,text text,path text,
+ object_key text,sha256 text,bytes bigint,stdout_bytes integer,stderr_bytes integer)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
+ SELECT o.id,o.task_id,i.tool_name,o.status,
+ CASE WHEN o.status IN('SUCCEEDED','FAILED') AND octet_length(o.result_json->>'text')<=8192
+   AND (r.operation_id IS NULL OR r.status='AVAILABLE') THEN o.result_json->>'text' ELSE NULL END,
+ i.review_json->>'path',r.object_key,r.sha256,r.size_bytes,r.stdout_bytes,r.stderr_bytes
+ FROM pf.workspace_tool_intent i JOIN pf.tool_operation o ON o.id=i.operation_id AND o.task_id=i.task_id AND o.space_id=i.space_id
+ JOIN pf.task t ON t.id=i.task_id AND t.space_id=i.space_id AND t.creator_id=i.actor_id
+ LEFT JOIN pf.tool_result_object r ON r.operation_id=o.id AND r.space_id=o.space_id AND r.task_id=o.task_id
+ WHERE i.operation_id=selected_operation AND i.space_id=selected_space AND i.actor_id=actor AND pf.authorize_workspace_actor(actor,selected_space)
+$$;
+REVOKE ALL ON FUNCTION pf.workspace_tool_public_result(uuid,uuid,uuid) FROM PUBLIC;

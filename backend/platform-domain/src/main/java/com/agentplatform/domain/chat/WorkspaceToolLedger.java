@@ -12,6 +12,10 @@ public interface WorkspaceToolLedger {
                   UUID activationRequestId,Long expectedEnvironmentVersion,String imageId,String policyHash) {}
     record FileAdmission(UUID operationId,UUID uploadId,UUID fileOperationId,String failureCode) {}
     enum StopReason { CANCEL, TIMEOUT, AUTHORIZATION, OWNER_LOST }
+    default com.agentplatform.types.WorkspaceOperationData.Page workspaceOperations(ChatData.Actor actor,UUID task,UUID before,int limit){throw new ChatFailure(422,"WORKSPACE_TOOLS_NOT_AVAILABLE");}
+    record ResultRecord(UUID operationId,UUID taskId,String toolName,String status,String text,String path,
+                        String objectKey,String sha256,Long bytes,Integer stdoutBytes,Integer stderrBytes) {}
+    default ResultRecord workspaceOperationResult(ChatData.Actor actor,UUID operation){throw new ChatFailure(422,"WORKSPACE_TOOLS_NOT_AVAILABLE");}
     default boolean workspaceToolTask(Lease lease){return false;}
     default void prepareWorkspaceTools(Lease lease,List<Call> calls,String imageId,String policyHash){
         throw new ChatFailure(422,"WORKSPACE_TOOLS_NOT_AVAILABLE");

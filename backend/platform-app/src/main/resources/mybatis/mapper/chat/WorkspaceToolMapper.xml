@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.agentplatform.infrastructure.dao.chat.WorkspaceToolMapper">
+  <select id="publicResult" resultType="com.agentplatform.domain.chat.WorkspaceToolLedger$ResultRecord">
+    SELECT * FROM pf.workspace_tool_public_result(#{actor.userId},#{actor.spaceId},#{operation})
+  </select>
+  <select id="publicOperations" resultType="com.agentplatform.infrastructure.dao.po.WorkspaceToolRows$PublicOperation">
+    SELECT * FROM pf.workspace_tool_public_operations(#{actor.userId},#{actor.spaceId},#{task},#{before,jdbcType=OTHER},#{limit})
+  </select>
   <select id="lockSandboxSlot" resultType="java.lang.Integer">SELECT id FROM pf.workspace_sandbox_slot WHERE id=1 FOR UPDATE</select>
   <select id="taskGeneration" resultType="java.lang.Long">SELECT generation FROM pf.execution_dispatch WHERE task_id=#{lease.taskId} AND lease_owner=#{lease.ownerId} AND fencing_token=#{lease.fence} AND status='CLAIMED'</select>
   <select id="fileAdmission" resultType="com.agentplatform.domain.chat.WorkspaceToolLedger$FileAdmission">
