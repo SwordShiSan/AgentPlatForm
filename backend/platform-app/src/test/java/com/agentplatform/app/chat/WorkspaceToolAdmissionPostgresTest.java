@@ -200,7 +200,7 @@ class WorkspaceToolAdmissionPostgresTest extends WorkspaceToolsMigrationPostgres
             public CompletionStage<Result> stream(String key,List<HarnessData.Message> messages,java.util.function.Consumer<String> text){throw new AssertionError("Typed tools required");}
             public Exchange openTyped(String model,String key,List<HarnessData.Message> messages,List<HarnessData.ToolDefinition> definitions,java.util.function.Consumer<String> text){
                 int index=calls.getAndIncrement();var call=switch(index){
-                    case 0->new HarnessData.Call("plan-write","platform_plan_write",Map.of("title","Workspace plan","markdown","Run the approved workspace operation."),false);
+                    case 0->new HarnessData.Call("plan-write","platform_plan_write",Map.of("title","Workspace plan","markdown","Run the approved workspace operation. ".repeat(40)),false);
                     case 1->new HarnessData.Call("plan-review","platform_plan_review",Map.of(),false);
                     case 2->new HarnessData.Call("shell-one","workspace_shell",Map.of("command","printf 666","cwd","","timeoutSeconds",20,"outputs",List.of()),false);
                     default->null;

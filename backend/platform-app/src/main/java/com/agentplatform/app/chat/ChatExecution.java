@@ -140,11 +140,9 @@ public final class ChatExecution implements AutoCloseable {
                 public CompletionStage<List<Message>> beforeModel(Scope s,List<Message> ignored){return control.during(()->{
                     if(controls||workspaceCapable)repository.consumeOptional(lease);
                     var context=repository.checkpointHistory(lease);
-                    var json=tools.jackson.databind.json.JsonMapper.builder().build();
-                    long upperBound=json.writeValueAsString(context).getBytes(java.nio.charset.StandardCharsets.UTF_8).length+512L;
-                    upperBound+=json.writeValueAsString(modelDefinitions.stream().filter(d->scope.planMode()||!workspaceCapable
-                            ||!("platform_plan_write".equals(d.name())||"platform_plan_review".equals(d.name()))).map(ToolDefinition::inputSchema).toList()).getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
-                    if(upperBound>7168)throw new ChatFailure(422,"CONTEXT_REQUIRED_TOO_LARGE");
+                    com.agentplatform.infrastructure.harness.agentscope.AgentScopeContextAdmission.requireFits(context,
+                            modelDefinitions.stream().filter(d->scope.planMode()||!workspaceCapable
+                                    ||!("platform_plan_write".equals(d.name())||"platform_plan_review".equals(d.name()))).toList());
                     turnId.set(repository.beginTurn(lease));return CompletableFuture.completedFuture(context);
                 });}
                 public CompletionStage<Void> afterModelCommitted(Scope s,Turn t){return control.during(()->{var call=accepted.get();if(call==null)throw new ChatFailure(409,"ACCEPTED_CALL_MISSING");repository.commitRound(lease,turnId.get(),t,call);FixtureFaults.pause("round-before-checkpoint");return CompletableFuture.completedFuture(null);});}
