@@ -13,6 +13,10 @@ def main():
   try:restore(folder,window)
   except BaseException:
    (folder/'restore-failure.private.log').write_text(traceback.format_exc())
+   for project in ['agentplatform-r4-restore-env','agentplatform-r4-restore-app']:
+    if window.run(['docker','ps','-q','--filter','label=com.docker.compose.project='+project]):
+     (folder/'restoration-required').write_text('Temporary restore resources have not confirmed stopping; do not overlap the source stack')
+     raise
    (folder/'restore-failure-r3-recovery.json').write_text(json.dumps(window.rollback(),indent=2));raise
 def restore(folder,w):
  assert (folder/'backup-r4.json').exists() and not (folder/'restore.json').exists() and not (folder/'restore-intent.json').exists()
