@@ -60,3 +60,9 @@ Legacy/new shell wire compatibility plus use-application/signature units PASS, f
 - PASS: frontend operation query/polling integration type/unit/build/contracts, receipt `frontend-verify-1793179568983642400`; actual API/browser integration pending. Feature remains closed by default. No release/promotion/real supplier calls implied.
 
 - PASS: result safe-fallback/oversize/hash/UTF8/reauthorization units after allowlist refinement; receipt `operation-result-units-verify-1793180154268217100`, input `d2cfc099bdff37224ab980ff402837c302008aeab91ed546b410eb5347d16c7d`, log `2a04d5ef8d25e1514b231b9a8c6623ca3580e51f358905145fa5f2150e8078ae`. No raw private result-map fallback.
+
+### Runner capture / output reservation increment
+
+- PASS: runner capture adapter compile and bounded pipe/callback/input/IO-exit units, integrity stream and SDK regression. Receipt `capture-stream-verify-1793182676978357300`, manifest `7209b3674901747de92a37f8ca42a38294a60f0d619c64c79dc3c1c1286e6f8a`, log `e6c85e3397b354e84a0763aa8e045f9dbd54adfec61992b576e6fedbcb92d82f`. The new runtime capture method is not yet connected to a production DB-backed sink/runner route; no native capture claim.
+- PASS: actual PG shell output/result pre-reservation, repeat/rollback/no-fake-assets/identity/cancel-hold cases plus existing SDK parent admission and restricted role regression. Receipt `shell-admission-verify-1793182963589835900`, manifest `a1c272b4418ea590f631f3906601aae7cc4adfbb3b603f2f7a49b63419b91035`, log `dc2ddcd025154df81b51142bffe8206c75314639cc08d0817f063f15f77e08ec`.
+- Remaining: canonical CAPTURE child job admission and original-use stop predicate; immutable descriptor/stop sink, version/quota projection; signed capture route and production Harness composition; integrated native/API/browser/resource/recovery/release gates. All remain NOT_RUN/incomplete, not waived by component results.

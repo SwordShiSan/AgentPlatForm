@@ -66,6 +66,7 @@ final class MyBatisExecutionLedger {
         ApprovalPersistence.consume(c,l,call);
         if(c.ledger().updateToolOperation191(l.spaceId(), l.taskId(), l.attemptId(), l.fence(), call.id(), hash(canonicalJson(call)))!=1)
             throw new ChatFailure(409,"OPERATION_NOT_PREPARED");
+        if("workspace_shell".equals(call.name()))WorkspaceToolPersistence.reserveShellOutputs(c,l,call);
     }
 
     static void commitTool(ChatMappers c,Lease l,com.agentplatform.types.harness.HarnessData.Call call,Observation result) {

@@ -72,6 +72,7 @@ CREATE TABLE pf.tool_output_capture (
  id uuid PRIMARY KEY, space_id uuid NOT NULL, task_id uuid NOT NULL, workspace_id uuid NOT NULL, operation_id uuid NOT NULL,
  ordinal integer NOT NULL CHECK(ordinal BETWEEN 0 AND 15), relative_path text NOT NULL CHECK(octet_length(relative_path) BETWEEN 1 AND 4096),
  reserved_bytes bigint NOT NULL CHECK(reserved_bytes BETWEEN 0 AND 104857600),
+ reserved_version_id uuid NOT NULL UNIQUE, asset_id uuid NOT NULL UNIQUE, object_key text NOT NULL UNIQUE,
  status text NOT NULL DEFAULT 'RESERVED' CHECK(status IN('RESERVED','CAPTURING','COMMITTED','FAILED','RECONCILING','RELEASED')),
  file_operation_id uuid UNIQUE, file_id uuid, version_id uuid, actual_bytes bigint CHECK(actual_bytes>=0 AND actual_bytes<=reserved_bytes),
  revision bigint NOT NULL DEFAULT 1 CHECK(revision>0),
@@ -79,8 +80,27 @@ CREATE TABLE pf.tool_output_capture (
  FOREIGN KEY(space_id,task_id,workspace_id,operation_id) REFERENCES pf.workspace_tool_intent(space_id,task_id,workspace_id,operation_id),
  FOREIGN KEY(space_id,workspace_id,file_operation_id) REFERENCES pf.file_operation(space_id,workspace_id,id),
  FOREIGN KEY(space_id,workspace_id,file_id,version_id) REFERENCES pf.file_version(space_id,workspace_id,file_id,id),
- CHECK(status<>'COMMITTED' OR(file_operation_id IS NOT NULL AND file_id IS NOT NULL AND version_id IS NOT NULL AND actual_bytes IS NOT NULL))
+ CHECK(status<>'COMMITTED' OR(file_operation_id IS NOT NULL AND file_id IS NOT NULL AND version_id=reserved_version_id AND actual_bytes IS NOT NULL)),
+ FOREIGN KEY(space_id,version_id,asset_id) REFERENCES pf.asset_object(space_id,version_id,id),
+ CHECK(object_key LIKE 'spaces/'||space_id::text||'/file-version/'||asset_id::text||'/'||reserved_version_id::text||'/%')
 );
+CREATE TABLE pf.tool_result_reservation (
+ operation_id uuid PRIMARY KEY,space_id uuid NOT NULL,task_id uuid NOT NULL,workspace_id uuid NOT NULL,
+ reserved_bytes bigint NOT NULL CHECK(reserved_bytes=65536),actual_bytes bigint CHECK(actual_bytes BETWEEN 0 AND reserved_bytes),
+ status text NOT NULL DEFAULT 'RESERVED' CHECK(status IN('RESERVED','COMMITTED','RELEASED','RECONCILING')),
+ revision bigint NOT NULL DEFAULT 1 CHECK(revision>0),
+ FOREIGN KEY(space_id,task_id,workspace_id,operation_id) REFERENCES pf.workspace_tool_intent(space_id,task_id,workspace_id,operation_id)
+);
+REVOKE ALL ON pf.tool_result_reservation FROM PUBLIC;
+CREATE FUNCTION pf.guard_tool_capture_identity() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF ROW(OLD.id,OLD.operation_id,OLD.space_id,OLD.task_id,OLD.workspace_id,OLD.ordinal,OLD.relative_path,OLD.reserved_bytes,OLD.reserved_version_id,OLD.asset_id,OLD.object_key)
+ IS DISTINCT FROM ROW(NEW.id,NEW.operation_id,NEW.space_id,NEW.task_id,NEW.workspace_id,NEW.ordinal,NEW.relative_path,NEW.reserved_bytes,NEW.reserved_version_id,NEW.asset_id,NEW.object_key)
+ THEN RAISE EXCEPTION 'CAPTURE_IDENTITY_IMMUTABLE' USING ERRCODE='55000'; END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER tool_capture_identity BEFORE UPDATE ON pf.tool_output_capture FOR EACH ROW EXECUTE FUNCTION pf.guard_tool_capture_identity();
+CREATE TRIGGER tool_capture_no_delete BEFORE DELETE ON pf.tool_output_capture FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
 CREATE TABLE pf.tool_result_object (
  operation_id uuid PRIMARY KEY, space_id uuid NOT NULL, task_id uuid NOT NULL, workspace_id uuid NOT NULL,
  object_key text NOT NULL UNIQUE, sha256 text NOT NULL CHECK(sha256 ~ '^[a-f0-9]{64}$'),

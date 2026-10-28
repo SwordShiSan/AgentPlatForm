@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.agentplatform.infrastructure.dao.chat.WorkspaceToolMapper">
+  <update id="reserveToolBytes">
+    UPDATE pf.space_storage SET reserved_bytes=reserved_bytes+#{bytes},version=version+1
+    WHERE space_id=#{space} AND status='ACTIVE' AND #{bytes}&gt;=0 AND #{bytes}&lt;=object_limit_bytes-reserved_bytes-committed_bytes
+  </update>
+  <insert id="insertCaptureReservation">
+    INSERT INTO pf.tool_output_capture(id,operation_id,space_id,task_id,workspace_id,ordinal,relative_path,reserved_bytes,reserved_version_id,asset_id,object_key)
+    VALUES(#{row.id},#{row.operationId},#{row.spaceId},#{row.taskId},#{row.workspaceId},#{row.ordinal},#{row.path},#{row.bytes},#{row.versionId},#{row.assetId},#{row.objectKey})
+  </insert>
+  <insert id="insertResultReservation">
+    INSERT INTO pf.tool_result_reservation(operation_id,space_id,task_id,workspace_id,reserved_bytes)
+    SELECT operation_id,space_id,task_id,workspace_id,65536 FROM pf.workspace_tool_intent WHERE operation_id=#{operation} AND tool_name='workspace_shell'
+  </insert>
   <select id="publicResult" resultType="com.agentplatform.domain.chat.WorkspaceToolLedger$ResultRecord">
     SELECT * FROM pf.workspace_tool_public_result(#{actor.userId},#{actor.spaceId},#{operation})
   </select>

@@ -27,6 +27,22 @@ final class WorkspaceToolPersistence extends ChatPersistenceSupport {
         if(c.workspaceTools().lockObjectQuota(lease.spaceId())==null)throw new ChatFailure(409,"OBJECT_QUOTA_UNAVAILABLE");
         MyBatisExecutionLedger.guard(c,lease);
     }
+    static void reserveShellOutputs(ChatMappers c,Lease lease,Call call) {
+        var original=c.approvals().operation(lease,call.id());
+        var intent=original==null?null:c.workspaceTools().intent(lease.spaceId(),lease.taskId(),original.id());
+        if(intent==null)throw new ChatFailure(409,"TOOL_INTENT_MISSING");
+        var shell=JSON.readValue(json(call.arguments()),WorkspaceTools.Shell.class);
+        long bytes=Math.addExact(65536L,shell.outputs().stream().mapToLong(WorkspaceTools.OutputFile::maxBytes).sum());
+        if(c.workspaceTools().reserveToolBytes(lease.spaceId(),bytes)!=1)throw new ChatFailure(429,"OBJECT_QUOTA_EXCEEDED");
+        int ordinal=0;
+        for(var output:shell.outputs()) {
+            UUID asset=Uuid7.next(),version=Uuid7.next();
+            String key="spaces/"+lease.spaceId()+"/file-version/"+asset+"/"+version+"/content";
+            if(c.workspaceTools().insertCaptureReservation(new WorkspaceToolRows.CaptureReservation(Uuid7.next(),intent.operationId(),lease.spaceId(),lease.taskId(),
+                intent.workspaceId(),ordinal++,output.path(),output.maxBytes(),version,asset,key))!=1)throw new ChatFailure(409,"OUTPUT_RESERVATION_CONFLICT");
+        }
+        if(c.workspaceTools().insertResultReservation(intent.operationId())!=1)throw new ChatFailure(409,"OUTPUT_RESERVATION_CONFLICT");
+    }
     boolean available(Lease lease){return tx(c->{MyBatisExecutionLedger.guard(c,lease);return enabled(c,lease.spaceId(),lease.taskId());});}
     void prepare(Lease lease,List<Call> calls,String image,String policy){tx(c->{
         if(calls.isEmpty())return null;

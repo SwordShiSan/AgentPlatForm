@@ -35,6 +35,8 @@ shell执行后停止整个generation并确认exec/容器/回调退出，独立he
 
 stdout/stderr合计64KiB并标截断；结果>32KiB入私有S3，模型摘要≤8KiB。无完整文件byte[]/Base64/DB正文大字段；工具原始参数有明确32/64KiB协议边界，不成为大文件上传旁路。
 
+shell的PREPARED→RUNNING准入事务同时预留全部声明输出上限和64KiB结果对象额度，直接更新既有space_storage聚合。tool_output_capture记录每条输出预留；tool_result_reservation记录原操作的结果预留，不能在内容未知时伪造asset_object长度/hash。采集ID、拟用版本/资产身份及对象key由服务端冻结，真实描述到达后才创建对象事实。后续结算必须对应这些原预留；UNKNOWN保留预留，不由超时退款。此账本不增加第二套额度准入器。
+
 ### 文件工具事务细化
 
 `WorkspaceFileToolService`复用现有FileRepository、FileApplicationService、AssetStore及file outbox/worker/runner，不创建第二条物理写入路径。V18的`workspace_tool_file_admission`只记录原工具operation到upload的不可变绑定、原attempt/owner/generation/fence，或尚未产生副作用的明确拒绝；文件状态仍以既有file_operation为准。原工具RUNNING、批准消费、对象额度预留、upload和绑定同事务提交。已知冲突用Spring嵌套事务保存点撤销本次文件准入，再保留FAILED观察；数据库故障则完整回滚，不伪造成业务冲突。传输后，file_operation/outbox与原工具绑定再次同事务提交，禁止先发布未绑定作业。

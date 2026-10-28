@@ -226,6 +226,26 @@
       "inputManifestSha256": "d2cfc099bdff37224ab980ff402837c302008aeab91ed546b410eb5347d16c7d",
       "logSha256": "2a04d5ef8d25e1514b231b9a8c6623ca3580e51f358905145fa5f2150e8078ae",
       "note": "Result units: missing summary never reflects private result map; oversized object rejected before transport; hash/UTF8 and live reauthorization."
+    },
+    {
+      "name": "runner-capture-channel",
+      "status": "PASS",
+      "sourceHead": "4870698eeb63fe5e27f413a24e4b97c76cecd518",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "7209b3674901747de92a37f8ca42a38294a60f0d619c64c79dc3c1c1286e6f8a",
+      "logSha256": "e6c85e3397b354e84a0763aa8e045f9dbd54adfec61992b576e6fedbcb92d82f",
+      "note": "Runner capture adapter compiles; actual bounded JDK pipe backpressure and callback/input/IO exit units plus integrity/SDK regression. Native Docker capture and DB sink integration not yet run."
+    },
+    {
+      "name": "shell-output-reservations",
+      "status": "PASS",
+      "sourceHead": "4870698eeb63fe5e27f413a24e4b97c76cecd518",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "a1c272b4418ea590f631f3906601aae7cc4adfbb3b603f2f7a49b63419b91035",
+      "logSha256": "dc2ddcd025154df81b51142bffe8206c75314639cc08d0817f063f15f77e08ec",
+      "note": "Actual PG/SDK admission regression: reserve declared max output bytes plus64KiB result atomically; no fake asset content, repeat admission does not charge twice, insufficient quota rolls back RUNNING and all reservations, cancel preserves unresolved holds."
     }
   ],
   "notRun": [

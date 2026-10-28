@@ -18,7 +18,7 @@ GROUPS = {
     'shell-admission': 'WorkspaceShellAdmissionPostgresTest,WorkspaceToolAdmissionPostgresTest,WorkspaceFileToolPostgresTest#runnerPredicateDoesNotRequirePrivateChatGrantsAndFileTriggerWorksForApiRole',
     'shell-wire': 'RunnerHttpTest,RunnerSignaturesTest,EnvironmentUseCodecsTest',
     'stop-admission': 'WorkspaceShellAdmissionPostgresTest,WorkspaceFileToolPostgresTest',
-    'capture-stream': 'CapturedFileStreamTest,S3AssetStoreTest',
+    'capture-stream': 'CapturedFileStreamTest,FileCaptureChannelTest,S3AssetStoreTest',
     'file-exchange': 'WorkspaceFileToolExchangeTest',
     'operation-projection': 'WorkspaceFileToolPostgresTest#publicOperationProjectionIsOwnerScopedTypedAndDoesNotExposeWriteContent',
     'operation-results': 'WorkspaceFileToolPostgresTest#publicOperationProjectionIsOwnerScopedTypedAndDoesNotExposeWriteContent+knownNameConflictKeepsRunningToolButRollsBackOnlyFileAdmissionAndReturnsFailedObservation,WorkspaceOperationsServiceTest',
