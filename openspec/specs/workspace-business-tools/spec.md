@@ -53,4 +53,3 @@ Operations and bounded results SHALL be exposed only through current task/space 
 #### Scenario: Deployment failure
 - **WHEN** any required production gate fails
 - **THEN** the retained exact R3 deployment is restored and R4 is not marked RELEASED.
-
