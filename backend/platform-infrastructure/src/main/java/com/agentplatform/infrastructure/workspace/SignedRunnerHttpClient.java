@@ -84,6 +84,16 @@ public final class SignedRunnerHttpClient implements RunnerControlPort,Environme
     }
     @Override public com.agentplatform.domain.files.FileData.Receipt applyFile(com.agentplatform.domain.files.FileData.Command command){return file(command,false);}
     @Override public com.agentplatform.domain.files.FileData.Receipt queryFile(com.agentplatform.domain.files.FileData.Command command){return file(command,true);}
+    private com.agentplatform.domain.files.FileData.Receipt capture(com.agentplatform.domain.files.FileData.Command command,
+            com.agentplatform.domain.files.FileCaptureData.Command body,boolean query) {
+        if(!"CAPTURE".equals(command.operation().kind()))throw new WorkspaceFailure(400,"INVALID_CAPTURE_COMMAND");
+        String path="/internal/file-captures/v1"+(query?"/"+command.operation().id():"");var op=command.operation();
+        var request=new RunnerSignatures.Binding(query?"GET":"POST",path,op.commandId(),op.id(),op.spaceId(),op.workspaceId(),op.generation(),op.fence());
+        var response=new RunnerSignatures.Binding("RESPONSE",path,op.commandId(),op.id(),op.spaceId(),op.workspaceId(),op.generation(),op.fence());
+        return exchange(request,response,query?new byte[0]:JSON.writeValueAsBytes(body),query,com.agentplatform.domain.files.FileData.Receipt.class);
+    }
+    @Override public com.agentplatform.domain.files.FileData.Receipt captureFile(com.agentplatform.domain.files.FileCaptureData.Command command){return capture(command.file(),command,false);}
+    @Override public com.agentplatform.domain.files.FileData.Receipt queryCapture(com.agentplatform.domain.files.FileData.Command command){return capture(command,null,true);}
     private com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt environment(
             com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command,boolean query) {
         String base=switch(command.protocol()) {

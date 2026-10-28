@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /** Actual PG/Mapper child ownership, not a native execution or runner receipt substitute. */
 class WorkspaceShellAdmissionPostgresTest extends WorkspaceToolsMigrationPostgresTest {
     private EnvironmentUseRepository uses;private Lease current;private Call tool;
+    private SqlSessionTemplate mapperSession;private TransactionTemplate transactions;
     private WorkspaceData.Actor workspaceActor(){return new WorkspaceData.Actor(actor.userId(),actor.spaceId());}
     private WorkspaceShellData.Request prepared() throws Exception {
         return prepared(List.of(),null);
@@ -33,8 +34,9 @@ class WorkspaceShellAdmissionPostgresTest extends WorkspaceToolsMigrationPostgre
         var factory=new SqlSessionFactoryBean();factory.setDataSource(pool);var configuration=new org.apache.ibatis.session.Configuration();
         configuration.setMapUnderscoreToCamelCase(true);configuration.setCacheEnabled(false);configuration.setLocalCacheScope(org.apache.ibatis.session.LocalCacheScope.STATEMENT);configuration.getTypeHandlerRegistry().register(new UuidTypeHandler());
         factory.setConfiguration(configuration);factory.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:mybatis/mapper/**/*.xml"));
-        var session=new SqlSessionTemplate(factory.getObject());uses=new TransactionalEnvironmentUseRepository(new MyBatisEnvironmentUseRepository(session.getMapper(EnvironmentUseMapper.class),
-            session.getMapper(EnvironmentPreparationMapper.class),session.getMapper(EnvironmentExecutionMapper.class),session.getMapper(WorkspaceMapper.class)),new TransactionTemplate(new JdbcTransactionManager(pool)));
+        var session=new SqlSessionTemplate(factory.getObject());mapperSession=session;transactions=new TransactionTemplate(new JdbcTransactionManager(pool));
+        uses=new TransactionalEnvironmentUseRepository(new MyBatisEnvironmentUseRepository(session.getMapper(EnvironmentUseMapper.class),
+            session.getMapper(EnvironmentPreparationMapper.class),session.getMapper(EnvironmentExecutionMapper.class),session.getMapper(WorkspaceMapper.class)),transactions);
         repository=ChatPersistenceFixture.create(pool,true);
         var task=repository.firstAuthorized(actor,UUID.randomUUID(),"R44 shell parent",UUID.fromString("0199e000-0000-7000-8000-000000000002"),"PLATFORM","shell admission",false,workspace,Mode.FULL).task();
         var publication=repository.publications(UUID.randomUUID()).stream().filter(p->p.envelope().aggregateId().equals(task.id())).findFirst().orElseThrow();
@@ -107,5 +109,77 @@ class WorkspaceShellAdmissionPostgresTest extends WorkspaceToolsMigrationPostgre
         assertEquals("0",scalar("SELECT count(*) FROM pf.tool_output_capture"+scope));
         assertEquals("0",scalar("SELECT count(*) FROM pf.tool_result_reservation"+scope));
         assertEquals("PREPARED",scalar("SELECT status FROM pf.tool_operation WHERE task_id='"+current.taskId()+"'"));
+    }
+    private com.agentplatform.domain.files.FileRepository captureFiles() {
+        return new com.agentplatform.app.files.TransactionalFileRepository(new com.agentplatform.infrastructure.adapter.repository.files.MyBatisFileRepository(
+            mapperSession.getMapper(com.agentplatform.infrastructure.dao.files.FileMapper.class),mapperSession.getMapper(WorkspaceMapper.class),
+            mapperSession.getMapper(EnvironmentPreparationMapper.class),"sha256:"+"a".repeat(64),"b".repeat(64),
+            mapperSession.getMapper(com.agentplatform.infrastructure.dao.files.FileCaptureMapper.class)),transactions);
+    }
+    private record StoppedSource(EnvironmentUseData.Command command,RunnerInstance runner) {}
+    private StoppedSource stoppedSource()throws Exception {
+        var request=prepared(List.of(Map.of("path","result.txt","maxBytes",32L)),null);
+        var use=uses.admitShell(workspaceActor(),workspace,request.parent().operationId(),current.ownerId(),request).command();
+        var runner=new RunnerInstance(UUID.randomUUID(),randomHash(),"sha256:"+"6".repeat(64),"2026-10-28T00:00:00Z");
+        transactions.executeWithoutResult(status->mapperSession.getMapper(EnvironmentExecutionMapper.class).registerRunner(runner));
+        assertTrue(uses.accept(use,runner.id()));String exec=randomHash();uses.recordExec(use,runner.id(),use.containerId(),exec);
+        var stop=new SandboxRuntime.Stop(use.containerId(),use.imageId(),use.containerStartedAt(),java.time.Instant.now().minusMillis(100).toString(),true,true,java.time.Instant.now());
+        uses.commitFact(use,runner.id(),new EnvironmentUseData.Fact(use.id(),use.environmentId(),use.generation(),use.fence(),use.requestHash(),runner.id(),"KNOWN",
+            new SandboxRuntime.Output(exec,0,"666","",false,false,false,stop),stop,null));
+        return new StoppedSource(use,runner);
+    }
+    private static String randomHash(){return com.agentplatform.infrastructure.workspace.RunnerSignatures.sha256(UUID.randomUUID().toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+    @Test void capturesCannotQueueBeforeTheOriginalShellHasACommittedWholeStop()throws Exception {
+        var request=prepared(List.of(Map.of("path","result.txt","maxBytes",32L)),null);
+        uses.admitShell(workspaceActor(),workspace,request.parent().operationId(),current.ownerId(),request);
+        assertThrows(com.agentplatform.domain.files.FileFailure.class,()->captureFiles().admitCaptures(new com.agentplatform.domain.files.FileData.Actor(actor.userId(),actor.spaceId()),request.parent().operationId()));
+        assertEquals("0",scalar("SELECT count(*) FROM pf.file_operation WHERE workspace_id='"+workspace+"'"));
+    }
+    @Test void signedCaptureJobPublishesOneImmutableVersionAndSettlesOnlyItsOriginalReservationDespiteResponseLoss()throws Exception {
+        var source=stoppedSource();var files=captureFiles();var fileActor=new com.agentplatform.domain.files.FileData.Actor(actor.userId(),actor.spaceId());
+        UUID sourceOperation=repository.workspaceToolIntent(current,tool).operationId();var targets=files.admitCaptures(fileActor,sourceOperation);
+        assertEquals(targets,files.admitCaptures(fileActor,sourceOperation));assertEquals(1,targets.size());var target=targets.getFirst();
+        var publication=files.publications(UUID.randomUUID()).stream().filter(p->p.operationId().equals(target.fileOperationId())).findFirst().orElseThrow();
+        var command=files.claim(publication,UUID.randomUUID());assertNotNull(command);
+        var runnerRepo=new com.agentplatform.app.files.TransactionalFileRunnerRepository(new com.agentplatform.infrastructure.adapter.repository.files.MyBatisFileRunnerRepository(
+            mapperSession.getMapper(com.agentplatform.infrastructure.dao.files.FileRunnerMapper.class),mapperSession.getMapper(com.agentplatform.infrastructure.dao.files.FileMapper.class),
+            mapperSession.getMapper(WorkspaceMapper.class),mapperSession.getMapper(EnvironmentPreparationMapper.class),mapperSession.getMapper(EnvironmentExecutionMapper.class),
+            mapperSession.getMapper(com.agentplatform.infrastructure.dao.files.FileTransferMapper.class),mapperSession.getMapper(com.agentplatform.infrastructure.dao.files.FileCaptureMapper.class)),transactions);
+        var runtime=org.mockito.Mockito.mock(com.agentplatform.domain.files.FileRuntime.class);
+        org.mockito.Mockito.when(runtime.runnerInstance()).thenReturn(source.runner());org.mockito.Mockito.when(runtime.policyHash()).thenReturn(command.operation().helperPolicyHash());
+        byte[] bytes="666".getBytes(java.nio.charset.StandardCharsets.UTF_8);String hash=com.agentplatform.infrastructure.workspace.RunnerSignatures.sha256(bytes);
+        var objects=new java.util.concurrent.ConcurrentHashMap<String,byte[]>();
+        var assets=new com.agentplatform.domain.files.AssetStore(){
+            public Identity put(String key,long length,String sha,java.io.InputStream input){try{var value=input.readAllBytes();assertEquals(length,value.length);assertEquals(sha,com.agentplatform.infrastructure.workspace.RunnerSignatures.sha256(value));objects.put(key,value);return new Identity(key,length,sha);}catch(java.io.IOException e){throw new IllegalStateException(e);}}
+            public Content open(String key,Long first,Long last){var value=Objects.requireNonNull(objects.get(key));return new Content(new java.io.ByteArrayInputStream(value),value.length,value.length);}
+            public Identity inspect(String key){var value=objects.get(key);return new Identity(key,value.length,com.agentplatform.infrastructure.workspace.RunnerSignatures.sha256(value));}
+            public void deleteUncommitted(String key){throw new AssertionError("No cleanup/replay in capture probe");}
+        };
+        var json=tools.jackson.databind.json.JsonMapper.builder().build();
+        org.mockito.Mockito.when(runtime.capture(org.mockito.ArgumentMatchers.eq(command),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any())).thenAnswer(invocation->{
+            var authority=invocation.getArgument(3,com.agentplatform.domain.files.FileRuntime.Authority.class);authority.check();authority.created(randomHash());authority.startRequested();authority.started("2026-10-28T00:00:00Z");authority.exec(randomHash());
+            var sink=invocation.getArgument(2,com.agentplatform.domain.files.FileRuntime.CaptureSink.class);sink.described(bytes.length,hash);
+            var physical=authority.physical();var stop=new com.agentplatform.domain.files.FileRuntime.Stop(command.operation().commandId(),physical.containerId(),command.operation().helperImageId(),physical.startedAt(),physical.execId(),java.time.Instant.now().minusMillis(10).toString(),false,true,true,java.time.Instant.now());
+            sink.stopped(stop);sink.store(bytes.length,hash,new java.io.ByteArrayInputStream(bytes));
+            return new com.agentplatform.domain.files.FileRuntime.Result("CAPTURED",json.writeValueAsString(Map.of("protocol","file-capture-v1","operationId",command.operation().id(),"state","CAPTURED","bytes",bytes.length,"sha256",hash)),json.writeValueAsString(stop));
+        });
+        var keyA=new com.nimbusds.jose.jwk.gen.RSAKeyGenerator(3072).keyID("capture-control").generate();var keyB=new com.nimbusds.jose.jwk.gen.RSAKeyGenerator(3072).keyID("capture-runner").generate();
+        var control=new com.agentplatform.infrastructure.workspace.RunnerSignatures(keyA,keyB.toPublicJWK(),"control","runner",java.time.Clock.systemUTC());
+        var signed=new com.agentplatform.app.files.FileCaptureRunnerService(runnerRepo,runtime,assets,new com.agentplatform.infrastructure.workspace.RunnerSignatures(keyB,keyA.toPublicJWK(),"runner","control",java.time.Clock.systemUTC()));
+        var transport=new com.agentplatform.domain.files.FileRunnerPort(){
+            public com.agentplatform.domain.files.FileData.Receipt applyFile(com.agentplatform.domain.files.FileData.Command c){throw new AssertionError("Legacy route not allowed");}
+            public com.agentplatform.domain.files.FileData.Receipt queryFile(com.agentplatform.domain.files.FileData.Command c){throw new AssertionError("Legacy route not allowed");}
+            public com.agentplatform.domain.files.FileData.Receipt captureFile(com.agentplatform.domain.files.FileCaptureData.Command c){byte[] body=json.writeValueAsBytes(c);signed.operate(control.sign(com.agentplatform.app.files.FileRunnerService.binding(c.file(),"POST","/internal/file-captures/v1"),body),body);throw new com.agentplatform.domain.files.FileFailure(503,"FIXTURE_RESPONSE_LOST");}
+            public com.agentplatform.domain.files.FileData.Receipt queryCapture(com.agentplatform.domain.files.FileData.Command c){String path="/internal/file-captures/v1/"+c.operation().id();var response=signed.query(control.sign(com.agentplatform.app.files.FileRunnerService.binding(c,"GET",path),new byte[0]),c.operation().id().toString());control.verify(response.signature(),com.agentplatform.app.files.FileRunnerService.binding(c,"RESPONSE",path),response.body());return json.readValue(response.body(),com.agentplatform.domain.files.FileData.Receipt.class);}
+        };
+        var timers=java.util.concurrent.Executors.newScheduledThreadPool(2);
+        try(var execution=new com.agentplatform.app.files.FileExecution(files,transport,assets,timers)){execution.run(command);}finally{timers.shutdownNow();}
+        assertEquals("COMMITTED",files.operation(fileActor,command.operation().id()).status());
+        var entry=files.list(fileActor,workspace,"",null,20).stream().filter(e->e.relativePath().equals("result.txt")).findFirst().orElseThrow();
+        var version=files.version(fileActor,entry.id(),entry.currentVersionId());assertEquals(target.versionId(),version.id());assertEquals(hash,version.sha256());
+        assertEquals(65536,files.usage(fileActor,workspace).reservedBytes());assertEquals(3,files.usage(fileActor,workspace).committedBytes());
+        assertEquals("1",scalar("SELECT count(*) FROM pf.file_version WHERE workspace_id='"+workspace+"'"));
+        org.mockito.Mockito.verify(runtime,org.mockito.Mockito.times(1)).capture(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any());
+        assertFalse(uses.stopCommitted(source.command().id()),"Capture completion cannot by itself release the original use/sandbox slot");
     }
 }

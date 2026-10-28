@@ -75,6 +75,8 @@ CREATE TABLE pf.tool_output_capture (
  reserved_version_id uuid NOT NULL UNIQUE, asset_id uuid NOT NULL UNIQUE, object_key text NOT NULL UNIQUE,
  status text NOT NULL DEFAULT 'RESERVED' CHECK(status IN('RESERVED','CAPTURING','COMMITTED','FAILED','RECONCILING','RELEASED')),
  file_operation_id uuid UNIQUE, file_id uuid, version_id uuid, actual_bytes bigint CHECK(actual_bytes>=0 AND actual_bytes<=reserved_bytes),
+ content_sha256 text CHECK(content_sha256 ~ '^[a-f0-9]{64}$'),helper_stop_text text CHECK(octet_length(helper_stop_text)<=8192),
+ helper_stop_hash text CHECK(helper_stop_hash ~ '^[a-f0-9]{64}$'),
  revision bigint NOT NULL DEFAULT 1 CHECK(revision>0),
  UNIQUE(operation_id,ordinal), UNIQUE(operation_id,relative_path),
  FOREIGN KEY(space_id,task_id,workspace_id,operation_id) REFERENCES pf.workspace_tool_intent(space_id,task_id,workspace_id,operation_id),
@@ -97,6 +99,12 @@ BEGIN
  IF ROW(OLD.id,OLD.operation_id,OLD.space_id,OLD.task_id,OLD.workspace_id,OLD.ordinal,OLD.relative_path,OLD.reserved_bytes,OLD.reserved_version_id,OLD.asset_id,OLD.object_key)
  IS DISTINCT FROM ROW(NEW.id,NEW.operation_id,NEW.space_id,NEW.task_id,NEW.workspace_id,NEW.ordinal,NEW.relative_path,NEW.reserved_bytes,NEW.reserved_version_id,NEW.asset_id,NEW.object_key)
  THEN RAISE EXCEPTION 'CAPTURE_IDENTITY_IMMUTABLE' USING ERRCODE='55000'; END IF;
+ IF OLD.file_operation_id IS NOT NULL AND OLD.file_operation_id IS DISTINCT FROM NEW.file_operation_id
+ THEN RAISE EXCEPTION 'CAPTURE_OPERATION_IMMUTABLE' USING ERRCODE='55000'; END IF;
+ IF OLD.content_sha256 IS NOT NULL AND ROW(OLD.actual_bytes,OLD.content_sha256) IS DISTINCT FROM ROW(NEW.actual_bytes,NEW.content_sha256)
+ THEN RAISE EXCEPTION 'CAPTURE_DESCRIPTOR_IMMUTABLE' USING ERRCODE='55000'; END IF;
+ IF OLD.helper_stop_hash IS NOT NULL AND ROW(OLD.helper_stop_text,OLD.helper_stop_hash) IS DISTINCT FROM ROW(NEW.helper_stop_text,NEW.helper_stop_hash)
+ THEN RAISE EXCEPTION 'CAPTURE_STOP_IMMUTABLE' USING ERRCODE='55000'; END IF;
  RETURN NEW;
 END $$;
 CREATE TRIGGER tool_capture_identity BEFORE UPDATE ON pf.tool_output_capture FOR EACH ROW EXECUTE FUNCTION pf.guard_tool_capture_identity();
@@ -263,8 +271,14 @@ REVOKE ALL ON FUNCTION pf.workspace_tool_owner_allowed(uuid,uuid,uuid,bigint,big
 -- the same parent deadline, stop intent, authorization and task ownership gate.
 CREATE FUNCTION pf.file_tool_parent_allowed(selected_upload uuid,selected_operation uuid,take_locks boolean)
  RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
-DECLARE admission pf.workspace_tool_file_admission;
+DECLARE admission pf.workspace_tool_file_admission; shell_owner pf.workspace_tool_shell_admission;
 BEGIN
+ SELECT a.* INTO shell_owner FROM pf.workspace_tool_shell_admission a JOIN pf.tool_output_capture c
+   ON c.operation_id=a.operation_id AND c.space_id=a.space_id AND c.workspace_id=a.workspace_id
+   WHERE c.file_operation_id=selected_operation;
+ IF FOUND THEN RETURN pf.workspace_tool_owner_allowed(shell_owner.operation_id,shell_owner.attempt_id,shell_owner.owner_id,
+   shell_owner.task_generation,shell_owner.task_fence,take_locks) AND pf.workspace_capture_ready(selected_operation); END IF;
+ IF EXISTS(SELECT 1 FROM pf.file_operation o WHERE o.id=selected_operation AND o.kind='CAPTURE') THEN RETURN false; END IF;
  SELECT a.* INTO admission FROM pf.workspace_tool_file_admission a
  WHERE a.upload_id=selected_upload OR EXISTS(SELECT 1 FROM pf.workspace_tool_job_binding b
    WHERE b.operation_id=a.operation_id AND b.file_operation_id=selected_operation);
@@ -308,6 +322,30 @@ BEGIN
  RETURN pf.workspace_tool_owner_allowed(a.operation_id,a.attempt_id,a.owner_id,a.task_generation,a.task_fence,take_locks);
 END $$;
 REVOKE ALL ON FUNCTION pf.workspace_shell_parent_allowed(uuid,boolean) FROM PUBLIC;
+
+CREATE FUNCTION pf.workspace_shell_stopped_source(selected_use uuid) RETURNS boolean
+LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
+ SELECT EXISTS(SELECT 1 FROM pf.workspace_environment_use u
+ JOIN pf.workspace_environment_use_result r ON r.use_id=u.id
+ WHERE u.id=selected_use AND u.kind='SHELL'
+   AND (r.result_text::jsonb->>'resultState')='KNOWN'
+   AND r.result_text::jsonb#>>'{stop,containerId}'=u.container_id
+   AND r.result_text::jsonb#>>'{stop,image}'=u.image_id AND r.result_text::jsonb#>>'{stop,startedAt}'=u.container_started_at
+   AND r.result_text::jsonb#>>'{stop,execStopped}'='true' AND r.result_text::jsonb#>>'{stop,callbacksStopped}'='true'
+   AND r.result_text::jsonb#>>'{stop,finishedAt}' IS NOT NULL)
+$$;
+REVOKE ALL ON FUNCTION pf.workspace_shell_stopped_source(uuid) FROM PUBLIC;
+CREATE FUNCTION pf.workspace_capture_ready(selected_file_operation uuid) RETURNS boolean
+LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog,pf AS $$
+ SELECT EXISTS(SELECT 1 FROM pf.tool_output_capture c JOIN pf.workspace_tool_shell_admission a
+ ON a.operation_id=c.operation_id AND a.space_id=c.space_id AND a.workspace_id=c.workspace_id
+ WHERE c.file_operation_id=selected_file_operation AND pf.workspace_shell_stopped_source(a.use_id))
+$$;
+REVOKE ALL ON FUNCTION pf.workspace_capture_ready(uuid) FROM PUBLIC;
+
+ALTER TABLE pf.file_runner_receipt DROP CONSTRAINT file_runner_receipt_result_state_check;
+ALTER TABLE pf.file_runner_receipt ADD CONSTRAINT file_runner_receipt_result_state_check
+ CHECK(result_state IN('APPLIED','NOT_APPLIED','UNKNOWN','SCANNED','CAPTURED'));
 
 -- The API role gets this allowlisted projection, never the private intent,
 -- call_json/result_json, physical identity or SDK state tables.

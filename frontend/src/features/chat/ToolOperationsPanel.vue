@@ -5,7 +5,7 @@ import { api } from '../../shared/api/client';
 import { ApiError } from '../../shared/api/request';
 import ToolCard from './ToolCard.vue';
 
-const props = defineProps<{ actor: string; space: string; taskId: string; taskVersion: number }>();
+const props = defineProps<{ actor: string; space: string; taskId: string; taskVersion: number; active?: boolean }>();
 const cursor = ref<string>();
 watch(() => props.taskId, () => { cursor.value = undefined; });
 const query = useQuery({
@@ -17,7 +17,7 @@ const query = useQuery({
   refetchInterval: current => {
     const failure = current.state.error;
     if (failure instanceof ApiError && [401, 403, 404].includes(failure.problem.status)) return false;
-    return current.state.data?.items.some(item => ['PREPARED', 'RUNNING'].includes(item.status)) ? 2000 : false;
+    return props.active || current.state.data?.items.some(item => ['PREPARED', 'RUNNING'].includes(item.status)) ? 2000 : false;
   },
 });
 const items = computed(() => [...(query.data.value?.items ?? [])].reverse());

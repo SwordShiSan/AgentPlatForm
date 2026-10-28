@@ -25,22 +25,16 @@ public final class FileExecution implements AutoCloseable {
             if(!accepting.get()){block(command);return;}
             repository.beforeCall(command);
             Receipt receipt=null;
-            try{receipt=runner.applyFile(command);}catch(RuntimeException unknown){ /* Never repeat the POST. */ }
+            try{receipt="CAPTURE".equals(command.operation().kind())?
+                runner.captureFile(new FileCaptureData.Command(FileCaptureData.PROTOCOL,command,repository.captureTarget(command))):runner.applyFile(command);}
+            catch(RuntimeException unknown){ /* Never repeat the POST. */ }
             while(accepting.get()&&valid.get()&&Instant.now().isBefore(command.operation().deadlineAt().minusSeconds(3))) {
                 if(receipt!=null) {
-                    if("APPLIED".equals(receipt.resultState())) {
-                        // Object bytes must be independently verified before a version becomes publicly visible.
-                        try(var content=assets.open(command.upload().objectKey(),null,null)) {
-                            if(content.bytes()!=command.upload().sizeBytes()||content.totalBytes()!=command.upload().sizeBytes())
-                                throw new FileFailure(503,"ASSET_IDENTITY_MISMATCH");
-                            var checked=new AuthorizedAssetStream(content.stream(),content.bytes(),command.upload().sha256(),()->repository.guard(command));
-                            byte[] buffer=new byte[65536];while(checked.read(buffer)!=-1){ /* bounded hash verification */ }
-                        }
-                    }
+                    FileObjectVerification.verify(repository,assets,command,receipt,false);
                     repository.commitProjection(command,receipt);return;
                 }
                 TimeUnit.MILLISECONDS.sleep(500);
-                try{receipt=runner.queryFile(command);}catch(RuntimeException pending){receipt=null;}
+                try{receipt="CAPTURE".equals(command.operation().kind())?runner.queryCapture(command):runner.queryFile(command);}catch(RuntimeException pending){receipt=null;}
             }
             block(command);
         }catch(InterruptedException interrupted){Thread.currentThread().interrupt();block(command);}

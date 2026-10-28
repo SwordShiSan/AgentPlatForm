@@ -11,6 +11,9 @@ import time
 ROOT = Path(__file__).resolve().parents[2]
 JDBC = 'jdbc:postgresql://127.0.0.1:15457/r44_test?connectTimeout=2&socketTimeout=5'
 GROUPS = {
+    'capture-persistence': 'WorkspaceShellAdmissionPostgresTest#capturesCannotQueueBeforeTheOriginalShellHasACommittedWholeStop+signedCaptureJobPublishesOneImmutableVersionAndSettlesOnlyItsOriginalReservationDespiteResponseLoss',
+    'capture-runner-wire': 'FileCaptureRunnerServiceTest,FileRunnerServiceTest,RunnerSignaturesTest',
+    'capture-foundation': 'WorkspaceShellAdmissionPostgresTest,CapturedFileStreamTest,FileCaptureChannelTest,FileRunnerServiceTest',
     'admission': 'WorkspaceToolAdmissionPostgresTest',
     'files': 'WorkspaceFileToolPostgresTest,WorkspaceToolAdmissionPostgresTest',
     'file-roles': 'WorkspaceFileToolPostgresTest#runnerPredicateDoesNotRequirePrivateChatGrantsAndFileTriggerWorksForApiRole',
@@ -71,15 +74,8 @@ def main():
     result = {'status': 'PASS' if process.returncode == 0 and unchanged else 'FAIL',
               'exitCode': process.returncode, 'inputUnchanged': unchanged, 'source': identity['commit'],
               'inputManifestSha256': identity['inputManifestSha256'], 'supplierCalls': 0,
-              'scope': ('Public result projection units with deterministic object/repository; no physical effect'
-                        if args.group == 'operation-result-units' else
-                        'File-tool lifecycle unit tests with deterministic work/stop observer; not actual PG/physical effects'
-                        if args.group == 'file-exchange' else
-                        'Bounded capture framing and SDK transport units; no physical helper/S3/version proof'
-                        if args.group == 'capture-stream' else
-                        'Real internal HTTP/JOSE with deterministic repository/runtime; no physical shell/S3 proof'
-                        if args.group == 'shell-wire' else
-                        'Actual PG/SDK ownership and file transactions; deterministic object transport, not physical shell/S3 proof'),
+              'scope': 'Selected stage tests only; physical/object ports may be deterministic. Consult source and assertions; not integrated release proof',
+              'testSelection': GROUPS[args.group],
               'seconds': round(time.monotonic() - started, 2),
               'logSha256': hashlib.sha256((folder / 'maven.log').read_bytes()).hexdigest()}
     (folder / 'result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8', newline='\n')

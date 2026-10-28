@@ -246,11 +246,77 @@
       "inputManifestSha256": "a1c272b4418ea590f631f3906601aae7cc4adfbb3b603f2f7a49b63419b91035",
       "logSha256": "dc2ddcd025154df81b51142bffe8206c75314639cc08d0817f063f15f77e08ec",
       "note": "Actual PG/SDK admission regression: reserve declared max output bytes plus64KiB result atomically; no fake asset content, repeat admission does not charge twice, insufficient quota rolls back RUNNING and all reservations, cancel preserves unresolved holds."
+    },
+    {
+      "name": "capture-schema-and-source-guards",
+      "status": "PASS",
+      "sourceHead": "edffe75df2611d475f8f50413ab5ecb06c2ff91e",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "4d825f4ad188692bb01e6dd770670edc1c952a6de90de023227188988a0cdc22",
+      "note": "Actual PG migration/ownership regression plus integrity/channel/legacy runner units; no native capture effect.",
+      "logSha256": "ffd499e3a034231edf4a472319f24bea29a0d2adf29046a15c2bb423d78640a9"
+    },
+    {
+      "name": "capture-signed-management",
+      "status": "PASS",
+      "sourceHead": "edffe75df2611d475f8f50413ab5ecb06c2ff91e",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "d05a505440faef10774ddd20ca7cce64280d0673b2e9e2edb9a1731ca861acbd",
+      "note": "Real Nimbus JOSE and application handoff ordering; deterministic physical/object ports. Descriptor/stop before upload, receipt before cleanup, forged target and response-loss no replay.",
+      "logSha256": "a3672c5036a6ac1d7e365995befdd42a425ae74d7f927b832ef00e5ccc0a0e0d"
+    },
+    {
+      "name": "capture-job-version-settlement",
+      "status": "PASS",
+      "sourceHead": "edffe75df2611d475f8f50413ab5ecb06c2ff91e",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "d28ab0fd153a32071a6939e49236ed48cd578f4dfe9bfdce2c47e04427627197",
+      "note": "Actual PG admission/outbox/claim, signed application runner and original stop facts, immutable version/quota commit with lost response; deterministic physical runtime/object store, not real MQ/S3/native.",
+      "logSha256": "2c693dca0fb211d00fde9a64b3885009bf68203ef106ceba1c1eebd6be934bb6"
+    },
+    {
+      "name": "active-tool-panel-engineering",
+      "status": "PASS",
+      "sourceHead": "edffe75df2611d475f8f50413ab5ecb06c2ff91e",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "90a64c0cd4afd1a1e3f0ab1ac6a29b61c4a8157da78c2de89d21a2a199ff56e4",
+      "note": "Frontend type/unit/build/contracts after polling active task even before first operation appears; actual browser still pending.",
+      "gates": [
+        {
+          "name": "rename-preflight",
+          "exitCode": 0,
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "typecheck",
+          "exitCode": 0,
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "unit",
+          "exitCode": 0,
+          "logSha256": "33937587082ee3130f5f304bee33463b4f3c40b1ac92318d9973dc9d6d697976"
+        },
+        {
+          "name": "build",
+          "exitCode": 0,
+          "logSha256": "6f90fb4a2a6ca4d81af2caf32107c37f8e149da60c3af31ae9dd7ace24e00d50"
+        },
+        {
+          "name": "contracts",
+          "exitCode": 0,
+          "logSha256": "347d966427f256ee3b642071bed0945d1eb5b7887bdec278ae5300c42e81c80e"
+        }
+      ]
     }
   ],
   "notRun": [
     "production signed shell job",
-    "declared output capture and immutable sealing",
+    "native declared output capture and immutable sealing",
     "safe operation APIs and ToolCard",
     "complete engineering and browser regression",
     "bounded real Flash end-to-end",

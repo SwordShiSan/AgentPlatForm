@@ -311,6 +311,17 @@ public final class DockerFileRuntime implements FileRuntime {
         } finally {if(release)slots.release(permit);else slots.retain(permit,command.operation().commandId());}
     }
     @Override public void close(){try{docker.close();}catch(IOException failure){throw new IllegalStateException(failure);}}
+    @Override public void retire(Command command,Stop receipt) {
+        if(receipt==null||!command.operation().commandId().equals(receipt.commandId())||!receipt.execStopped()||!receipt.callbacksStopped())
+            throw new FileFailure(409,"FILE_STOP_UNCONFIRMED");
+        if(receipt.neverStarted()&&receipt.containerId()==null)return;
+        try {
+            var row=exact(command,new Physical(receipt.containerId(),receipt.startedAt(),receipt.execId()));
+            if(!DockerSandboxRuntime.confirmedContainerStopped(row.getState())||!Objects.equals(receipt.finishedAt(),row.getState().getFinishedAt()))
+                throw new FileFailure(409,"FILE_STOP_UNCONFIRMED");
+            docker.removeContainerCmd(row.getId()).withForce(false).exec();
+        }catch(NotFoundException retired){/* The caller already holds the immutable exact stop receipt. */}
+    }
     private static final class TrackedInput extends FilterInputStream {
         private final AtomicInteger readers=new AtomicInteger();private volatile boolean closed,closeCompleted,closeFailed;
         TrackedInput(InputStream in){super(in);}

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.files.FileCaptureMapper">
+  <select id="sourceUse" resultType="java.util.UUID">
+    SELECT a.use_id FROM pf.workspace_tool_shell_admission a JOIN pf.workspace_tool_intent i ON i.operation_id=a.operation_id
+    WHERE a.operation_id=#{operation} AND i.actor_id=#{actor.userId} AND a.space_id=#{actor.spaceId} AND pf.workspace_shell_stopped_source(a.use_id)
+  </select>
+  <select id="parentAllowed" resultType="boolean">SELECT pf.workspace_shell_parent_allowed(#{use},#{locks})</select>
+  <select id="reservations" resultType="com.agentplatform.infrastructure.dao.po.FileCaptureRows$Reservation">
+    SELECT c.id,c.operation_id,c.space_id,c.workspace_id,c.relative_path path,c.reserved_bytes bytes,c.reserved_version_id version_id,c.asset_id,c.object_key,c.file_operation_id
+    FROM pf.tool_output_capture c JOIN pf.workspace_tool_intent i ON i.operation_id=c.operation_id
+    WHERE c.operation_id=#{operation} AND c.space_id=#{actor.spaceId} AND i.actor_id=#{actor.userId} ORDER BY c.ordinal
+    <if test="locks">FOR UPDATE OF c</if>
+  </select>
+  <update id="bind">UPDATE pf.tool_output_capture SET file_operation_id=#{operation},revision=revision+1 WHERE id=#{capture} AND status='RESERVED' AND file_operation_id IS NULL</update>
+  <insert id="bindSource">
+    INSERT INTO pf.workspace_tool_job_binding(id,operation_id,space_id,task_id,workspace_id,file_operation_id)
+    SELECT #{id},operation_id,space_id,task_id,workspace_id,file_operation_id FROM pf.tool_output_capture WHERE id=#{capture} AND file_operation_id IS NOT NULL
+  </insert>
+  <select id="target" resultType="com.agentplatform.domain.files.FileCaptureData$Target">
+    SELECT id,operation_id source_operation_id,space_id,workspace_id,file_operation_id,relative_path path,reserved_bytes max_bytes,
+      reserved_version_id version_id,asset_id,object_key FROM pf.tool_output_capture
+    WHERE space_id=#{command.operation.spaceId} AND workspace_id=#{command.operation.workspaceId} AND file_operation_id=#{command.operation.id}
+  </select>
+  <select id="descriptor" resultType="com.agentplatform.domain.files.FileCaptureData$Descriptor">
+    SELECT actual_bytes bytes,content_sha256 sha256 FROM pf.tool_output_capture
+    WHERE file_operation_id=#{command.operation.id} AND space_id=#{command.operation.spaceId} AND workspace_id=#{command.operation.workspaceId}
+      AND actual_bytes IS NOT NULL AND content_sha256 IS NOT NULL
+  </select>
+  <select id="mayEnter" resultType="boolean">SELECT pf.workspace_capture_ready(#{operation})</select>
+  <update id="describe">
+    UPDATE pf.tool_output_capture SET actual_bytes=#{bytes},content_sha256=#{hash},revision=revision+1
+    WHERE file_operation_id=#{command.operation.id} AND space_id=#{command.operation.spaceId} AND workspace_id=#{command.operation.workspaceId}
+      AND status='CAPTURING' AND #{bytes}&gt;=0 AND #{bytes}&lt;=reserved_bytes
+      AND (content_sha256 IS NULL OR(content_sha256=#{hash} AND actual_bytes=#{bytes}))
+  </update>
+  <insert id="createAsset">
+    INSERT INTO pf.asset_object(id,space_id,category,version_id,object_key,sha256,size_bytes,status,created_by)
+    SELECT c.asset_id,c.space_id,'file-version',c.reserved_version_id,c.object_key,c.content_sha256,c.actual_bytes,'STAGING',o.actor_id
+    FROM pf.tool_output_capture c JOIN pf.file_operation o ON o.id=c.file_operation_id AND o.space_id=c.space_id AND o.workspace_id=c.workspace_id
+    WHERE o.id=#{command.operation.id} AND c.content_sha256 IS NOT NULL AND c.actual_bytes IS NOT NULL
+    ON CONFLICT(id) DO NOTHING
+  </insert>
+  <update id="stop">
+    UPDATE pf.tool_output_capture SET helper_stop_text=#{text},helper_stop_hash=#{hash},revision=revision+1
+    WHERE file_operation_id=#{command.operation.id} AND space_id=#{command.operation.spaceId} AND workspace_id=#{command.operation.workspaceId}
+      AND (helper_stop_hash IS NULL OR helper_stop_hash=#{hash})
+  </update>
+  <select id="assetMatches" resultType="boolean">
+    SELECT EXISTS(SELECT 1 FROM pf.tool_output_capture c JOIN pf.asset_object a ON a.id=c.asset_id AND a.space_id=c.space_id
+      AND a.version_id=c.reserved_version_id AND a.sha256=c.content_sha256 AND a.size_bytes=c.actual_bytes AND a.object_key=c.object_key
+      WHERE c.file_operation_id=#{command.operation.id})
+  </select>
+  <update id="claimed">UPDATE pf.tool_output_capture SET status='CAPTURING',revision=revision+1 WHERE file_operation_id=#{operation} AND status='RESERVED'</update>
+  <select id="stoppedMatches" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.tool_output_capture WHERE file_operation_id=#{command.operation.id}
+    AND space_id=#{command.operation.spaceId} AND workspace_id=#{command.operation.workspaceId} AND helper_stop_hash=#{hash})</select>
+  <insert id="insertVersion">INSERT INTO pf.file_version(id,space_id,workspace_id,file_id,parent_version_id,asset_id,operation_id,sha256,size_bytes,actor_id)
+    VALUES(#{row.versionId},#{row.spaceId},#{row.workspaceId},#{row.fileId},#{row.parentVersionId},#{row.assetId},#{row.operationId},#{row.sha256},#{row.bytes},#{row.actorId})</insert>
+  <update id="publishEntry">UPDATE pf.file_entry SET kind='FILE',current_version_id=#{row.versionId},collection_state='CONFIRMED',
+    observed_sha256=#{row.sha256},observed_bytes=#{row.bytes},revision=revision+1 WHERE id=#{row.fileId} AND space_id=#{row.spaceId} AND workspace_id=#{row.workspaceId}</update>
+  <update id="available">UPDATE pf.asset_object SET status='AVAILABLE',revision=revision+1 WHERE id=#{row.assetId} AND space_id=#{row.spaceId}
+    AND version_id=#{row.versionId} AND sha256=#{row.sha256} AND size_bytes=#{row.bytes} AND status='STAGING'</update>
+  <insert id="reference">INSERT INTO pf.asset_reference(space_id,asset_id,file_version_id) VALUES(#{row.spaceId},#{row.assetId},#{row.versionId})</insert>
+  <update id="settle">UPDATE pf.space_storage s SET reserved_bytes=s.reserved_bytes-c.reserved_bytes,committed_bytes=s.committed_bytes+#{bytes},version=s.version+1
+    FROM pf.tool_output_capture c WHERE c.space_id=s.space_id AND c.file_operation_id=#{command.operation.id} AND c.status IN('CAPTURING','RECONCILING')
+      AND s.reserved_bytes&gt;=c.reserved_bytes AND #{bytes}&gt;=0 AND #{bytes}&lt;=c.reserved_bytes</update>
+  <update id="complete">UPDATE pf.tool_output_capture SET status='COMMITTED',file_id=#{row.fileId},version_id=#{row.versionId},revision=revision+1
+    WHERE file_operation_id=#{row.operationId} AND space_id=#{row.spaceId} AND workspace_id=#{row.workspaceId} AND status IN('CAPTURING','RECONCILING')
+      AND actual_bytes=#{row.bytes} AND content_sha256=#{row.sha256}</update>
+  <update id="refund">UPDATE pf.space_storage s SET reserved_bytes=s.reserved_bytes-c.reserved_bytes,version=s.version+1
+    FROM pf.tool_output_capture c WHERE c.space_id=s.space_id AND c.file_operation_id=#{command.operation.id} AND c.status IN('CAPTURING','RECONCILING')
+      AND s.reserved_bytes&gt;=c.reserved_bytes AND c.content_sha256 IS NULL</update>
+  <update id="failed">UPDATE pf.tool_output_capture SET status='FAILED',revision=revision+1 WHERE file_operation_id=#{command.operation.id} AND status IN('CAPTURING','RECONCILING') AND content_sha256 IS NULL</update>
+  <update id="reconciling">UPDATE pf.tool_output_capture SET status='RECONCILING',revision=revision+1 WHERE file_operation_id=#{operation} AND status IN('RESERVED','CAPTURING')</update>
+  <update id="markDescendantsMissing">UPDATE pf.file_entry SET collection_state='MISSING',revision=revision+1 WHERE space_id=#{space} AND workspace_id=#{workspace}
+    AND left(relative_path,length(#{path})+1)=#{path}||'/' AND collection_state&lt;&gt;'MISSING'</update>
+  <insert id="event">INSERT INTO pf.file_event(id,space_id,workspace_id,file_id,file_revision,event_type,payload_json)
+    VALUES(#{id},#{row.spaceId},#{row.workspaceId},#{row.fileId},#{revision},'file.version.created',CAST(#{json} AS jsonb))</insert>
+</mapper>

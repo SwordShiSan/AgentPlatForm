@@ -5,6 +5,9 @@ import com.agentplatform.domain.workspace.RunnerInstance;
 import java.util.UUID;
 
 public interface FileRunnerRepository {
+    default FileCaptureData.Target captureTarget(Command command){throw new FileFailure(422,"CAPTURE_NOT_AVAILABLE");}
+    default void describeCapture(Command command,UUID runner,long bytes,String hash){throw new FileFailure(422,"CAPTURE_NOT_AVAILABLE");}
+    default void stopCapture(Command command,UUID runner,FileRuntime.Stop stop){throw new FileFailure(422,"CAPTURE_NOT_AVAILABLE");}
     void register(RunnerInstance instance);
     Command lookup(UUID spaceId,UUID workspaceId,UUID operationId);
     boolean accept(Command command,RunnerInstance instance,String requestHash);

@@ -3,6 +3,7 @@ package com.agentplatform.infrastructure.adapter.repository.files;
 import com.agentplatform.domain.files.*;
 import com.agentplatform.domain.files.FileData.*;
 import com.agentplatform.infrastructure.dao.files.FileMapper;
+import com.agentplatform.infrastructure.dao.files.FileCaptureMapper;
 import com.agentplatform.infrastructure.dao.workspace.EnvironmentPreparationMapper;
 import com.agentplatform.infrastructure.dao.workspace.WorkspaceMapper;
 import com.agentplatform.infrastructure.workspace.RunnerSignatures;
@@ -22,12 +23,49 @@ public final class MyBatisFileRepository implements FileRepository {
     private final WorkspaceMapper workspaces;
     private final EnvironmentPreparationMapper environments;
     private final String helperImageId, helperPolicyHash;
+    private final FileCaptureMapper captures;
     public MyBatisFileRepository(FileMapper files, WorkspaceMapper workspaces, EnvironmentPreparationMapper environments,
             String helperImageId,String helperPolicyHash) {
+        this(files,workspaces,environments,helperImageId,helperPolicyHash,null);
+    }
+    public MyBatisFileRepository(FileMapper files, WorkspaceMapper workspaces, EnvironmentPreparationMapper environments,
+            String helperImageId,String helperPolicyHash,FileCaptureMapper captures) {
         this.files = files; this.workspaces = workspaces; this.environments = environments;
+        this.captures=captures;
         if(helperImageId==null||!helperImageId.matches("sha256:[a-f0-9]{64}")||helperPolicyHash==null||!helperPolicyHash.matches("[a-f0-9]{64}"))
             throw new IllegalArgumentException("Frozen file helper policy required");
         this.helperImageId=helperImageId;this.helperPolicyHash=helperPolicyHash;
+    }
+    @Override public List<FileCaptureData.Target> admitCaptures(Actor actor,UUID sourceOperation) {
+        tx();if(captures==null)throw new FileFailure(422,"CAPTURE_NOT_AVAILABLE");
+        UUID source=captures.sourceUse(actor,sourceOperation);
+        if(source==null||!captures.parentAllowed(source,true))throw new FileFailure(409,"SHELL_STOP_NOT_COMMITTED");
+        var rows=captures.reservations(actor,sourceOperation,false);if(rows.isEmpty())return List.of();
+        UUID workspaceId=rows.getFirst().workspaceId();storage(actor);environments.lockSlot();workspace(actor,workspaceId,true);
+        files.ensureLease(actor.spaceId(),workspaceId);var lease=files.lockLease(actor.spaceId(),workspaceId);
+        if(!"FREE".equals(lease.status()))throw new FileFailure(423,"WORKSPACE_BUSY");
+        rows=captures.reservations(actor,sourceOperation,true);
+        var result=new java.util.ArrayList<FileCaptureData.Target>();
+        for(var row:rows) {
+            UUID operation=row.fileOperationId();
+            if(operation==null) {
+                operation=Uuid7.next();var job=new Operation(operation,actor.spaceId(),workspaceId,actor.userId(),"CAPTURE",null,Uuid7.next(),null,1,null,null,null,
+                    "PENDING","NOT_STARTED",null,1,helperImageId,helperPolicyHash,null,null,null,null);
+                files.insertOperation(job);one(captures.bind(row.id(),operation));one(captures.bindSource(row.id(),Uuid7.next()));files.insertOutbox(Uuid7.next(),job);
+            }
+            result.add(new FileCaptureData.Target(row.id(),row.operationId(),row.spaceId(),row.workspaceId(),operation,row.path(),row.bytes(),row.versionId(),row.assetId(),row.objectKey()));
+        }
+        onCommit(()->{if(!captures.parentAllowed(source,false))throw new FileFailure(409,"TOOL_PARENT_NO_LONGER_AUTHORIZED");});
+        return List.copyOf(result);
+    }
+    @Override public FileCaptureData.Target captureTarget(Command command) {
+        tx();if(captures==null||!"CAPTURE".equals(command.operation().kind()))throw new FileFailure(422,"CAPTURE_NOT_AVAILABLE");
+        var row=files.operation(command.operation().id());
+        if(row==null||!Execution.freeze(row).equals(command.operation()))throw new FileFailure(409,"FILE_STALE_OWNER");
+        var target=captures.target(command);if(target==null)throw new FileFailure(404,"RESOURCE_NOT_FOUND");return target;
+    }
+    @Override public FileCaptureData.Descriptor captureDescriptor(Command command) {
+        captureTarget(command);var descriptor=captures.descriptor(command);if(descriptor==null)throw new FileFailure(409,"CAPTURE_DESCRIPTOR_PENDING");return descriptor;
     }
     private static void tx() {
         if (!TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("File transaction required");
@@ -188,8 +226,10 @@ public final class MyBatisFileRepository implements FileRepository {
         files.ensureLease(actor.spaceId(), workspace.id());var lease = files.lockLease(actor.spaceId(), workspace.id());
         var operation = files.lockOperation(item.operationId());
         if (!"PENDING".equals(operation.status())) { files.inbox(item);return null; }
-        if (!"FREE".equals(lease.status()) || files.unresolvedEnvironmentUse(workspace.id())) throw new FileFailure(423, "WORKSPACE_BUSY");
-        if("SCAN".equals(operation.kind())) {
+        boolean capture="CAPTURE".equals(operation.kind());
+        if (!"FREE".equals(lease.status()) || files.unresolvedEnvironmentUse(workspace.id())&&!(capture&&captures!=null&&captures.mayEnter(operation.id()))) throw new FileFailure(423, "WORKSPACE_BUSY");
+        if("SCAN".equals(operation.kind())||capture) {
+            if(capture&&(captures==null||!captures.mayEnter(operation.id())||captures.claimed(operation.id())!=1))throw new FileFailure(409,"CAPTURE_NOT_AUTHORIZED");
             long fence=Math.addExact(lease.fence(),1);one(files.takeLease(operation,owner,fence));one(files.claim(operation.id(),owner,fence));files.inbox(item);
             var command=new Command(Execution.freeze(files.operation(operation.id())),null,workspace.projectId(),null);onCommit(()->guard(command));return command;
         }
@@ -248,6 +288,7 @@ public final class MyBatisFileRepository implements FileRepository {
         if("SCAN".equals(command.operation().kind())) {
             commitScan(command,stored,recovery);return;
         }
+        if("CAPTURE".equals(command.operation().kind())) {commitCapture(command,stored,recovery);return;}
         var upload = ownedUpload(new Actor(command.operation().actorId(), command.operation().spaceId()), command.upload().id(), true);
         if("UNKNOWN".equals(stored.resultState())) {
             if(recovery)return; // No new write, release or replay is justified by an unknown physical result.
@@ -295,6 +336,32 @@ public final class MyBatisFileRepository implements FileRepository {
         files.lockLease(operation.spaceId(),operation.workspaceId());files.lockOperation(operation.id());
         if(!files.current(command))throw new FileFailure(409,"FILE_STALE_OWNER");
         one(files.uncertain(command, code));one(files.blockLease(command));if(command.upload()!=null)files.reconcileReservation(command.upload().id());
+        if("CAPTURE".equals(operation.kind())&&captures!=null)captures.reconciling(operation.id());
+    }
+    private void commitCapture(Command command,Receipt receipt,boolean recovery) {
+        var target=captureTarget(command);var actor=new Actor(command.operation().actorId(),command.operation().spaceId());
+        if("UNKNOWN".equals(receipt.resultState())){if(!recovery)uncertain(command,"FILE_CAPTURE_UNKNOWN");return;}
+        if("NOT_APPLIED".equals(receipt.resultState())) {
+            if(captures.descriptor(command)!=null){if(!recovery)uncertain(command,"FILE_CAPTURE_UNKNOWN");return;}
+            projectionGuard(command,recovery);one(captures.refund(command));one(captures.failed(command));one(files.failOperation(command));one(files.releaseLease(command));
+        }else {
+            if(!"CAPTURED".equals(receipt.resultState()))throw new FileFailure(409,"FILE_CAPTURE_RECONCILIATION_REQUIRED");
+            var descriptor=captureDescriptor(command);var value=JSON.readTree(receipt.resultText());
+            if(!"file-capture-v1".equals(value.path("protocol").asString())||!"CAPTURED".equals(value.path("state").asString())
+                ||!command.operation().id().toString().equals(value.path("operationId").asString())||descriptor.bytes()!=value.path("bytes").asLong(-1)
+                ||!descriptor.sha256().equals(value.path("sha256").asString())||!captures.stoppedMatches(command,receipt.stopHash())||!captures.assetMatches(command))
+                throw new FileFailure(503,"FILE_RECEIPT_MISMATCH");
+            var existing=files.path(target.spaceId(),target.workspaceId(),target.path());UUID file=existing==null?Uuid7.next():existing.id();
+            if(existing==null){int split=target.path().lastIndexOf('/');files.insertFile(new Entry(file,target.spaceId(),target.workspaceId(),target.path(),
+                split<0?"":target.path().substring(0,split),target.path().substring(split+1),"FILE",null,"PENDING",1,null,null));}
+            else if("DIRECTORY".equals(existing.kind()))captures.markDescendantsMissing(target.spaceId(),target.workspaceId(),target.path());
+            var row=new com.agentplatform.infrastructure.dao.po.FileCaptureRows.Projection(command.operation().id(),target.spaceId(),target.workspaceId(),actor.userId(),file,
+                existing==null?null:existing.currentVersionId(),target.versionId(),target.assetId(),descriptor.bytes(),descriptor.sha256());
+            one(captures.insertVersion(row));one(captures.available(row));one(captures.publishEntry(row));one(captures.reference(row));one(captures.settle(command,descriptor.bytes()));one(captures.complete(row));
+            var entry=files.file(file);captures.event(row,Uuid7.next(),entry.revision(),JSON.writeValueAsString(java.util.Map.of("workspaceId",target.workspaceId(),"fileId",file,"versionId",target.versionId(),"revision",entry.revision())));
+            projectionGuard(command,recovery);one(files.completeOperation(command));one(files.releaseLease(command));
+        }
+        onCommit(()->{authorized(actor);if(!files.toolParentAllowed(null,command.operation().id(),false)||!files.committedOwned(command,recovery))throw new FileFailure(409,"FILE_STALE_OWNER");});
     }
     private void refund(Upload upload) {
         one(files.abortUpload(upload));one(files.releaseReservation(upload));one(files.refundSpace(upload));

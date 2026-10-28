@@ -6,6 +6,7 @@ import com.agentplatform.infrastructure.adapter.repository.files.MyBatisFileRepo
 import com.agentplatform.infrastructure.adapter.repository.files.MyBatisFileTransferPermit;
 import com.agentplatform.infrastructure.dao.files.FileTransferMapper;
 import com.agentplatform.infrastructure.dao.files.FileMapper;
+import com.agentplatform.infrastructure.dao.files.FileCaptureMapper;
 import com.agentplatform.infrastructure.dao.workspace.*;
 import com.agentplatform.infrastructure.storage.*;
 import java.net.URI;
@@ -46,8 +47,8 @@ public class FileConfiguration {
         return new SerialAssetStore(new S3AssetStore(fileS3Client,properties.bucket()),permits,environment.acceptsProfiles(org.springframework.core.env.Profiles.of("workspace-runner")));
     }
     @Bean @Profile({"workspace-api","workspace-worker"}) FileRepository fileRepository(FileMapper mapper,WorkspaceMapper workspaces,
-            EnvironmentPreparationMapper environments,TransactionTemplate transactions,FileExecutionProperties execution) {
-        return new TransactionalFileRepository(new MyBatisFileRepository(mapper,workspaces,environments,execution.helperImage(),execution.policyHash()),transactions);
+            EnvironmentPreparationMapper environments,FileCaptureMapper captures,TransactionTemplate transactions,FileExecutionProperties execution) {
+        return new TransactionalFileRepository(new MyBatisFileRepository(mapper,workspaces,environments,execution.helperImage(),execution.policyHash(),captures),transactions);
     }
     @Bean @Profile("workspace-api") FileApi fileApi(FileRepository repository,AssetStore assets,com.agentplatform.api.identity.IdentityApi identity) { return new FileApplicationService(repository,assets); }
 }

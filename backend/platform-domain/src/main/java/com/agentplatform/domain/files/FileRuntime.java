@@ -38,5 +38,7 @@ public interface FileRuntime extends AutoCloseable {
     }
     /** Observes/stops the original helper only; never executes an unknown write again. */
     Result reconcile(Command command,Authority authority,boolean priorRunnerStopped);
+    /** Called only after the canonical stop receipt commits; never removes workspace data. */
+    default void retire(Command command,Stop stop) {}
     @Override void close();
 }

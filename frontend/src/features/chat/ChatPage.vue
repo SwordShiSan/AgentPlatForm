@@ -243,7 +243,7 @@ async function cancel() {
         <QuestionCard v-else-if="interaction.kind === 'QUESTION'" :interaction="{ ...interaction, plan: null }" :ready="interaction.optional || snapshot.data.value?.tasks.find(task => task.taskId === interaction.taskId)?.status === 'WAITING_INPUT'" @refresh="refreshInteractions" />
         <ApprovalCard v-else-if="interaction.kind === 'TOOL_APPROVAL'" :interaction="{ ...interaction, plan: null, question: null }" :ready="snapshot.data.value?.tasks.find(task => task.taskId === interaction.taskId)?.status === 'WAITING_INPUT'" @refresh="refreshInteractions" />
       </template>
-      <ToolOperationsPanel v-if="workspaceToolsEnabled && lastTask" :key="lastTask.taskId" :actor="actor" :space="space" :task-id="lastTask.taskId" :task-version="lastTask.version" />
+      <ToolOperationsPanel v-if="workspaceToolsEnabled && lastTask" :key="lastTask.taskId" :actor="actor" :space="space" :task-id="lastTask.taskId" :task-version="lastTask.version" :active="['QUEUED', 'RUNNING', 'WAITING_INPUT'].includes(lastTask.status)" />
       <p v-if="lastTask" role="status">{{ labels[lastTask.status] }}{{ lastTask.cancelRequested && running ? ' · 正在取消' : '' }}<span v-if="reason"> · {{ reason }}</span></p>
       <p v-if="stopLabel" role="status" data-testid="stop-stage">{{ stopLabel }}</p>
       <aside v-if="(reconciliationState?.unknownCalls ?? 0) > 0" aria-label="结果待核对" class="intro" data-testid="reconciliation-notice">

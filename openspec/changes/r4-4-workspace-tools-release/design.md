@@ -55,6 +55,10 @@ shell沿用父task已经完成的outbox/MQ持久领取及串行Harness；在原o
 
 固定helper的`file-capture-v1`先以同一禁止跟随链接的文件描述符校验普通文件、单链接、挂载设备及声明上限，流式计算长度/hash并输出有界描述。runner持久绑定描述并校验额度后发送精确READY帧，helper从原描述符回绕后输出原始字节及32字节hash尾帧。runner的有界输入适配在S3完成multipart前校验尾帧和实际退出；任何变化/短读/迟到错误都保留未决，不先发布版本。helper不接收S3地址、object key或凭据。文件描述符前后stat及二次hash校验防止描述和流不一致；停止后的独占租约负责排除正常写入者，路径不能依赖字符串前缀检查。
 
+采集作业继续使用现有file_operation/outbox/inbox/文件租约，kind为CAPTURE且upload_id为空，不伪造上传会话。独立`FILE_CAPTURE_V1`管理信封通过`/internal/file-captures/v1`传递，原上传/扫描Command保持字节兼容。新信封绑定原文件作业以及不可变capture/源operation/作用域/路径/预留上限/资产与版本身份/生成的object key；真实长度/hash在描述落库和最终签名收据中绑定。worker仍经既有文件MQ消费者持久领取、提交后ACK，不增加第二调度器。文件准入只允许已绑定原shell且有精确KNOWN whole-stop事实的采集作业越过原use的未决互斥，其余上传/扫描/生命周期继续拒绝。
+
+runner的描述事务核验原文件owner/fence及父任务授权，按真实长度/hash创建STAGING对象；helper实际停止可在父任务撤销后记录，必须匹配已登记的容器/exec。捕获成功收据还须匹配先前描述和同一停止hash。runner仅获采集路径/对象身份/描述与停止字段的必要列权限，不得修改预留额度、源调用身份或版本结算状态。worker独立读回S3长度/hash后才同事务发布file_version、对象引用、额度与当前文件投影。
+
 取消/超时的内部停止请求绑定原operation/use和原owner，停止观察不要求仍有业务执行权限。关闭HTTP/Future或仅停止SDK不能替代这个停止请求及实际回执。文件传输同样必须拒绝新的物理动作，但允许失权后保留UNKNOWN/预留及写入真实停止事实；完整停止屏障纳入这些原作业，无法确认时不释放父执行槽。
 
 ## 3. API、事件与界面
