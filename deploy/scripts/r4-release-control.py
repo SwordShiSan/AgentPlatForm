@@ -51,7 +51,8 @@ class Window:
    else:raise RuntimeError('Dependency health failed: '+n)
  def backup(self,generation):
   dest=self.folder/('backup-'+generation);assert not dest.exists();self.capacity(256*MIB);self.stop_apps(generation);dest.mkdir(mode=0o700)
-  migration=14 if generation=='r3' else 18
+  migration=self.stage.get('startingMigration',14) if generation=='r3' else 18
+  assert migration in (14,18)
   self.run(['python3',str(self.folder/'r4-database-evidence.py'),self.by['postgres']['Id'],'--expected-migration',str(migration),'--output',str(dest/'database.json')])
   with (dest/'postgres.sql').open('wb') as f:subprocess.run(['docker','exec',self.by['postgres']['Id'],'pg_dumpall','-U','ap_admin'],stdout=f,stderr=self.log,check=True,timeout=180)
   self.run(['docker','exec',self.by['rabbitmq']['Id'],'rabbitmqctl','export_definitions','/tmp/r4-release-definitions.json']);self.run(['docker','cp',self.by['rabbitmq']['Id']+':/tmp/r4-release-definitions.json',str(dest/'rabbitmq-definitions.json')])

@@ -73,7 +73,10 @@ public final class ChatExecution implements AutoCloseable {
             List<Approval> controlApprovals=repository.controlApprovals(lease);
             List<Approval> approvals=new ArrayList<>(controlApprovals);approvals.addAll(repository.toolApprovals(lease));
             boolean workspaceCapable=workspaceTools!=null&&repository.workspaceToolTask(lease);
-            boolean controls=scope.planMode()||!controlApprovals.isEmpty()||(!workspaceCapable&&repository.plan(new ChatData.Actor(lease.userId(),lease.spaceId()),lease.taskId()).current()!=null);
+            // Historical control calls still need their typed codecs when a later
+            // business approval restores the same task. Provider filtering below
+            // keeps plan write/review unavailable once execution has begun.
+            boolean controls=scope.planMode()||!controlApprovals.isEmpty()||repository.plan(new ChatData.Actor(lease.userId(),lease.spaceId()),lease.taskId()).current()!=null;
             // Historic tasks retain their text-only Plan contract. Only a new frozen
             // workspace composition can expose business tools after Plan approval.
             List<com.agentplatform.types.harness.HarnessData.Call> businessDefinitions=controls||fixtureTools==null?List.of():RecoveryFixtureTool.DEFINITIONS.stream()

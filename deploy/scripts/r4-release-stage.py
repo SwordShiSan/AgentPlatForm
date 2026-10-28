@@ -17,6 +17,8 @@ def main():
  mount=json.loads(read(['findmnt','-J','-o','TARGET,SOURCE,FSTYPE,OPTIONS,UUID','--target',str(ROOT/'workspaces')]))['filesystems'][0]
  assert mount['target']==str(ROOT/'workspaces') and mount['fstype']=='xfs' and 'prjquota' in mount['options'] and mount['uuid']=='fe8f72e3-4958-4048-a091-b1933d4195da'
  loop=mount['source'];assert re.fullmatch('/dev/loop[0-9]+',loop)
+ startingMigration=int(read(['docker','exec',by['postgres']['Id'],'psql','-XqAt','-U','ap_admin','-d','agentplatform','-c','SELECT max(version::int) FROM pf.flyway_schema_history WHERE success;']))
+ assert startingMigration in (14,18),'R4 starts from released R3 schema14 or its verified additive schema18 rollback'
  folder.mkdir(mode=0o700);config['name']='agentplatform-r4-app'
  runtime=json.loads(Path('/etc/docker/daemon.json').read_text())['runtimes']['runsc'];digest=sha(Path(runtime['path']))
  assert digest=='210b437a9cfae51e8f8c9074ed19b8b5e59477178e2e391a18117d8d6b924f7a' and runtime['runtimeArgs']==['--platform=systrap']
@@ -52,5 +54,6 @@ def main():
  (folder/'s3.candidate.json').write_text(json.dumps(s3,indent=2));(folder/'compose.json').write_text(json.dumps(config,indent=2));(folder/'source-containers.private.json').write_text(json.dumps(rows,indent=2));(folder/'candidate.json').write_text(json.dumps(candidate,indent=2))
  capsum=sum(caps.values())+sum(r['HostConfig']['Memory']//1024**2 for n,r in by.items() if n not in caps)+512+128+64;assert capsum==2880
  record={'status':'STAGED_NOT_RUNNING','source':candidate['source'],'originalCompose':str(original),'originalComposeSha256':sha(original),'composeSha256':sha(folder/'compose.json'),'productionUuid':mount['uuid'],'loop':loop,'resourceBudgetMiB':capsum,'nativeEvidenceSha256':sha(args.native_result),'supplierCalls':0,'images':{k:{n:v[n] for n in ['source','configId','platform']} for k,v in candidate['images'].items()}}
+ record['startingMigration']=startingMigration
  (folder/'stage.json').write_text(json.dumps(record,indent=2));print(json.dumps(record))
 if __name__=='__main__':main()

@@ -206,8 +206,14 @@ class WorkspaceToolAdmissionPostgresTest extends WorkspaceToolsMigrationPostgres
         assertEquals("3",scalar("SELECT committed_bytes FROM pf.space_storage WHERE space_id='"+actor.spaceId()+"'"));
     }
     @Test void workspacePlanPhaseAndRestrictionsFollowTheFrozenCatalogAndSameTaskApproval()throws Exception {
+        planThenWorkspaceTool(Mode.FULL);
+    }
+    @Test void planThenShellApprovalRestoresTheHistoricalControlCatalogInAThirdAttempt()throws Exception {
+        planThenWorkspaceTool(Mode.RISK_BASED);
+    }
+    private void planThenWorkspaceTool(Mode mode)throws Exception {
         repository=ChatPersistenceFixture.create(pool,true);
-        var created=repository.firstAuthorized(actor,UUID.randomUUID(),"R44 plan projection",UUID.fromString("0199e000-0000-7000-8000-000000000002"),"PLATFORM","Plan then execute",true,workspace,Mode.FULL).task();
+        var created=repository.firstAuthorized(actor,UUID.randomUUID(),"R44 plan projection",UUID.fromString("0199e000-0000-7000-8000-000000000002"),"PLATFORM","Plan then execute",true,workspace,mode).task();
         assertEquals("TEXT_ONLY",repository.plan(actor,task).executionPhase());
         assertEquals("PLANNING",repository.plan(actor,created.id()).executionPhase());
         assertTrue(repository.permissions(actor,created.id()).effectiveRestrictions().contains("PLAN_APPROVAL_REQUIRED"));
@@ -223,6 +229,7 @@ class WorkspaceToolAdmissionPostgresTest extends WorkspaceToolsMigrationPostgres
                     case 2->new HarnessData.Call("shell-one","workspace_shell",Map.of("command","printf 666","cwd","","timeoutSeconds",20,"outputs",List.of()),false);
                     default->null;
                 };
+                if(index>=2)assertFalse(definitions.stream().anyMatch(d->Set.of("platform_plan_write","platform_plan_review").contains(d.name())),"Historical decode definitions must not expand the provider tool surface");
                 assertTrue(index<4);var round=new HarnessData.Round(call==null?"Done":"",call==null?List.of():List.of(call),call==null?"stop":"tool_calls",12,8);
                 return new Exchange(){public CompletionStage<Result> result(){return CompletableFuture.completedFuture(new Result(round,true,"plan-"+index));}public CompletionStage<Void> terminated(){return CompletableFuture.completedFuture(null);}public void cancel(){}};
             }
@@ -233,7 +240,14 @@ class WorkspaceToolAdmissionPostgresTest extends WorkspaceToolsMigrationPostgres
         repository.answer(actor,created.id(),pending.interactionId(),UUID.randomUUID(),new Answer(pending.version(),Decision.EXECUTE_PLAN,"",List.of()));
         assertEquals("EXECUTING",repository.plan(actor,created.id()).executionPhase());
         assertFalse(repository.permissions(actor,created.id()).effectiveRestrictions().contains("PLAN_APPROVAL_REQUIRED"));
-        run(claim(created),provider,effects);assertEquals("SUCCEEDED",repository.task(actor,created.id()).status());
+        run(claim(created),provider,effects);
+        if(mode==Mode.RISK_BASED){
+            assertEquals("WAITING_INPUT",repository.task(actor,created.id()).status());assertEquals(0,effects.get());
+            var approval=repository.pending(actor,created.conversationId()).getFirst();assertEquals(Kind.TOOL_APPROVAL,approval.kind());
+            repository.answer(actor,created.id(),approval.interactionId(),UUID.randomUUID(),new Answer(approval.version(),Decision.ALLOW_ONCE,"",List.of()));
+            run(claim(created),provider,effects);
+        }
+        assertEquals("SUCCEEDED",repository.task(actor,created.id()).status());
         assertEquals("COMPLETED",repository.plan(actor,created.id()).executionPhase());assertEquals(1,effects.get());assertEquals(4,calls.get());
     }
     @Test void sdkApprovalResumesExactOriginalOperationIntoTheProductionComposition()throws Exception {
