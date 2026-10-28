@@ -31,6 +31,7 @@ public final class TransactionalChatRepository implements ChatRepository {
     @Override public com.agentplatform.domain.chat.WorkspaceToolLedger.FileAdmission recordWorkspaceFileAdmission(Lease lease,HarnessData.Call call,UUID upload,String failure){return tx(transactions,()->delegate.recordWorkspaceFileAdmission(lease,call,upload,failure));}
     @Override public void bindWorkspaceFileOperation(Lease lease,HarnessData.Call call,UUID operation){tx(transactions,()->{delegate.bindWorkspaceFileOperation(lease,call,operation);return null;});}
     @Override public boolean workspaceFileStopped(Lease lease,HarnessData.Call call){return tx(transactions,()->delegate.workspaceFileStopped(lease,call));}
+    @Override public void requestWorkspaceToolStop(Lease lease,HarnessData.Call call,com.agentplatform.domain.chat.WorkspaceToolLedger.StopReason reason){tx(transactions,()->{delegate.requestWorkspaceToolStop(lease,call,reason);return null;});}
     @Override public com.agentplatform.domain.workspace.WorkspaceShellData.Request workspaceShellRequest(Lease lease,HarnessData.Call call){return tx(transactions,()->delegate.workspaceShellRequest(lease,call));}
     private final ChatRepository delegate;
     private final TransactionTemplate transactions;

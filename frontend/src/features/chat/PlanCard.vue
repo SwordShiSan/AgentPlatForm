@@ -16,6 +16,7 @@ const plan = useQuery({ queryKey: computed(() => ['chat', props.actor, props.spa
   queryFn: async () => (await api.GET('/api/v1/tasks/{id}/plan', { params: { path: { id: props.interaction.taskId } } })).data! });
 const current = computed(() => props.interaction.plan);
 const previous = computed(() => plan.data.value?.revisions.at(-2));
+const toolExecution = computed(() => Boolean(plan.data.value?.executionPhase && plan.data.value.executionPhase !== 'TEXT_ONLY'));
 const reply = useInteractionAnswer(() => props.interaction, () => { emit('refresh'); void plan.refetch(); });
 watch(current,value=>{
   const saved=drafts.loadPlan(props.actor,props.space,props.interaction.taskId);
@@ -42,7 +43,7 @@ async function save() {
 <template>
   <section class="interaction-card" aria-label="计划审阅" data-testid="plan-card">
     <h3>{{ current?.title ?? '计划审阅' }} <small>修订 {{ current?.revision }}</small></h3>
-    <p>确认仅继续文本处理，不授予文件、终端或其他工具权限。</p>
+    <p>{{ toolExecution ? '确认后在同一任务按计划继续。确认不授予工作区权限，也不替代具体工具审批。' : '确认仅继续文本处理，不授予文件、终端或其他工具权限。' }}</p>
     <p v-if="!ready" role="status">正在保存等待状态，完成后即可审阅和编辑。</p>
     <p class="chat-text">{{ current?.markdown }}</p>
     <details v-if="previous"><summary>与上一修订比较</summary><div class="plan-comparison"><section><h4>上一修订</h4><pre>{{ previous.markdown }}</pre></section><section><h4>当前修订</h4><pre>{{ current?.markdown }}</pre></section></div></details>
@@ -50,7 +51,7 @@ async function save() {
     <p v-if="reply.error.value" role="alert">{{ reply.error.value }}</p>
     <button v-if="reply.uncertain.value" :disabled="reply.busy.value" @click="reply.retry">重试原回答</button>
     <fieldset :disabled="!ready || reply.busy.value || reply.uncertain.value || saving"><legend>处理当前计划</legend>
-      <div class="chat-actions"><button @click="answer('EXECUTE_PLAN')">按此执行文本</button><button @click="answer('DELIVER_PLAN')">仅交付方案</button><button @click="answer('REJECT_PLAN')">拒绝并继续讨论</button><button @click="editing = !editing">直接编辑计划</button></div>
+      <div class="chat-actions"><button @click="answer('EXECUTE_PLAN')">{{ toolExecution ? '按此执行' : '按此执行文本' }}</button><button @click="answer('DELIVER_PLAN')">仅交付方案</button><button @click="answer('REJECT_PLAN')">拒绝并继续讨论</button><button @click="editing = !editing">直接编辑计划</button></div>
       <label :for="`revision-request-${interaction.interactionId}`">希望模型修改的内容</label>
       <textarea :id="`revision-request-${interaction.interactionId}`" v-model="request" rows="3" />
       <button :disabled="!request.trim()" @click="answer('REVISE_PLAN')">提出修改</button>

@@ -68,4 +68,17 @@ class WorkspaceShellAdmissionPostgresTest extends WorkspaceToolsMigrationPostgre
         assertThrows(WorkspaceFailure.class,()->uses.admitShell(workspaceActor(),workspace,request.parent().operationId(),current.ownerId(),request));
         assertEquals("0",scalar("SELECT count(*) FROM pf.workspace_environment_use WHERE workspace_id='"+workspace+"'"));
     }
+    @Test void exactStopRequestRemainsWritableAfterCancellationButIsNotAStopReceipt() throws Exception {
+        var request=prepared();var admitted=uses.admitShell(workspaceActor(),workspace,request.parent().operationId(),current.ownerId(),request);
+        var forged=new Lease(current.taskId(),current.spaceId(),current.userId(),current.conversationId(),current.attemptId(),UUID.randomUUID(),
+                current.fence(),current.modelId(),current.credentialId(),current.credentialRevision(),current.assistantId());
+        assertThrows(ChatFailure.class,()->repository.requestWorkspaceToolStop(forged,tool,WorkspaceToolLedger.StopReason.CANCEL));
+        repository.cancel(actor,current.taskId(),UUID.randomUUID());
+        repository.requestWorkspaceToolStop(current,tool,WorkspaceToolLedger.StopReason.CANCEL);
+        repository.requestWorkspaceToolStop(current,tool,WorkspaceToolLedger.StopReason.TIMEOUT);
+        assertEquals("1",scalar("SELECT count(*) FROM pf.workspace_tool_stop_request WHERE operation_id='"+request.parent().operationId()+"'"));
+        assertEquals("CANCEL",scalar("SELECT reason_code FROM pf.workspace_tool_stop_request WHERE operation_id='"+request.parent().operationId()+"'"));
+        assertThrows(WorkspaceFailure.class,()->uses.checkOwnership(admitted.command()));assertFalse(uses.stopCommitted(admitted.command().id()));
+        assertEquals("1",scalar("SELECT count(*) FROM pf.workspace_sandbox_slot WHERE workspace_id='"+workspace+"'"));
+    }
 }

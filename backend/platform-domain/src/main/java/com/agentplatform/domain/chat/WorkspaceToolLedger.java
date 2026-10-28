@@ -11,6 +11,7 @@ public interface WorkspaceToolLedger {
                   long contentRevision,long permissionVersion,String resourceHash,String resourceJson,String reviewJson,
                   UUID activationRequestId,Long expectedEnvironmentVersion,String imageId,String policyHash) {}
     record FileAdmission(UUID operationId,UUID uploadId,UUID fileOperationId,String failureCode) {}
+    enum StopReason { CANCEL, TIMEOUT, AUTHORIZATION, OWNER_LOST }
     default boolean workspaceToolTask(Lease lease){return false;}
     default void prepareWorkspaceTools(Lease lease,List<Call> calls,String imageId,String policyHash){
         throw new ChatFailure(422,"WORKSPACE_TOOLS_NOT_AVAILABLE");
@@ -20,5 +21,7 @@ public interface WorkspaceToolLedger {
     default FileAdmission recordWorkspaceFileAdmission(Lease lease,Call call,UUID upload,String failure){throw new ChatFailure(422,"WORKSPACE_TOOLS_NOT_AVAILABLE");}
     default void bindWorkspaceFileOperation(Lease lease,Call call,UUID fileOperation){throw new ChatFailure(422,"WORKSPACE_TOOLS_NOT_AVAILABLE");}
     default boolean workspaceFileStopped(Lease lease,Call call){return false;}
+    /** Stops admission of new effects; this request is never itself termination proof. */
+    default void requestWorkspaceToolStop(Lease lease,Call call,StopReason reason){throw new ChatFailure(422,"WORKSPACE_TOOLS_NOT_AVAILABLE");}
     default com.agentplatform.domain.workspace.WorkspaceShellData.Request workspaceShellRequest(Lease lease,Call call){throw new ChatFailure(422,"WORKSPACE_TOOLS_NOT_AVAILABLE");}
 }

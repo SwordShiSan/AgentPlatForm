@@ -130,6 +130,13 @@ final class WorkspaceToolPersistence extends ChatPersistenceSupport {
         return null;
     });}
     boolean fileStopped(Lease lease,Call call){return tx(c->c.workspaceTools().fileStopped(lease,call.id()));}
+    void requestStop(Lease lease,Call call,WorkspaceToolLedger.StopReason reason){tx(c->{
+        Objects.requireNonNull(reason);
+        String digest=hash(MyBatisExecutionLedger.canonicalJson(call));
+        c.workspaceTools().requestStop(lease,call.id(),digest,reason.name());
+        if(!c.workspaceTools().stopMatches(lease,call.id(),digest))throw new ChatFailure(409,"TOOL_STOP_BINDING_MISMATCH");
+        return null;
+    });}
     com.agentplatform.domain.workspace.WorkspaceShellData.Request shellRequest(Lease lease,Call call){return tx(c->{
         var intent=intent(lease,call);if(!"workspace_shell".equals(call.name()))throw new ChatFailure(422,"SHELL_TOOL_REQUIRED");
         Long generation=c.workspaceTools().taskGeneration(lease);if(generation==null)throw new ChatFailure(409,"EXECUTION_FENCE_LOST");

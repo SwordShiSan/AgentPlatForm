@@ -70,6 +70,19 @@ class WorkspaceFileToolPostgresTest extends WorkspaceToolsMigrationPostgresTest 
         assertEquals("TOOL_PARENT_NO_LONGER_AUTHORIZED",assertThrows(FileFailure.class,()->files.beginTransfer(new FileData.Actor(actor.userId(),actor.spaceId()),admission.uploadId(),UUID.randomUUID())).getMessage());
         assertTrue(repository.workspaceFileStopped(lease,tool),"No physical file job was handed off; stale parent may still observe termination");
     }
+    @Test void parentDeadlineAndDurableStopRequestAlsoDenyUnstartedFileEffects() throws Exception {
+        var tool=create("stop-before-transfer.txt");var lease=prepare(tool);service.admit(lease,tool);
+        var admission=repository.workspaceFileAdmission(lease,tool);
+        sql("UPDATE pf.task SET execution_deadline_at=clock_timestamp()-interval '1 second' WHERE id='"+lease.taskId()+"'");
+        assertEquals("f",scalar("SELECT pf.file_tool_parent_allowed('"+admission.uploadId()+"',NULL,false)"));
+        sql("UPDATE pf.task SET execution_deadline_at=clock_timestamp()+interval '60 seconds' WHERE id='"+lease.taskId()+"'");
+        assertEquals("t",scalar("SELECT pf.file_tool_parent_allowed('"+admission.uploadId()+"',NULL,false)"));
+        repository.requestWorkspaceToolStop(lease,tool,WorkspaceToolLedger.StopReason.TIMEOUT);
+        assertEquals("f",scalar("SELECT pf.file_tool_parent_allowed('"+admission.uploadId()+"',NULL,true)"));
+        assertThrows(FileFailure.class,()->files.beginTransfer(new FileData.Actor(actor.userId(),actor.spaceId()),admission.uploadId(),UUID.randomUUID()));
+        assertTrue(files.usage(new FileData.Actor(actor.userId(),actor.spaceId()),workspace).reservedBytes()>0,"A stop request must not refund an unresolved reservation");
+        assertEquals("0",scalar(scoped("file_runner_receipt")));
+    }
     @Test void knownNameConflictKeepsRunningToolButRollsBackOnlyFileAdmissionAndReturnsFailedObservation() throws Exception {
         UUID directory=UUID.randomUUID();sql("INSERT INTO pf.file_entry(id,space_id,workspace_id,relative_path,parent_path,name,kind,collection_state) VALUES('"+directory+"','"+actor.spaceId()+"','"+workspace+"','occupied','','occupied','DIRECTORY','CONFIRMED')");
         var tool=create("occupied");var lease=prepare(tool);service.admit(lease,tool);

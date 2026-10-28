@@ -10,6 +10,8 @@ public interface WorkspaceToolMapper {
     int insertFileAdmission(@Param("lease")com.agentplatform.domain.chat.ChatData.Lease lease,@Param("operation")UUID operation,@Param("upload")UUID upload,@Param("failure")String failure);
     int bindFileOperation(@Param("operation")UUID operation,@Param("fileOperation")UUID fileOperation,@Param("id")UUID id);
     boolean fileStopped(@Param("lease")com.agentplatform.domain.chat.ChatData.Lease lease,@Param("call")String call);
+    int requestStop(@Param("lease")com.agentplatform.domain.chat.ChatData.Lease lease,@Param("call")String call,@Param("hash")String hash,@Param("reason")String reason);
+    boolean stopMatches(@Param("lease")com.agentplatform.domain.chat.ChatData.Lease lease,@Param("call")String call,@Param("hash")String hash);
     Integer lockSandboxSlot();
     Long taskGeneration(@Param("lease")com.agentplatform.domain.chat.ChatData.Lease lease);
     Catalog catalog(@Param("space") UUID space,@Param("task") UUID task);

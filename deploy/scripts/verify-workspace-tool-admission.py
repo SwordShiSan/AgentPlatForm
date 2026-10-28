@@ -17,6 +17,9 @@ GROUPS = {
     'file-cancel': 'WorkspaceFileToolPostgresTest#cancelledParentBlocksExecutionButChildCanPersistUnknownWithoutReleasingReservation',
     'shell-admission': 'WorkspaceShellAdmissionPostgresTest,WorkspaceToolAdmissionPostgresTest,WorkspaceFileToolPostgresTest#runnerPredicateDoesNotRequirePrivateChatGrantsAndFileTriggerWorksForApiRole',
     'shell-wire': 'RunnerHttpTest,RunnerSignaturesTest,EnvironmentUseCodecsTest',
+    'stop-admission': 'WorkspaceShellAdmissionPostgresTest,WorkspaceFileToolPostgresTest',
+    'capture-stream': 'CapturedFileStreamTest,S3AssetStoreTest',
+    'file-exchange': 'WorkspaceFileToolExchangeTest',
 }
 
 
@@ -65,7 +68,11 @@ def main():
     result = {'status': 'PASS' if process.returncode == 0 and unchanged else 'FAIL',
               'exitCode': process.returncode, 'inputUnchanged': unchanged, 'source': identity['commit'],
               'inputManifestSha256': identity['inputManifestSha256'], 'supplierCalls': 0,
-              'scope': ('Real internal HTTP/JOSE with deterministic repository/runtime; no physical shell/S3 proof'
+              'scope': ('File-tool lifecycle unit tests with deterministic work/stop observer; not actual PG/physical effects'
+                        if args.group == 'file-exchange' else
+                        'Bounded capture framing and SDK transport units; no physical helper/S3/version proof'
+                        if args.group == 'capture-stream' else
+                        'Real internal HTTP/JOSE with deterministic repository/runtime; no physical shell/S3 proof'
                         if args.group == 'shell-wire' else
                         'Actual PG/SDK ownership and file transactions; deterministic object transport, not physical shell/S3 proof'),
               'seconds': round(time.monotonic() - started, 2),

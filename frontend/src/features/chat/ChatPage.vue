@@ -4,6 +4,7 @@ import PlanCard from './PlanCard.vue';
 import TaskPermissions from './TaskPermissions.vue';
 import QuestionCard from './QuestionCard.vue';
 import ApprovalCard from './ApprovalCard.vue';
+import ToolCard from './ToolCard.vue';
 import RecoveryNotice from './RecoveryNotice.vue';
 import { useChatDrafts, type PendingSubmission } from './drafts';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
@@ -21,6 +22,7 @@ const route = useRoute(); const router = useRouter(); const cache = useQueryClie
 const planEnabled = import.meta.env.VITE_PLAN_ENABLED === 'true';
 const planMode = ref(false);
 const permissionsEnabled = import.meta.env.VITE_PERMISSIONS_ENABLED === 'true';
+const workspaceToolsEnabled = import.meta.env.VITE_WORKSPACE_TOOLS_ENABLED === 'true';
 const permissionMode = ref<'RISK_BASED' | 'FULL'>('RISK_BASED');const workspaceId = ref('');
 const draft = ref(''); const error = ref(''); const busy = ref(false);
 const pending = ref<PendingSubmission>();
@@ -241,6 +243,7 @@ async function cancel() {
         <QuestionCard v-else-if="interaction.kind === 'QUESTION'" :interaction="{ ...interaction, plan: null }" :ready="interaction.optional || snapshot.data.value?.tasks.find(task => task.taskId === interaction.taskId)?.status === 'WAITING_INPUT'" @refresh="refreshInteractions" />
         <ApprovalCard v-else-if="interaction.kind === 'TOOL_APPROVAL'" :interaction="{ ...interaction, plan: null, question: null }" :ready="snapshot.data.value?.tasks.find(task => task.taskId === interaction.taskId)?.status === 'WAITING_INPUT'" @refresh="refreshInteractions" />
       </template>
+      <ToolCard v-for="operation in (workspaceToolsEnabled ? snapshot.data.value?.operations : [])" :key="operation.operationId" :operation="operation" :actor="actor" :space="space" />
       <p v-if="lastTask" role="status">{{ labels[lastTask.status] }}{{ lastTask.cancelRequested && running ? ' · 正在取消' : '' }}<span v-if="reason"> · {{ reason }}</span></p>
       <p v-if="stopLabel" role="status" data-testid="stop-stage">{{ stopLabel }}</p>
       <aside v-if="(reconciliationState?.unknownCalls ?? 0) > 0" aria-label="结果待核对" class="intro" data-testid="reconciliation-notice">
@@ -248,7 +251,7 @@ async function cancel() {
         <p v-if="reconciliationState?.excludedFromContext">该未完成轮次未进入后续模型上下文；页面保留的部分回复不代表成功结果。</p>
         <p v-if="reconciliationState?.stopConfirmed">执行者已停止；可在剩余额度内发送独立新消息。</p>
       </aside>
-      <TaskPermissions v-if="permissionsEnabled && lastTask" :key="lastTask.taskId" :actor="actor" :space="space" :task-id="lastTask.taskId" :task-version="lastTask.version" />
+      <TaskPermissions v-if="permissionsEnabled && lastTask" :key="lastTask.taskId" :actor="actor" :space="space" :task-id="lastTask.taskId" :task-version="lastTask.version" :workspace-tools-enabled="workspaceToolsEnabled" />
       <RecoveryNotice v-if="lastTask" :actor="actor" :space="space" :task-id="lastTask.taskId" :version="lastTask.version" :interrupted="lastTask.status === 'BLOCKED' || lastTask.status === 'FAILED'" />
       <section v-if="lastTask?.reasonCode && diagnostics.data.value" aria-label="任务诊断" class="task-diagnostics">
         <p>{{ diagnosticAction }}</p><p v-if="diagnostics.data.value.hasPartialOutput">已保留部分回复。</p>
@@ -269,9 +272,10 @@ async function cancel() {
         <div v-if="permissionsEnabled" class="chat-options">
           <label for="chat-workspace">本次工作区</label><select id="chat-workspace" v-model="workspaceId" :disabled="busy || !!pending"><option value="">不绑定（普通文本）</option><option v-for="item in workspaces.data.value?.items.filter(w => w.state === 'READY')" :key="item.id" :value="item.id">{{ item.name }}</option></select>
           <label for="chat-permission">本次权限</label><select id="chat-permission" v-model="permissionMode" :disabled="busy || !!pending"><option value="RISK_BASED">按风险确认</option><option value="FULL">任务内完全权限</option></select>
+          <p v-if="workspaceToolsEnabled && workspaceId">{{ permissionMode === 'FULL' ? '完全权限可自动执行工作区命令，命令能创建、修改和删除整个绑定工作区内的文件；仍受实时权限和环境隔离限制。' : '每个执行命令均需单独批准。文件授权不会自动授予命令执行许可。' }}</p>
           <p v-if="workspaces.isError.value" role="alert">暂时无法读取工作区，可继续不绑定的文本聊天。</p>
         </div>
-        <label v-if="planEnabled" class="plan-toggle"><input v-model="planMode" type="checkbox" :disabled="busy || !!pending || running" /> 先制定计划，再确认文本执行</label>
+        <label v-if="planEnabled" class="plan-toggle"><input v-model="planMode" type="checkbox" :disabled="busy || !!pending || running" /> {{ workspaceToolsEnabled ? '先制定计划，再确认执行' : '先制定计划，再确认文本执行' }}</label>
         <label for="chat-input">消息</label>
         <textarea id="chat-input" v-model="draft" rows="3" :disabled="busy || !!pending" placeholder="输入文字，按 Ctrl + Enter 发送" @keydown.ctrl.enter.prevent="submit" @keydown.meta.enter.prevent="submit" />
         <div class="chat-actions"><button type="submit" :disabled="busy || (!pending && (running || !draft.trim())) || !modelAvailable">{{ pending ? '重试同一条消息' : '发送' }}</button><button v-if="running" type="button" :disabled="busy || lastTask?.cancelRequested" @click="cancel">取消回复</button></div>

@@ -78,6 +78,88 @@
       "inputManifestSha256": "28bb539ef0c07b21b85dda8cd3048986c5b4d6e1326c8c3fc36de729fdd2be84",
       "logSha256": "64d6aacf3d466218c706d028fa50027dda914157f44d28e56def6ff33aed5e33",
       "note": "Actual HTTP/JOSE, deterministic repository/runtime. Duplicate/cross-family/tampering/in-flight-stop checks, legacy regression. No integrated native job or sealing claim."
+    },
+    {
+      "name": "durable-stop-parent-gate",
+      "status": "PASS",
+      "sourceHead": "9eb00c7e42588a8e06ac50fa82e18ca10243b0ab",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "note": "Actual PG original-operation stop intent is idempotent after cancellation, forged owner rejected; file/shell share deadline/authority, no refunds or fabricated receipts.",
+      "inputManifestSha256": "5838719cfdbc13171b3c93d99deafe72851be04a12874bb11362e2c05670a9d9",
+      "logSha256": "223298c7558d9a53dad4ba7991fe0f88cdff7690cff4e9e52dad4263199b8e3a"
+    },
+    {
+      "name": "capture-helper-protocol",
+      "status": "PASS",
+      "sourceHead": "9eb00c7e42588a8e06ac50fa82e18ca10243b0ab",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "note": "Offline Linux helper: 100MiB chunks, exact framing, link/type/path rejection, mutation hash rejection; not integrated XFS/S3/job evidence.",
+      "logSha256": "96fcbeaff6fbc56e80af7d6bc5e450fc70b63c22d16f980743c914a2acdf425a",
+      "inputHashes": {
+        "deploy/scripts/file-capture-bridge.py": "52e42fb6a6da1a5676d54c8911b5da8ba623ddf6f4eec7b209751fafdabec18e",
+        "deploy/scripts/file-stream-bridge.py": "e571df0d21e28c339ab65f03c52e475b63663bdeb3e2b183c91aaebe920cb37b",
+        "deploy/tests/test_file_capture_bridge.py": "b692d6a3c633a12d7b885e89f59ea3e6874eefc346f7c5cc4746e9d21e18af27",
+        "deploy/scripts/verify-file-capture-protocol.py": "34d01255b47976f7c8e8026969b7ec28c19bf4241280d47921353d823df2c6f2",
+        "deploy/file-helper.Dockerfile": "ded641c66b8dfc72153985be8ae4d7e1f00fa1e1a11505078870dee8494bbd4d"
+      }
+    },
+    {
+      "name": "capture-stream-and-sdk",
+      "status": "PASS",
+      "sourceHead": "9eb00c7e42588a8e06ac50fa82e18ca10243b0ab",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "note": "Java trailer/hash/actual-exit gate and S3 SDK units, not integrated capture/version sealing.",
+      "inputManifestSha256": "7c26b2acfc98474d6eca914dd3720b1970eba0af6ebde328225eb74a29bf49a7",
+      "logSha256": "dcbe01d02db405769dd21cc3ec791729c99dad0f91b6cc3378b4b5992412c6ca"
+    },
+    {
+      "name": "frontend-tool-cards",
+      "status": "PASS",
+      "sourceHead": "9eb00c7e42588a8e06ac50fa82e18ca10243b0ab",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "note": "Pinned typecheck/unit/build/contracts pass from host entry with rename preflight; actual API/browser NOT_RUN.",
+      "inputManifestSha256": "57343d57d1b09d097ce2f6738aa26540e1ac28b42844dc01510e9a55f2bd8ba1",
+      "gates": [
+        {
+          "name": "rename-preflight",
+          "exitCode": 0,
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "typecheck",
+          "exitCode": 0,
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "unit",
+          "exitCode": 0,
+          "logSha256": "45eb9fbb6e1923af96a806d28334a815d4eb8a776be02cbde8b51be87d6efbec"
+        },
+        {
+          "name": "build",
+          "exitCode": 0,
+          "logSha256": "6f5b9eb7310045556e9e98279cc96468b38206e0e68d93d197b0a17d419acdda"
+        },
+        {
+          "name": "contracts",
+          "exitCode": 0,
+          "logSha256": "347d966427f256ee3b642071bed0945d1eb5b7887bdec278ae5300c42e81c80e"
+        }
+      ]
+    },
+    {
+      "name": "file-tool-stop-barrier",
+      "status": "PASS",
+      "sourceHead": "9eb00c7e42588a8e06ac50fa82e18ca10243b0ab",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "e1a9684be4626ed3adfe063e317f71630cc3195f96dbc144d0f9493b1229ec50",
+      "logSha256": "fa8d07baff172fe8e1baf3213719e9f78bdbb5075f1d54e432eb2fed0342903f",
+      "note": "Lifecycle units only: cancellation waits for synchronous IO exit and original child stop; missing DB facts cannot confirm termination. Initial generic result scope label was too broad; verifier now has a dedicated unit scope. No PG or integrated physical claim from this receipt."
     }
   ],
   "notRun": [
