@@ -29,6 +29,18 @@ class SandboxPolicyTest {
     private static final String HELPER = "sha256:" + "b".repeat(64);
     private static final UUID MOUNT = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
+    @Test void r44NativeFixtureIsExplicitlyBoundedToItsOwnStageRoot() {
+        String root="/srv/agentplatform/acceptance/r44-shell-20261027/workspaces";
+        assertEquals(root,new SandboxPolicy(IMAGE,HELPER,root,MOUNT,"/dev/loop1",Path.of("runtime.json")).workspaceRoot());
+        assertEquals(root,DockerWorkspaceAllocator.fixedWorkspaceRoot(root));
+        assertEquals(root,new FileRuntimePolicy(IMAGE,HELPER,root,MOUNT,"/dev/loop1").workspaceRoot());
+        for(String rejected:java.util.List.of("/srv/agentplatform/acceptance/r4-any/workspaces",
+                "/srv/agentplatform/acceptance/r440-lookalike/workspaces","/srv/agentplatform/acceptance/r44-/workspaces",root+"/../workspaces")) {
+            assertThrows(IllegalArgumentException.class,()->new SandboxPolicy(IMAGE,HELPER,rejected,MOUNT,"/dev/loop1",Path.of("runtime.json")));
+            assertThrows(IllegalArgumentException.class,()->DockerWorkspaceAllocator.fixedWorkspaceRoot(rejected));
+        }
+    }
+
     @Test void independentR34AcceptanceRootIsAllowedWithoutOpeningArbitraryNamespaces() {
         String root = "/srv/agentplatform/acceptance/r34-full-20261025t030104z/workspaces";
         var sandbox = new SandboxPolicy(IMAGE, HELPER, root, MOUNT, "/dev/loop1", Path.of("attestation.json"));

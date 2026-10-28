@@ -35,7 +35,10 @@ public final class MyBatisEnvironmentUseRepository implements EnvironmentUseRepo
     private static WorkspaceFailure stale() {return new WorkspaceFailure(409,"ENVIRONMENT_USE_STALE_OWNER");}
     private static String hash(String text) {return RunnerSignatures.sha256(text.getBytes(StandardCharsets.UTF_8));}
     private Environment lock(UUID space,UUID workspace) {
-        tx();environments.lockSlot();
+        tx();var current=workspaces.workspace(space,workspace);
+        if(current==null)throw new WorkspaceFailure(404,"RESOURCE_NOT_FOUND");
+        // Take the storage/identity shared locks before the child slot; guards decide authorization.
+        workspaces.authorized(new Actor(current.actorId(),space));environments.lockSlot();
         if(workspaces.lockWorkspace(space,workspace)==null)throw new WorkspaceFailure(404,"RESOURCE_NOT_FOUND");
         var environment=environments.lockEnvironment(space,workspace);
         if(environment==null)throw new WorkspaceFailure(404,"RESOURCE_NOT_FOUND");
@@ -52,7 +55,7 @@ public final class MyBatisEnvironmentUseRepository implements EnvironmentUseRepo
     private Command command(Use row) {
         return new Command(row.id(),row.spaceId(),row.workspaceId(),row.environmentId(),row.actorId(),row.ownerId(),row.generation(),row.fence(),
                 row.creationCommandId(),row.creationFence(),row.projectId(),row.imageId(),row.policyHash(),row.containerId(),row.containerStartedAt(),
-                row.kind(),row.requestHash(),JSON.readValue(row.requestText(),Request.class),row.executeUntil(),row.deadlineAt());
+                row.kind(),row.requestHash(),com.agentplatform.infrastructure.workspace.EnvironmentUseCodecs.stored(row.kind(),row.requestText()),row.executeUntil(),row.deadlineAt());
     }
     private static void validateRequest(Request request,String text) {
         if(request==null||text.getBytes(StandardCharsets.UTF_8).length>65536)throw new WorkspaceFailure(400,"INVALID_WORKSPACE_USE");
@@ -69,8 +72,29 @@ public final class MyBatisEnvironmentUseRepository implements EnvironmentUseRepo
         }
     }
     @Override public Admission admit(Actor actor,UUID workspace,UUID requestId,UUID owner,Request request) {
+        return admitRequest(actor,workspace,requestId,owner,request);
+    }
+    @Override public Admission admitShell(Actor actor,UUID workspace,UUID requestId,UUID owner,WorkspaceShellData.Request request) {
+        return admitRequest(actor,workspace,requestId,owner,request);
+    }
+    private Admission admitRequest(Actor actor,UUID workspace,UUID requestId,UUID owner,UseRequest request) {
         Objects.requireNonNull(requestId);Objects.requireNonNull(owner);
-        String text=JSON.writeValueAsString(request);validateRequest(request,text);
+        String text=JSON.writeValueAsString(request);
+        if(request instanceof Request legacy)validateRequest(legacy,text);
+        else if(request instanceof WorkspaceShellData.Request shell) {
+            tx();
+            var previous=uses.request(actor,requestId);
+            if(previous!=null) {
+                authorized(actor);
+                if(!previous.workspaceId().equals(workspace)||!previous.requestHash().equals(hash(workspace+"\n"+text)))throw new WorkspaceFailure(409,"IDEMPOTENCY_CONFLICT");
+                // This reads an immutable original command only. Never reacquire
+                // or transfer its physical execution authority on a lost response.
+                return new Admission(command(previous),false);
+            }
+            if(text.getBytes(StandardCharsets.UTF_8).length>65536||!shell.parent().ownerId().equals(owner)
+                    ||!shell.parent().operationId().equals(requestId)||!uses.shellAdmissionAllowed(actor,workspace,text))
+                throw new WorkspaceFailure(403,"SHELL_PARENT_NOT_AUTHORIZED");
+        }else throw new WorkspaceFailure(400,"INVALID_WORKSPACE_USE");
         var environment=lock(actor.spaceId(),workspace);authorized(actor);
         String digest=hash(workspace+"\n"+text);
         var previous=uses.request(actor,requestId);
@@ -93,7 +117,14 @@ public final class MyBatisEnvironmentUseRepository implements EnvironmentUseRepo
                 Math.addExact(environment.fence(),1),environment.creationCommandId(),environment.creationFence(),workspaceRow.projectId(),
                 environment.imageId(),environment.policyHash(),physical.containerId(),physical.startedAt(),request.kind(),digest,text,
                 null,"CLAIMED","PENDING",null,false,null,null,null,null,null,1);
-        uses.insertUse(row);event(environments.environment(actor.spaceId(),workspace));
+        uses.insertUse(row);
+        if(request instanceof WorkspaceShellData.Request shell) {
+            if(uses.insertShellAdmission(row,shell.parent())!=1||uses.bindShellJob(row,shell.parent(),Uuid7.next())!=1)throw stale();
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization(){
+                @Override public void beforeCommit(boolean readOnly){if(!uses.shellParentAllowed(row.id(),false))throw stale();}
+            });
+        }
+        event(environments.environment(actor.spaceId(),workspace));
         return new Admission(command(uses.use(row.id())),true);
     }
     @Override public Command lookup(UUID id) {
@@ -110,6 +141,7 @@ public final class MyBatisEnvironmentUseRepository implements EnvironmentUseRepo
         return row;
     }
     private Use guard(Command cmd,boolean executing,boolean active) {
+        if(cmd.request() instanceof WorkspaceShellData.Request&&!uses.shellParentAllowed(cmd.id(),true))throw stale();
         var row=identity(cmd,true);
         if(!uses.owned(cmd,executing,active))throw stale();
         authorized(new Actor(cmd.actorId(),cmd.spaceId()));return row;
@@ -172,7 +204,8 @@ public final class MyBatisEnvironmentUseRepository implements EnvironmentUseRepo
         if("KNOWN".equals(fact.resultState())) {
             boolean execMatches=cmd.request().file()==null?Objects.equals(row.execId(),output==null?null:output.execId()):
                     helperStop!=null&&helperStop.physical()!=null&&Objects.equals(helperStop.physical().execId(),output==null?null:output.execId());
-            if(output==null||fact.stop()!=null||output.timedOut()||output.cancelled()||!execMatches||output.execId()==null
+            boolean shell=cmd.request() instanceof WorkspaceShellData.Request;
+            if(output==null||(!shell&&fact.stop()!=null)||(shell&&fact.stop()==null)||output.timedOut()||output.cancelled()||!execMatches||output.execId()==null
                     ||output.stdout()==null||output.stderr()==null||output.stdout().getBytes(StandardCharsets.UTF_8).length+(long)output.stderr().getBytes(StandardCharsets.UTF_8).length>65536)
                 throw new WorkspaceFailure(409,"ENVIRONMENT_USE_OUTPUT_MISMATCH");
         } else if(output!=null||fact.stop()==null)throw new WorkspaceFailure(409,"ENVIRONMENT_USE_UNKNOWN_OUTPUT");
@@ -185,6 +218,7 @@ public final class MyBatisEnvironmentUseRepository implements EnvironmentUseRepo
         if(output!=null&&!Objects.equals(output.stopReceipt(),fact.stop()))throw new WorkspaceFailure(409,"RUNNER_STOP_MISMATCH");
     }
     @Override public void commitFact(Command cmd,UUID runner,Fact fact) {
+        if(cmd.request() instanceof WorkspaceShellData.Request&&fact!=null&&!"UNKNOWN".equals(fact.resultState())&&!uses.shellParentAllowed(cmd.id(),true))throw stale();
         var row=identity(cmd,true);validate(cmd,runner,fact,row);
         boolean system=fact.stop()!=null&&"UNKNOWN".equals(fact.resultState());
         if(system)checkStopObservation(cmd,runner);else check(cmd,runner);

@@ -29,12 +29,14 @@ public class ChatConfiguration {
             com.agentplatform.infrastructure.dao.chat.ExecutionPolicyMapper executionPolicy,
             com.agentplatform.infrastructure.dao.chat.PlanMapper plan,
             com.agentplatform.infrastructure.dao.chat.PermissionMapper permissions,
-            com.agentplatform.infrastructure.dao.chat.ApprovalMapper approvals) {
-        return new com.agentplatform.infrastructure.dao.chat.ChatMappers(ledger, conversation, dispatch, accounting, configuration, event, control, recovery, quota, executionPolicy,plan,permissions,approvals);
+            com.agentplatform.infrastructure.dao.chat.ApprovalMapper approvals,
+            com.agentplatform.infrastructure.dao.chat.WorkspaceToolMapper workspaceTools) {
+        return new com.agentplatform.infrastructure.dao.chat.ChatMappers(ledger, conversation, dispatch, accounting, configuration, event, control, recovery, quota, executionPolicy,plan,permissions,approvals,workspaceTools);
     }
     @Bean ChatRepository chatRepository(com.agentplatform.infrastructure.dao.chat.ChatMappers mappers,
-            org.springframework.transaction.support.TransactionTemplate transactions) {
-        return new TransactionalChatRepository(new MyBatisChatRepository(mappers), transactions);
+            org.springframework.transaction.support.TransactionTemplate transactions,
+            @Value("${platform.workspace.tools.enabled:false}")boolean workspaceTools) {
+        return new TransactionalChatRepository(new MyBatisChatRepository(mappers,workspaceTools), transactions);
     }
     @Configuration(proxyBeanMethods=false)
     @Profile({"chat-local","chat-worker"})
@@ -58,21 +60,24 @@ public class ChatConfiguration {
         }
     }
     @Bean @Profile("chat-local") ChatApi chatApi(ChatRepository repository,@Value("${platform.chat.cursor-key-file}")String file,CredentialCipher cipher)throws Exception{return new ChatService(repository,new ChatCursor(Files.readAllBytes(Path.of(file))),cipher);}
+    @Bean @Profile("chat-local") @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="platform.workspace.tools.enabled",havingValue="true")
+    com.agentplatform.api.chat.WorkspaceOperationsApi workspaceOperationsApi(ChatRepository repository,com.agentplatform.domain.files.AssetStore assets){return new WorkspaceOperationsService(repository,assets);}
     @Bean @Profile("chat-local") ReadinessProbe chatReadiness(ChatRepository repository,IdentityStore identity,DispatchTransport transport){return ()->identity.ready()&&repository.ready()&&transport.connected();}
     @Bean @Profile({"chat-local","chat-worker","chat-ops"}) CredentialCipher credentialCipher(@Value("${platform.chat.master-key-file}")String file)throws Exception{return new CredentialCipher(Files.readAllBytes(Path.of(file)));}
     @Bean @Profile("chat-worker") ChatProvider chatProvider(@Value("${platform.chat.provider-base:https://api.deepseek.com}")String base,@Value("${platform.chat.fixture-provider:false}")boolean fixture,
-            @Value("${platform.chat.fixture-tools:false}")boolean tools,org.springframework.core.env.Environment environment){
+            @Value("${platform.chat.fixture-tools:false}")boolean tools,@Value("${platform.workspace.tools.enabled:false}")boolean workspaceTools,org.springframework.core.env.Environment environment){
         if(tools&&!environment.acceptsProfiles(org.springframework.core.env.Profiles.of("recovery-fixture")))throw new IllegalArgumentException("FIXTURE_PROFILE_REQUIRED");
-        return new DeepSeekChatProvider(base,fixture,tools);
+        return new DeepSeekChatProvider(base,fixture,tools,workspaceTools);
     }
     @Bean @Profile("chat-worker") ChatExecution chatExecution(ChatRepository repository,ChatProvider provider,CredentialCipher cipher,DispatchTransport transport,
             @org.springframework.beans.factory.annotation.Qualifier("executionTimers") org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler timers,
             @Value("${platform.chat.workspace-root:/tmp/chat-runtime}")String root,
             @Value("${platform.chat.fixture-tools:false}")boolean tools,
             @Value("${platform.chat.approvals-enabled:false}")boolean approvals,
-            @Value("${platform.chat.acceptance-run:}")String acceptanceRun,org.springframework.core.env.Environment environment){
+            @Value("${platform.chat.acceptance-run:}")String acceptanceRun,org.springframework.beans.factory.ObjectProvider<WorkspaceToolRuntime> workspaceTools,org.springframework.core.env.Environment environment){
         var execution=new ChatExecution(repository,provider,cipher,Path.of(root),timers.getScheduledExecutor(),
                     tools?new com.agentplatform.infrastructure.chat.RecoveryFixtureTool(Path.of(root).resolve("fixture-effects")):null);
+        var workspaceRuntime=workspaceTools.getIfAvailable();if(workspaceRuntime!=null)execution.configureWorkspaceTools(workspaceRuntime);
         if(approvals){
             if(!environment.acceptsProfiles(org.springframework.core.env.Profiles.of("recovery-fixture")))throw new IllegalArgumentException("FIXTURE_PROFILE_REQUIRED");
             execution.configureToolApprovals();

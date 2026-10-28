@@ -61,7 +61,7 @@ final class DispatchPersistence extends ChatPersistenceSupport {
         }
         conversation(c,a,convo,true);
         { var rows43 = c.conversation().selectTask43(e.aggregateId()); var row43 = rows43.isEmpty() ? null : rows43.getFirst();
-            if(row43 == null||!ChatRuntime.bundle().hash().equals(row43.value1())){
+            if(row43 == null||!WorkspaceToolPersistence.bundle(c,e.spaceId(),e.aggregateId()).hash().equals(row43.value1())){
                 c.conversation().updateTask100(e.aggregateId());
                 c.conversation().updateMessage101(e.aggregateId());
                 c.dispatch().updateExecutionDispatch102(e.aggregateId());releaseRemaining(c,a,e.aggregateId());inbox(c,e,"IGNORED");

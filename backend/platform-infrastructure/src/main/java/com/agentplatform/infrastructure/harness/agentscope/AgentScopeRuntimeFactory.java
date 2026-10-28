@@ -1,6 +1,7 @@
 package com.agentplatform.infrastructure.harness.agentscope;
 
 import com.agentplatform.domain.harness.CompositionRules;
+import com.agentplatform.domain.chat.WorkspaceTools;
 import com.agentplatform.domain.harness.HarnessPorts.*;
 import com.agentplatform.types.harness.HarnessData.*;
 import io.agentscope.core.agent.Agent;
@@ -186,7 +187,7 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
             var context=RuntimeContext.builder().userId(request.scope().actorId()).sessionId(request.scope().conversationId()).build();
             var privateCodec=new io.agentscope.core.util.JacksonJsonCodec();
             var snapshot=privateCodec.fromJson(privateCodec.toJson(agent.getDelegate().getAgentState(context)),io.agentscope.core.state.AgentState.class);
-            Set<String> finished=canonical.stream().flatMap(message->message.observations().stream()).filter(o->o.status()==OperationStatus.SUCCEEDED||o.status()==OperationStatus.DENIED).map(Observation::callId).collect(java.util.stream.Collectors.toSet());
+            Set<String> finished=canonical.stream().flatMap(message->message.observations().stream()).filter(o->o.status()==OperationStatus.SUCCEEDED||o.status()==OperationStatus.DENIED||o.status()==OperationStatus.FAILED).map(Observation::callId).collect(java.util.stream.Collectors.toSet());
             snapshot.contextMutable().clear();
             Set<String> waiting = phase == CheckpointPhase.WAITING_INPUT || phase == CheckpointPhase.WAITING_APPROVAL
                     ? (pendingCalls.get().isEmpty()?restoredPending():pendingCalls.get()).stream().map(Call::id).collect(java.util.stream.Collectors.toSet()) : Set.of();
@@ -270,7 +271,7 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
                     pendingCalls.set(pending);
                     if (turn != null && !turn.round().calls().equals(pending)) return Flux.error(new IllegalStateException("TOOL_BATCH_MISMATCH"));
                     long controls = pending.stream().filter(call -> catalog.get(call.name()).category() == ToolCategory.CONTROL).count();
-                    long business = pending.stream().filter(call -> catalog.get(call.name()).category() == ToolCategory.BUSINESS).count();
+                    long business = pending.stream().filter(call -> catalog.get(call.name()).category() == ToolCategory.BUSINESS || WorkspaceTools.NAMES.contains(call.name())).count();
                     if (manifests.atomicCheckpoints(request.scope()) && (business > 1 || (business > 0 && controls > 0)))
                         return Flux.error(new IllegalArgumentException("TOOL_BATCH_UNSUPPORTED"));
                     if (controls > 1 || (controls == 1 && pending.size() != 1))
@@ -336,7 +337,7 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
                 });
             }
             private Decision decide(Call call) {
-                if (request.scope().planMode() && definition.category() == ToolCategory.BUSINESS) return Decision.DENY;
+                if (request.scope().planMode() && (definition.category() == ToolCategory.BUSINESS || WorkspaceTools.NAMES.contains(definition.name()))) return Decision.DENY;
                 return policy.decide(request.scope(), call);
             }
             @Override public Mono<ToolResultBlock> callAsync(ToolCallParam param) {
@@ -347,7 +348,7 @@ public final class AgentScopeRuntimeFactory implements LoopDriver {
                     return await(() -> boundary.beforeTool(request.scope(), call))
                             .then(await(() -> tools.execute(request.scope(), call)))
                             .flatMap(observation -> await(() -> boundary.afterToolCommitted(request.scope(), call, observation))
-                                    .thenReturn(ToolResultBlock.text(observation.text()).withIdAndName(call.id(), call.name()).withState(ToolResultState.SUCCESS)));
+                                    .thenReturn(codec.toolResult(observation)));
                 }).doOnError(error -> failure.compareAndSet(null, error));
             }
         }

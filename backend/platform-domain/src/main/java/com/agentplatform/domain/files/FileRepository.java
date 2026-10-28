@@ -6,6 +6,9 @@ import java.util.UUID;
 
 /** High-level short transactions. No transport or filesystem work is performed by a repository. */
 public interface FileRepository {
+    default java.util.List<FileCaptureData.Target> admitCaptures(FileData.Actor actor,java.util.UUID sourceOperation){throw new FileFailure(422,"CAPTURE_NOT_AVAILABLE");}
+    default FileCaptureData.Target captureTarget(FileData.Command command){throw new FileFailure(422,"CAPTURE_NOT_AVAILABLE");}
+    default FileCaptureData.Descriptor captureDescriptor(FileData.Command command){throw new FileFailure(422,"CAPTURE_NOT_AVAILABLE");}
     Upload create(Actor actor, UUID workspace, UUID requestId, String requestHash, UploadRequest request);
     Upload upload(Actor actor, UUID id);
     Upload beginTransfer(Actor actor, UUID id, UUID owner);

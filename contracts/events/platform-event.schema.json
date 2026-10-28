@@ -777,6 +777,90 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "enum": [
+              "tool.prepared",
+              "tool.started",
+              "tool.completed"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "required": [
+          "taskId"
+        ],
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "conversationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "taskId",
+              "operationId",
+              "toolName",
+              "status",
+              "phase"
+            ],
+            "properties": {
+              "taskId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "operationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "toolName": {
+                "enum": [
+                  "workspace_list",
+                  "workspace_read",
+                  "workspace_write",
+                  "workspace_shell"
+                ]
+              },
+              "status": {
+                "enum": [
+                  "PREPARED",
+                  "RUNNING",
+                  "SUCCEEDED",
+                  "FAILED",
+                  "UNKNOWN",
+                  "DENIED"
+                ]
+              },
+              "phase": {
+                "enum": [
+                  "PREPARED",
+                  "WAITING_APPROVAL",
+                  "ENVIRONMENT_PREPARING",
+                  "RUNNING",
+                  "STOPPING",
+                  "SEALING",
+                  "SUCCEEDED",
+                  "FAILED",
+                  "UNKNOWN",
+                  "DENIED"
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

@@ -778,6 +778,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tasks/{id}/operations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTaskOperations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operations/{id}/result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getOperationResult"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1049,6 +1081,8 @@ export interface components {
             tasks: components["schemas"]["ChatTask"][];
             pending: components["schemas"]["PendingInteraction"][];
             artifacts: unknown[];
+            /** @description Bounded committed tool projection in the snapshot transaction. More operations use the authorized per-task page. */
+            operations?: components["schemas"]["TaskToolOperation"][];
         };
         ChatUsage: {
             /** Format: uuid */
@@ -1257,6 +1291,11 @@ export interface components {
             version: number;
             current: components["schemas"]["PlanRevision"] | null;
             revisions: components["schemas"]["PlanRevision"][];
+            /**
+             * @description Derived from the frozen capability catalog, current accepted plan revision and task state. Plan consent does not grant tool or resource permission.
+             * @enum {unknown}
+             */
+            executionPhase?: "TEXT_ONLY" | "PLANNING" | "AWAITING_REVIEW" | "EXECUTING" | "COMPLETED" | "DELIVERED";
         };
         EditTaskPlan: {
             title: string;
@@ -1334,6 +1373,7 @@ export interface components {
             allowedActions: ("ALLOW_ONCE" | "DENY")[];
             permissionVersion: number;
             policyVersion: string;
+            review?: components["schemas"]["WorkspaceToolReview"] | null;
         };
         AnswerInteraction: {
             expectedVersion: number;
@@ -1362,6 +1402,89 @@ export interface components {
             /** Format: date-time */
             resetAt: string;
             policyVersion: number;
+        };
+        WorkspaceToolReview: {
+            /** @enum {unknown} */
+            kind: "LIST" | "READ" | "WRITE" | "SHELL";
+            command: string | null;
+            cwd: string | null;
+            path: string | null;
+            /** Format: uuid */
+            fileId: string | null;
+            /** Format: uuid */
+            versionId: string | null;
+            /** @enum {string|null} */
+            writeMode: "CREATE" | "REPLACE" | null;
+            textSha256: string | null;
+            bytes: number | null;
+            outputs: {
+                path: string;
+                maxBytes: number;
+            }[];
+            /** @enum {unknown} */
+            impact: "WORKSPACE_INDEX" | "EXPLICIT_VERSION" | "NAMED_FILE" | "ENTIRE_BOUND_WORKSPACE";
+            /** @constant */
+            network: "NONE";
+            stopsAfterEachCall: boolean;
+        };
+        TaskToolOperation: {
+            /** Format: uuid */
+            operationId: string;
+            /** Format: uuid */
+            taskId: string;
+            /** @enum {unknown} */
+            toolName: "workspace_list" | "workspace_read" | "workspace_write" | "workspace_shell";
+            /** @enum {unknown} */
+            status: "PREPARED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "UNKNOWN" | "DENIED";
+            /** @enum {unknown} */
+            phase: "PREPARED" | "WAITING_APPROVAL" | "ENVIRONMENT_PREPARING" | "RUNNING" | "STOPPING" | "SEALING" | "SUCCEEDED" | "FAILED" | "UNKNOWN" | "DENIED";
+            summary: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            endedAt: string | null;
+            errorCode: string | null;
+            traceId: string | null;
+            review: components["schemas"]["WorkspaceToolReview"] | null;
+            resultAvailable: boolean;
+        };
+        TaskToolOperations: {
+            items: components["schemas"]["TaskToolOperation"][];
+            /** Format: uuid */
+            nextCursor: string | null;
+        };
+        WorkspaceToolArtifact: {
+            /** Format: uuid */
+            fileId: string;
+            /** Format: uuid */
+            versionId: string;
+            path: string;
+            bytes: number;
+            sha256: string;
+        };
+        /** @description Live-authorized bounded tool result. Raw stdout/stderr UTF-8 bytes combined are at most64KiB; a large result is fetched from private storage without exposing its key. Model summary is at most8KiB UTF-8. No host paths, credentials, SDK state or private parameter maps. */
+        WorkspaceToolResult: {
+            /** Format: uuid */
+            operationId: string;
+            /** Format: uuid */
+            taskId: string;
+            /** @enum {unknown} */
+            status: "PREPARED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "UNKNOWN" | "DENIED";
+            summary: string;
+            exitCode: number | null;
+            stdout: string | null;
+            stderr: string | null;
+            truncated: boolean;
+            errorCode: string | null;
+            files: {
+                /** Format: uuid */
+                fileId: string;
+                /** Format: uuid */
+                versionId: string;
+                path: string;
+                bytes: number;
+                sha256: string;
+            }[];
         };
     };
     responses: {
@@ -3051,6 +3174,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaskPermissions"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getTaskOperations: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized committed tool projection; UNKNOWN never grants replay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskToolOperations"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getOperationResult: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized committed tool projection; UNKNOWN never grants replay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceToolResult"];
                 };
             };
             default: components["responses"]["IdentityProblem"];

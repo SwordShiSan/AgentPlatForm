@@ -12,6 +12,28 @@ import java.util.concurrent.atomic.*;
 import org.junit.jupiter.api.Test;
 
 class DeepSeekChatProviderTest {
+    @Test void businessSchemasAndCompleteInvalidArgumentsPreserveKnownUsageWithoutToolExecution() throws Exception {
+        var json=tools.jackson.databind.json.JsonMapper.builder().build();
+        for(String cwd:List.of("",".")) {
+            var request=new AtomicReference<String>();
+            var server=com.sun.net.httpserver.HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
+            var arguments=java.util.Map.of("command","printf 666","cwd",cwd,"timeoutSeconds",20,"outputs",List.of());
+            String delta=json.writeValueAsString(java.util.Map.of("id","complete-business","choices",List.of(java.util.Map.of("index",0,"finish_reason","tool_calls","delta",java.util.Map.of("tool_calls",List.of(java.util.Map.of("index",0,"id","business-one","type","function","function",java.util.Map.of("name","workspace_shell","arguments",json.writeValueAsString(arguments)))))))));
+            server.createContext("/chat/completions",exchange->{
+                request.set(new String(exchange.getRequestBody().readAllBytes(),StandardCharsets.UTF_8));
+                exchange.getResponseHeaders().add("Content-Type","text/event-stream");exchange.sendResponseHeaders(200,0);
+                try(var output=exchange.getResponseBody()) {output.write(("data: "+delta+"\n\ndata: {\"id\":\"complete-business\",\"choices\":[],\"usage\":{\"prompt_tokens\":12,\"completion_tokens\":3,\"total_tokens\":15}}\n\ndata: [DONE]\n\n").getBytes(StandardCharsets.UTF_8));}
+            });server.start();
+            try(var provider=new DeepSeekChatProvider("http://127.0.0.1:"+server.getAddress().getPort(),true,false,true)) {
+                var exchange=provider.openTyped("deepseek-flash","fixture-only",List.of(Message.text(Role.USER,"Run a bounded workspace command")),com.agentplatform.domain.chat.WorkspaceTools.DEFINITIONS,text->fail("No text expected"));
+                var result=exchange.result().toCompletableFuture().get(8,TimeUnit.SECONDS);exchange.terminated().toCompletableFuture().get(5,TimeUnit.SECONDS);
+                assertTrue(result.usageKnown());assertEquals(12,result.round().inputTokens());assertEquals(3,result.round().outputTokens());assertEquals("complete-business",result.requestId());
+                if(cwd.isEmpty()){assertNull(result.rejectionCode());assertEquals(1,result.round().calls().size());}
+                else {assertEquals("MODEL_TOOL_ARGUMENTS_INVALID",result.rejectionCode());assertTrue(result.round().calls().isEmpty());}
+                var wire=json.readTree(request.get());assertEquals(4,wire.path("tools").size());assertTrue(request.get().contains("empty string for the workspace root"));
+            }finally{server.stop(0);}
+        }
+    }
     @Test void productionControlSchemasAndFragmentedCallsUseExistingSdkTransport() throws Exception {
         var server=com.sun.net.httpserver.HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
         var body=new AtomicReference<String>();

@@ -33,11 +33,12 @@ public final class MyBatisEnvironmentPreparationRepository implements Environmen
     }
 
     private com.agentplatform.infrastructure.dao.po.WorkspaceRows.WorkspaceRow workspace(Actor actor, UUID workspaceId) {
+        boolean allowed=workspaces.authorized(actor);
         var row = workspaces.lockWorkspace(actor.spaceId(), workspaceId);
         // The scoped authorization function holds the identity/membership row locks.
         // Do not add an actor advisory lock after the workspace lock: older storage
         // transactions acquire that advisory lock first, which would invert order.
-        if (!workspaces.authorized(actor) || row == null) throw new WorkspaceFailure(404, "RESOURCE_NOT_FOUND");
+        if (!allowed || row == null) throw new WorkspaceFailure(404, "RESOURCE_NOT_FOUND");
         return row;
     }
 
@@ -58,6 +59,7 @@ public final class MyBatisEnvironmentPreparationRepository implements Environmen
 
     @Override public Snapshot get(Actor actor, UUID workspaceId) {
         requireTransaction();
+        workspaces.authorized(actor);
         var slot=mapper.lockSlot(); // Same lock order for a consistent multi-row projection.
         var workspace=workspace(actor, workspaceId);
         return snapshot(actor.spaceId(),workspaceId, mapper.lockEnvironment(actor.spaceId(), workspaceId),"READY".equals(workspace.state()),slot);
@@ -66,6 +68,7 @@ public final class MyBatisEnvironmentPreparationRepository implements Environmen
     @Override public Submission prepare(Actor actor, UUID workspaceId, UUID requestId, String hash, long version, boolean retry) {
         requireTransaction();
         if (version < 0 || hash == null || !hash.matches("[0-9a-f]{64}")) throw new WorkspaceFailure(400, "INVALID_ENVIRONMENT_REQUEST");
+        workspaces.authorized(actor);
         var slot = mapper.lockSlot();
         var workspace = workspace(actor, workspaceId);
         var environment = mapper.lockEnvironment(actor.spaceId(), workspaceId);

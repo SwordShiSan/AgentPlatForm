@@ -28,7 +28,7 @@ class PlanQuotaPostgresTest {
     @TempDir Path work;
     @BeforeAll static void migrate() throws Exception {
         url=System.getenv("R41_TEST_JDBC_URL");Assumptions.assumeTrue(url!=null,"R41 database not configured; NOT_RUN");
-        assertTrue("jdbc:postgresql://127.0.0.1:15454/r41_test?connectTimeout=2&socketTimeout=5".equals(url) || ("1".equals(System.getenv("R42_ACCEPTANCE")) && "jdbc:postgresql://127.0.0.1:15455/r42_test?connectTimeout=2&socketTimeout=5".equals(url))
+        assertTrue(FixtureDatabaseScope.r44(url)||"jdbc:postgresql://127.0.0.1:15454/r41_test?connectTimeout=2&socketTimeout=5".equals(url) || ("1".equals(System.getenv("R42_ACCEPTANCE")) && "jdbc:postgresql://127.0.0.1:15455/r42_test?connectTimeout=2&socketTimeout=5".equals(url))
                 || ("1".equals(System.getenv("R43_ACCEPTANCE")) && "jdbc:postgresql://127.0.0.1:15456/r43_test?connectTimeout=2&socketTimeout=5".equals(url)));
         password=Files.readString(Path.of(System.getenv("R41_TEST_PASSWORD_FILE"))).strip();
         Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").cleanDisabled(false).load().clean();
@@ -36,7 +36,7 @@ class PlanQuotaPostgresTest {
         var before=Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").target("14").load();before.migrate();
         assertEquals("14",before.info().current().getVersion().toString());
         var current=Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").load();current.migrate();
-        assertEquals("17",current.info().current().getVersion().toString());current.validate();
+        assertEquals("18",current.info().current().getVersion().toString());current.validate();
     }
     @BeforeEach void setup() {
         var configuration=new com.zaxxer.hikari.HikariConfig();configuration.setJdbcUrl(url);configuration.setUsername("postgres");configuration.setPassword(password);configuration.setMaximumPoolSize(4);configuration.setMinimumIdle(1);

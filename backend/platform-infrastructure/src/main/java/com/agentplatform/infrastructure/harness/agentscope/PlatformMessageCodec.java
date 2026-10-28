@@ -34,8 +34,7 @@ public final class PlatformMessageCodec {
         List<ContentBlock> blocks = new ArrayList<>();
         if (!message.text().isEmpty()) blocks.add(TextBlock.builder().text(message.text()).build());
         message.calls().forEach(call -> blocks.add(toolUse(call)));
-        message.observations().forEach(result -> blocks.add(ToolResultBlock.text(result.text()).withIdAndName(result.callId(), result.name())
-                .withState(result.status() == OperationStatus.SUCCEEDED ? ToolResultState.SUCCESS : result.status() == OperationStatus.DENIED ? ToolResultState.DENIED : ToolResultState.ERROR)));
+        message.observations().forEach(result -> blocks.add(toolResult(result)));
         return Msg.builder().name(message.role() == Role.ASSISTANT ? "platform-runtime" : message.role().name().toLowerCase(java.util.Locale.ROOT))
                 .role(MsgRole.valueOf(message.role().name())).content(blocks).build();
     }
@@ -50,6 +49,7 @@ public final class PlatformMessageCodec {
                 OperationStatus status = switch (result.getState()) {
                     case SUCCESS -> OperationStatus.SUCCEEDED;
                     case DENIED -> OperationStatus.DENIED;
+                    case ERROR -> "FAILED".equals(result.getMetadata().get("platform.operationStatus")) ? OperationStatus.FAILED : OperationStatus.UNKNOWN;
                     default -> OperationStatus.UNKNOWN;
                 };
                 results.add(new Observation(result.getId(), result.getName(), result.getOutput().toString(), status));
@@ -100,6 +100,18 @@ public final class PlatformMessageCodec {
     }
     public ToolUseBlock toolUse(Call call) {
         return ToolUseBlock.builder().id(call.id()).name(call.name()).input(call.arguments()).content(json(call.arguments())).build();
+    }
+    public ToolResultBlock toolResult(Observation result) {
+        var state = switch (result.status()) {
+            case SUCCEEDED -> ToolResultState.SUCCESS;
+            case DENIED -> ToolResultState.DENIED;
+            case FAILED, UNKNOWN -> ToolResultState.ERROR;
+            default -> throw new IllegalArgumentException("NONTERMINAL_TOOL_OBSERVATION");
+        };
+        if(result.status()!=OperationStatus.FAILED)
+            return ToolResultBlock.text(result.text()).withIdAndName(result.callId(),result.name()).withState(state);
+        return ToolResultBlock.of(result.callId(), result.name(), List.of(TextBlock.builder().text(result.text()).build()),
+                Map.of("platform.operationStatus", result.status().name())).withState(state);
     }
     public ChatResponse response(Round round) {
         List<ContentBlock> blocks = new ArrayList<>();

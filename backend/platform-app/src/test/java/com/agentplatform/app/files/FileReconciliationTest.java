@@ -10,7 +10,9 @@ class FileReconciliationTest {
     private final FileRepository repository=mock(FileRepository.class);
     private final FileRunnerPort runner=mock(FileRunnerPort.class);
     private final AssetStore assets=mock(AssetStore.class);
-    private final Command command=new Command(null,null,200001,null);
+    private final Execution execution=mock(Execution.class);
+    private final Command command=new Command(execution,null,200001,null);
+    {when(execution.kind()).thenReturn("APPLY_UPLOAD");}
     private Receipt receipt(String state){return new Receipt(UUID.randomUUID(),state,"{}","a".repeat(64),"{}","b".repeat(64),UUID.randomUUID(),null);}
     @Test void responseLossOnlyQueriesAndProjectsStoredStopFacts() {
         var receipt=receipt("NOT_APPLIED");when(runner.queryFile(command)).thenReturn(receipt);

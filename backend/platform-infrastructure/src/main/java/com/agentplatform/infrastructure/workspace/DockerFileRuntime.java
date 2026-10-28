@@ -26,7 +26,8 @@ public final class DockerFileRuntime implements FileRuntime {
     private final AuxiliaryContainerSlot slots;
     private final UUID instanceId;
     private final DockerClient docker;
-    private final ConcurrentMap<UUID,Capture> active=new ConcurrentHashMap<>();
+    interface Active { boolean quiescent(); }
+    private final ConcurrentMap<UUID,Active> active=new ConcurrentHashMap<>();
     public DockerFileRuntime(FileRuntimePolicy policy,AuxiliaryContainerSlot slots,UUID instanceId) {
         this.policy=policy;this.slots=slots;this.instanceId=instanceId;
         var config=DefaultDockerClientConfig.createDefaultConfigBuilder().withDockerHost("unix:///var/run/docker.sock").withApiVersion("1.45").build();
@@ -108,6 +109,22 @@ public final class DockerFileRuntime implements FileRuntime {
         }
         throw new FileFailure(503,"WORKSPACE_VERIFICATION_UNAVAILABLE");
     }
+    private com.github.dockerjava.api.command.CreateContainerResponse createHelper(Command command,Authority authority) {
+        var host=HostConfig.newHostConfig().withRuntime("runc").withNetworkMode("none").withReadonlyRootfs(true)
+                .withMemory(64L*1024*1024).withMemorySwap(64L*1024*1024).withNanoCPUs(1_000_000_000L).withPidsLimit(32L)
+                .withCapDrop(Capability.ALL).withSecurityOpts(List.of("no-new-privileges:true"))
+                .withMounts(List.of(new Mount().withType(MountType.BIND).withSource(policy.work(command)).withTarget("/workspace").withReadOnly(false)))
+                .withTmpFs(Map.of("/tmp","rw,noexec,nosuid,size=8m,uid=10001,gid=10001,mode=700"))
+                .withLogConfig(new LogConfig(LogConfig.LoggingType.JSON_FILE,Map.of("max-size","10m","max-file","3")));
+        var created=docker.createContainerCmd(policy.image()).withName(name(command)).withUser("10001:10001").withWorkingDir("/workspace")
+                .withLabels(labels(command)).withHostConfig(host).withEntrypoint("python3","/opt/platform/file-helper-entrypoint.py","idle").exec();
+        authority.created(created.getId());authority.startRequested();authority.check();
+        docker.startContainerCmd(created.getId()).exec();
+        var row=docker.inspectContainerCmd(created.getId()).exec();
+        if(!Boolean.TRUE.equals(row.getState().getRunning()))throw new FileFailure(503,"FILE_HELPER_START_UNCONFIRMED");
+        authority.started(row.getState().getStartedAt());authority.check();exact(command,authority.physical());
+        return created;
+    }
     @Override public Result apply(Command command,InputStream content,Authority authority) {
         boolean scan="SCAN".equals(command.operation().kind());
         if(!scan&&(command.upload()==null||!"APPLY_UPLOAD".equals(command.operation().kind()))||!policy.image().equals(command.operation().helperImageId())
@@ -117,22 +134,10 @@ public final class DockerFileRuntime implements FileRuntime {
         Capture capture=new Capture();TrackedInput input=null;boolean execInvoked=false;boolean createInvoked=false;
         try {
             authority.check();verifyStorage(command,verifierStopped);authority.check();
-            try{docker.inspectContainerCmd(name(command)).exec();createInvoked=true;throw new FileFailure(409,"FILE_HELPER_RECONCILIATION_REQUIRED");}
-            catch(NotFoundException absent){/* Never recreate an existing command. */}
-            var host=HostConfig.newHostConfig().withRuntime("runc").withNetworkMode("none").withReadonlyRootfs(true)
-                    .withMemory(64L*1024*1024).withMemorySwap(64L*1024*1024).withNanoCPUs(1_000_000_000L).withPidsLimit(32L)
-                    .withCapDrop(Capability.ALL).withSecurityOpts(List.of("no-new-privileges:true"))
-                    .withMounts(List.of(new Mount().withType(MountType.BIND).withSource(policy.work(command)).withTarget("/workspace").withReadOnly(false)))
-                    .withTmpFs(Map.of("/tmp","rw,noexec,nosuid,size=8m,uid=10001,gid=10001,mode=700"))
-                    .withLogConfig(new LogConfig(LogConfig.LoggingType.JSON_FILE,Map.of("max-size","10m","max-file","3")));
+            try{createInvoked=true;docker.inspectContainerCmd(name(command)).exec();throw new FileFailure(409,"FILE_HELPER_RECONCILIATION_REQUIRED");}
+            catch(NotFoundException absent){createInvoked=false;/* Never recreate an existing command. */}
             createInvoked=true;
-            var created=docker.createContainerCmd(policy.image()).withName(name(command)).withUser("10001:10001").withWorkingDir("/workspace")
-                    .withLabels(labels(command)).withHostConfig(host).withEntrypoint("python3","/opt/platform/file-helper-entrypoint.py","idle").exec();
-            authority.created(created.getId());authority.startRequested();authority.check();
-            docker.startContainerCmd(created.getId()).exec();
-            var row=docker.inspectContainerCmd(created.getId()).exec();
-            if(!Boolean.TRUE.equals(row.getState().getRunning()))throw new FileFailure(503,"FILE_HELPER_START_UNCONFIRMED");
-            authority.started(row.getState().getStartedAt());authority.check();exact(command,authority.physical());
+            var created=createHelper(command,authority);
             var header=new LinkedHashMap<String,Object>();header.put("protocol",scan?"file-scan-v1":"file-stream-v2");header.put("operationId",command.operation().id());
             header.put("filesystemDevice",List.of(7,Integer.parseInt(policy.quotaDevice().substring("/dev/loop".length()))));
             if(scan) {
@@ -204,6 +209,106 @@ public final class DockerFileRuntime implements FileRuntime {
         return new Stop(command.operation().commandId(),row.getId(),row.getImageId(),physical.startedAt(),physical.execId(),
                 row.getState().getFinishedAt(),false,true,true,Instant.now());
     }
+    /** Same fixed helper and canonical file command; no guest program or object address enters stdin. */
+    @Override public Result capture(Command command,CaptureTarget target,CaptureSink sink,Authority authority) {
+        if(!"CAPTURE".equals(command.operation().kind())||command.upload()!=null||!policy.image().equals(command.operation().helperImageId())
+                ||!policy.hash().equals(command.operation().helperPolicyHash()))throw new FileFailure(409,"FILE_POLICY_MISMATCH");
+        var permit=slots.tryAcquire();if(permit==null)throw new FileFailure(423,"WORKSPACE_HELPER_BUSY");
+        var verifierStopped=new AtomicBoolean(true);boolean release=false;
+        FileCaptureChannel capture=null;TrackedInput input=null;PipedOutputStream send=null;
+        boolean createInvoked=false,transferLaunched=false,originalAbsent=false;
+        var stopped=new AtomicReference<Stop>();var failure=new AtomicReference<Throwable>();var descriptor=new AtomicReference<CapturedFileStream.Descriptor>();
+        var ioExited=new CountDownLatch(1);
+        try {
+            authority.check();verifyStorage(command,verifierStopped);authority.check();
+            try{createInvoked=true;docker.inspectContainerCmd(name(command)).exec();throw new FileFailure(409,"FILE_HELPER_RECONCILIATION_REQUIRED");}
+            catch(NotFoundException absent){createInvoked=false;originalAbsent=true;/* One accepted command creates one exact helper. */}
+            createInvoked=true;var created=createHelper(command,authority);
+            var source=new PipedInputStream(8192);send=new PipedOutputStream(source);input=new TrackedInput(source);
+            capture=new FileCaptureChannel(input::stopped,ioExited);active.put(command.operation().commandId(),capture);
+            var header=Map.of("protocol","file-capture-v1","operationId",command.operation().id(),"path",target.path(),"maxBytes",target.maxBytes(),
+                    "filesystemDevice",List.of(7,Integer.parseInt(policy.quotaDevice().substring("/dev/loop".length()))));
+            send.write((JSON.writeValueAsString(header)+"\n").getBytes(StandardCharsets.UTF_8));send.flush();
+            String exec=docker.execCreateCmd(created.getId()).withAttachStdin(true).withAttachStdout(true).withAttachStderr(true).withTty(false)
+                    .withCmd("python3","/opt/platform/file-capture-bridge.py").exec().getId();
+            authority.exec(exec);authority.check();
+            docker.execStartCmd(exec).withDetach(false).withTty(false).withStdIn(input).exec(capture);
+            final var channel=capture;final var stdin=input;final var ready=send;
+            transferLaunched=true;
+            Thread.ofVirtual().name("file-capture-"+command.operation().commandId()).start(()->{
+                try {
+                    var value=CapturedFileStream.descriptor(channel.source,command.operation().id(),target.maxBytes());descriptor.set(value);
+                    authority.check();sink.described(value.bytes(),value.sha256());authority.check();
+                    ready.write(CapturedFileStream.ready(value));ready.close();
+                    try(var content=new CapturedFileStream(channel.source,value,authority::check,()->{
+                        try {
+                            stdin.close();
+                            if(!channel.done.await(5,TimeUnit.SECONDS)||channel.failure!=null||!stdin.stopped())throw new FileFailure(409,"FILE_STOP_UNCONFIRMED");
+                            var execution=docker.inspectExecCmd(exec).exec();
+                            if(!Boolean.FALSE.equals(execution.isRunning())||!Long.valueOf(0).equals(execution.getExitCodeLong()))throw new FileFailure(409,"FILE_CAPTURE_FAILED");
+                            var fact=stop(command,authority.physical(),true);
+                            if(fact==null)throw new FileFailure(409,"FILE_STOP_UNCONFIRMED");
+                            stopped.set(fact);sink.stopped(fact);
+                        }catch(IOException problem){throw new FileFailure(409,"FILE_STOP_UNCONFIRMED");}
+                        catch(InterruptedException interrupted){Thread.currentThread().interrupt();throw new FileFailure(409,"FILE_STOP_UNCONFIRMED");}
+                    })) {
+                        var object=sink.store(value.bytes(),value.sha256(),content);
+                        if(!content.verified()||object==null||object.bytes()!=value.bytes()||!value.sha256().equals(object.sha256()))
+                            throw new FileFailure(503,"ASSET_IDENTITY_MISMATCH");
+                    }
+                }catch(Throwable problem){failure.set(problem);}
+                finally{try{ready.close();stdin.close();}catch(IOException problem){failure.compareAndSet(null,problem);}ioExited.countDown();}
+            });
+            long until=System.nanoTime()+TimeUnit.SECONDS.toNanos(120);
+            while(ioExited.getCount()!=0&&System.nanoTime()<until&&Instant.now().isBefore(command.operation().deadlineAt())) {
+                authority.check();if(capture.failure!=null)throw new FileFailure(409,"FILE_CAPTURE_UNCONFIRMED");ioExited.await(100,TimeUnit.MILLISECONDS);
+            }
+            if(ioExited.getCount()!=0)throw new FileFailure(409,"FILE_CAPTURE_TIMEOUT");
+            if(failure.get()!=null||stopped.get()==null||!capture.quiescent())throw new FileFailure(409,"FILE_CAPTURE_UNCONFIRMED");
+            release=true;var value=descriptor.get();
+            return new Result("CAPTURED",JSON.writeValueAsString(Map.of("protocol","file-capture-v1","operationId",command.operation().id(),
+                    "state","CAPTURED","bytes",value.bytes(),"sha256",value.sha256())),JSON.writeValueAsString(stopped.get()));
+        }catch(RuntimeException problem){
+            // No descriptor means no S3 sink was invoked. A nonzero fixed-helper
+            // exit plus actual callback/IO stop proves a known capture rejection.
+            if(descriptor.get()==null&&capture!=null&&capture.quiescent()&&verifierStopped.get()) {
+                var physical=authority.physical();
+                if(physical!=null&&physical.execId()!=null) {
+                    var execution=docker.inspectExecCmd(physical.execId()).exec();
+                    if(Boolean.FALSE.equals(execution.isRunning())&&execution.getExitCodeLong()!=null&&execution.getExitCodeLong()!=0) {
+                        var fact=stop(command,physical,true);
+                        if(fact!=null){stopped.set(fact);sink.stopped(fact);release=true;
+                            return new Result("NOT_APPLIED",JSON.writeValueAsString(Map.of("state","NOT_APPLIED","code","FILE_CAPTURE_REJECTED")),JSON.writeValueAsString(fact));}
+                    }
+                }
+            }
+            if(!createInvoked&&originalAbsent&&verifierStopped.get()) {
+                var fact=new Stop(command.operation().commandId(),null,policy.image(),null,null,null,true,true,true,Instant.now());
+                stopped.set(fact);sink.stopped(fact);release=true;
+                return new Result("NOT_APPLIED",JSON.writeValueAsString(Map.of("state","NOT_APPLIED","code","FILE_CAPTURE_NOT_STARTED")),JSON.writeValueAsString(fact));
+            }
+            throw problem;
+        }catch(IOException problem){throw new FileFailure(409,"FILE_CAPTURE_UNCONFIRMED");}
+        catch(InterruptedException interrupted){Thread.currentThread().interrupt();throw new FileFailure(409,"FILE_CAPTURE_UNCONFIRMED");}
+        finally {
+            if(!transferLaunched)ioExited.countDown();
+            try {
+                if(send!=null)send.close();if(input!=null)input.close();if(capture!=null)capture.close();
+                // Stop the exact helper even while a transport is unwinding. Only
+                // actual IO/callback completion plus a persisted receipt releases capacity.
+                var physical=authority.physical();
+                if(verifierStopped.get()&&physical!=null&&physical.startedAt()!=null) {
+                    var row=exact(command,physical);if(Boolean.TRUE.equals(row.getState().getRunning()))docker.stopContainerCmd(row.getId()).withTimeout(5).exec();
+                    if(capture!=null&&capture.quiescent()) {
+                        var fact=stopped.get()==null?stop(command,physical,true):stopped.get();
+                        if(fact!=null){sink.stopped(fact);release=true;}
+                    }
+                }
+            }catch(Exception uncertain){release=false;}
+            if(capture!=null&&capture.quiescent())active.remove(command.operation().commandId(),capture);
+            if(release&&verifierStopped.get())slots.release(permit);else slots.retain(permit,verifierStopped.get()?command.operation().commandId():null);
+        }
+    }
     @Override public Result reconcile(Command command,Authority authority,boolean priorRunnerStopped) {
         var execution=active.get(command.operation().commandId());
         if(execution!=null){if(!execution.quiescent())return null;active.remove(command.operation().commandId(),execution);}
@@ -219,6 +324,17 @@ public final class DockerFileRuntime implements FileRuntime {
         } finally {if(release)slots.release(permit);else slots.retain(permit,command.operation().commandId());}
     }
     @Override public void close(){try{docker.close();}catch(IOException failure){throw new IllegalStateException(failure);}}
+    @Override public void retire(Command command,Stop receipt) {
+        if(receipt==null||!command.operation().commandId().equals(receipt.commandId())||!receipt.execStopped()||!receipt.callbacksStopped())
+            throw new FileFailure(409,"FILE_STOP_UNCONFIRMED");
+        if(receipt.neverStarted()&&receipt.containerId()==null)return;
+        try {
+            var row=exact(command,new Physical(receipt.containerId(),receipt.startedAt(),receipt.execId()));
+            if(!DockerSandboxRuntime.confirmedContainerStopped(row.getState())||!Objects.equals(receipt.finishedAt(),row.getState().getFinishedAt()))
+                throw new FileFailure(409,"FILE_STOP_UNCONFIRMED");
+            docker.removeContainerCmd(row.getId()).withForce(false).exec();
+        }catch(NotFoundException retired){/* The caller already holds the immutable exact stop receipt. */}
+    }
     private static final class TrackedInput extends FilterInputStream {
         private final AtomicInteger readers=new AtomicInteger();private volatile boolean closed,closeCompleted,closeFailed;
         TrackedInput(InputStream in){super(in);}
@@ -231,9 +347,9 @@ public final class DockerFileRuntime implements FileRuntime {
         }
         boolean stopped(){return closed&&closeCompleted&&!closeFailed&&readers.get()==0;}
     }
-    private static final class Capture extends ResultCallback.Adapter<Frame> {
+    private static final class Capture extends ResultCallback.Adapter<Frame> implements Active {
         final CountDownLatch done=new CountDownLatch(1);final ByteArrayOutputStream bytes=new ByteArrayOutputStream();volatile Throwable failure;volatile boolean truncated;volatile TrackedInput input;
-        boolean quiescent(){return done.getCount()==0&&(input==null||input.stopped());}
+        @Override public boolean quiescent(){return done.getCount()==0&&(input==null||input.stopped());}
         @Override public synchronized void onNext(Frame frame){if(frame.getPayload().length>32768-bytes.size()){truncated=true;return;}bytes.writeBytes(frame.getPayload());}
         @Override public void onError(Throwable failure){this.failure=failure;done.countDown();}
         @Override public void onComplete(){done.countDown();}

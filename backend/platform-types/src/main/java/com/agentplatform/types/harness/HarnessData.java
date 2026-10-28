@@ -21,7 +21,7 @@ public final class HarnessData {
     public enum Decision { ALLOW, ASK, DENY }
     public enum Completion { PASS, REPAIR, INCOMPLETE, WAITING_APPROVAL, WAITING_INPUT, CANCELLED }
     public enum ToolCategory { CONTROL, READ_ONLY, BUSINESS }
-    public enum OperationStatus { PREPARED, RUNNING, SUCCEEDED, UNKNOWN, DENIED }
+    public enum OperationStatus { PREPARED, RUNNING, SUCCEEDED, UNKNOWN, DENIED, FAILED }
 
     public record Scope(String spaceId, String actorId, String conversationId, String taskId,
                         String attemptId, long fence, boolean planMode) {

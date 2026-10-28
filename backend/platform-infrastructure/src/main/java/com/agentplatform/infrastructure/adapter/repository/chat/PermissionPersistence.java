@@ -50,8 +50,14 @@ final class PermissionPersistence extends ChatPersistenceSupport {
     private static View view(ChatMappers c, PermissionRow p) {
         var grants = c.permissions().grants(p.spaceId(), p.taskId()).stream().map(g -> new Grant(g.id().toString(), g.scopeId().toString(), g.path(), caps(g.capabilities()),
                 g.expiresAt().toString(), g.revokedAt() == null ? null : g.revokedAt().toString(), active(c, p, g), g.policyVersion())).toList();
+        var restrictions=new ArrayList<>(List.of("REALTIME_RESOURCE_ACL","MANDATORY_POLICIES","TASK_SCOPED_24H_GRANTS"));
+        if(WorkspaceToolPersistence.enabled(c,p.spaceId(),p.taskId())) {
+            restrictions.addAll(List.of("BOUND_WORKSPACE_ONLY","SANDBOX_HARD_BOUNDARY","SHELL_FULL_WORKSPACE_IMPACT"));
+            if(p.planMode())restrictions.add("PLAN_APPROVAL_REQUIRED");
+            if("RISK_BASED".equals(p.mode()))restrictions.add("SHELL_APPROVAL_PER_CALL");
+        }else restrictions.addAll(List.of("PLAN_TEXT_ONLY","BUSINESS_TOOLS_NOT_ENABLED"));
         return new View(p.taskId().toString(), p.workspaceId() == null ? null : p.workspaceId().toString(), Mode.valueOf(p.mode()), p.version(), RiskPolicy.VERSION, mutable(p),
-                List.of("REALTIME_RESOURCE_ACL", "PLAN_TEXT_ONLY", "MANDATORY_POLICIES", "BUSINESS_TOOLS_NOT_ENABLED", "TASK_SCOPED_24H_GRANTS"), grants);
+                restrictions, grants);
     }
     View permissions(Actor a, UUID task) { return tx(c -> view(c, read(c, a, task))); }
     Scopes scopes(Actor a, UUID task) { return scopes(a,task,null); }
@@ -154,6 +160,8 @@ final class PermissionPersistence extends ChatPersistenceSupport {
             result = HarnessData.Decision.DENY;reason = "PERMISSION_POLICY_CHANGED";
         } else if (PlanControls.NAMES.contains(call.name())) {
             result = new PlanPersistence(c).controlDecision(lease, call);reason = "PLATFORM_CONTROL";
+        } else if(WorkspaceTools.NAMES.contains(call.name())) {
+            var policy=WorkspaceToolPersistence.decision(c,lease,call);result=policy.decision();reason=policy.reasonCode();
         } else {
             // Only the fixed deterministic probe can be supplied by the protected fixture composition.
             // Production has no business definitions. Neither FULL nor a grant registers a capability.

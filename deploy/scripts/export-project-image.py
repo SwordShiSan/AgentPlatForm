@@ -24,6 +24,39 @@ def digest(path):
     return value.hexdigest()
 
 
+def exported_identity(exported, actual, source):
+    """Resolve a Desktop OCI ID or legacy config ID through the saved archive.
+
+    This also supports a shared archive with several separately pinned images.
+    Callers must provide each image's original committed source, never relabel it.
+    """
+    manifest=json.load(exported.extractfile('manifest.json'))
+    def blob(identity):
+        raw=exported.extractfile('blobs/sha256/'+identity.split(':')[1]).read()
+        assert 'sha256:'+hashlib.sha256(raw).hexdigest()==identity
+        return json.loads(raw)
+    descriptor=actual.get('Descriptor');index_id=None;manifest_id=None
+    if descriptor:
+        index_id=descriptor['digest'];node=blob(index_id)
+        if 'manifests' in node:
+            candidates=[m for m in node['manifests'] if m.get('platform',{}).get('architecture')=='amd64' and m.get('platform',{}).get('os')=='linux']
+            assert len(candidates)==1;manifest_id=candidates[0]['digest'];node=blob(manifest_id)
+        else:manifest_id=index_id
+        expected=node['config']['digest']
+    else:expected=actual['Id']
+    matches=[]
+    for row in manifest:
+        raw=exported.extractfile(row['Config']).read();config_id='sha256:'+hashlib.sha256(raw).hexdigest()
+        if config_id!=expected:continue
+        config=json.loads(raw)
+        assert config['architecture']=='amd64' and config['os']=='linux'
+        assert config['config'].get('Labels',{}).get('org.opencontainers.image.revision')==source
+        assert config['rootfs']['diff_ids']==actual['RootFS']['Layers']
+        matches.append(row)
+    assert len(matches)==1,'Missing or ambiguous exported platform config'
+    return {'localId':actual['Id'],'indexDigest':index_id,'manifestDigest':manifest_id,'configId':expected,'exportManifest':matches}
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--tag',required=True)
@@ -47,27 +80,11 @@ def main():
     subprocess.run(['docker','image','save','--output',str(archive),args.tag],check=True)
     with tarfile.open(archive) as exported:
         manifest=json.load(exported.extractfile('manifest.json'));assert len(manifest)==1
-        raw_config=exported.extractfile(manifest[0]['Config']).read();config_id='sha256:'+hashlib.sha256(raw_config).hexdigest();config=json.loads(raw_config)
-        def blob(identity):
-            raw=exported.extractfile('blobs/sha256/'+identity.split(':')[1]).read()
-            assert 'sha256:'+hashlib.sha256(raw).hexdigest()==identity
-            return json.loads(raw)
-        descriptor=actual.get('Descriptor');index_id=None;manifest_id=None
-        if descriptor:
-            index_id=descriptor['digest'];node=blob(index_id)
-            if 'manifests' in node:
-                candidates=[m for m in node['manifests'] if m.get('platform',{}).get('architecture')=='amd64' and m.get('platform',{}).get('os')=='linux']
-                assert len(candidates)==1;manifest_id=candidates[0]['digest'];node=blob(manifest_id)
-            else:manifest_id=index_id
-            assert node['config']['digest']==config_id
-        else:assert actual['Id']==config_id
-        assert config['architecture']=='amd64' and config['os']=='linux'
-        assert config['config'].get('Labels',{}).get('org.opencontainers.image.revision')==source
-        assert config['rootfs']['diff_ids']==actual['RootFS']['Layers']
+        identity=exported_identity(exported,actual,source)
     with archive.open('rb') as origin,compressed.open('xb') as destination:
         with gzip.GzipFile(filename='',fileobj=destination,mode='wb',compresslevel=1,mtime=0) as zipped:shutil.copyfileobj(origin,zipped,1024*1024)
-    record={'component':args.component,'tag':args.tag,'source':source,'localId':actual['Id'],'indexDigest':index_id,'manifestDigest':manifest_id,
-            'configId':config_id,'platform':'linux/amd64','archive':str(compressed),'archiveBytes':compressed.stat().st_size,
+    record={'component':args.component,'tag':args.tag,'source':source,**identity,
+            'platform':'linux/amd64','archive':str(compressed),'archiveBytes':compressed.stat().st_size,
             'archiveSha256':digest(compressed),'exportManifest':manifest,'registry':'LOCAL_ONLY_NOT_PUSHED'}
     (output/'image.json').write_text(json.dumps(record,indent=2)+'\n',encoding='utf-8',newline='\n')
     print(json.dumps({k:record[k] for k in ['component','source','localId','configId','archiveBytes','archiveSha256']}))

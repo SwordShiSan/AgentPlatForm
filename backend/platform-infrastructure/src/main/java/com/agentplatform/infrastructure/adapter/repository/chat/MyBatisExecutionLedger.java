@@ -55,25 +55,32 @@ final class MyBatisExecutionLedger {
     }
 
     static void startTool(ChatMappers c,Lease l,com.agentplatform.types.harness.HarnessData.Call call) {
-        guard(c,l);
+        if(com.agentplatform.domain.chat.WorkspaceTools.NAMES.contains(call.name())) {
+            WorkspaceToolPersistence.resourceGuard(c,l);
+            if("workspace_shell".equals(call.name())&&c.workspaceTools().lockSandboxSlot()==null)throw new ChatFailure(409,"SANDBOX_CAPACITY_UNAVAILABLE");
+            var catalog=c.workspaceTools().catalog(l.spaceId(),l.taskId());
+            if(catalog==null||c.workspaceTools().lockWorkspace(l.spaceId(),catalog.workspaceId(),l.userId())==null)
+                throw new ChatFailure(409,"WORKSPACE_NOT_READY");
+        }else guard(c,l);
         if(PermissionPersistence.decision(c,l,call,true)!=Decision.ALLOW)throw new ChatFailure(403,"OPERATION_NOT_AUTHORIZED");
         ApprovalPersistence.consume(c,l,call);
         if(c.ledger().updateToolOperation191(l.spaceId(), l.taskId(), l.attemptId(), l.fence(), call.id(), hash(canonicalJson(call)))!=1)
             throw new ChatFailure(409,"OPERATION_NOT_PREPARED");
+        if("workspace_shell".equals(call.name()))WorkspaceToolPersistence.reserveShellOutputs(c,l,call);
     }
 
     static void commitTool(ChatMappers c,Lease l,com.agentplatform.types.harness.HarnessData.Call call,Observation result) {
         if(result.status()==OperationStatus.DENIED){ApprovalPersistence.denied(c,l,call,result);return;}
         guard(c,l);
-        if(!call.id().equals(result.callId())||!call.name().equals(result.name())||result.status()!=OperationStatus.SUCCEEDED)
+        if(!call.id().equals(result.callId())||!call.name().equals(result.name())||!Set.of(OperationStatus.SUCCEEDED,OperationStatus.FAILED).contains(result.status()))
             throw new ChatFailure(409,"OPERATION_RESULT_MISMATCH");
         String body=canonicalJson(result),digest=hash(body);
         { var rows183 = c.ledger().selectToolOperation183(l.spaceId(), l.taskId(), l.attemptId(), l.fence(), call.id(), hash(canonicalJson(call))); var row183 = rows183.isEmpty() ? null : rows183.getFirst();
             if(row183 == null)throw new ChatFailure(409,"OPERATION_NOT_FOUND");
-            if("SUCCEEDED".equals(row183.value1())&&digest.equals(row183.value2()))return;
+            if(result.status().name().equals(row183.value1())&&digest.equals(row183.value2()))return;
             if(!"RUNNING".equals(row183.value1()))throw new ChatFailure(409,"OPERATION_NOT_RUNNING");
          }
-        c.ledger().updateToolOperation192(body, digest, l.taskId(), call.id());
+        c.ledger().updateToolOperation192(body, digest, l.taskId(), call.id(),result.status().name());
     }
 
     static String key(Lease l,String key) {
@@ -138,7 +145,7 @@ final class MyBatisExecutionLedger {
         String canonical=canonicalJson(Map.of("rounds",rounds,"operations",operations));
         String state=canonicalJson(states);
         String manifest=canonicalJson(Map.of("bundle",bundle,"watermark",watermark,"canonicalHash",hash(canonical),"stateHash",hash(state),"states",stateManifest(states)));UUID id=Uuid7.next();
-        c.ledger().insertCheckpoint194(id, l.spaceId(), l.taskId(), l.attemptId(), l.fence(), BUNDLE, bundle.hash(), manifest, hash(manifest), canonical, hash(canonical), watermark, state, hash(state));return id;
+        c.ledger().insertCheckpoint194(id, l.spaceId(), l.taskId(), l.attemptId(), l.fence(), WorkspaceToolPersistence.bundleId(c,l.spaceId(),l.taskId()), bundle.hash(), manifest, hash(manifest), canonical, hash(canonical), watermark, state, hash(state));return id;
     }
     static List<Message> history(ChatMappers c,Lease l) {
         guard(c,l);List<Message> history=new ArrayList<>();

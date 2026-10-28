@@ -7,7 +7,7 @@ import { setCsrf } from '../../shared/api/session';
 import { newRequestId } from '../../shared/api/request-id';
 import type { components } from '../../shared/api/generated/http';
 
-const props = defineProps<{ actor: string; space: string; taskId: string; taskVersion: number }>();
+const props = defineProps<{ actor: string; space: string; taskId: string; taskVersion: number; workspaceToolsEnabled?: boolean }>();
 type Mode = 'RISK_BASED' | 'FULL'; type Capability = 'LIST' | 'READ' | 'WRITE';
 type Command = { key: string; version: number; mode?: Mode; scopeId?: string; capabilities?: Capability[]; grantId?: string };
 const pending = ref<Command>(); const busy = ref(false); const error = ref(''); const selected = ref('');
@@ -50,7 +50,7 @@ function label(value: components['schemas']['TaskDirectoryGrant']) { return valu
     <template v-if="current">
       <p>固定工作区：{{ current.workspaceId ?? '未绑定（普通文本任务）' }}</p>
       <label>权限模式 <select :value="current.mode" :disabled="!current.mutable || busy || !!pending" @change="send({ mode: ($event.target as HTMLSelectElement).value as Mode })"><option value="RISK_BASED">按风险确认</option><option value="FULL">任务内完全权限</option></select></label>
-      <p>完全权限仍受资源归属、Plan与强制策略限制。业务工具尚未开放，授权不会启动环境或执行文件操作。</p>
+      <p>{{ workspaceToolsEnabled ? '完全权限可自动执行整个绑定工作区内的命令，包括文件创建、修改和删除；仍受资源归属、Plan与强制策略限制。目录授权不等于命令执行许可。' : '完全权限仍受资源归属、Plan与强制策略限制。业务工具尚未开放，授权不会启动环境或执行文件操作。' }}</p>
       <p v-if="!current.mutable">任务已结束或正在取消，权限只读，目录授权不再生效。</p>
       <fieldset v-if="current.mutable && current.workspaceId" :disabled="busy || !!pending">
         <legend>授权选定目录（本任务内，最长24小时）</legend>

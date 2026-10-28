@@ -11,16 +11,22 @@ public final class PlanInteractionData {
     public enum Kind { PLAN_APPROVAL, QUESTION, TOOL_APPROVAL }
     public enum Decision { EXECUTE_PLAN, REVISE_PLAN, REJECT_PLAN, DELIVER_PLAN, ANSWER, SKIP, ALLOW_ONCE, DENY }
     public record Revision(UUID id, long revision, String title, String markdown, String source, String hash, Instant createdAt) {}
-    public record Plan(UUID taskId, String status, long version, Revision current, List<Revision> revisions) {
+    public record Plan(UUID taskId, String status, long version, Revision current, List<Revision> revisions, String executionPhase) {
         public Plan { revisions=List.copyOf(revisions); }
+        public Plan(UUID taskId,String status,long version,Revision current,List<Revision> revisions){this(taskId,status,version,current,revisions,"TEXT_ONLY");}
     }
     public record Option(String id,String label) {}
     /** Redacted approval projection; arguments and framework state remain server-owned. */
     public record ToolApprovalPayload(UUID operationId, String toolName, String summary, String reasonCode,
                                       UUID workspaceId, String target, String targetVersion, String callHash,
                                       boolean stale, List<Decision> allowedActions, long permissionVersion,
-                                      String policyVersion) {
+                                      String policyVersion, WorkspaceOperationData.Review review) {
         public ToolApprovalPayload { allowedActions=List.copyOf(allowedActions); }
+        public ToolApprovalPayload(UUID operationId,String toolName,String summary,String reasonCode,UUID workspaceId,
+                String target,String targetVersion,String callHash,boolean stale,List<Decision> allowedActions,
+                long permissionVersion,String policyVersion) {
+            this(operationId,toolName,summary,reasonCode,workspaceId,target,targetVersion,callHash,stale,allowedActions,permissionVersion,policyVersion,null);
+        }
     }
     public record Pending(UUID interactionId, UUID taskId, Kind kind, boolean optional, long version,
                           Instant expiresAt, Revision plan, String question, List<Option> options,

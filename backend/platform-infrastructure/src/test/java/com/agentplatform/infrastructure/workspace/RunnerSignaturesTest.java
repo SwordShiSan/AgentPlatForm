@@ -57,6 +57,16 @@ class RunnerSignaturesTest {
         assertThrows(WorkspaceFailure.class,()->runner(CLOCK).authenticate(wrongAudience.sign(binding,new byte[0])));
         assertThrows(WorkspaceFailure.class,()->runner(CLOCK).authenticate(control(Clock.offset(CLOCK,Duration.ofSeconds(10))).sign(binding,new byte[0])));
     }
+    @Test void shellEnvelopeBoundIsVersionAndDirectionSpecific() {
+        var shell=new RunnerSignatures.Binding("POST","/internal/workspace-shell/v1",binding.commandId(),binding.operationId(),binding.spaceId(),binding.workspaceId(),1,7);
+        byte[] escapedEnvelope=new byte[100000];
+        runner(CLOCK).verify(control(CLOCK).sign(shell,escapedEnvelope),shell,escapedEnvelope);
+        assertThrows(WorkspaceFailure.class,()->control(CLOCK).sign(shell,new byte[131073]));
+        var response=new RunnerSignatures.Binding("RESPONSE",shell.path(),shell.commandId(),shell.operationId(),shell.spaceId(),shell.workspaceId(),1,7);
+        assertThrows(WorkspaceFailure.class,()->runner(CLOCK).sign(response,new byte[65537]));
+        assertThrows(WorkspaceFailure.class,()->runner(CLOCK).verify(control(CLOCK).sign(shell,escapedEnvelope),binding,escapedEnvelope));
+        assertThrows(IllegalArgumentException.class,()->new RunnerSignatures.Binding("GET",shell.path()+"/"+UUID.randomUUID(),shell.commandId(),shell.operationId(),shell.spaceId(),shell.workspaceId(),1,7));
+    }
     @Test void disallowedAlgorithmAndMissingLifetimeReject() throws Exception {
         var claims=new com.nimbusds.jwt.JWTClaimsSet.Builder().issuer("control").audience("runner").jwtID(binding.commandId().toString()).build();
         var missingTime=new com.nimbusds.jwt.SignedJWT(new com.nimbusds.jose.JWSHeader.Builder(com.nimbusds.jose.JWSAlgorithm.RS256)

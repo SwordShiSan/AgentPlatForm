@@ -27,14 +27,22 @@ final class ApprovalPersistence extends ChatPersistenceSupport implements Approv
         String resource=c.approvals().resource(p);
         return resource==null?null:hash(MyBatisExecutionLedger.canonicalJson(object(resource)));
     }
+    private static String resourceHash(ChatMappers c,PermissionRow p,UUID operation) {
+        if(WorkspaceToolPersistence.enabled(c,p.spaceId(),p.taskId()))
+            return operation==null?null:c.workspaceTools().currentResourceHash(p.actorId(),p.spaceId(),p.taskId(),operation);
+        return resourceHash(c,p);
+    }
+    private static String resourceHash(ChatMappers c,PermissionRow p,Call call) {
+        return resourceHash(c,p,c.workspaceTools().operationId(p.spaceId(),p.taskId(),call.id()));
+    }
     private static String fingerprint(ChatMappers c,PermissionRow p,Call call) {
         var identity=new TreeMap<String,Object>();identity.put("tool",call.name());identity.put("arguments",call.arguments());
-        identity.put("workspace",p.workspaceId());identity.put("resource",resourceHash(c,p));identity.put("policy",p.policyVersion());
+        identity.put("workspace",p.workspaceId());identity.put("resource",resourceHash(c,p,call));identity.put("policy",p.policyVersion());
         return hash(MyBatisExecutionLedger.canonicalJson(identity));
     }
     private static boolean stale(ChatMappers c,BindingRow b) {
         var p=permission(c,b.spaceId(),b.taskId());
-        return !Objects.equals(b.resourceHash(),resourceHash(c,p)) || b.permissionVersion()!=p.version()
+        return !Objects.equals(b.resourceHash(),resourceHash(c,p,b.operationId())) || b.permissionVersion()!=p.version()
                 || !b.policyVersion().equals(p.policyVersion()) || !RiskPolicy.VERSION.equals(p.policyVersion())
                 || !Objects.equals(b.workspaceId(),p.workspaceId()) || !b.actorId().equals(p.actorId()) || p.planMode()
                 || p.cancelRequested() || !Set.of("RUNNING","WAITING_INPUT","QUEUED").contains(p.status())
@@ -67,11 +75,15 @@ final class ApprovalPersistence extends ChatPersistenceSupport implements Approv
             event(c,new Actor(lease.userId(),lease.spaceId()),lease.conversationId(),lease.taskId(),"interaction.resolved",old.version(),
                     Map.of("taskId",lease.taskId().toString(),"interactionId",old.id().toString(),"decision","SUPERSEDED","version",old.version()));
         }
-        var p=permission(c,lease.spaceId(),lease.taskId());String resource=resourceHash(c,p);
+        var p=permission(c,lease.spaceId(),lease.taskId());String resource=resourceHash(c,p,operation.id());
         if(resource==null)throw new ChatFailure(409,"APPROVAL_TARGET_UNAVAILABLE");
         UUID interaction=Uuid7.next();
         c.plan().insertInteraction(interaction,lease.spaceId(),lease.taskId(),lease.attemptId(),call.id(),"TOOL_APPROVAL",false,json(Map.of("toolName",call.name())),null,null);
-        c.approvals().bind(interaction,lease,operation,p,resource,fingerprint(c,p,call),"Run one protected deterministic acceptance operation.","MANDATORY_ASK");
+        String summary=WorkspaceTools.NAMES.contains(call.name())
+                ? "workspace_shell".equals(call.name())?"Run the reviewed command in the entire bound workspace. It may change or delete workspace files; the sandbox stops after this call.":"Perform the reviewed operation in the task's fixed workspace."
+                :"Run one protected deterministic acceptance operation.";
+        c.approvals().bind(interaction,lease,operation,p,resource,fingerprint(c,p,call),summary,
+                WorkspaceTools.NAMES.contains(call.name())?"CONFIRMATION_REQUIRED":"MANDATORY_ASK");
         var row=c.plan().interaction(lease.spaceId(),lease.taskId(),interaction);
         event(c,new Actor(lease.userId(),lease.spaceId()),lease.conversationId(),lease.taskId(),"interaction.opened",row.version(),
                 Map.of("interactionId",interaction.toString(),"taskId",lease.taskId().toString(),"kind","TOOL_APPROVAL","optional",false,"version",row.version(),"expiresAt",row.expiresAt().toString()));
@@ -86,9 +98,22 @@ final class ApprovalPersistence extends ChatPersistenceSupport implements Approv
         boolean changed=stale(mappers,b)||!"PREPARED".equals(o.status());
         Object toolName=object(interaction.payloadJson()).get("toolName");
         String safeToolName=toolName instanceof String name&&!name.isBlank()?name:"Protected operation";
+        com.agentplatform.types.WorkspaceOperationData.Review review=null;
+        if(WorkspaceToolPersistence.enabled(mappers,b.spaceId(),b.taskId())) {
+            // Use the same allowlisted, actor-scoped projection as ToolCard. The API
+            // never receives grants to private call_json, credentials or SDK state.
+            UUID before=null;
+            while(true) {
+                var page=mappers.workspaceTools().publicOperations(new Actor(b.actorId(),b.spaceId()),b.taskId(),before,51);
+                var row=page.stream().filter(value->b.operationId().equals(value.operationId())).findFirst();
+                if(row.isPresent()){review=JSON.readValue(row.get().reviewJson(),com.agentplatform.types.WorkspaceOperationData.Review.class);break;}
+                if(page.size()<51)throw new ChatFailure(409,"APPROVAL_OPERATION_MISMATCH");
+                before=page.getLast().operationId();
+            }
+        }
         return new ToolApprovalPayload(b.operationId(),safeToolName,b.summary(),b.reasonCode(),b.workspaceId(),null,
                 b.workspaceId()==null?null:b.resourceHash(),b.callHash(),changed,
-                changed?List.of(PlanInteractionData.Decision.DENY):List.of(PlanInteractionData.Decision.ALLOW_ONCE,PlanInteractionData.Decision.DENY),b.permissionVersion(),b.policyVersion());
+                changed?List.of(PlanInteractionData.Decision.DENY):List.of(PlanInteractionData.Decision.ALLOW_ONCE,PlanInteractionData.Decision.DENY),b.permissionVersion(),b.policyVersion(),review);
     }
     void validateAnswer(InteractionRow interaction,PlanInteractionData.Answer answer) {
         if(!Set.of(PlanInteractionData.Decision.ALLOW_ONCE,PlanInteractionData.Decision.DENY).contains(answer.decision())
@@ -135,7 +160,7 @@ final class ApprovalPersistence extends ChatPersistenceSupport implements Approv
         var b=c.approvals().binding(lease.spaceId(),lease.taskId(),call.id());if(b==null)return;
         var answer=answerForResume(c,lease,b);
         if(answer==null||!"ALLOW_ONCE".equals(answer.decision())||stale(c,b))throw new ChatFailure(409,"APPROVAL_NOT_VALID");
-        if(b.workspaceId()!=null){
+        if(b.workspaceId()!=null&&!WorkspaceTools.NAMES.contains(call.name())){
             String locked=c.approvals().lockResource(permission(c,lease.spaceId(),lease.taskId()));
             if(locked==null||!b.resourceHash().equals(hash(MyBatisExecutionLedger.canonicalJson(object(locked)))))throw new ChatFailure(409,"APPROVAL_STALE");
         }

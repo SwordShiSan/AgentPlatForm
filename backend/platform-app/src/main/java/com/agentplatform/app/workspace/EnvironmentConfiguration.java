@@ -17,8 +17,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 @EnableConfigurationProperties(EnvironmentProperties.class)
 public class EnvironmentConfiguration {
     @Bean EnvironmentExecutionRepository environmentExecutionRepository(EnvironmentExecutionMapper execution,EnvironmentPreparationMapper preparation,
-            WorkspaceMapper workspaces,TransactionTemplate transactions,WorkspaceFixtureBarrier barrier) {
-        return new TransactionalEnvironmentExecutionRepository(new MyBatisEnvironmentExecutionRepository(execution,preparation,workspaces),transactions,barrier);
+            WorkspaceMapper workspaces,TransactionTemplate transactions,WorkspaceFixtureBarrier barrier,
+            @org.springframework.beans.factory.annotation.Value("${platform.workspace.tools.enabled:false}")boolean tools) {
+        return new TransactionalEnvironmentExecutionRepository(new MyBatisEnvironmentExecutionRepository(execution,preparation,workspaces,tools),transactions,barrier);
     }
     @Bean @Profile({"workspace-worker","workspace-runner"}) EnvironmentUseRepository environmentUseRepository(EnvironmentUseMapper uses,
             EnvironmentPreparationMapper preparation,EnvironmentExecutionMapper execution,WorkspaceMapper workspaces,FileHelperRepository fileHelpers,TransactionTemplate transactions) {
@@ -60,6 +61,12 @@ public class EnvironmentConfiguration {
                 RunnerSignatures signatures,SandboxRuntime runtime,FileHelperRepository fileHelpers,WorkspaceFixtureBarrier barrier) {
             var instance=runtime.runnerInstance();execution.registerRunner(instance);
             return new EnvironmentUseRunnerService(repository,signatures,runtime,instance,barrier,fileHelpers);
+        }
+        @Bean @ConditionalOnProperty(name="platform.workspace.tools.enabled",havingValue="true")
+        WorkspaceShellRunnerApi workspaceShellRunnerApi(EnvironmentUseRepository repository,EnvironmentExecutionRepository execution,
+                RunnerSignatures signatures,SandboxRuntime runtime,WorkspaceFixtureBarrier barrier) {
+            var instance=runtime.runnerInstance();execution.registerRunner(instance);
+            return new WorkspaceShellRunnerService(repository,signatures,runtime,instance,barrier);
         }
     }
 }

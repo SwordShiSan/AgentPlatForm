@@ -3,12 +3,37 @@ package com.agentplatform.app.chat;
 import com.agentplatform.domain.chat.ChatFailure;
 import com.agentplatform.domain.chat.ChatProvider;
 import com.agentplatform.domain.harness.HarnessPorts.PreparedRun;
+import com.agentplatform.domain.harness.HarnessPorts.ToolExchange;
+import com.agentplatform.types.harness.HarnessData.Observation;
 import com.agentplatform.types.harness.HarnessData.Outcome;
 import java.util.concurrent.*;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ExecutionControlTest {
+    @Test void completedToolResultCannotReleaseAStillRunningRemoteContainer() throws Exception {
+        try(var executor=Executors.newFixedThreadPool(2)) {
+            var control=new ExecutionControl(executor);var termination=new CompletableFuture<Void>();var cancelSeen=new CountDownLatch(1);
+            control.tool(new ToolExchange(){
+                public CompletionStage<Observation> result(){return CompletableFuture.completedFuture(null);}
+                public CompletionStage<Void> terminated(){return termination;}
+                public void cancel(){cancelSeen.countDown();}
+            });
+            var stopped=CompletableFuture.supplyAsync(()->control.quiesce(true),executor);
+            assertTrue(cancelSeen.await(2,TimeUnit.SECONDS));assertFalse(stopped.isDone());
+            assertThrows(ChatFailure.class,()->control.receipt("remote-use"));
+            termination.complete(null);assertTrue(stopped.get(2,TimeUnit.SECONDS));
+        }
+    }
+    @Test void failedToolTerminationKeepsCapacityUnconfirmed() {
+        var control=new ExecutionControl(Runnable::run);
+        control.tool(new ToolExchange(){
+            public CompletionStage<Observation> result(){return CompletableFuture.completedFuture(null);}
+            public CompletionStage<Void> terminated(){return CompletableFuture.failedFuture(new IllegalStateException("runner unavailable"));}
+            public void cancel(){}
+        });
+        assertFalse(control.quiesce(true));assertThrows(ChatFailure.class,()->control.receipt("remote-use"));
+    }
     private static PreparedRun run(CompletableFuture<Void> stopped) {
         return new PreparedRun() {
             public CompletionStage<Outcome> start(){return new CompletableFuture<>();}

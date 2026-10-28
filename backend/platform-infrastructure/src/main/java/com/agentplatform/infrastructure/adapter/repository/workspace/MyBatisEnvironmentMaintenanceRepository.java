@@ -45,15 +45,16 @@ public final class MyBatisEnvironmentMaintenanceRepository implements Environmen
         return 1;
     }
     @Override public int scheduleStop() {
-        tx();var slot=environments.lockSlot();var id=mapper.readyOperation();if(id==null)return 0;
-        var command=execution.command(id);var row=lock(command);
+        tx();var id=mapper.readyOperation();if(id==null)return 0;
+        var command=execution.command(id);
+        boolean live=workspaces.authorized(new Actor(command.actorId(),command.spaceId()));
+        var slot=environments.lockSlot();var row=lock(command);
         if(row==null||!row.operationId().equals(id)||!"READY".equals(row.state()))return 0;
         if(!row.id().equals(slot.environmentId())||!Objects.equals(row.generation(),slot.generation()))throw new WorkspaceFailure(503,"ENVIRONMENT_CAPACITY_INCONSISTENT");
         // An unresolved data-plane owner must converge with its own stop barrier or
         // trusted host proof. A fresh controller cannot assert that owner's callbacks stopped.
         if(environments.unresolvedUse(row.id())||environments.lifecycleBusy(row.spaceId(),row.workspaceId())
                 ||workspaces.fileDataPlaneBusy(row.spaceId(),row.workspaceId())||mapper.fileOperationBusy(row.spaceId(),row.workspaceId()))return 0;
-        boolean live=workspaces.authorized(new Actor(command.actorId(),command.spaceId()));
         if(live&&!mapper.idle(row.id()))return 0;
         var operation=Uuid7.next();long fence=Math.addExact(row.fence(),1);
         mapper.insertStop(command,operation,Uuid7.next(),fence);

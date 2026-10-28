@@ -35,6 +35,7 @@ final class ControlPersistence extends ChatPersistenceSupport implements Cancell
         tx(c -> {
             owned(c,lease,true);
             if(receiptHash==null||!receiptHash.matches("[a-f0-9]{64}"))throw new ChatFailure(409,"STOP_RECEIPT_INVALID");
+            WorkspaceToolPersistence.requireStoppedChildren(c,lease.spaceId(),lease.taskId());
             c.control().recordStop(lease,receiptHash);
             if(c.control().stopCount(lease)!=1)throw new ChatFailure(409,"STOP_RECEIPT_MISMATCH");
             if(known!=null) {

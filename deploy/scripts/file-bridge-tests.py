@@ -23,9 +23,9 @@ def main():
     output.mkdir(parents=True)
     run_id=str(uuid.uuid4());name='ap-file-bridge-tests-'+run_id
     command=['docker','run','--rm','--name',name,'--platform','linux/amd64','--network','none','--read-only',
-             '--user','10001:10001','--cap-drop','ALL','--security-opt','no-new-privileges:true','--memory','64m','--memory-swap','64m',
+             '--user','10001:10001','--cap-drop','ALL','--security-opt','no-new-privileges:true','--memory','192m','--memory-swap','192m',
              '--cpus','1','--pids-limit','32','--label','ap.fixture.run='+run_id,
-             '--tmpfs','/tmp:rw,nosuid,noexec,size=16m,uid=10001,gid=10001',
+             '--tmpfs','/tmp:rw,nosuid,noexec,size=128m,uid=10001,gid=10001',
              '--mount','type=bind,src='+str(ROOT/'deploy/scripts')+',dst=/source/scripts,readonly',
              '--mount','type=bind,src='+str(ROOT/'deploy/tests')+',dst=/source/tests,readonly',
              '--env','PYTHONDONTWRITEBYTECODE=1','--entrypoint','python3',image,

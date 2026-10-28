@@ -23,6 +23,19 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /** Application atomic boundaries; network and provider calls never run inside these transactions. */
 public final class TransactionalChatRepository implements ChatRepository {
+    @Override public java.util.List<com.agentplatform.types.WorkspaceOperationData.Artifact> workspaceOperationArtifacts(Actor actor,UUID operation){return tx(snapshots,()->delegate.workspaceOperationArtifacts(actor,operation));}
+    @Override public Bundle executionBundle(Lease lease){return tx(transactions,()->delegate.executionBundle(lease));}
+    @Override public boolean workspaceToolTask(Lease lease){return tx(transactions,()->delegate.workspaceToolTask(lease));}
+    @Override public com.agentplatform.domain.chat.WorkspaceToolLedger.ResultRecord workspaceOperationResult(Actor actor,UUID operation){return tx(snapshots,()->delegate.workspaceOperationResult(actor,operation));}
+    @Override public com.agentplatform.types.WorkspaceOperationData.Page workspaceOperations(Actor actor,UUID task,UUID before,int limit){return tx(snapshots,()->delegate.workspaceOperations(actor,task,before,limit));}
+    @Override public void prepareWorkspaceTools(Lease lease,List<HarnessData.Call> calls,String image,String policy){tx(transactions,()->{delegate.prepareWorkspaceTools(lease,calls,image,policy);return null;});}
+    @Override public com.agentplatform.domain.chat.WorkspaceToolLedger.Intent workspaceToolIntent(Lease lease,HarnessData.Call call){return tx(transactions,()->delegate.workspaceToolIntent(lease,call));}
+    @Override public com.agentplatform.domain.chat.WorkspaceToolLedger.FileAdmission workspaceFileAdmission(Lease lease,HarnessData.Call call){return tx(transactions,()->delegate.workspaceFileAdmission(lease,call));}
+    @Override public com.agentplatform.domain.chat.WorkspaceToolLedger.FileAdmission recordWorkspaceFileAdmission(Lease lease,HarnessData.Call call,UUID upload,String failure){return tx(transactions,()->delegate.recordWorkspaceFileAdmission(lease,call,upload,failure));}
+    @Override public void bindWorkspaceFileOperation(Lease lease,HarnessData.Call call,UUID operation){tx(transactions,()->{delegate.bindWorkspaceFileOperation(lease,call,operation);return null;});}
+    @Override public boolean workspaceFileStopped(Lease lease,HarnessData.Call call){return tx(transactions,()->delegate.workspaceFileStopped(lease,call));}
+    @Override public void requestWorkspaceToolStop(Lease lease,HarnessData.Call call,com.agentplatform.domain.chat.WorkspaceToolLedger.StopReason reason){tx(transactions,()->{delegate.requestWorkspaceToolStop(lease,call,reason);return null;});}
+    @Override public com.agentplatform.domain.workspace.WorkspaceShellData.Request workspaceShellRequest(Lease lease,HarnessData.Call call){return tx(transactions,()->delegate.workspaceShellRequest(lease,call));}
     private final ChatRepository delegate;
     private final TransactionTemplate transactions;
     private final TransactionTemplate snapshots;
