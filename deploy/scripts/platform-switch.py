@@ -10,7 +10,7 @@ def release_profile():
  path=OPS/'release-selection.json'
  if not path.exists():return 'agentplatform-app',NEW_APP,None
  profile=json.loads(path.read_text())
- assert profile['appProject']=='agentplatform-r3-app' and profile['appServices']==['runner','api','worker','gateway']
+ assert profile['appProject'] in ['agentplatform-r3-app','agentplatform-r4-app'] and profile['appServices']==['runner','api','worker','gateway']
  return profile['appProject'],profile['appServices'],hashlib.sha256(path.read_bytes()).hexdigest()
 
 def expected_services():
@@ -28,10 +28,11 @@ def call(args,**kwargs):
 def inspect(ids):return json.loads(call(['docker','inspect',*ids]))
 def mounts(x):return sorted([{k:m.get(k) for k in ['Type','Source','Destination','RW']} for m in x['Mounts']],key=lambda m:(m['Destination'],m['Source']))
 def inventory():
+ app,_,_=release_profile()
  rows=inspect(call(['docker','ps','-aq']).split());new=[];old=[]
  for x in rows:
   labels=x['Config'].get('Labels',{});name=x['Name'].lstrip('/')
-  if name not in LEGACY and labels.get('com.docker.compose.project') not in ['agentplatform-app','agentplatform-env','agentplatform-r3-app']:continue
+  if name not in LEGACY and labels.get('com.docker.compose.project') not in ['agentplatform-env',app]:continue
   rec={'id':x['Id'],'name':name,'image':x['Image'],'running':x['State']['Running'],'restart':x['HostConfig']['RestartPolicy'],'project':labels.get('com.docker.compose.project'),'service':labels.get('com.docker.compose.service'),'mounts':mounts(x)}
   rec['limits']={k:x['HostConfig'][k] for k in ['Memory','MemorySwap','PidsLimit']}
   (old if name in LEGACY else new).append(rec)
@@ -82,7 +83,7 @@ def new_sql(new,sql):
 def business_idle(new):return new_sql(new,"SELECT (SELECT count(*) FROM pf.execution_slot WHERE task_id IS NOT NULL)+(SELECT count(*) FROM pf.task WHERE status IN ('QUEUED','RUNNING'));")=='0'
 def idle(new):
  if not business_idle(new):return False
- if release_profile()[0]!='agentplatform-r3-app':return True
+ if release_profile()[0] not in ['agentplatform-r3-app','agentplatform-r4-app']:return True
  return new_sql(new,"SELECT (SELECT count(*) FROM pf.file_operation WHERE status NOT IN('COMMITTED','FAILED'))+(SELECT count(*) FROM pf.workspace_file_lease WHERE status<>'FREE')+(SELECT count(*) FROM pf.file_transfer_slot WHERE owner_id IS NOT NULL)+(SELECT count(*) FROM pf.workspace_environment_operation WHERE status NOT IN('COMMITTED','FAILED'))+(SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL);")=='0'
 def ordered_new(new):
  app,services,_=release_profile()
