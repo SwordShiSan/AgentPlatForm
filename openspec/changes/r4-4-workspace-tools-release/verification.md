@@ -107,3 +107,9 @@ Linux file-helper26tests PASS after correction, log `6a798d4e07c646a5c4d13d7f8fe
 
 Frozen-input selected PG/SDK/file/production composition rerun PASS: manifest `8cac9433edbdf74005e892545faee57d906cd62db5d9c4d20840d928acf34fdb`, log `7d5903a7223ab7395b07fc048c150e2a1782e4597ad8f127d279a8327e6e3075`,61.88s,supplier0. Includes actual commitFile Mapper identity and unchanged-refresh revision assertions. Full native/production gates remain pending for the new helper/application images.
 
+### Storage authorization lock order
+
+The `5f0624b` native run additionally passed original RISK approval/deny and Plan same-task business continuation. Its final nonzero case remained BLOCKED/UNKNOWN: PostgreSQL recorded another real deadlock at2026-10-28T18:11:43.912Z between `authorize_workspace_actor` (which takes a SHARE lock onspace_storage) andsandbox-slot acquisition. A concurrent background file SCAN was the second path, not a provider or Docker failure. Preserve the unresolved original task and failed window; do not reinterpret the absent result as a known shell exit.
+
+Correction covers file runner acceptance/observation, environment preparation/lifecycle/execution/use, trusted helper and idle maintenance: acquire authorization/storage locks before child slots. Trusted stop facts retain existing revocation behavior. The new actual-PG SCAN regression blocks space_storage, waits for the production runner authorization query, proves sandbox NOWAIT availability, then permits exactly one original runner acceptance after unlock. Selected PG/SDK/production composition PASS: input `015d45dbbd08ae98e3a1fe278bf56f78d175e07ecae657b90add1e7ba8eebd8f`, log `d9e4d8af5e92509b181e75d219312f527ee3f164fed321380802f8ba3f4a89e0`,82.21s,supplier0. Native reacceptance is still required.
+

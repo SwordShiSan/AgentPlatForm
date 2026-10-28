@@ -60,7 +60,11 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
         });
     }
     private void lock(Command command) {
-        tx();var operation=command.operation();environments.lockSlot();
+        tx();var operation=command.operation();
+        // Authorization also locks space_storage. Never acquire it after the sandbox slot.
+        // Ignore the result here: trusted stop observations remain possible after revocation.
+        workspaces.authorized(new com.agentplatform.domain.workspace.WorkspaceData.Actor(operation.actorId(),operation.spaceId()));
+        environments.lockSlot();
         if(workspaces.lockWorkspace(operation.spaceId(),operation.workspaceId())==null)throw stale();
         files.lockLease(operation.spaceId(),operation.workspaceId());files.lockOperation(operation.id());
         if(!command.equals(lookup(operation.spaceId(),operation.workspaceId(),operation.id())))throw stale();
@@ -135,7 +139,8 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
     @Override public Receipt observeNeverAccepted(Command command,UUID observer,String requestHash) {
         // Same locks as acceptance. No runtime role can delete an acceptance;
         // absence plus the expired UNKNOWN fence proves no physical invocation.
-        tx();if(transfers.lockSlot()==null)throw stale();lock(command);
+        tx();workspaces.authorized(new com.agentplatform.domain.workspace.WorkspaceData.Actor(command.operation().actorId(),command.operation().spaceId()));
+        if(transfers.lockSlot()==null)throw stale();lock(command);
         var previous=files.receipt(command);if(previous!=null)return previous;
         if(runner.command(command.operation().commandId())!=null||!runner.expiredUnknown(command))return null;
         negativeObservationGuard(command,observer);

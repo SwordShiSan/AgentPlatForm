@@ -35,7 +35,10 @@ public final class MyBatisEnvironmentUseRepository implements EnvironmentUseRepo
     private static WorkspaceFailure stale() {return new WorkspaceFailure(409,"ENVIRONMENT_USE_STALE_OWNER");}
     private static String hash(String text) {return RunnerSignatures.sha256(text.getBytes(StandardCharsets.UTF_8));}
     private Environment lock(UUID space,UUID workspace) {
-        tx();environments.lockSlot();
+        tx();var current=workspaces.workspace(space,workspace);
+        if(current==null)throw new WorkspaceFailure(404,"RESOURCE_NOT_FOUND");
+        // Take the storage/identity shared locks before the child slot; guards decide authorization.
+        workspaces.authorized(new Actor(current.actorId(),space));environments.lockSlot();
         if(workspaces.lockWorkspace(space,workspace)==null)throw new WorkspaceFailure(404,"RESOURCE_NOT_FOUND");
         var environment=environments.lockEnvironment(space,workspace);
         if(environment==null)throw new WorkspaceFailure(404,"RESOURCE_NOT_FOUND");

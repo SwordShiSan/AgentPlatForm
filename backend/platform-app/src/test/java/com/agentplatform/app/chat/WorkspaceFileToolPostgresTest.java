@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /** Actual PG/Mapper ownership and file transactions; object transport is a deterministic fixture. */
 class WorkspaceFileToolPostgresTest extends WorkspaceToolsMigrationPostgresTest {
     FileRepository files;WorkspaceFileToolService service;FileMapper fileMapper;TransactionTemplate fileTransactions;
+    FileRunnerRepository fileRunner;com.agentplatform.domain.workspace.RunnerInstance runnerInstance;
     Lease fixtureLease;
     final Map<String,byte[]> objects=new HashMap<>();
     @BeforeEach void fileServices() throws Exception {
@@ -36,6 +37,11 @@ class WorkspaceFileToolPostgresTest extends WorkspaceToolsMigrationPostgresTest 
         factory.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:mybatis/mapper/**/*.xml"));
         var session=new SqlSessionTemplate(factory.getObject());var tx=new TransactionTemplate(new JdbcTransactionManager(pool));
         fileMapper=session.getMapper(FileMapper.class);fileTransactions=tx;
+        fileRunner=new TransactionalFileRunnerRepository(new com.agentplatform.infrastructure.adapter.repository.files.MyBatisFileRunnerRepository(
+            session.getMapper(com.agentplatform.infrastructure.dao.files.FileRunnerMapper.class),fileMapper,session.getMapper(WorkspaceMapper.class),
+            session.getMapper(EnvironmentPreparationMapper.class),session.getMapper(EnvironmentExecutionMapper.class),session.getMapper(com.agentplatform.infrastructure.dao.files.FileTransferMapper.class)),tx);
+        runnerInstance=new com.agentplatform.domain.workspace.RunnerInstance(UUID.randomUUID(),RunnerSignatures.sha256(UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8)),"sha256:"+"f".repeat(64),"2026-10-29T00:00:00Z");
+        fileRunner.register(runnerInstance);
         files=new TransactionalFileRepository(new MyBatisFileRepository(session.getMapper(FileMapper.class),session.getMapper(WorkspaceMapper.class),
             session.getMapper(EnvironmentPreparationMapper.class),"sha256:"+"a".repeat(64),"b".repeat(64)),tx);
         var assets=new AssetStore(){
@@ -145,6 +151,32 @@ class WorkspaceFileToolPostgresTest extends WorkspaceToolsMigrationPostgresTest 
         String before=scalar("SELECT content_revision FROM pf.workspace WHERE id='"+workspace+"'");
         sql("UPDATE pf.file_entry SET observed_sha256='"+upload.sha256()+"',observed_bytes=3,collection_state='CONFIRMED' WHERE id='"+upload.fileId()+"'");
         assertEquals(before,scalar("SELECT content_revision FROM pf.workspace WHERE id='"+workspace+"'"));
+    }
+    @Test void scanAuthorizationWaitsForStorageBeforeHoldingTheSandboxSlot() throws Exception {
+        var operation=new FileData.Operation(UUID.randomUUID(),actor.spaceId(),workspace,actor.userId(),"SCAN",null,UUID.randomUUID(),null,1,null,null,null,
+            "PENDING","NOT_STARTED",null,1,"sha256:"+"a".repeat(64),"b".repeat(64),"",null,UUID.randomUUID(),null);
+        fileTransactions.executeWithoutResult(status->{fileMapper.insertOperation(operation);fileMapper.insertOutbox(UUID.randomUUID(),operation);});
+        var publication=files.publications(UUID.randomUUID()).stream().filter(p->p.operationId().equals(operation.id())).findFirst().orElseThrow();
+        files.published(publication,true);var command=files.claim(publication,UUID.randomUUID());assertNotNull(command);
+        try(var blocker=pool.getConnection();var executor=java.util.concurrent.Executors.newSingleThreadExecutor()) {
+            blocker.setAutoCommit(false);
+            try(var statement=blocker.createStatement()){statement.execute("SELECT 1 FROM pf.space_storage WHERE space_id='"+actor.spaceId()+"' FOR UPDATE");}
+            var waiting=executor.submit(()->fileRunner.accept(command,runnerInstance,RunnerSignatures.sha256(command.toString().getBytes(StandardCharsets.UTF_8))));
+            try {
+                long deadline=System.nanoTime()+java.util.concurrent.TimeUnit.SECONDS.toNanos(3);boolean parentWait=false;
+                while(System.nanoTime()<deadline) {
+                    parentWait="t".equals(scalar("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE wait_event_type='Lock' AND query LIKE 'SELECT pf.authorize_workspace_actor%')"));
+                    if(parentWait)break;Thread.sleep(10);
+                }
+                assertTrue(parentWait,"Runner authorization must wait for storage first");
+                try(var probe=pool.getConnection();var statement=probe.createStatement()) {
+                    probe.setAutoCommit(false);
+                    try {statement.execute("SELECT 1 FROM pf.workspace_sandbox_slot WHERE id=1 FOR UPDATE NOWAIT");}
+                    finally {probe.rollback();}
+                }
+            } finally {blocker.rollback();}
+            assertTrue(waiting.get(5,java.util.concurrent.TimeUnit.SECONDS));
+        }
     }
     @Test void explicitVersionReadIsUtf8CodepointPagedAndModelResultBounded() throws Exception {
         var upload=textFixture("😀中文".repeat(3500));var tool=new Call("read-one","workspace_read",Map.of("fileId",upload.fileId().toString(),"versionId",upload.versionId().toString(),"offsetCodePoints",2,"maxCodePoints",4096),true);

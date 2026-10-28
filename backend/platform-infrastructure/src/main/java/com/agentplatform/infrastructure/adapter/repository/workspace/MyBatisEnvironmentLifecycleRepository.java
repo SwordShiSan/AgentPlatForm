@@ -87,7 +87,7 @@ public final class MyBatisEnvironmentLifecycleRepository implements EnvironmentL
     @Override public Submission prepare(Actor actor,UUID workspaceId,UUID requestId,String hash,long version,boolean retry) {
         if(!TransactionSynchronizationManager.isActualTransactionActive())throw new IllegalStateException("Environment lifecycle transaction required");
         if(requestId==null||version<0||hash==null||!hash.matches("[0-9a-f]{64}"))throw new WorkspaceFailure(400,"INVALID_ENVIRONMENT_REQUEST");
-        environments.lockSlot();
+        workspaces.authorized(actor);environments.lockSlot();
         var workspace=workspaces.lockWorkspace(actor.spaceId(),workspaceId);
         if(!workspaces.authorized(actor)||workspace==null)throw new WorkspaceFailure(404,"RESOURCE_NOT_FOUND");
         var current=environments.lockEnvironment(actor.spaceId(),workspaceId);
@@ -174,6 +174,7 @@ public final class MyBatisEnvironmentLifecycleRepository implements EnvironmentL
             throw new WorkspaceFailure(400, "INVALID_ENVIRONMENT_REQUEST");
         }
         // Global capacity -> scoped workspace -> environment -> operation/use.
+        workspaces.authorized(actor);
         var slot = environments.lockSlot();
         var workspace = workspaces.lockWorkspace(actor.spaceId(), workspaceId);
         if (!workspaces.authorized(actor) || workspace == null) throw new WorkspaceFailure(404, "RESOURCE_NOT_FOUND");
