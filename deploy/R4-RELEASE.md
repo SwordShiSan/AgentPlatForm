@@ -1,6 +1,8 @@
+Current release: **production-r4-57e1d081e2bb, R4 RELEASED**. App `b676b5f933dd6375fcef72628776f0007b8ec3db`, gateway `115f865a8434b98638a33f72c23c39092b43be8a`. Production observation, isolated restore, R3 rollback and same-candidate final smoke PASS. Historical failures are retained in the protected receipts and public index.
+
 # R4 release and recovery
 
-The release result is recorded in `r4-release-acceptance.json` only after production gates finish. Until then production remains R3. GitHub Actions remain disabled; protected PRs use exact-source local/native receipts. Cloud sandbox migration stays DEFERRED.
+The release result is recorded in `r4-release-acceptance.json` only after production gates finish. Before the recorded release gate, production remains the retained R3 baseline. GitHub Actions remain disabled; protected PRs use exact-source local/native receipts. Cloud sandbox migration stays DEFERRED.
 
 ## Immutable inputs
 

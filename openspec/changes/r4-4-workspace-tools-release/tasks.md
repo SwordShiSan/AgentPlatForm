@@ -6,5 +6,5 @@
 - [x] 6. Safe operation APIs/events/generated client, Approval/Plan/ToolCard UI
 - [x] 7. Engineering and actual PG/MQ/S3/Linux/browser/resource acceptance with bounded real-model metering
 - [x] 8. Immutable candidate and protected step→phase→main, R4.4 VERIFIED
-- [ ] 9. Consistent production backup/migration/deploy,30min observation, isolated restore/R3 rollback/same candidate restart, R4 RELEASED
+- [x] 9. Consistent production backup/migration/deploy,30min observation, isolated restore/R3 rollback/same candidate restart, R4 RELEASED
 - [ ] 10. Archive/sync, canonical ledgers/Skill, protected delivery hashes and acceptance stack stop
