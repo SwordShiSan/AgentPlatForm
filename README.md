@@ -1,3 +1,7 @@
+## R4.4 实施中
+
+工作区业务工具正在贯通，尚未完成整合验收或发行；云端继续运行 R3。工具作业、停止确认、产物封存与安全结果接口的增量证据见[开发索引](evidence/r44/development-index.json)。本地组件测试通过不代表 R4 已上线，只有完成全部功能、恢复和云端发行门禁后才创建 R4 生产标签。云沙箱方案继续 DEFERRED。
+
 ## R4.3 VERIFIED
 
 原工具调用的持久审批与精确恢复已通过本地验收，并经[PR118](https://github.com/SwordShiSan/AgentPlatForm/pull/118)／[PR119](https://github.com/SwordShiSan/AgentPlatForm/pull/119)两级保护晋级。**R4完成3/4、未RELEASED；云端继续R3。** 一次允许或拒绝绑定原操作，恢复不重新生成工具调用，UNKNOWN不重放；审批卡不授予目录范围权限。业务工具目录仍关闭，真实供应商调用0。见[验收索引](evidence/r43/acceptance-index.json)、[本地验收](deploy/R4.3-LOCAL.md)和[正式计划](../项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R4.3-原工具调用持久审批与精确恢复实施计划.md)。R4.4另行Plan/OpenSpec，云沙箱继续DEFERRED。下方早期状态保留为历史。

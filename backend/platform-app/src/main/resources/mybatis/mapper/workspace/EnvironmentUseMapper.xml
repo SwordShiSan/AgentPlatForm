@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.agentplatform.infrastructure.dao.workspace.EnvironmentUseMapper">
+    <select id="shellAdmissionAllowed" resultType="boolean">SELECT pf.workspace_shell_admission_allowed(#{actor.userId},#{actor.spaceId},#{workspace},CAST(#{request} AS jsonb))</select>
+    <select id="shellParentAllowed" resultType="boolean">SELECT pf.workspace_shell_parent_allowed(#{id},#{locks})</select>
+    <insert id="insertShellAdmission">
+        INSERT INTO pf.workspace_tool_shell_admission(operation_id,space_id,task_id,workspace_id,attempt_id,owner_id,task_generation,task_fence,environment_id,use_id)
+        VALUES(#{parent.operationId},#{row.spaceId},#{parent.taskId},#{row.workspaceId},#{parent.attemptId},#{parent.ownerId},#{parent.taskGeneration},#{parent.taskFence},#{row.environmentId},#{row.id})
+    </insert>
+    <insert id="bindShellJob">
+        INSERT INTO pf.workspace_tool_job_binding(id,operation_id,space_id,task_id,workspace_id,environment_id,environment_use_id)
+        VALUES(#{id},#{parent.operationId},#{row.spaceId},#{parent.taskId},#{row.workspaceId},#{row.environmentId},#{row.id})
+    </insert>
     <sql id="columns">id,space_id,workspace_id,environment_id,actor_id,owner_id,request_id,generation,fence,creation_command_id,creation_fence,
         project_id,image_id,policy_hash,container_id,container_started_at,kind,request_hash,request_text,runner_instance_id,status,result_state,
         exec_id,cancel_requested,error_code,stop_operation_id,lease_until,execute_until,deadline_at,version</sql>

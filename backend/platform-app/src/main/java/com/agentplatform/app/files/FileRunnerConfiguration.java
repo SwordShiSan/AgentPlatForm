@@ -15,8 +15,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 @ConditionalOnProperty(name={"platform.workspace.enabled","platform.workspace.files.enabled"},havingValue="true")
 public class FileRunnerConfiguration {
     @Bean FileRunnerRepository fileRunnerRepository(FileRunnerMapper runner,FileMapper files,WorkspaceMapper workspaces,
-            EnvironmentPreparationMapper environments,EnvironmentExecutionMapper instances,FileTransferMapper transfers,TransactionTemplate transactions) {
-        return new TransactionalFileRunnerRepository(new MyBatisFileRunnerRepository(runner,files,workspaces,environments,instances,transfers),transactions);
+            EnvironmentPreparationMapper environments,EnvironmentExecutionMapper instances,FileTransferMapper transfers,FileCaptureMapper captures,TransactionTemplate transactions) {
+        return new TransactionalFileRunnerRepository(new MyBatisFileRunnerRepository(runner,files,workspaces,environments,instances,transfers,captures),transactions);
     }
     @Bean(destroyMethod="close") FileRuntime fileRuntime(WorkspaceRunnerProperties workspace,FileExecutionProperties files,
             AuxiliaryContainerSlot auxiliaryContainerSlot,java.util.UUID runnerInstanceNonce) {
@@ -26,5 +26,9 @@ public class FileRunnerConfiguration {
     }
     @Bean FileRunnerApi fileRunnerApi(FileRunnerRepository repository,FileRuntime runtime,AssetStore assets,RunnerSignatures signatures) {
         return new FileRunnerService(repository,runtime,assets,signatures);
+    }
+    @Bean @ConditionalOnProperty(name="platform.workspace.tools.enabled",havingValue="true")
+    com.agentplatform.api.files.FileCaptureRunnerApi fileCaptureRunnerApi(FileRunnerRepository repository,FileRuntime runtime,AssetStore assets,RunnerSignatures signatures) {
+        return new FileCaptureRunnerService(repository,runtime,assets,signatures);
     }
 }

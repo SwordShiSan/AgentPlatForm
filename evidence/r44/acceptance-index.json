@@ -1,0 +1,69 @@
+{
+  "stage": "R4.4",
+  "status": "PASS_PENDING_PROTECTED_PROMOTION",
+  "verified": false,
+  "released": false,
+  "source": "b3d1a36bfc072dd455be282973e2b36f8f6e22d9",
+  "headAtRecording": "03e61bf2249faba5a978e4ac99493b756d9170c6",
+  "images": {
+    "gateway": {
+      "source": "115f865a8434b98638a33f72c23c39092b43be8a",
+      "configId": "sha256:05d2b8f62f116471a3b0ebb9f59865f5c43c30e2d32157fa6837b9e47a803d8f",
+      "platform": "linux/amd64"
+    },
+    "file-helper": {
+      "source": "b3d1a36bfc072dd455be282973e2b36f8f6e22d9",
+      "configId": "sha256:5bb3aba335f2b11f40be2f05dbcce9044f995d6696e47734390a82c3911c9680",
+      "platform": "linux/amd64"
+    },
+    "provider-fixture": {
+      "source": "b3d1a36bfc072dd455be282973e2b36f8f6e22d9",
+      "configId": "sha256:dcec4c8e84e978bda58eb4d979c64c4790dc7b21ccb7b11006da93c7499872d2",
+      "platform": "linux/amd64"
+    },
+    "api": {
+      "source": "b3d1a36bfc072dd455be282973e2b36f8f6e22d9",
+      "configId": "sha256:64d09ef55a23381e338a164ca919a9b8779f727b76c91154b4c0ece7d44c0cf7",
+      "platform": "linux/amd64"
+    }
+  },
+  "archiveSha256": "633ba3b5f80b12d87d9634d6529c10a4478a1bff1fcaaf211d246317042248ae",
+  "engineeringReceiptSha256": "2dea4a30613875686305b8e99cc71850fe1903a787699c2354bbfe4202dabe5c",
+  "nativeAcceptanceSha256": "e50e274b780bcabdafb1acf802fdb2f984ec3f2e265ace9dc4e08e489f054b3e",
+  "restoreReceiptSha256": "5eae048d59c9cd49d371376a4dd221ea716c4359236b6b180e1e15cb5dae9ed6",
+  "nativeAssertions": {
+    "functional-result": [
+      "actual-quota-workspace-and-two-user-admin-isolation",
+      "actual-gvisor-shell-whole-stop-capture-s3-version-download-666",
+      "production-write-list-read-through-same-workspace-services",
+      "risk-exact-original-call-approved-and-background-descendants-stopped",
+      "risk-denied-original-operation-not-executed",
+      "plan-same-task-text-to-business-tools-no-extra-resource-grant",
+      "known-nonzero-failure-is-not-success-or-unknown"
+    ],
+    "browser-result": [
+      "actual-toolcard-canonical-version-download-and-hash",
+      "real-ui-risk-approval-refresh-responsive-zoom-keyboard-themes-and-same-task-result",
+      "admin-content-isolation-in-separate-browser-context",
+      "real-ui-plan-confirmation-full-auto-execution-and-result",
+      "internal-endpoints-closed",
+      "documented-plan-wire-size-reaches-authorized-application-validation-without413"
+    ],
+    "real-result": [
+      "actual-Flash-natural-language-production-tool-call",
+      "actual-gVisor-666-whole-stop-and-private-immutable-file-hash",
+      "historical-unknown-stopped-reserved-not-replayed"
+    ],
+    "observation-result": [
+      "same-container-worker-runner-restart-then-new-activation-and-original-result",
+      "broker-interruption-recovery-and-persistent-handoff",
+      "actual-running-exec-cancel-converges-and-exact-sandbox-slot-released"
+    ]
+  },
+  "observationSeconds": 1811.172147512436,
+  "physicalRequestsShared": 12,
+  "historicalUnknownCallsRetained": 2,
+  "successfulRealTaskUnknownCalls": 0,
+  "production": "R3 remains online; R4 deployment not yet performed",
+  "scope": "Public redacted index. Raw credentials, model text, SQL and logs remain protected. Historical failed candidate receipts and reservations are retained."
+}

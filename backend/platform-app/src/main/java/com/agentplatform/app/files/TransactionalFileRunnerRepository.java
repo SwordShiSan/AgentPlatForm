@@ -18,6 +18,9 @@ public final class TransactionalFileRunnerRepository implements FileRunnerReposi
         catch(DataAccessException|TransactionException unavailable){var failure=new FileFailure(503,"FILE_RUNNER_STORAGE_UNAVAILABLE");failure.initCause(unavailable);throw failure;}
     }
     @Override public void register(RunnerInstance i){tx(()->{delegate.register(i);return null;});}
+    @Override public FileCaptureData.Target captureTarget(Command c){return tx(()->delegate.captureTarget(c));}
+    @Override public void describeCapture(Command c,UUID i,long bytes,String hash){tx(()->{delegate.describeCapture(c,i,bytes,hash);return null;});}
+    @Override public void stopCapture(Command c,UUID i,FileRuntime.Stop stop){tx(()->{delegate.stopCapture(c,i,stop);return null;});}
     @Override public Command lookup(UUID s,UUID w,UUID o){return tx(()->delegate.lookup(s,w,o));}
     @Override public boolean accept(Command c,RunnerInstance i,String h){return tx(()->delegate.accept(c,i,h));}
     @Override public void guard(Command c,UUID i){tx(()->{delegate.guard(c,i);return null;});}

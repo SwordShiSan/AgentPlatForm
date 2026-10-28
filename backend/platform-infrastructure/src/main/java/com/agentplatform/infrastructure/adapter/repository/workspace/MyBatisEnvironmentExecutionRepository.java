@@ -11,14 +11,18 @@ import java.util.*;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.json.JsonMapper;
 
-/** Single lock order: sandbox slot → workspace → environment/operation → command/receipt. */
+/** Parent quota/task locks precede sandbox slot → workspace → environment/operation → command/receipt. */
 public final class MyBatisEnvironmentExecutionRepository implements EnvironmentExecutionRepository {
     private static final JsonMapper JSON=JsonMapper.builder().build();
     private final EnvironmentExecutionMapper mapper;
     private final EnvironmentPreparationMapper environments;
     private final WorkspaceMapper workspaces;
+    private final boolean workspaceTools;
     public MyBatisEnvironmentExecutionRepository(EnvironmentExecutionMapper mapper,EnvironmentPreparationMapper environments,WorkspaceMapper workspaces) {
-        this.mapper=mapper;this.environments=environments;this.workspaces=workspaces;
+        this(mapper,environments,workspaces,false);
+    }
+    public MyBatisEnvironmentExecutionRepository(EnvironmentExecutionMapper mapper,EnvironmentPreparationMapper environments,WorkspaceMapper workspaces,boolean workspaceTools) {
+        this.mapper=mapper;this.environments=environments;this.workspaces=workspaces;this.workspaceTools=workspaceTools;
     }
     private static void tx() {
         if(!TransactionSynchronizationManager.isActualTransactionActive())throw new IllegalStateException("Environment execution transaction required");
@@ -42,15 +46,16 @@ public final class MyBatisEnvironmentExecutionRepository implements EnvironmentE
     @Override public List<Publication> publications(UUID owner) {tx();return mapper.publications(owner);}
     @Override public void published(Publication item,boolean confirmed) {tx();mapper.published(item,confirmed);}
     @Override public Command claim(Publication item,UUID owner) {
-        tx();var slot=environments.lockSlot();
+        tx();boolean parentAllowed=!workspaceTools||mapper.activationAllowed(item.operationId(),true);
+        var pending=mapper.command(item.operationId());boolean allowed=pending!=null&&authorized(pending);
+        var slot=environments.lockSlot();
         if(!mapper.knownPublication(item)) {quarantine(Uuid7.next(),"INVALID_ENVIRONMENT_DELIVERY",RunnerSignatures.sha256(JSON.writeValueAsBytes(item)));return null;}
         var environment=lock(item.spaceId(),item.workspaceId());
         var operation=environments.operation(item.operationId());
         if(operation==null||!environment.operationId().equals(operation.id())||!environment.id().equals(item.environmentId())
                 ||environment.generation()!=item.generation()||environment.fence()!=item.fence()||!"PENDING".equals(operation.status())
                 ||!environment.id().equals(slot.environmentId())||!Objects.equals(slot.generation(),item.generation()))return null;
-        var pending=mapper.command(operation.id());
-        if(!authorized(pending)) {
+        if(!parentAllowed||!allowed) {
             if(mapper.rejectBeforeClaim(operation.id())!=1)throw new WorkspaceFailure(409,"ENVIRONMENT_CONCURRENT_CHANGE");
             mapper.projectRejected(environment.id());mapper.projectWorkspace(pending,"ERROR");mapper.releaseSlot(pending);
             event(environments.environment(environment.spaceId(),environment.workspaceId()));return null;
@@ -60,37 +65,45 @@ public final class MyBatisEnvironmentExecutionRepository implements EnvironmentE
         return mapper.command(operation.id());
     }
     @Override public Command lookup(UUID operationId) {
-        tx();environments.lockSlot();
+        tx();
         var command=mapper.command(operationId);
         if(command==null)throw new WorkspaceFailure(404,"RESOURCE_NOT_FOUND");
-        lock(command.spaceId(),command.workspaceId());environments.operation(operationId);
         guard(command,false);return command;
     }
     @Override public Query queryLookup(UUID operationId) {
-        tx();environments.lockSlot();var command=mapper.command(operationId);
+        tx();var command=mapper.command(operationId);
         if(command==null||!"ENVIRONMENT_V3".equals(command.protocol()))throw new WorkspaceFailure(404,"RESOURCE_NOT_FOUND");
+        // Queries can execute reconciliation, so acquire parent locks before child locks too.
+        // A stopped/expired parent's immutable receipts remain observable without execution rights.
+        boolean parentAllowed=!workspaceTools||mapper.activationAllowed(operationId,true);
+        boolean allowed=authorized(command);
+        environments.lockSlot();
         lock(command.spaceId(),command.workspaceId());var operation=environments.operation(operationId);
-        if(!authorized(command))throw new WorkspaceFailure(403,"ENVIRONMENT_AUTHORIZATION_REVOKED");
+        if(!allowed)throw new WorkspaceFailure(403,"ENVIRONMENT_AUTHORIZATION_REVOKED");
         if(Set.of("COMMITTED","FAILED").contains(operation.status()))return new Query(command,QueryMode.READ_ONLY);
-        if(mapper.owned(command,true)) {guard(command,true);return new Query(command,QueryMode.EXECUTION);}
+        if(mapper.owned(command,true)) {
+            if(!parentAllowed)throw new WorkspaceFailure(403,"TOOL_PARENT_NO_LONGER_AUTHORIZED");
+            guard(command,true);return new Query(command,QueryMode.EXECUTION);
+        }
         observedGuard(command,null,null,true);return new Query(command,QueryMode.OBSERVATION);
     }
     @Override public List<Observation> observations(UUID observerId) {
-        tx();Objects.requireNonNull(observerId);var slot=environments.lockSlot();
+        tx();Objects.requireNonNull(observerId);
         var id=mapper.observableOperation();if(id==null)return List.of();
-        var command=mapper.command(id);var row=lock(command.spaceId(),command.workspaceId());environments.operation(id);
+        var command=mapper.command(id);authorized(command);var slot=environments.lockSlot();
+        var row=lock(command.spaceId(),command.workspaceId());environments.operation(id);
         if(!row.operationId().equals(id)||!row.id().equals(slot.environmentId())||!Objects.equals(slot.generation(),command.generation())
                 ||row.generation()!=command.generation()||row.fence()!=command.fence())return List.of();
         var lease=mapper.observe(command,observerId);
         return lease==null?List.of():List.of(new Observation(command,lease.observerId(),lease.revision()));
     }
     private void observedGuard(Command command,UUID observerId,Long revision,boolean active) {
-        tx();var slot=environments.lockSlot();var row=lock(command.spaceId(),command.workspaceId());environments.operation(command.operationId());
+        tx();boolean allowed=authorized(command);var slot=environments.lockSlot();var row=lock(command.spaceId(),command.workspaceId());environments.operation(command.operationId());
         if(!row.operationId().equals(command.operationId())||row.generation()!=command.generation()||row.fence()!=command.fence()
                 ||!command.equals(mapper.command(command.operationId()))||!mapper.observing(command,observerId,revision,active)
                 ||active&&(!row.id().equals(slot.environmentId())||!Objects.equals(slot.generation(),command.generation()))
                 ||mapper.commandHash(command.commandId())==null)throw new WorkspaceFailure(409,"ENVIRONMENT_OBSERVATION_STALE");
-        if(!authorized(command))throw new WorkspaceFailure(403,"ENVIRONMENT_AUTHORIZATION_REVOKED");
+        if(!allowed)throw new WorkspaceFailure(403,"ENVIRONMENT_AUTHORIZATION_REVOKED");
     }
     @Override public void checkObservation(Observation observation) {
         observedGuard(observation.command(),observation.observerId(),observation.revision(),false);
@@ -102,19 +115,20 @@ public final class MyBatisEnvironmentExecutionRepository implements EnvironmentE
     }
     @Override public Receipt observedReceipt(Command command) {observedGuard(command,null,null,true);return readReceipt(command);}
     @Override public Receipt committedReceipt(Command command) {
-        tx();environments.lockSlot();lock(command.spaceId(),command.workspaceId());var operation=environments.operation(command.operationId());
+        tx();boolean allowed=authorized(command);environments.lockSlot();lock(command.spaceId(),command.workspaceId());var operation=environments.operation(command.operationId());
         if(!command.equals(mapper.command(command.operationId()))||!Set.of("COMMITTED","FAILED").contains(operation.status())
-                ||!authorized(command))throw new WorkspaceFailure(409,"ENVIRONMENT_READ_ONLY_UNAVAILABLE");
+                ||!allowed)throw new WorkspaceFailure(409,"ENVIRONMENT_READ_ONLY_UNAVAILABLE");
         var receipt=readReceipt(command);
         if("RUNNING".equals(receipt.state()))throw new WorkspaceFailure(503,"RUNNER_RECEIPT_CORRUPT");return receipt;
     }
     private void guard(Command command,boolean active) {
-        tx();var slot=environments.lockSlot();var row=lock(command.spaceId(),command.workspaceId());environments.operation(command.operationId());
+        tx();if(workspaceTools&&!mapper.activationAllowed(command.operationId(),true))throw new WorkspaceFailure(403,"TOOL_PARENT_NO_LONGER_AUTHORIZED");
+        boolean allowed=authorized(command);var slot=environments.lockSlot();var row=lock(command.spaceId(),command.workspaceId());environments.operation(command.operationId());
         var actual=mapper.command(command.operationId());
         if(!row.operationId().equals(command.operationId())||!command.equals(actual)||!mapper.owned(command,active)
                 ||active&&(!row.id().equals(slot.environmentId())||!Objects.equals(slot.generation(),command.generation())))
             throw new WorkspaceFailure(409,"ENVIRONMENT_STALE_OWNER");
-        if(!authorized(command))throw new WorkspaceFailure(403,"ENVIRONMENT_AUTHORIZATION_REVOKED");
+        if(!allowed)throw new WorkspaceFailure(403,"ENVIRONMENT_AUTHORIZATION_REVOKED");
     }
     @Override public void check(Command command) {guard(command,true);}
     @Override public void checkOwnership(Command command) {guard(command,false);}

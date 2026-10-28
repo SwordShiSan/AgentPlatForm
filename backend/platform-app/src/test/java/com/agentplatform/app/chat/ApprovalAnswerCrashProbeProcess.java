@@ -14,7 +14,7 @@ public final class ApprovalAnswerCrashProbeProcess {
         if(args.length!=4||!Set.of("before-answer","during-answer","after-answer").contains(args[0]))throw new IllegalArgumentException("INVALID_CRASH_PROBE_ARGUMENTS");
         String mode=args[0];UUID task=UUID.fromString(args[1]),interaction=UUID.fromString(args[2]),command=UUID.fromString(args[3]);
         String url=System.getenv("R43_TEST_JDBC_URL");
-        if(!"jdbc:postgresql://127.0.0.1:15456/r43_test?connectTimeout=2&socketTimeout=5".equals(url))throw new IllegalArgumentException("ISOLATED_R43_DATABASE_REQUIRED");
+        if(!FixtureDatabaseScope.r44(url)&&!"jdbc:postgresql://127.0.0.1:15456/r43_test?connectTimeout=2&socketTimeout=5".equals(url))throw new IllegalArgumentException("ISOLATED_R43_DATABASE_REQUIRED");
         if("before-answer".equals(mode))Runtime.getRuntime().halt(41);
         String password=Files.readString(Path.of(Objects.requireNonNull(System.getenv("R43_TEST_PASSWORD_FILE")))).strip();
         Actor actor;long version;

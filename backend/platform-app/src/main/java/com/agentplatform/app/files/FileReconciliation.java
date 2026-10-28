@@ -12,13 +12,10 @@ public final class FileReconciliation {
     public void reconcile(Command command) {
         repository.observeProjection(command);
         var receipt=repository.receipt(command);
-        if(receipt==null)receipt=runner.queryFile(command);
+        if(receipt==null)receipt="CAPTURE".equals(command.operation().kind())?runner.queryCapture(command):runner.queryFile(command);
         if(receipt==null||"UNKNOWN".equals(receipt.resultState()))return;
-        if("APPLIED".equals(receipt.resultState()))try(var content=assets.open(command.upload().objectKey(),null,null)) {
-            if(content.bytes()!=command.upload().sizeBytes()||content.totalBytes()!=command.upload().sizeBytes())throw new FileFailure(503,"ASSET_IDENTITY_MISMATCH");
-            var checked=new AuthorizedAssetStream(content.stream(),content.bytes(),command.upload().sha256(),()->repository.observeProjection(command));
-            byte[] buffer=new byte[65536];while(checked.read(buffer)!=-1){ /* Hash current immutable object with bounded memory. */ }
-        }catch(java.io.IOException unavailable){throw new FileFailure(503,"FILE_RECONCILIATION_UNAVAILABLE");}
+        try{FileObjectVerification.verify(repository,assets,command,receipt,true);}
+        catch(java.io.IOException unavailable){throw new FileFailure(503,"FILE_RECONCILIATION_UNAVAILABLE");}
         repository.reconcileProjection(command,receipt);
     }
 }

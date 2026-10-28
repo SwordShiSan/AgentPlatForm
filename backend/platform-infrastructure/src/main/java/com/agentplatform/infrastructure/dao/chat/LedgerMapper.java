@@ -27,7 +27,7 @@ public interface LedgerMapper {
     int insertToolOperation189(@Param("id") UUID id, @Param("spaceId") UUID spaceId, @Param("taskId") UUID taskId, @Param("attemptId") UUID attemptId, @Param("id2") UUID id2, @Param("fence") long fence, @Param("id3") String id3, @Param("canonicalJson") String canonicalJson, @Param("contentHash") String contentHash);
     int updateModelTurn190(@Param("turnId") UUID turnId, @Param("body") String body, @Param("fingerprint") String fingerprint, @Param("id") UUID id, @Param("id2") UUID id2);
     int updateToolOperation191(@Param("spaceId") UUID spaceId, @Param("taskId") UUID taskId, @Param("attemptId") UUID attemptId, @Param("fence") long fence, @Param("id") String id, @Param("contentHash") String contentHash);
-    int updateToolOperation192(@Param("body") String body, @Param("digest") String digest, @Param("taskId") UUID taskId, @Param("id") String id);
+    int updateToolOperation192(@Param("body") String body, @Param("digest") String digest, @Param("taskId") UUID taskId, @Param("id") String id, @Param("status") String status);
     int deleteStateSlot193(@Param("spaceId") UUID spaceId, @Param("userId") UUID userId, @Param("conversationId") UUID conversationId, @Param("stateKey") String stateKey);
     int insertCheckpoint194(@Param("id") UUID id, @Param("spaceId") UUID spaceId, @Param("taskId") UUID taskId, @Param("attemptId") UUID attemptId, @Param("fence") long fence, @Param("BUNDLE") UUID BUNDLE, @Param("hash") String hash, @Param("manifest") String manifest, @Param("contentHash") String contentHash, @Param("canonical") String canonical, @Param("contentHash2") String contentHash2, @Param("watermark") long watermark, @Param("state") String state, @Param("contentHash3") String contentHash3);
 }

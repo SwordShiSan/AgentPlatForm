@@ -12,4 +12,14 @@ public final class ChatRuntime {
                 "memory", "disabled", "retrieval", "disabled", "completion", "text-completion-v1",
                 "policy", RiskPolicy.VERSION));
     }
+    public static Bundle workspaceBundle() {
+        var components=new java.util.TreeMap<>(bundle().components());
+        components.put("loop","agentscope-workspace-tools-v6");
+        components.put("context","canonical-workspace-input-v5");
+        components.put("tools",WorkspaceTools.VERSION);
+        components.put("plan-controls","scoped-plan-review-v2");
+        components.put("execution-control","remote-tool-termination-v1");
+        components.put("tool-results","known-failure-v1");
+        return new Bundle("2.0.4",1,1,"platform-v1","deepseek-flash",components);
+    }
 }

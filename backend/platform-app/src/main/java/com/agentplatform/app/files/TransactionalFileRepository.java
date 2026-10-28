@@ -15,6 +15,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 public final class TransactionalFileRepository implements FileRepository {
     private final FileRepository delegate;
     private final TransactionTemplate transactions;
+    @Override public List<FileCaptureData.Target> admitCaptures(Actor actor,UUID operation){return tx(()->delegate.admitCaptures(actor,operation));}
+    @Override public FileCaptureData.Target captureTarget(Command command){return tx(()->delegate.captureTarget(command));}
+    @Override public FileCaptureData.Descriptor captureDescriptor(Command command){return tx(()->delegate.captureDescriptor(command));}
     @Override public List<Upload> uploadReconciliations(UUID after){return tx(()->delegate.uploadReconciliations(after));}
     @Override public Upload fenceUploadReconciliation(Upload observed){return tx(()->delegate.fenceUploadReconciliation(observed));}
     @Override public void guardUploadReconciliation(Upload fenced){tx(()->{delegate.guardUploadReconciliation(fenced);return null;});}

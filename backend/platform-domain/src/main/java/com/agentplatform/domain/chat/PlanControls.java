@@ -49,5 +49,14 @@ public final class PlanControls {
                     ToolCategory.CONTROL, object(Map.of("question", string(32768), "optional", Map.of("type", "boolean"),
                     "options", Map.of("type", "array", "maxItems", 16, "items", object(Map.of("id", string(128), "label", string(1024)), "id", "label"))),
                     "question", "optional", "options"), Question.class, null));
+    /** Only new frozen workspace tasks use these capability-aware instructions. */
+    public static List<ToolDefinition> workspaceDefinitions(){return DEFINITIONS.stream().map(d->{
+        String description=switch(d.name()){
+            case "platform_plan_write" -> "Save a structured plan for the task's frozen capabilities. Planning has no business effects and grants no resource or operation permissions.";
+            case "platform_plan_review" -> "Ask the user to review the saved plan. Confirmation enters the same task's execution phase; every later workspace operation still requires separate live policy admission.";
+            default -> d.description();
+        };
+        return new ToolDefinition(d.name(),description,d.category(),d.inputSchema(),d.argumentType(),d.legacy());
+    }).toList();}
     public static final Set<String> NAMES = Set.of("platform_plan_write", "platform_plan_review", "platform_ask_user");
 }

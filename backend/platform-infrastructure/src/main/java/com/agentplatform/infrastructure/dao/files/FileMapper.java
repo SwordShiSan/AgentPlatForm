@@ -9,6 +9,8 @@ import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface FileMapper {
+    boolean abandonUnclaimed(@Param("operation")UUID operation);
+    boolean toolParentAllowed(@Param("upload")UUID upload,@Param("operation")UUID operation,@Param("locks")boolean locks);
     List<Upload> uploadReconciliations(@Param("after") UUID after);
     int fenceExpiredUpload(@Param("id") UUID id,@Param("revision") long revision);
     int recoverVerifiedUpload(@Param("id") UUID id,@Param("revision") long revision);

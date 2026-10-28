@@ -14,6 +14,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 public final class ChatPersistenceFixture {
     private ChatPersistenceFixture() {}
     public static ChatRepository create(DataSource source) {
+        return create(source,false);
+    }
+    public static ChatRepository create(DataSource source,boolean workspaceTools) {
         try {
             var factory = new SqlSessionFactoryBean();
             factory.setDataSource(source);
@@ -27,8 +30,8 @@ public final class ChatPersistenceFixture {
             factory.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:mybatis/mapper/chat/*.xml"));
             var session = new SqlSessionTemplate(factory.getObject());
             var mappers = new ChatMappers(session.getMapper(LedgerMapper.class), session.getMapper(ConversationMapper.class),
-                    session.getMapper(DispatchMapper.class), session.getMapper(AccountingMapper.class), session.getMapper(ConfigurationMapper.class), session.getMapper(EventMapper.class), session.getMapper(ControlMapper.class), session.getMapper(RecoveryMapper.class), session.getMapper(QuotaMapper.class), session.getMapper(ExecutionPolicyMapper.class),session.getMapper(PlanMapper.class),session.getMapper(PermissionMapper.class),session.getMapper(ApprovalMapper.class));
-            return new TransactionalChatRepository(new MyBatisChatRepository(mappers), new TransactionTemplate(new JdbcTransactionManager(source)));
+                    session.getMapper(DispatchMapper.class), session.getMapper(AccountingMapper.class), session.getMapper(ConfigurationMapper.class), session.getMapper(EventMapper.class), session.getMapper(ControlMapper.class), session.getMapper(RecoveryMapper.class), session.getMapper(QuotaMapper.class), session.getMapper(ExecutionPolicyMapper.class),session.getMapper(PlanMapper.class),session.getMapper(PermissionMapper.class),session.getMapper(ApprovalMapper.class),session.getMapper(WorkspaceToolMapper.class));
+            return new TransactionalChatRepository(new MyBatisChatRepository(mappers,workspaceTools), new TransactionTemplate(new JdbcTransactionManager(source)));
         } catch (Exception invalidConfiguration) { throw new IllegalStateException(invalidConfiguration); }
     }
 }

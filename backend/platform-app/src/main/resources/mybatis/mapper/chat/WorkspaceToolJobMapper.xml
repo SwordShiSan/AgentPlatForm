@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.chat.WorkspaceToolJobMapper">
+  <select id="lockPrincipal" resultType="java.util.UUID">SELECT user_id FROM pf.quota_principal WHERE user_id=#{user} FOR UPDATE</select>
+  <select id="lockStorage" resultType="java.util.UUID">SELECT space_id FROM pf.space_storage WHERE space_id=#{space} FOR UPDATE</select>
+  <select id="environment" resultType="com.agentplatform.domain.chat.WorkspaceToolJobs$Environment">
+    SELECT state,version,image_id,policy_hash FROM pf.workspace_environment WHERE space_id=#{space} AND workspace_id=#{workspace}
+  </select>
+  <insert id="bindActivation">
+    INSERT INTO pf.workspace_tool_job_binding(id,operation_id,space_id,task_id,workspace_id,environment_id,activation_operation_id)
+    SELECT #{id},i.operation_id,i.space_id,i.task_id,i.workspace_id,e.environment_id,e.id FROM pf.workspace_tool_intent i
+    JOIN pf.tool_operation o ON o.id=i.operation_id AND o.status='RUNNING'
+    JOIN pf.workspace_environment_operation e ON e.id=#{activation} AND e.space_id=i.space_id AND e.workspace_id=i.workspace_id AND e.actor_id=i.actor_id
+    WHERE i.operation_id=#{operation} AND i.tool_name='workspace_shell'
+    ON CONFLICT(activation_operation_id) DO NOTHING
+  </insert>
+  <select id="activationBound" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.workspace_tool_job_binding WHERE operation_id=#{operation} AND activation_operation_id=#{activation})</select>
+  <select id="observeStoppedSource" resultType="boolean" affectData="true" flushCache="true">SELECT pf.workspace_tool_observe_stopped(#{operation},#{use})</select>
+  <select id="artifacts" resultType="com.agentplatform.domain.chat.WorkspaceToolJobs$Artifact">
+    SELECT file_id,version_id,relative_path path,coalesce(actual_bytes,0) bytes,content_sha256 sha256,status FROM pf.tool_output_capture WHERE operation_id=#{operation} ORDER BY ordinal
+  </select>
+  <select id="settleResult" resultType="boolean" affectData="true" flushCache="true">SELECT pf.workspace_tool_settle_result(#{operation},#{key},#{hash},#{stdout},#{stderr})</select>
+  <select id="childrenStopped" resultType="boolean">SELECT pf.workspace_tool_children_stopped(#{operation})</select>
+</mapper>

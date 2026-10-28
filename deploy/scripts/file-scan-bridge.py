@@ -6,6 +6,7 @@ import stat
 import sys
 import uuid
 import importlib.util
+import re
 
 module_spec = importlib.util.spec_from_file_location("stream_bridge", os.path.join(os.path.dirname(__file__), "file-stream-bridge.py"))
 bridge = importlib.util.module_from_spec(module_spec)
@@ -53,6 +54,9 @@ def scan(header, root="/workspace", require_device=False):
             with os.scandir(fd) as entries:
                 for entry in entries:
                     if entry.name.startswith(".ap-upload-"):
+                        continue
+                    # Root mount attestations are control metadata, not user assets.
+                    if parent == "" and re.fullmatch(r"\.platform-ready-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", entry.name):
                         continue
                     path = parent + "/" + entry.name if parent else entry.name
                     bridge.path_parts(path)  # NFC and valid byte/component limits; never normalize an ambiguous disk name.

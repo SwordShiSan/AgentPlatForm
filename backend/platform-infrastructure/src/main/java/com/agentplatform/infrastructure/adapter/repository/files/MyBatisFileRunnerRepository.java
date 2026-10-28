@@ -24,9 +24,30 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
     private final EnvironmentPreparationMapper environments;
     private final EnvironmentExecutionMapper instances;
     private final FileTransferMapper transfers;
+    private final FileCaptureMapper captures;
     public MyBatisFileRunnerRepository(FileRunnerMapper runner,FileMapper files,WorkspaceMapper workspaces,
             EnvironmentPreparationMapper environments,EnvironmentExecutionMapper instances,FileTransferMapper transfers) {
+        this(runner,files,workspaces,environments,instances,transfers,null);
+    }
+    public MyBatisFileRunnerRepository(FileRunnerMapper runner,FileMapper files,WorkspaceMapper workspaces,
+            EnvironmentPreparationMapper environments,EnvironmentExecutionMapper instances,FileTransferMapper transfers,FileCaptureMapper captures) {
         this.runner=runner;this.files=files;this.workspaces=workspaces;this.environments=environments;this.instances=instances;this.transfers=transfers;
+        this.captures=captures;
+    }
+    @Override public FileCaptureData.Target captureTarget(Command command) {
+        tx();if(captures==null||!"CAPTURE".equals(command.operation().kind()))throw stale();
+        var target=captures.target(command);if(target==null)throw stale();return target;
+    }
+    @Override public void describeCapture(Command command,UUID instance,long bytes,String hash) {
+        guard(command,instance);var target=captureTarget(command);new FileCaptureData.Descriptor(bytes,hash);
+        if(bytes>target.maxBytes())throw new FileFailure(413,"FILE_TOO_LARGE");
+        one(captures.describe(command,bytes,hash));captures.createAsset(command);
+        if(!captures.assetMatches(command))throw new FileFailure(409,"CAPTURE_DESCRIPTOR_CONFLICT");
+        beforeCommit(()->active(command,instance,true));
+    }
+    @Override public void stopCapture(Command command,UUID instance,FileRuntime.Stop stop) {
+        var physical=observation(command,instance);validateStop(command,physical,stop);captureTarget(command);
+        String text=JSON.writeValueAsString(stop);one(captures.stop(command,text,RunnerSignatures.sha256(text.getBytes(StandardCharsets.UTF_8))));
     }
     private static void tx() {
         if(!TransactionSynchronizationManager.isActualTransactionActive())throw new IllegalStateException("File runner transaction required");
@@ -39,7 +60,11 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
         });
     }
     private void lock(Command command) {
-        tx();var operation=command.operation();environments.lockSlot();
+        tx();var operation=command.operation();
+        // Authorization also locks space_storage. Never acquire it after the sandbox slot.
+        // Ignore the result here: trusted stop observations remain possible after revocation.
+        workspaces.authorized(new com.agentplatform.domain.workspace.WorkspaceData.Actor(operation.actorId(),operation.spaceId()));
+        environments.lockSlot();
         if(workspaces.lockWorkspace(operation.spaceId(),operation.workspaceId())==null)throw stale();
         files.lockLease(operation.spaceId(),operation.workspaceId());files.lockOperation(operation.id());
         if(!command.equals(lookup(operation.spaceId(),operation.workspaceId(),operation.id())))throw stale();
@@ -60,7 +85,7 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
     }
     private void active(Command command,UUID instance,boolean accepted) {
         var operation=command.operation();
-        if(!instances.runnerActive(instance)||!files.current(command)
+        if(!files.toolParentAllowed(operation.uploadId(),operation.id(),false)||!instances.runnerActive(instance)||!files.current(command)
                 ||!workspaces.authorized(new com.agentplatform.domain.workspace.WorkspaceData.Actor(operation.actorId(),operation.spaceId())))throw stale();
         if(accepted) {
             var row=runner.command(operation.commandId());
@@ -68,6 +93,7 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
         }
     }
     @Override public boolean accept(Command command,RunnerInstance instance,String requestHash) {
+        if(!files.toolParentAllowed(command.operation().uploadId(),command.operation().id(),true))throw stale();
         lock(command);active(command,instance.id(),false);
         var previous=runner.command(command.operation().commandId());
         if(previous!=null) {
@@ -77,7 +103,10 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
         }
         one(runner.accept(command,instance.id(),requestHash));beforeCommit(()->active(command,instance.id(),true));return true;
     }
-    @Override public void guard(Command command,UUID instance) {lock(command);active(command,instance,true);}
+    @Override public void guard(Command command,UUID instance) {
+        if(!files.toolParentAllowed(command.operation().uploadId(),command.operation().id(),true))throw stale();
+        lock(command);active(command,instance,true);
+    }
     @Override public FileRuntime.Physical physical(Command command) {
         tx();var row=runner.command(command.operation().commandId());
         return row==null?null:new FileRuntime.Physical(row.containerId(),row.startedAt(),row.execId());
@@ -110,7 +139,8 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
     @Override public Receipt observeNeverAccepted(Command command,UUID observer,String requestHash) {
         // Same locks as acceptance. No runtime role can delete an acceptance;
         // absence plus the expired UNKNOWN fence proves no physical invocation.
-        tx();if(transfers.lockSlot()==null)throw stale();lock(command);
+        tx();workspaces.authorized(new com.agentplatform.domain.workspace.WorkspaceData.Actor(command.operation().actorId(),command.operation().spaceId()));
+        if(transfers.lockSlot()==null)throw stale();lock(command);
         var previous=files.receipt(command);if(previous!=null)return previous;
         if(runner.command(command.operation().commandId())!=null||!runner.expiredUnknown(command))return null;
         negativeObservationGuard(command,observer);
@@ -152,6 +182,7 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
                 ||Instant.parse(stop.finishedAt()).isAfter(stop.observedAt()))throw stale();
     }
     @Override public void recordResult(Command command,UUID observer,FileRuntime.Result result) {
+        if(!"UNKNOWN".equals(result.state())&&!files.toolParentAllowed(command.operation().uploadId(),command.operation().id(),true))throw stale();
         // Result persistence may release a transport. Take that capacity row before workspace locks.
         tx();if(transfers.lockSlot()==null)throw stale();
         var physical=observation(command,observer);
@@ -159,12 +190,20 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
         if(!original&&!"UNKNOWN".equals(result.state()))throw stale();
         if(!"UNKNOWN".equals(result.state()))active(command,observer,true);
         var stop=JSON.readValue(result.stopText(),FileRuntime.Stop.class);validateStop(command,physical,stop);
-        if(java.util.Set.of("APPLIED","SCANNED").contains(result.state())&&(stop.neverStarted()||stop.execId()==null))throw stale();
+        if(java.util.Set.of("APPLIED","SCANNED","CAPTURED").contains(result.state())&&(stop.neverStarted()||stop.execId()==null))throw stale();
         if("APPLIED".equals(result.state())&&!"APPLY_UPLOAD".equals(command.operation().kind())
-                ||"SCANNED".equals(result.state())&&!"SCAN".equals(command.operation().kind()))throw stale();
+                ||"SCANNED".equals(result.state())&&!"SCAN".equals(command.operation().kind())
+                ||"CAPTURED".equals(result.state())&&!"CAPTURE".equals(command.operation().kind()))throw stale();
         var previous=files.receipt(command);
         String resultHash=RunnerSignatures.sha256(result.resultText().getBytes(StandardCharsets.UTF_8));
         String stopHash=RunnerSignatures.sha256(result.stopText().getBytes(StandardCharsets.UTF_8));
+        if("CAPTURED".equals(result.state())) {
+            var descriptor=captures==null?null:captures.descriptor(command);var value=JSON.readTree(result.resultText());
+            if(descriptor==null||!captures.stoppedMatches(command,stopHash)||!captures.assetMatches(command)
+                    ||!"file-capture-v1".equals(value.path("protocol").asString())||!"CAPTURED".equals(value.path("state").asString())
+                    ||!command.operation().id().toString().equals(value.path("operationId").asString())
+                    ||descriptor.bytes()!=value.path("bytes").asLong(-1)||!descriptor.sha256().equals(value.path("sha256").asString()))throw stale();
+        }
         if(previous!=null) {
             if(!previous.resultState().equals(result.state())||!previous.resultHash().equals(resultHash)||!previous.stopHash().equals(stopHash))
                 throw new FileFailure(409,"FILE_RECEIPT_CONFLICT");

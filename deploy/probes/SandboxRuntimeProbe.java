@@ -99,7 +99,7 @@ public final class SandboxRuntimeProbe {
             }
         }
     }
-    private static SandboxRuntime.Output file(DockerSandboxRuntime runtime,SandboxRuntime.Identity identity,
+    static SandboxRuntime.Output file(DockerSandboxRuntime runtime,SandboxRuntime.Identity identity,
             SandboxRuntime.FileRequest request,SandboxRuntime.UseAuthority parent) {
         UUID use=UUID.randomUUID(),runner=UUID.randomUUID();
         var intent=runtime.fileHelperIntent(identity,use);

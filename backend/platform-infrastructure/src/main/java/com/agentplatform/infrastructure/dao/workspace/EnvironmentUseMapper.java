@@ -9,6 +9,10 @@ import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface EnvironmentUseMapper {
+    boolean shellAdmissionAllowed(@Param("actor")Actor actor,@Param("workspace")UUID workspace,@Param("request")String request);
+    boolean shellParentAllowed(@Param("id")UUID id,@Param("locks")boolean locks);
+    int insertShellAdmission(@Param("row")Use row,@Param("parent")com.agentplatform.domain.workspace.WorkspaceShellData.Parent parent);
+    int bindShellJob(@Param("row")Use row,@Param("parent")com.agentplatform.domain.workspace.WorkspaceShellData.Parent parent,@Param("id")UUID id);
     Use use(@Param("id") UUID id);
     Use lockUse(@Param("id") UUID id);
     Use request(@Param("actor") Actor actor,@Param("requestId") UUID requestId);

@@ -10,6 +10,7 @@ import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface EnvironmentExecutionMapper {
+    boolean activationAllowed(@Param("operation")UUID operation,@Param("locks")boolean locks);
     List<Publication> publications(@Param("owner") UUID owner);
     int published(@Param("item") Publication item, @Param("confirmed") boolean confirmed);
     boolean knownPublication(@Param("item") Publication item);

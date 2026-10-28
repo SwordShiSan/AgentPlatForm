@@ -23,7 +23,7 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
         }else c.recovery().initializeDeadline(l.taskId());
         var task=c.recovery().task(l.taskId());var request=c.recovery().attemptRequest(l.attemptId());
         boolean restoring=request!=null;
-        if(restoring)verify(c,l,request.checkpointId(),ChatRuntime.bundle());
+        if(restoring)verify(c,l,request.checkpointId(),WorkspaceToolPersistence.bundle(c,l.spaceId(),l.taskId()));
         long next=c.recovery().turns(l.taskId()).stream().filter(t->"COMMITTED".equals(t.status())).mapToLong(TurnRow::ordinal).max().orElse(0)+1;
         return new Startup(restoring,restoring?request.checkpointId():null,next,task.deadline(),history(c,l));
     }); }
@@ -46,7 +46,7 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
         for(var turn:c.recovery().turns(l.taskId()))if("COMMITTED".equals(turn.status())) {
             Round round=JSON.readValue(turn.roundJson(),Round.class);
             values.add(new Message(Role.ASSISTANT,round.text(),round.calls(),List.of()));
-            var observations=operations.stream().filter(o->o.turnId().equals(turn.id())&&Set.of("SUCCEEDED","DENIED").contains(o.status()))
+            var observations=operations.stream().filter(o->o.turnId().equals(turn.id())&&Set.of("SUCCEEDED","DENIED","FAILED").contains(o.status()))
                     .map(o->{
                         var observation=JSON.readValue(o.resultJson(),Observation.class);
                         var input=controlInputs.stream().filter(i->i.callId().equals(observation.callId())).findFirst();
@@ -77,7 +77,7 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
         long watermark=c.recovery().turns(l.taskId()).stream().filter(t->"COMMITTED".equals(t.status())).count();
         String manifest=canonicalJson(Map.of("version",2,"phase",draft.phase().name(),"bundle",bundle,"watermark",watermark,
                 "canonicalHash",bodyHash,"stateHash",stateHash,"states",Map.of("agent_state",Map.of("version",version,"hash",hash(new String(draft.state(),StandardCharsets.UTF_8))))));
-        UUID id=Uuid7.next();c.recovery().insertCheckpoint(l,id,BUNDLE,bundle.hash(),draft.phase().name(),manifest,hash(manifest),body,bodyHash,stateJson,stateHash,watermark);
+        UUID id=Uuid7.next();c.recovery().insertCheckpoint(l,id,WorkspaceToolPersistence.bundleId(c,l.spaceId(),l.taskId()),bundle.hash(),draft.phase().name(),manifest,hash(manifest),body,bodyHash,stateJson,stateHash,watermark);
         return id;
     }); }
 
@@ -114,7 +114,7 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
         MyBatisExecutionLedger.guard(c,l);MyBatisExecutionLedger.verifyBundle(c,l,bundle);verifySnapshot(c,c.recovery().task(l.taskId()),id,bundle);
     }
     static void copy(ChatMappers c,Lease l,UUID id) {
-        verify(c,l,id,ChatRuntime.bundle());
+        verify(c,l,id,WorkspaceToolPersistence.bundle(c,l.spaceId(),l.taskId()));
         var cp=c.recovery().checkpoint(id,l.taskId());if(cp.attemptId().equals(l.attemptId())||!MyBatisExecutionLedger.stateKeys(c,l).isEmpty())throw new ChatFailure(409,"CHECKPOINT_TARGET_NOT_EMPTY");
         var state=object(json(object(cp.stateJson()).get("agent_state")));
         if(MyBatisExecutionLedger.stateCas(c,l,"agent_state",0,Base64.getDecoder().decode((String)state.get("body")))!=1)throw new ChatFailure(409,"STATE_CAS_CONFLICT");
@@ -154,8 +154,8 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
         if(authorization.isEmpty()||!authorization.getFirst().value1()||!"ACTIVE".equals(authorization.getFirst().value2()))throw new ChatFailure(403,"CREDENTIAL_REVOKED");
         var config=object(c.conversation().selectTask6(t.id(),t.spaceId()).getFirst().value1());
         validateModel(c,UUID.fromString(String.valueOf(config.get("modelId"))));
-        if(!ChatRuntime.bundle().hash().equals(cp.bundleHash()))throw new ChatFailure(409,"BUNDLE_INCOMPATIBLE");
-        if(verifyPrivateState)verifySnapshot(c,t,cp.id(),ChatRuntime.bundle());
+        if(!WorkspaceToolPersistence.bundle(c,t.spaceId(),t.id()).hash().equals(cp.bundleHash()))throw new ChatFailure(409,"BUNDLE_INCOMPATIBLE");
+        if(verifyPrivateState)verifySnapshot(c,t,cp.id(),WorkspaceToolPersistence.bundle(c,t.spaceId(),t.id()));
     }
     public Recovery recovery(Actor actor,UUID id) {return tx(true,c->{auth(c,actor);task(c,actor,id,false);return projection(c,id);});}
     public Recovery recoveryForOperator(UUID id) {return tx(true,c->projection(c,id));}

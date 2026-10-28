@@ -24,7 +24,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /** Real HTTP/security/JOSE with deterministic repository and allocator; native effects are tested separately. */
 @SpringBootTest(classes=RunnerHttpTest.Config.class,webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties={"spring.profiles.active=workspace-runner,runner-http-test","server.shutdown=immediate","platform.workspace.environment.enabled=true"})
+        properties={"spring.profiles.active=workspace-runner,runner-http-test","server.shutdown=immediate","platform.workspace.environment.enabled=true","platform.workspace.tools.enabled=true"})
 class RunnerHttpTest {
     @LocalServerPort int port;
     @org.springframework.beans.factory.annotation.Autowired WorkspaceRepository repository;
@@ -37,7 +37,7 @@ class RunnerHttpTest {
     private final Command command=new Command(UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID(),
             UUID.randomUUID(),1,1,"PROVISION",2147483648L,100000,200001,Instant.now().plusSeconds(120));
     @Configuration(proxyBeanMethods=false) @Profile("runner-http-test") @EnableAutoConfiguration
-    @Import({RunnerController.class,EnvironmentRunnerController.class,EnvironmentUseRunnerController.class,RunnerSecurityConfiguration.class,ProblemHandler.class,RequestTraceFilter.class})
+    @Import({RunnerController.class,EnvironmentRunnerController.class,EnvironmentUseRunnerController.class,WorkspaceShellRunnerController.class,RunnerSecurityConfiguration.class,ProblemHandler.class,RequestTraceFilter.class})
     static class Config {
         record Peers(RunnerSignatures control,RunnerSignatures runner) {}
         @Bean WorkspaceRepository repository(){return mock(WorkspaceRepository.class);}
@@ -64,6 +64,11 @@ class RunnerHttpTest {
                 @org.springframework.beans.factory.annotation.Qualifier("runner") RunnerSignatures signatures) {
             return new EnvironmentUseRunnerService(repository,signatures,sandbox,
                     new RunnerInstance(UUID.randomUUID(),"e".repeat(64),"sha256:"+"f".repeat(64),"2026-10-22T00:00:00Z"));
+        }
+        @Bean com.agentplatform.api.workspace.WorkspaceShellRunnerApi shellApi(EnvironmentUseRepository repository,SandboxRuntime sandbox,
+                @org.springframework.beans.factory.annotation.Qualifier("runner") RunnerSignatures signatures) {
+            return new WorkspaceShellRunnerService(repository,signatures,sandbox,
+                    new RunnerInstance(UUID.randomUUID(),"e".repeat(64),"sha256:"+"f".repeat(64),"2026-10-22T00:00:00Z"),WorkspaceEffectBoundary.NONE);
         }
     }
     @BeforeEach void resetPorts() {
@@ -194,6 +199,64 @@ class RunnerHttpTest {
     private SandboxRuntime.Output output() {return new SandboxRuntime.Output("1".repeat(64),0,"666\n","",false,false,false,null);}
     private SandboxRuntime.Stop stop(EnvironmentUseData.Command use) {
         return new SandboxRuntime.Stop(use.containerId(),use.imageId(),use.containerStartedAt(),Instant.now().minusSeconds(1).toString(),true,true,Instant.now());
+    }
+    private EnvironmentUseData.Command shellCommand() {
+        var use=useCommand();
+        var parent=new WorkspaceShellData.Parent(UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID(),use.ownerId(),3,7,"e".repeat(64),2,1);
+        var request=new WorkspaceShellData.Request(WorkspaceShellData.PROTOCOL,parent,new SandboxRuntime.ShellRequest("printf 666","",10));
+        return new EnvironmentUseData.Command(use.id(),use.spaceId(),use.workspaceId(),use.environmentId(),use.actorId(),use.ownerId(),
+                use.generation(),use.fence(),use.creationCommandId(),use.creationFence(),use.projectId(),use.imageId(),use.policyHash(),
+                use.containerId(),use.containerStartedAt(),request.kind(),use.requestHash(),request,use.executeUntil(),use.deadline());
+    }
+    @Test void shellHasIndependentSignedRouteAndExactlyOneInvocationWithWholeStopFact() {
+        var use=shellCommand();when(useRepository.lookup(use.id())).thenReturn(use);
+        when(useRepository.accept(eq(use),any())).thenReturn(true,false);
+        var stopped=stop(use);var output=new SandboxRuntime.Output("1".repeat(64),7,"666\n","known failure",false,false,false,stopped);
+        when(sandbox.shell(eq(use.physicalIdentity()),eq(use.id()),eq(use.request().shell()),any(),any())).thenReturn(output);
+        var receipt=new EnvironmentUseData.Receipt(use.id(),"RUNNING","KNOWN","f".repeat(64));when(useRepository.receipt(use)).thenReturn(receipt);
+        try(var client=new com.agentplatform.infrastructure.workspace.SignedRunnerHttpClient(URI.create("http://127.0.0.1:"+port),control)) {
+            assertEquals(receipt,client.executeShell(use));assertEquals(receipt,client.executeShell(use));assertEquals(receipt,client.queryShell(use));
+            assertEquals("INVALID_WORKSPACE_USE",assertThrows(WorkspaceFailure.class,()->client.executeUse(use)).code());
+        }
+        verify(sandbox,times(1)).shell(eq(use.physicalIdentity()),eq(use.id()),any(),any(),any());
+        verify(sandbox,never()).probe(any(),any(),any(),any(),any());verify(sandbox,never()).removeStopped(any(),any());
+        var fact=org.mockito.ArgumentCaptor.forClass(EnvironmentUseData.Fact.class);verify(useRepository).commitFact(eq(use),any(),fact.capture());
+        assertEquals("KNOWN",fact.getValue().resultState());assertEquals(7,fact.getValue().output().exitCode());assertEquals(stopped,fact.getValue().stop());
+    }
+    @Test void shellAndLegacyWireCannotCrossRoutesAndTamperingDoesNotReachLedger() throws Exception {
+        var use=shellCommand();String shell=WorkspaceShellRunnerService.PATH;
+        byte[] body=JSON.writeValueAsBytes(use);String token=control.sign(EnvironmentUseRunnerService.binding(use,"POST",shell),body);
+        try(var client=HttpClient.newHttpClient()) {
+            for(String route:java.util.List.of(shell,EnvironmentUseRunnerService.PATH)) {
+                byte[] sent=route.equals(shell)?(new String(body,java.nio.charset.StandardCharsets.UTF_8)+" ").getBytes(java.nio.charset.StandardCharsets.UTF_8):body;
+                var request=HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+route)).header("Content-Type","application/json")
+                        .header("Authorization","Bearer "+token).POST(HttpRequest.BodyPublishers.ofByteArray(sent)).build();
+                assertEquals(route.equals(shell)?401:400,client.send(request,HttpResponse.BodyHandlers.discarding()).statusCode());
+            }
+            var legacy=useCommand();byte[] old=JSON.writeValueAsBytes(legacy);
+            String oldAtNew=control.sign(EnvironmentUseRunnerService.binding(legacy,"POST",shell),old);
+            var wrong=HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+shell)).header("Content-Type","application/json")
+                    .header("Authorization","Bearer "+oldAtNew).POST(HttpRequest.BodyPublishers.ofByteArray(old)).build();
+            assertEquals(400,client.send(wrong,HttpResponse.BodyHandlers.discarding()).statusCode());
+        }
+        verifyNoInteractions(useRepository,sandbox);
+    }
+    @Test void shellQueryCannotStopOrReplayAnInvocationUntilItsCallbacksExit() throws Exception {
+        var use=shellCommand();when(useRepository.lookup(use.id())).thenReturn(use);when(useRepository.accept(eq(use),any())).thenReturn(true);
+        var pending=new EnvironmentUseData.Receipt(use.id(),"RUNNING","PENDING",null);when(useRepository.receipt(use)).thenReturn(pending);
+        var entered=new java.util.concurrent.CountDownLatch(1);var release=new java.util.concurrent.CountDownLatch(1);
+        when(sandbox.shell(eq(use.physicalIdentity()),eq(use.id()),any(),any(),any())).thenAnswer(call->{
+            entered.countDown();assertTrue(release.await(5,java.util.concurrent.TimeUnit.SECONDS));
+            return new SandboxRuntime.Output("1".repeat(64),0,"666","",false,false,false,stop(use));
+        });
+        try(var pool=java.util.concurrent.Executors.newSingleThreadExecutor();
+                var client=new com.agentplatform.infrastructure.workspace.SignedRunnerHttpClient(URI.create("http://127.0.0.1:"+port),control)) {
+            var running=pool.submit(()->client.executeShell(use));
+            try {assertTrue(entered.await(5,java.util.concurrent.TimeUnit.SECONDS));assertEquals(pending,client.queryShell(use));verify(sandbox,never()).stop(any());}
+            finally {release.countDown();}
+            running.get(5,java.util.concurrent.TimeUnit.SECONDS);
+        }
+        verify(useRepository).commitFact(eq(use),any(),any());verify(sandbox,times(1)).shell(any(),any(),any(),any(),any());
     }
     @Test void privateUseReturnsOnlySignedReceiptAndDuplicateNeverExecutes() {
         var use=useCommand();when(useRepository.lookup(use.id())).thenReturn(use);when(useRepository.accept(eq(use),any())).thenReturn(true,false);

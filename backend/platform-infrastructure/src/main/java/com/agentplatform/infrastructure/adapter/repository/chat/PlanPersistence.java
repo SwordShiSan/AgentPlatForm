@@ -15,9 +15,18 @@ final class PlanPersistence extends ChatPersistenceSupport implements PlanLedger
     private static Revision revision(RevisionRow row){return row==null?null:new Revision(row.id(),row.revision(),row.title(),row.markdown(),row.source(),row.contentHash(),row.createdAt());}
     private Plan projection(Actor actor,UUID task){
         var p=mappers.plan().plan(actor.spaceId(),task);
-        if(p==null)return new Plan(task,"NOT_CREATED",0,null,List.of());
+        String phase="TEXT_ONLY";
+        if(WorkspaceToolPersistence.enabled(mappers,actor.spaceId(),task)) {
+            var current=task(mappers,actor,task,false);
+            if(p!=null&&"DELIVERED".equals(p.status()))phase="DELIVERED";
+            else if(Set.of("SUCCEEDED","FAILED","CANCELLED").contains(current.status()))phase="COMPLETED";
+            else if(p!=null&&"REVIEW".equals(p.status()))phase="AWAITING_REVIEW";
+            else if(p!=null&&"APPROVED".equals(p.status())&&mappers.workspaceTools().hasAcceptedCurrentPlan(actor.spaceId(),task)==1)phase="EXECUTING";
+            else phase=p==null&&!mappers.executionPolicy().policy(task).planMode()?"EXECUTING":"PLANNING";
+        }
+        if(p==null)return new Plan(task,"NOT_CREATED",0,null,List.of(),phase);
         var revisions=mappers.plan().revisions(p.id()).stream().map(PlanPersistence::revision).toList();
-        return new Plan(task,p.status(),p.version(),revisions.isEmpty()?null:revisions.getLast(),revisions);
+        return new Plan(task,p.status(),p.version(),revisions.isEmpty()?null:revisions.getLast(),revisions,phase);
     }
     public Plan plan(Actor a,UUID id){return tx(c->{auth(c,a);task(c,a,id,false);return projection(a,id);});}
     private Pending pending(InteractionRow row){
@@ -140,7 +149,9 @@ final class PlanPersistence extends ChatPersistenceSupport implements PlanLedger
                 var result=new LinkedHashMap<String,Object>();result.put("decision",answer.decision());result.put("answer",object(answer.contentJson()));
                 if("PLAN_APPROVAL".equals(interaction.kind()))result.put("EXECUTE_PLAN".equals(answer.decision())?"approvedPlan":"planUnderDiscussion",revision(c.plan().revision(interaction.revisionId())));
                 result.put("instruction",switch(answer.decision()){
-                    case "EXECUTE_PLAN" -> "Continue text processing using exactly approvedPlan. No file, shell or business tool permissions are granted.";
+                    case "EXECUTE_PLAN" -> WorkspaceToolPersistence.enabled(c,lease.spaceId(),lease.taskId())
+                            ? "Continue the same task using exactly approvedPlan and only its frozen workspace tools. Plan approval grants no resource or operation permissions; every tool still requires live admission."
+                            : "Continue text processing using exactly approvedPlan. No file, shell or business tool permissions are granted.";
                     case "REVISE_PLAN", "REJECT_PLAN" -> "Do not execute the rejected or superseded plan. Discuss the supplied feedback, save a new revision and request a new review. No business tools are authorized.";
                     default -> "This is clarification data only, not an execution or permission grant. Do not invent answers. Continue the text-only planning discussion.";
                 });
@@ -212,7 +223,10 @@ final class PlanPersistence extends ChatPersistenceSupport implements PlanLedger
             c.conversation().updateMessage136("COMPLETED",message.value3()+1,message.value1());c.conversation().updateTask135("SUCCEEDED",null,task);
             c.plan().advancePlan(c.plan().plan(actor.spaceId(),task).id(),"DELIVERED",false);c.plan().closeTaskInteractions(task,"CANCELLED");assistantTerminalEvent(c,actor,t.conversationId(),task);
         }else if(!row.optional()){
-            if(answer.decision()==Decision.EXECUTE_PLAN){c.plan().advancePlan(c.plan().plan(actor.spaceId(),task).id(),"APPROVED",false);c.plan().updatePlanOption(task,false);}
+            if(answer.decision()==Decision.EXECUTE_PLAN){
+                c.plan().advancePlan(c.plan().plan(actor.spaceId(),task).id(),"APPROVED",false);c.plan().updatePlanOption(task,false);
+                if(WorkspaceToolPersistence.enabled(c,actor.spaceId(),task))c.workspaceTools().acceptPlan(actor.spaceId(),task,row.revisionId(),id);
+            }
             else if(answer.decision()==Decision.REJECT_PLAN)c.plan().advancePlan(c.plan().plan(actor.spaceId(),task).id(),"REJECTED",false);
             long revision=c.recovery().task(task).revision()+1;
             var restore=new RecoveryLedger.RestoreCommand(command,task,cp.id(),cp.attemptId(),t.version(),revision-1,"interaction-answer");

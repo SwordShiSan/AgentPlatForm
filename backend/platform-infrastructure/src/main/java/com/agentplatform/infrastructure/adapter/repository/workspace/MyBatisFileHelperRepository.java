@@ -45,6 +45,7 @@ public final class MyBatisFileHelperRepository implements FileHelperRepository {
 
     private Use lock(Command command,UUID observer,boolean stopObservation) {
         tx();
+        workspaces.authorized(new Actor(command.actorId(),command.spaceId()));
         var slot=environments.lockSlot();
         if(workspaces.lockWorkspace(command.spaceId(),command.workspaceId())==null)throw new WorkspaceFailure(404,"RESOURCE_NOT_FOUND");
         Environment environment=environments.lockEnvironment(command.spaceId(),command.workspaceId());

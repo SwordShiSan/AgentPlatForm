@@ -12,7 +12,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.Flow;
 import tools.jackson.databind.json.JsonMapper;
 
-public final class SignedRunnerHttpClient implements RunnerControlPort,EnvironmentRunnerPort,EnvironmentUseRunnerPort,com.agentplatform.domain.files.FileRunnerPort,AutoCloseable {
+public final class SignedRunnerHttpClient implements RunnerControlPort,EnvironmentRunnerPort,EnvironmentUseRunnerPort,WorkspaceShellRunnerPort,com.agentplatform.domain.files.FileRunnerPort,AutoCloseable {
     private static final JsonMapper JSON=JsonMapper.builder().build();
     private final URI base;
     private final RunnerSignatures signatures;
@@ -48,7 +48,12 @@ public final class SignedRunnerHttpClient implements RunnerControlPort,Environme
         try {
             var response=pending.get(timeout.toMillis(),TimeUnit.MILLISECONDS);
                 byte[] bytes=response.body();
-                if(response.statusCode()!=200||bytes.length>65536)throw new WorkspaceFailure(503,"RUNNER_RESULT_UNAVAILABLE");
+                if(response.statusCode()!=200||bytes.length>65536) {
+                    String code="UNCLASSIFIED";
+                    if(bytes.length<=65536)try{String value=JSON.readTree(bytes).path("code").asString("");if(value.matches("[A-Z][A-Z0-9_]{1,95}"))code=value;}catch(RuntimeException invalidProblem){/* Never log raw response content. */}
+                    System.getLogger(getClass().getName()).log(System.Logger.Level.WARNING,"Runner operation="+requestBinding.operationId()+" httpStatus="+response.statusCode()+" code="+code);
+                    throw new WorkspaceFailure(503,"RUNNER_RESULT_UNAVAILABLE");
+                }
                 String proof=response.headers().firstValue("X-Runner-Signature").orElseThrow(()->new WorkspaceFailure(503,"RUNNER_RESULT_UNAUTHENTICATED"));
                 signatures.verify(proof,responseBinding,bytes);
                 return JSON.readValue(bytes,type);
@@ -84,6 +89,16 @@ public final class SignedRunnerHttpClient implements RunnerControlPort,Environme
     }
     @Override public com.agentplatform.domain.files.FileData.Receipt applyFile(com.agentplatform.domain.files.FileData.Command command){return file(command,false);}
     @Override public com.agentplatform.domain.files.FileData.Receipt queryFile(com.agentplatform.domain.files.FileData.Command command){return file(command,true);}
+    private com.agentplatform.domain.files.FileData.Receipt capture(com.agentplatform.domain.files.FileData.Command command,
+            com.agentplatform.domain.files.FileCaptureData.Command body,boolean query) {
+        if(!"CAPTURE".equals(command.operation().kind()))throw new WorkspaceFailure(400,"INVALID_CAPTURE_COMMAND");
+        String path="/internal/file-captures/v1"+(query?"/"+command.operation().id():"");var op=command.operation();
+        var request=new RunnerSignatures.Binding(query?"GET":"POST",path,op.commandId(),op.id(),op.spaceId(),op.workspaceId(),op.generation(),op.fence());
+        var response=new RunnerSignatures.Binding("RESPONSE",path,op.commandId(),op.id(),op.spaceId(),op.workspaceId(),op.generation(),op.fence());
+        return exchange(request,response,query?new byte[0]:JSON.writeValueAsBytes(body),query,com.agentplatform.domain.files.FileData.Receipt.class);
+    }
+    @Override public com.agentplatform.domain.files.FileData.Receipt captureFile(com.agentplatform.domain.files.FileCaptureData.Command command){return capture(command.file(),command,false);}
+    @Override public com.agentplatform.domain.files.FileData.Receipt queryCapture(com.agentplatform.domain.files.FileData.Command command){return capture(command,null,true);}
     private com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt environment(
             com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command,boolean query) {
         String base=switch(command.protocol()) {
@@ -102,8 +117,10 @@ public final class SignedRunnerHttpClient implements RunnerControlPort,Environme
     @Override public com.agentplatform.domain.workspace.EnvironmentExecutionData.Receipt queryEnvironment(
             com.agentplatform.domain.workspace.EnvironmentExecutionData.Command command) {return environment(command,true);}
     private com.agentplatform.domain.workspace.EnvironmentUseData.Receipt use(
-            com.agentplatform.domain.workspace.EnvironmentUseData.Command command,boolean query) {
-        String path="/internal/workspace-uses/v1"+(query?"/"+command.id():"");
+            com.agentplatform.domain.workspace.EnvironmentUseData.Command command,boolean query,boolean shell) {
+        if(shell?!(command.request() instanceof WorkspaceShellData.Request):!(command.request() instanceof EnvironmentUseData.Request))
+            throw new WorkspaceFailure(400,"INVALID_WORKSPACE_USE");
+        String path=(shell?"/internal/workspace-shell/v1":"/internal/workspace-uses/v1")+(query?"/"+command.id():"");
         var requestBinding=new RunnerSignatures.Binding(query?"GET":"POST",path,command.id(),command.id(),command.spaceId(),command.workspaceId(),command.generation(),command.fence());
         var responseBinding=new RunnerSignatures.Binding("RESPONSE",path,command.id(),command.id(),command.spaceId(),command.workspaceId(),command.generation(),command.fence());
         var receipt=exchange(requestBinding,responseBinding,query?new byte[0]:JSON.writeValueAsBytes(command),query,
@@ -113,7 +130,9 @@ public final class SignedRunnerHttpClient implements RunnerControlPort,Environme
                 ||receipt.resultHash()!=null&&!receipt.resultHash().matches("[0-9a-f]{64}"))throw new WorkspaceFailure(503,"RUNNER_RECEIPT_MISMATCH");
         return receipt;
     }
-    @Override public com.agentplatform.domain.workspace.EnvironmentUseData.Receipt executeUse(com.agentplatform.domain.workspace.EnvironmentUseData.Command command) {return use(command,false);}
-    @Override public com.agentplatform.domain.workspace.EnvironmentUseData.Receipt queryUse(com.agentplatform.domain.workspace.EnvironmentUseData.Command command) {return use(command,true);}
+    @Override public com.agentplatform.domain.workspace.EnvironmentUseData.Receipt executeUse(com.agentplatform.domain.workspace.EnvironmentUseData.Command command) {return use(command,false,false);}
+    @Override public com.agentplatform.domain.workspace.EnvironmentUseData.Receipt queryUse(com.agentplatform.domain.workspace.EnvironmentUseData.Command command) {return use(command,true,false);}
+    @Override public com.agentplatform.domain.workspace.EnvironmentUseData.Receipt executeShell(com.agentplatform.domain.workspace.EnvironmentUseData.Command command) {return use(command,false,true);}
+    @Override public com.agentplatform.domain.workspace.EnvironmentUseData.Receipt queryShell(com.agentplatform.domain.workspace.EnvironmentUseData.Command command) {return use(command,true,true);}
     @Override public void close(){client.shutdownNow();}
 }

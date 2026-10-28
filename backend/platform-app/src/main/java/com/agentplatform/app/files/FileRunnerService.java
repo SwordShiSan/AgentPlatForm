@@ -22,11 +22,17 @@ public final class FileRunnerService implements FileRunnerApi {
     private final AssetStore assets;
     private final RunnerSignatures signatures;
     private final RunnerInstance instance;
+    private final boolean captureMode;
+    private final String path;
     private final Set<UUID> running=ConcurrentHashMap.newKeySet();
     private final ConcurrentMap<UUID,FileRuntime.Result> completed=new ConcurrentHashMap<>();
     private final Set<UUID> unconfirmedTransports=ConcurrentHashMap.newKeySet();
     public FileRunnerService(FileRunnerRepository repository,FileRuntime runtime,AssetStore assets,RunnerSignatures signatures) {
+        this(repository,runtime,assets,signatures,false);
+    }
+    FileRunnerService(FileRunnerRepository repository,FileRuntime runtime,AssetStore assets,RunnerSignatures signatures,boolean captureMode) {
         this.repository=repository;this.runtime=runtime;this.assets=assets;this.signatures=signatures;this.instance=runtime.runnerInstance();
+        this.captureMode=captureMode;this.path=captureMode?"/internal/file-captures/v1":PATH;
         repository.register(instance);
     }
     public static RunnerSignatures.Binding binding(Command command,String method,String path) {
@@ -54,6 +60,10 @@ public final class FileRunnerService implements FileRunnerApi {
                 ||command.operation().ownerId()==null||command.operation().fence()==null||command.operation().fence()<1
                 ||command.operation().generation()<1||command.operation().deadlineAt()==null||command.projectId()<200001
                 ||!runtime.policyHash().equals(command.operation().helperPolicyHash()))throw new FileFailure(400,"INVALID_FILE_COMMAND");
+        if(captureMode) {
+            if(!"CAPTURE".equals(command.operation().kind())||command.upload()!=null)throw new FileFailure(400,"INVALID_FILE_COMMAND");
+            return;
+        }
         if("SCAN".equals(command.operation().kind())) {
             if(command.upload()!=null||command.operation().scanEpoch()==null)throw new FileFailure(400,"INVALID_FILE_COMMAND");
             FileRules.path(command.operation().scanParent(),true);return;
@@ -64,12 +74,17 @@ public final class FileRunnerService implements FileRunnerApi {
     }
     private Receipt persistKnown(Command command,FileRuntime.Result result) {
         try {
-            repository.recordResult(command,instance.id(),result);completed.remove(command.operation().commandId());return repository.receipt(command);
+            repository.recordResult(command,instance.id(),result);completed.remove(command.operation().commandId());var receipt=repository.receipt(command);retire(command,receipt);return receipt;
         } catch(FileFailure failure) {
             if(failure.status()==503)return null; // Preserve the bounded complete result while this instance is alive.
             var unknown=new FileRuntime.Result("UNKNOWN",JSON.writeValueAsString(Map.of("state","UNKNOWN","code","FILE_RESULT_UNKNOWN")),result.stopText());
-            repository.recordResult(command,instance.id(),unknown);completed.remove(command.operation().commandId());return repository.receipt(command);
+            repository.recordResult(command,instance.id(),unknown);completed.remove(command.operation().commandId());var receipt=repository.receipt(command);retire(command,receipt);return receipt;
         }
+    }
+    private void retire(Command command,Receipt receipt) {
+        if(receipt==null)return;
+        try{runtime.retire(command,JSON.readValue(receipt.stopText(),FileRuntime.Stop.class));}
+        catch(RuntimeException pending){/* Durable stop remains authoritative; later GET retries cleanup only. */}
     }
     private FileRuntime.Result executeContent(Command command)throws java.io.IOException {
         var content=assets.open(command.upload().objectKey(),null,null);var id=command.operation().commandId();
@@ -84,48 +99,63 @@ public final class FileRunnerService implements FileRunnerApi {
             catch(java.io.IOException|RuntimeException failure){if(primary!=null)primary.addSuppressed(failure);else throw failure;}
         }
     }
+    private FileRuntime.Result executeCapture(Command command) {
+        var target=repository.captureTarget(command);
+        return runtime.capture(command,new FileRuntime.CaptureTarget(target.path(),target.maxBytes()),new FileRuntime.CaptureSink(){
+            @Override public void described(long bytes,String hash){repository.describeCapture(command,instance.id(),bytes,hash);}
+            @Override public void stopped(FileRuntime.Stop stop){repository.stopCapture(command,instance.id(),stop);}
+            @Override public AssetStore.Identity store(long bytes,String hash,java.io.InputStream content){return assets.put(target.objectKey(),bytes,hash,content);}
+        },authority(command));
+    }
     @Override public SignedResult operate(String token,byte[] body) {
         signatures.authenticate(token);
         if(body==null||body.length>65536)throw new FileFailure(413,"FILE_COMMAND_TOO_LARGE");
-        Command command;
-        try{command=JSON.readValue(body,Command.class);}catch(RuntimeException invalid){throw new FileFailure(400,"INVALID_FILE_COMMAND");}
-        validate(command);signatures.verify(token,binding(command,"POST",PATH),body);
+        Command command;FileCaptureData.Command capture=null;
+        try{if(captureMode){capture=JSON.readValue(body,FileCaptureData.Command.class);command=capture.file();}else command=JSON.readValue(body,Command.class);}
+        catch(RuntimeException invalid){throw new FileFailure(400,"INVALID_FILE_COMMAND");}
+        validate(command);signatures.verify(token,binding(command,"POST",path),body);
         var operation=command.operation();
         if(!command.equals(repository.lookup(operation.spaceId(),operation.workspaceId(),operation.id())))throw new FileFailure(409,"FILE_COMMAND_CONFLICT");
+        if(captureMode&&!repository.captureTarget(command).equals(capture.target()))throw new FileFailure(409,"FILE_COMMAND_CONFLICT");
         var previous=repository.receipt(command);
-        if(previous!=null)return signed(command,previous,PATH);
-        if(!repository.accept(command,instance,RunnerSignatures.sha256(body)))return signed(command,null,PATH);
+        if(previous!=null){retire(command,previous);return signed(command,previous,path);}
+        if(!repository.accept(command,instance,RunnerSignatures.sha256(body)))return signed(command,null,path);
         if(!running.add(operation.commandId()))throw new FileFailure(409,"FILE_COMMAND_ALREADY_RUNNING");
         try {
             repository.guard(command,instance.id());
+            if(captureMode) {
+                var result=executeCapture(command);completed.put(operation.commandId(),result);
+                return signed(command,persistKnown(command,result),path);
+            }
             if("SCAN".equals(operation.kind())) {
                 var result=runtime.apply(command,new java.io.ByteArrayInputStream(new byte[0]),authority(command));completed.put(operation.commandId(),result);
-                return signed(command,persistKnown(command,result),PATH);
+                return signed(command,persistKnown(command,result),path);
             }
             var result=executeContent(command);completed.put(operation.commandId(),result);
-            return signed(command,persistKnown(command,result),PATH);
+            return signed(command,persistKnown(command,result),path);
         } catch(RuntimeException|java.io.IOException failure) {
             var result=completed.get(operation.commandId());
             if(result==null&&!unconfirmedTransports.contains(operation.commandId())&&repository.mayObserve(command,instance.id())) {
                 result=runtime.reconcile(command,authority(command),false);
                 if(result!=null)completed.put(operation.commandId(),result);
             }
-            return signed(command,result==null?null:persistKnown(command,result),PATH);
+            return signed(command,result==null?null:persistKnown(command,result),path);
         } finally {running.remove(operation.commandId());}
     }
     @Override public SignedResult query(String token,String operationId) {
-        String path=PATH+"/"+operationId;var binding=signatures.verifiedQuery(token,path);
+        String path=this.path+"/"+operationId;var binding=signatures.verifiedQuery(token,path);
         if(!binding.operationId().equals(FileRules.id(operationId)))throw new WorkspaceFailure(401,"RUNNER_COMMAND_BINDING_REJECTED");
         var command=repository.lookup(binding.spaceId(),binding.workspaceId(),binding.operationId());
+        if(captureMode!= "CAPTURE".equals(command.operation().kind()))throw new FileFailure(400,"INVALID_FILE_COMMAND");
         if(!binding.equals(binding(command,"GET",path)))throw new WorkspaceFailure(401,"RUNNER_COMMAND_BINDING_REJECTED");
         var previous=repository.receipt(command);
-        if(previous!=null){completed.remove(command.operation().commandId());return signed(command,previous,path);}
+        if(previous!=null){completed.remove(command.operation().commandId());retire(command,previous);return signed(command,previous,path);}
         if(running.contains(command.operation().commandId()))return signed(command,null,path);
         if(unconfirmedTransports.contains(command.operation().commandId()))return signed(command,null,path);
         var result=completed.get(command.operation().commandId());
         if(result!=null)return signed(command,persistKnown(command,result),path);
         var neverAccepted=repository.observeNeverAccepted(command,instance.id(),
-                RunnerSignatures.sha256(JSON.writeValueAsBytes(command)));
+                RunnerSignatures.sha256(JSON.writeValueAsBytes(captureMode?new FileCaptureData.Command(FileCaptureData.PROTOCOL,command,repository.captureTarget(command)):command)));
         if(neverAccepted!=null)return signed(command,neverAccepted,path);
         if(!repository.mayObserve(command,instance.id()))return signed(command,null,path);
         result=runtime.reconcile(command,authority(command),repository.priorRunnerStopped(command,instance.id()));

@@ -1,0 +1,356 @@
+{
+  "stage": "R4.4",
+  "status": "IMPLEMENTING",
+  "verified": false,
+  "released": false,
+  "baseCommit": "c15cb410228ddb6a6df91796c1e090699eea6546",
+  "supplierPhysicalCalls": 2,
+  "receipts": [
+    {
+      "name": "file-tool-and-sdk-admission",
+      "status": "PASS",
+      "sourceHead": "3bde15a1ecbc8f295d5b11f9c16303d85d7222b8",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "afcef5dfcf9cbb77b9a33a17f9b7113ab8a300561714f73c580c74330ece2dd4",
+      "logSha256": "1be7bde35d30efe44848f5ce07c423014ceea3233d0b8525dadd80b008aaca65",
+      "executions": 16,
+      "note": "Inherited migration cases repeat across classes. Actual PG/SDK, deterministic object transport; not physical S3/runner/shell evidence."
+    },
+    {
+      "name": "file-tool-api-runner-roles",
+      "status": "PASS",
+      "inputUnchanged": true,
+      "inputManifestSha256": "d9d2bd9a25036ca21bd9d203a05039c30da0f4f756961d229dde96ed8acf0061",
+      "logSha256": "ae6034b4da1a858e81bf8d928c8017425818bd49d1d91e86ea08e67cb929bb5b",
+      "executions": 1,
+      "note": "Actual PG restricted roles and grants. Runner predicate permitted; chat, credential, admission and private SDK table reads denied. API file-content revision trigger works without private intent access."
+    },
+    {
+      "name": "cancelled-parent-file-unknown",
+      "status": "PASS",
+      "inputUnchanged": true,
+      "inputManifestSha256": "bf6c8fd8bb3c05ffc053adeb8b1882a97629b68951ad8ea0c73592fe7ed5d362",
+      "logSha256": "e28e6f9b1898f80970bce3420324bda4cb925e70872314de83b9b12d2e067f96",
+      "executions": 1,
+      "note": "Actual PG child admission/outbox binding, parent cancellation denies execution, UNKNOWN keeps lease and reservation; no fabricated termination receipt."
+    },
+    {
+      "name": "native-gvisor-shell-whole-stop-rebuild",
+      "status": "PASS",
+      "source": "a71b6c460c701b80fc89977c34f5ab39de655c94",
+      "sandboxConfigId": "sha256:9e0bd46f894ba4a82682b933a654b888ab3cb6e34f9d28cf39a7c4f65fd09a1d",
+      "probeConfigId": "sha256:b8c7dc2bf9bf06daccccbb4c8a287754e44f96e618a2d015ac9ef93427c34d13",
+      "policyHash": "68b1994cce479fd5bdb79f2296fc16649cfb0e53d7d660440d1796ce42a508d7",
+      "windowResultSha256": "3d6ea22ac7fb3ceb31c4acdf40f99ffbe54ebbe8ea3eb0eea113c9d7d46575b8",
+      "protectedReceiptArchiveSha256": "f328632533ee0ce701218d57d0a789880c3d7788f961b6c762781318dde15602",
+      "receiptFileCount": 18,
+      "r3Restored": true,
+      "testResourcesStopped": true,
+      "note": "Actual Docker-java/gVisor Python+Node+general shell, background descendants and callback stop, nonzero exit, new-generation same-file readback. Native feasibility only; no SDK/persistent job chain or output-version sealing claim."
+    },
+    {
+      "name": "legacy-and-new-shell-wire-compatibility",
+      "status": "PASS",
+      "inputUnchanged": true,
+      "sourceHead": "792fbf82eda0ca7e5cf32fa414ec3f54f93f24f6",
+      "workingTreeImplementation": true,
+      "inputManifestSha256": "8b993a1634d3db689808f72b67c5d564553e681c359a951e8a010b54207cae9c",
+      "logSha256": "e749731f2fea6ef41dc3702ef20024ab7cfaf52ab03d51e78a83952a85f1746f",
+      "note": "Legacy concrete request JSON/hash retained; framework-selected shell family rejects cross-family/unknown payloads. Existing use application and signature units regress. New production shell dispatch/parent admission remains NOT_RUN."
+    },
+    {
+      "name": "shell-parent-admission",
+      "status": "PASS",
+      "sourceHead": "c00794ec2ee3797ec1e42967e2e0b3be831c631a",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "f0ff57eaee6ff4fd9711fb2282bf135291ef72edcde47102b0a9d73e07efcf87",
+      "logSha256": "2ae32e9b393eecb3a791980188b133f15a58aa2f02a1e8d70167d8d6a1f6d8a5",
+      "note": "Actual PG/SDK parent ownership, command identity and activity deadline; no physical signed dispatch."
+    },
+    {
+      "name": "signed-shell-wire",
+      "status": "PASS",
+      "sourceHead": "c00794ec2ee3797ec1e42967e2e0b3be831c631a",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "28bb539ef0c07b21b85dda8cd3048986c5b4d6e1326c8c3fc36de729fdd2be84",
+      "logSha256": "64d6aacf3d466218c706d028fa50027dda914157f44d28e56def6ff33aed5e33",
+      "note": "Actual HTTP/JOSE, deterministic repository/runtime. Duplicate/cross-family/tampering/in-flight-stop checks, legacy regression. No integrated native job or sealing claim."
+    },
+    {
+      "name": "durable-stop-parent-gate",
+      "status": "PASS",
+      "sourceHead": "9eb00c7e42588a8e06ac50fa82e18ca10243b0ab",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "note": "Actual PG original-operation stop intent is idempotent after cancellation, forged owner rejected; file/shell share deadline/authority, no refunds or fabricated receipts.",
+      "inputManifestSha256": "5838719cfdbc13171b3c93d99deafe72851be04a12874bb11362e2c05670a9d9",
+      "logSha256": "223298c7558d9a53dad4ba7991fe0f88cdff7690cff4e9e52dad4263199b8e3a"
+    },
+    {
+      "name": "capture-helper-protocol",
+      "status": "PASS",
+      "sourceHead": "9eb00c7e42588a8e06ac50fa82e18ca10243b0ab",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "note": "Offline Linux helper: 100MiB chunks, exact framing, link/type/path rejection, mutation hash rejection; not integrated XFS/S3/job evidence.",
+      "logSha256": "96fcbeaff6fbc56e80af7d6bc5e450fc70b63c22d16f980743c914a2acdf425a",
+      "inputHashes": {
+        "deploy/scripts/file-capture-bridge.py": "52e42fb6a6da1a5676d54c8911b5da8ba623ddf6f4eec7b209751fafdabec18e",
+        "deploy/scripts/file-stream-bridge.py": "e571df0d21e28c339ab65f03c52e475b63663bdeb3e2b183c91aaebe920cb37b",
+        "deploy/tests/test_file_capture_bridge.py": "b692d6a3c633a12d7b885e89f59ea3e6874eefc346f7c5cc4746e9d21e18af27",
+        "deploy/scripts/verify-file-capture-protocol.py": "34d01255b47976f7c8e8026969b7ec28c19bf4241280d47921353d823df2c6f2",
+        "deploy/file-helper.Dockerfile": "ded641c66b8dfc72153985be8ae4d7e1f00fa1e1a11505078870dee8494bbd4d"
+      }
+    },
+    {
+      "name": "capture-stream-and-sdk",
+      "status": "PASS",
+      "sourceHead": "9eb00c7e42588a8e06ac50fa82e18ca10243b0ab",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "note": "Java trailer/hash/actual-exit gate and S3 SDK units, not integrated capture/version sealing.",
+      "inputManifestSha256": "7c26b2acfc98474d6eca914dd3720b1970eba0af6ebde328225eb74a29bf49a7",
+      "logSha256": "dcbe01d02db405769dd21cc3ec791729c99dad0f91b6cc3378b4b5992412c6ca"
+    },
+    {
+      "name": "frontend-tool-cards",
+      "status": "PASS",
+      "sourceHead": "9eb00c7e42588a8e06ac50fa82e18ca10243b0ab",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "note": "Pinned typecheck/unit/build/contracts pass from host entry with rename preflight; actual API/browser NOT_RUN.",
+      "inputManifestSha256": "57343d57d1b09d097ce2f6738aa26540e1ac28b42844dc01510e9a55f2bd8ba1",
+      "gates": [
+        {
+          "name": "rename-preflight",
+          "exitCode": 0,
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "typecheck",
+          "exitCode": 0,
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "unit",
+          "exitCode": 0,
+          "logSha256": "45eb9fbb6e1923af96a806d28334a815d4eb8a776be02cbde8b51be87d6efbec"
+        },
+        {
+          "name": "build",
+          "exitCode": 0,
+          "logSha256": "6f5b9eb7310045556e9e98279cc96468b38206e0e68d93d197b0a17d419acdda"
+        },
+        {
+          "name": "contracts",
+          "exitCode": 0,
+          "logSha256": "347d966427f256ee3b642071bed0945d1eb5b7887bdec278ae5300c42e81c80e"
+        }
+      ]
+    },
+    {
+      "name": "file-tool-stop-barrier",
+      "status": "PASS",
+      "sourceHead": "9eb00c7e42588a8e06ac50fa82e18ca10243b0ab",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "e1a9684be4626ed3adfe063e317f71630cc3195f96dbc144d0f9493b1229ec50",
+      "logSha256": "fa8d07baff172fe8e1baf3213719e9f78bdbb5075f1d54e432eb2fed0342903f",
+      "note": "Lifecycle units only: cancellation waits for synchronous IO exit and original child stop; missing DB facts cannot confirm termination. Initial generic result scope label was too broad; verifier now has a dedicated unit scope. No PG or integrated physical claim from this receipt."
+    },
+    {
+      "name": "public-operation-pg-projection",
+      "status": "PASS",
+      "sourceHead": "1438b54b426bdb18ff238643fe77a9cb1c16550c",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "2330bebae5035b9077cd241d3a2d17a9330b66f7a13275ee05d7f0566ba97015",
+      "note": "Actual PG typed owner-scoped list, cursor, API-role narrow function, write body and private-table denial. Prior cleanup FAIL retained; SET ROLE is reset in finally.",
+      "logSha256": "48440a1c864885a90190f3fef73c23ad9a58307b67b187cacd51ba0bb2c8b7c0"
+    },
+    {
+      "name": "public-operation-results",
+      "status": "PASS",
+      "sourceHead": "1438b54b426bdb18ff238643fe77a9cb1c16550c",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "3fc350c3e2ea0e58faa937f488121d2dbe01dd902d38af700666c11ddafa2362",
+      "note": "Actual PG list/known file conflict result plus application units for bounded object hash, UTF-8 and reauthorization. Not actual S3/browser or signed physical effects.",
+      "logSha256": "24c39b87ccbab0d057b6ed585cdb935e0fac87d447a4e18637549023b910eee1"
+    },
+    {
+      "name": "frontend-operation-list",
+      "status": "PASS",
+      "sourceHead": "1438b54b426bdb18ff238643fe77a9cb1c16550c",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "db63af6aa0e37e3ae1f640b07eda6bb2b2b060402042b7eb9c1db24dc6aff513",
+      "note": "Frontend query list/status polling, type/unit/build/contracts; actual API browser remains NOT_RUN.",
+      "gates": [
+        {
+          "name": "rename-preflight",
+          "exitCode": 0,
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "typecheck",
+          "exitCode": 0,
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "unit",
+          "exitCode": 0,
+          "logSha256": "741ff545b2df1b799a58a1c57bea45f4b039424b634e5e4e8d85f0e6588b9c74"
+        },
+        {
+          "name": "build",
+          "exitCode": 0,
+          "logSha256": "881762e4835ff9401d84572508a1c31c5f8b1d3e14796bc92b691dca0d61f4c9"
+        },
+        {
+          "name": "contracts",
+          "exitCode": 0,
+          "logSha256": "347d966427f256ee3b642071bed0945d1eb5b7887bdec278ae5300c42e81c80e"
+        }
+      ]
+    },
+    {
+      "name": "public-result-safe-fallback",
+      "status": "PASS",
+      "sourceHead": "1438b54b426bdb18ff238643fe77a9cb1c16550c",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "d2cfc099bdff37224ab980ff402837c302008aeab91ed546b410eb5347d16c7d",
+      "logSha256": "2a04d5ef8d25e1514b231b9a8c6623ca3580e51f358905145fa5f2150e8078ae",
+      "note": "Result units: missing summary never reflects private result map; oversized object rejected before transport; hash/UTF8 and live reauthorization."
+    },
+    {
+      "name": "runner-capture-channel",
+      "status": "PASS",
+      "sourceHead": "4870698eeb63fe5e27f413a24e4b97c76cecd518",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "7209b3674901747de92a37f8ca42a38294a60f0d619c64c79dc3c1c1286e6f8a",
+      "logSha256": "e6c85e3397b354e84a0763aa8e045f9dbd54adfec61992b576e6fedbcb92d82f",
+      "note": "Runner capture adapter compiles; actual bounded JDK pipe backpressure and callback/input/IO exit units plus integrity/SDK regression. Native Docker capture and DB sink integration not yet run."
+    },
+    {
+      "name": "shell-output-reservations",
+      "status": "PASS",
+      "sourceHead": "4870698eeb63fe5e27f413a24e4b97c76cecd518",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "a1c272b4418ea590f631f3906601aae7cc4adfbb3b603f2f7a49b63419b91035",
+      "logSha256": "dc2ddcd025154df81b51142bffe8206c75314639cc08d0817f063f15f77e08ec",
+      "note": "Actual PG/SDK admission regression: reserve declared max output bytes plus64KiB result atomically; no fake asset content, repeat admission does not charge twice, insufficient quota rolls back RUNNING and all reservations, cancel preserves unresolved holds."
+    },
+    {
+      "name": "capture-schema-and-source-guards",
+      "status": "PASS",
+      "sourceHead": "edffe75df2611d475f8f50413ab5ecb06c2ff91e",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "4d825f4ad188692bb01e6dd770670edc1c952a6de90de023227188988a0cdc22",
+      "note": "Actual PG migration/ownership regression plus integrity/channel/legacy runner units; no native capture effect.",
+      "logSha256": "ffd499e3a034231edf4a472319f24bea29a0d2adf29046a15c2bb423d78640a9"
+    },
+    {
+      "name": "capture-signed-management",
+      "status": "PASS",
+      "sourceHead": "edffe75df2611d475f8f50413ab5ecb06c2ff91e",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "d05a505440faef10774ddd20ca7cce64280d0673b2e9e2edb9a1731ca861acbd",
+      "note": "Real Nimbus JOSE and application handoff ordering; deterministic physical/object ports. Descriptor/stop before upload, receipt before cleanup, forged target and response-loss no replay.",
+      "logSha256": "a3672c5036a6ac1d7e365995befdd42a425ae74d7f927b832ef00e5ccc0a0e0d"
+    },
+    {
+      "name": "capture-job-version-settlement",
+      "status": "PASS",
+      "sourceHead": "edffe75df2611d475f8f50413ab5ecb06c2ff91e",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "d28ab0fd153a32071a6939e49236ed48cd578f4dfe9bfdce2c47e04427627197",
+      "note": "Actual PG admission/outbox/claim, signed application runner and original stop facts, immutable version/quota commit with lost response; deterministic physical runtime/object store, not real MQ/S3/native.",
+      "logSha256": "2c693dca0fb211d00fde9a64b3885009bf68203ef106ceba1c1eebd6be934bb6"
+    },
+    {
+      "name": "active-tool-panel-engineering",
+      "status": "PASS",
+      "sourceHead": "edffe75df2611d475f8f50413ab5ecb06c2ff91e",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "90a64c0cd4afd1a1e3f0ab1ac6a29b61c4a8157da78c2de89d21a2a199ff56e4",
+      "note": "Frontend type/unit/build/contracts after polling active task even before first operation appears; actual browser still pending.",
+      "gates": [
+        {
+          "name": "rename-preflight",
+          "exitCode": 0,
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "typecheck",
+          "exitCode": 0,
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "unit",
+          "exitCode": 0,
+          "logSha256": "33937587082ee3130f5f304bee33463b4f3c40b1ac92318d9973dc9d6d697976"
+        },
+        {
+          "name": "build",
+          "exitCode": 0,
+          "logSha256": "6f90fb4a2a6ca4d81af2caf32107c37f8e149da60c3af31ae9dd7ace24e00d50"
+        },
+        {
+          "name": "contracts",
+          "exitCode": 0,
+          "logSha256": "347d966427f256ee3b642071bed0945d1eb5b7887bdec278ae5300c42e81c80e"
+        }
+      ]
+    },
+    {
+      "name": "production-tool-composition",
+      "status": "PASS",
+      "sourceHead": "e9bfc2a27dd3ffc6d350e7fe5e46616833bd85bd",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "3987c54d24082b181c7f638df407566adcfcd97ad96e41d9d018db559f97fb33",
+      "logSha256": "45bf604e1c9f00ee003981d87ac6bb9ea60fa463e3928e625f5dbefddaf81d58",
+      "note": "Actual PG composition/stop/negative handoff; deterministic physical/object ports."
+    },
+    {
+      "name": "full-engineering",
+      "status": "PASS",
+      "sourceHead": "e9bfc2a27dd3ffc6d350e7fe5e46616833bd85bd",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "2a5fa1b39f4f6428059407485b3f5b56f35529ebe86d639d5eac8270ea431d8a",
+      "logSha256": "135319fcfb506a31c25736038d61b0794eb55f0ea39444e9dc507feed18c9b82",
+      "note": "Complete Maven verify; historical broker-dependent tests skipped here, actual MQ gate pending."
+    },
+    {
+      "name": "scoped-plan-metadata",
+      "status": "PASS",
+      "sourceHead": "e9bfc2a27dd3ffc6d350e7fe5e46616833bd85bd",
+      "workingTreeImplementation": true,
+      "inputUnchanged": true,
+      "inputManifestSha256": "9955e09cf6bd17863b98ed28a9e6253e8add56818a10ed63d7cf7f84705613d8",
+      "logSha256": "0105bfc78edf66a4b461b4cfb0168b9d2d0b754b98e0baf0c0023bd9d842c340",
+      "note": "Maven verify metadata increment, SDK, legacy text Plan, domain and architecture; B19 unchanged."
+    }
+  ],
+  "notRun": [
+    "native production SDK/signed shell/S3 capture/version/same-task result",
+    "actual full API/browser/resource gates",
+    "bounded real Flash end-to-end",
+    "protected promotion and cloud release/observation/restore/rollback"
+  ],
+  "production": "Same R3 release/images. Original runner restarted after second preserved OOM; second unaccepted expired SCAN converged via existing receipt reconciliation to NOT_APPLIED/FAILED. No SQL repair/replay. Memory cause and R4 capacity unproven. Receipt /srv/agentplatform/operations/r44-r3-runner-recovery-1793191334160114315.",
+  "history": "Retain original failed logs in protected local stage records; failures are not overwritten by later passes.",
+  "realAcceptanceNote": "Two completed Flash requests retained from the blocked short-Plan context candidate; not reset. Corrected candidate reacceptance pending."
+}

@@ -12,6 +12,19 @@ spec.loader.exec_module(scan)
 
 
 class ScanBridgeTests(unittest.TestCase):
+    def test_root_mount_attestations_are_not_user_entries_but_lookalikes_remain_visible(self):
+        with tempfile.TemporaryDirectory() as root:
+            Path(root, ".platform-ready-" + str(uuid.uuid4())).write_bytes(b"internal mount attestation")
+            Path(root, ".platform-ready-not-an-identity").write_bytes(b"ordinary file")
+            Path(root, "visible.txt").write_bytes(b"666")
+            result = scan.scan(self.header(), root)
+            self.assertEqual([item["path"] for item in result["entries"]],
+                             [".platform-ready-not-an-identity", "visible.txt"])
+            Path(root, "nested").mkdir()
+            name = ".platform-ready-" + str(uuid.uuid4())
+            Path(root, "nested", name).write_bytes(b"ordinary nested file")
+            self.assertEqual(scan.scan(self.header(parent="nested"), root)["entries"][0]["path"], "nested/" + name)
+
     def header(self, parent="", cursor=None, stamp=None, epoch=None):
         return {"protocol": "file-scan-v1", "operationId": str(uuid.uuid4()), "parent": parent,
                 "cursor": cursor, "epoch": epoch or str(uuid.uuid4()), "stamp": stamp}
