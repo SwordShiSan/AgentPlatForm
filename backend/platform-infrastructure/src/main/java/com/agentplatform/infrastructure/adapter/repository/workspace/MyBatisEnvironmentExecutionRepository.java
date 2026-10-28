@@ -11,7 +11,7 @@ import java.util.*;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.json.JsonMapper;
 
-/** Single lock order: sandbox slot → workspace → environment/operation → command/receipt. */
+/** Parent quota/task locks precede sandbox slot → workspace → environment/operation → command/receipt. */
 public final class MyBatisEnvironmentExecutionRepository implements EnvironmentExecutionRepository {
     private static final JsonMapper JSON=JsonMapper.builder().build();
     private final EnvironmentExecutionMapper mapper;
@@ -64,19 +64,25 @@ public final class MyBatisEnvironmentExecutionRepository implements EnvironmentE
         return mapper.command(operation.id());
     }
     @Override public Command lookup(UUID operationId) {
-        tx();environments.lockSlot();
+        tx();
         var command=mapper.command(operationId);
         if(command==null)throw new WorkspaceFailure(404,"RESOURCE_NOT_FOUND");
-        lock(command.spaceId(),command.workspaceId());environments.operation(operationId);
         guard(command,false);return command;
     }
     @Override public Query queryLookup(UUID operationId) {
-        tx();environments.lockSlot();var command=mapper.command(operationId);
+        tx();var command=mapper.command(operationId);
         if(command==null||!"ENVIRONMENT_V3".equals(command.protocol()))throw new WorkspaceFailure(404,"RESOURCE_NOT_FOUND");
+        // Queries can execute reconciliation, so acquire parent locks before child locks too.
+        // A stopped/expired parent's immutable receipts remain observable without execution rights.
+        boolean parentAllowed=!workspaceTools||mapper.activationAllowed(operationId,true);
+        environments.lockSlot();
         lock(command.spaceId(),command.workspaceId());var operation=environments.operation(operationId);
         if(!authorized(command))throw new WorkspaceFailure(403,"ENVIRONMENT_AUTHORIZATION_REVOKED");
         if(Set.of("COMMITTED","FAILED").contains(operation.status()))return new Query(command,QueryMode.READ_ONLY);
-        if(mapper.owned(command,true)) {guard(command,true);return new Query(command,QueryMode.EXECUTION);}
+        if(mapper.owned(command,true)) {
+            if(!parentAllowed)throw new WorkspaceFailure(403,"TOOL_PARENT_NO_LONGER_AUTHORIZED");
+            guard(command,true);return new Query(command,QueryMode.EXECUTION);
+        }
         observedGuard(command,null,null,true);return new Query(command,QueryMode.OBSERVATION);
     }
     @Override public List<Observation> observations(UUID observerId) {

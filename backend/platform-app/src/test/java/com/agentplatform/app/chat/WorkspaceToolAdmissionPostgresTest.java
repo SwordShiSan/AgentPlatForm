@@ -86,9 +86,49 @@ class WorkspaceToolAdmissionPostgresTest extends WorkspaceToolsMigrationPostgres
             +"INSERT INTO pf.workspace_tool_job_binding(id,operation_id,space_id,task_id,workspace_id,environment_id,activation_operation_id) VALUES('"+UUID.randomUUID()+"','"+intent.operationId()+"','"+actor.spaceId()+"','"+task.id()+"','"+workspace+"','"+environment+"','"+activation+"');COMMIT;");
         assertEquals("2",scalar("SELECT count(*) FROM pf.operation_execution_binding WHERE operation_id='"+intent.operationId()+"'"));
         assertEquals("t",scalar("SELECT pf.workspace_tool_activation_allowed('"+activation+"',false)"));
+        sql("UPDATE pf.workspace_environment_operation SET protocol='ENVIRONMENT_V3',lifecycle_intent='PREPARE',"
+            +"target_creation_command_id=command_id,target_creation_fence=fence,target_image_id='sha256:"+"a".repeat(64)+"',"
+            +"target_policy_hash='"+"b".repeat(64)+"',target_project_id=(SELECT project_id FROM pf.workspace WHERE id='"+workspace+"'),"
+            +"status='CLAIMED',owner_id='"+UUID.randomUUID()+"',lease_until=clock_timestamp()+interval '60 seconds',deadline_at=clock_timestamp()+interval '120 seconds' WHERE id='"+activation+"'");
+        sql("UPDATE pf.workspace_sandbox_slot SET space_id='"+actor.spaceId()+"',workspace_id='"+workspace+"',environment_id='"+environment+"',generation=1 WHERE id=1");
+        assertParentLockPrecedesSandboxLock(activation,false);
+        assertParentLockPrecedesSandboxLock(activation,true);
         sql("UPDATE pf.execution_dispatch SET lease_until=clock_timestamp()-interval '1 second' WHERE task_id='"+task.id()+"'");
         assertEquals("f",scalar("SELECT pf.workspace_tool_activation_allowed('"+activation+"',false)"));
         assertEquals(0,admissions.get());
+    }
+    private void assertParentLockPrecedesSandboxLock(UUID activation,boolean query) throws Exception {
+        var factory=new org.mybatis.spring.SqlSessionFactoryBean();factory.setDataSource(pool);
+        var configuration=new org.apache.ibatis.session.Configuration();configuration.setMapUnderscoreToCamelCase(true);
+        configuration.setCacheEnabled(false);configuration.setLocalCacheScope(org.apache.ibatis.session.LocalCacheScope.STATEMENT);
+        configuration.getTypeHandlerRegistry().register(new com.agentplatform.infrastructure.dao.typehandler.UuidTypeHandler());
+        factory.setConfiguration(configuration);factory.setMapperLocations(new org.springframework.core.io.support.PathMatchingResourcePatternResolver().getResources("classpath*:mybatis/mapper/workspace/*.xml"));
+        var session=new org.mybatis.spring.SqlSessionTemplate(factory.getObject());
+        var delegate=new com.agentplatform.infrastructure.adapter.repository.workspace.MyBatisEnvironmentExecutionRepository(
+            session.getMapper(com.agentplatform.infrastructure.dao.workspace.EnvironmentExecutionMapper.class),
+            session.getMapper(com.agentplatform.infrastructure.dao.workspace.EnvironmentPreparationMapper.class),
+            session.getMapper(com.agentplatform.infrastructure.dao.workspace.WorkspaceMapper.class),true);
+        var transactions=new org.springframework.transaction.support.TransactionTemplate(new org.springframework.jdbc.support.JdbcTransactionManager(pool));
+        var executions=new com.agentplatform.app.workspace.TransactionalEnvironmentExecutionRepository(delegate,transactions);
+        try(var blocker=pool.getConnection();var executor=Executors.newSingleThreadExecutor()) {
+            blocker.setAutoCommit(false);
+            try(var statement=blocker.createStatement()){statement.execute("SELECT 1 FROM pf.quota_principal WHERE user_id='"+actor.userId()+"' FOR UPDATE");}
+            var waiting=executor.submit(()->query?executions.queryLookup(activation).command():executions.lookup(activation));
+            try {
+                long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(3);boolean parentWait=false;
+                while(System.nanoTime()<deadline) {
+                    parentWait="t".equals(scalar("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE wait_event_type='Lock' AND query LIKE 'SELECT pf.workspace_tool_activation_allowed%')"));
+                    if(parentWait)break;Thread.sleep(10);
+                }
+                assertTrue(parentWait,"Lookup must wait for the parent's quota lock");
+                try(var probe=pool.getConnection();var statement=probe.createStatement()) {
+                    probe.setAutoCommit(false);
+                    try {statement.execute("SELECT 1 FROM pf.workspace_sandbox_slot WHERE id=1 FOR UPDATE NOWAIT");}
+                    finally {probe.rollback();}
+                }
+            } finally {blocker.rollback();}
+            assertEquals(activation,waiting.get(5,TimeUnit.SECONDS).operationId());
+        }
     }
     @Test void contentChangeInvalidatesThePendingCommandButNotItsImmutableIntent() throws Exception {
         var task=enabled(Mode.RISK_BASED);var calls=new AtomicInteger();var admissions=new AtomicInteger();run(claim(task),provider(calls),admissions);
