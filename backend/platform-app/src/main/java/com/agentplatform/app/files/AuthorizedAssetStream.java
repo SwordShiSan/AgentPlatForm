@@ -8,14 +8,14 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
 /** Byte-count and full-object integrity gate with periodic live authorization. No content buffering. */
-final class AuthorizedAssetStream extends FilterInputStream {
+public final class AuthorizedAssetStream extends FilterInputStream {
     private final Runnable authorize;
     private final long expected;
     private final String expectedHash;
     private final MessageDigest digest;
     private long bytes, checkedAtBytes, checkedAtNanos;
     private boolean ended;
-    AuthorizedAssetStream(InputStream source,long expected,String expectedHash,Runnable authorize) {
+    public AuthorizedAssetStream(InputStream source,long expected,String expectedHash,Runnable authorize) {
         super(source);this.expected=expected;this.expectedHash=expectedHash;this.authorize=authorize;
         try {digest=expectedHash==null?null:MessageDigest.getInstance("SHA-256");}
         catch(NoSuchAlgorithmException impossible) {throw new IllegalStateException(impossible);}

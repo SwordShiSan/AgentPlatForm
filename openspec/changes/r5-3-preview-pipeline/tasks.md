@@ -1,5 +1,5 @@
 ## Implementation
-- [ ] 1. Canonical plan/ADR/contracts and strict pre-code gate.
+- [x] 1. Canonical plan/ADR/contracts and strict pre-code gate.
 - [ ] 2. Lock renderer dependencies/image and prove real bounded conversion/stopping.
 - [ ] 3. Add V20, preview repository/transactions, quota/assets and shared heavy admission.
 - [ ] 4. Add reliable MQ/signed runner/reconciliation and exact stopped receipts.

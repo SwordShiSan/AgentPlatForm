@@ -2,6 +2,8 @@
 
 Status: PLANNED. All implementation/runtime checks NOT_RUN. Specification strict must pass before coding. Zero real supplier requests. Final status cannot be VERIFIED until mandatory cases and protected promotion complete.
 
+Implementation experiment history: initial Desktop format-only run reached result-ready but archive could not read tmpfs; FAIL retained, not an Office OOM or a successful isolated pipeline. Fixed exec output read must prove exact read-exec/callback/container stop before any READY publication. Desktop conversion and Linux runsc proofs remain separate.
+
 | Gate | Assertions | Current |
 |---|---|---|
 | Normative | approved Plan, five artifacts, canonical plan/ADR/contracts and strict | NOT_RUN |

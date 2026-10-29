@@ -36,6 +36,10 @@ Business sandbox preparation, wake, shell and renderer SHALL acquire the same du
 - **WHEN** conversion is queued while a business sandbox owns heavy capacity
 - **THEN** conversion waits without starting another heavy container or forcibly preempting the active environment; ordinary chat and existing downloads remain available
 
+#### Scenario: Preview already active
+- **WHEN** a valid environment preparation or wake is accepted while conversion owns heavy capacity
+- **THEN** its original environment operation waits durably and claims once after confirmed preview stop, without a second heavy container or loss of its publication
+
 ### Requirement: Safe multi-format display
 The UI SHALL share a pinned preview across current versions, history and artifacts. DOCX/XLSX/PPTX convert toPDF; PDF uses local PDF.js with serial Range; PNG/JPEG/GIF-first-frame/WebP use validated image output; HTML defaults to source and static preview uses a sanitized opaque sandbox. SVG and legacy Office remain source/download only. Closing a viewer SHALL abort reads but not erase durable work.
 

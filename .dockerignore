@@ -25,3 +25,6 @@
 !backend/platform-app/target/probe-libs/**
 !backend/platform-app/target/test-classes/**
 !backend/platform-app/target/classes/**
+!backend/platform-app/target/platform-app-0.1.0-SNAPSHOT-renderer.jar
+!backend/platform-app/target/renderer-libs/**
+!deploy/preview/**

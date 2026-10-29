@@ -2,8 +2,8 @@
 from pathlib import Path
 import argparse,fcntl,hashlib,importlib.util,json,os,re,shutil,signal,subprocess,time,traceback,urllib.request,uuid
 ROOT=Path(__file__).resolve().parent
-assert re.fullmatch('/srv/agentplatform/acceptance/r44-r5[12]-[0-9]{14}',str(ROOT))
-PLAN=json.loads((ROOT/'operation.json').read_text());STAGE=PLAN.get('acceptanceStage','r51');assert STAGE in ['r51','r52'] and PLAN['root']==str(ROOT) and PLAN['project']=='agentplatform-'+STAGE+'-local'
+assert re.fullmatch('/srv/agentplatform/acceptance/r44-r5[123]-[0-9]{14}',str(ROOT))
+PLAN=json.loads((ROOT/'operation.json').read_text());STAGE=PLAN.get('acceptanceStage','r51');assert STAGE in ['r51','r52','r53'] and PLAN['root']==str(ROOT) and PLAN['project']=='agentplatform-'+STAGE+'-local'
 REPORT=ROOT/'reports';os.umask(0o077)
 helper=Path('/srv/agentplatform/operations/platform-switch/platform-switch.py')
 assert hashlib.sha256(helper.read_bytes()).hexdigest()=='2d3021778267cd364568398fc44ba8f8d51b8eebc5b09ad3392e7ed2402a1e8b'
@@ -113,7 +113,8 @@ def start():
    password=Path(c['secrets'][secret]['file']).read_text().strip();assert re.fullmatch('[A-Za-z0-9_-]+',password)
    sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='"+role+"') THEN CREATE ROLE "+role+" LOGIN; END IF; END $$;ALTER ROLE "+role+" PASSWORD '"+password+"';")
   grant_files=['r1-runtime-grants.sql','r2-runtime-grants.sql','r3-workspace-grants.sql','r3-environment-grants.sql','r3-file-grants.sql','r4-runtime-grants.sql','r4-permission-grants.sql','r4-approval-grants.sql','r4-workspace-tools-grants.sql']
-  if STAGE=='r52':grant_files.append('r5-file-grants.sql')
+  if STAGE in ['r52','r53']:grant_files.append('r5-file-grants.sql')
+  if STAGE=='r53':grant_files.append('r5-preview-grants.sql')
   # Named service/ops roles must exist before any grant script; do not discover them one failure at a time.
   names=set(re.findall(r'\bap_[a-z_]+\b','\n'.join((ROOT/name).read_text() for name in grant_files)))
   for role in sorted(names):

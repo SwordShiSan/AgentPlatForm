@@ -10,10 +10,12 @@ def sha(path):
     return h.hexdigest()
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--engineering-receipt',required=True,type=Path);p.add_argument('--resume',type=Path);p.add_argument('--stage',choices=['r44','r52'],default='r44');args=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--engineering-receipt',required=True,type=Path);p.add_argument('--resume',type=Path);p.add_argument('--stage',choices=['r44','r52','r53'],default='r44');args=p.parse_args()
     data=ROOT/('.cache/'+args.stage+'-local')
     receipt=json.loads(args.engineering_receipt.read_text(encoding='utf-8'));assert receipt['status']=='PASS' and receipt['inputUnchanged']
-    verified=json.loads((args.engineering_receipt.parent/'source.json').read_text(encoding='utf-8'))
+    inputs=args.engineering_receipt.parent/'source.json'
+    if not inputs.exists():inputs=args.engineering_receipt.parent/'source-before.json'
+    verified=json.loads(inputs.read_text(encoding='utf-8'))
     for name,digest in verified['files'].items():
         if name.startswith('backend/'):assert sha(ROOT/name)==digest,'Backend differs from verified source: '+name
     assert not subprocess.check_output(['git','status','--porcelain'],cwd=ROOT),'Commit public source before building'
@@ -43,10 +45,10 @@ def main():
     jar=ROOT/'backend/platform-app/target/platform-app-0.1.0-SNAPSHOT.jar';assert jar.is_file()
     if not args.resume:run('frontend-build',[node,ROOT/'frontend/node_modules/vite/bin/vite.js','build'],ROOT/'frontend')
     images={}
-    for component in (['api','gateway','file-helper'] if args.stage=='r52' else ['api','gateway','file-helper','provider-fixture']):
+    for component in (['api','gateway','file-helper','preview-renderer'] if args.stage=='r53' else ['api','gateway','file-helper'] if args.stage=='r52' else ['api','gateway','file-helper','provider-fixture']):
         tag='agentplatform-'+component+':'+args.stage+'-'+source[:12]
-        cmd=['docker','--context','desktop-linux','build','--platform','linux/amd64','--network=none','--pull=false','--build-arg','SOURCE_REVISION='+source,'-f','deploy/'+component+'.Dockerfile','-t',tag]
-        if component=='gateway':cmd+=['--build-arg','NGINX_CONFIG=deploy/nginx.files-local.conf' if args.stage=='r52' else 'NGINX_CONFIG=deploy/nginx.production.conf']
+        cmd=['docker','--context','desktop-linux','build','--platform','linux/amd64','--network='+('default' if component=='preview-renderer' else 'none'),'--pull=false','--build-arg','SOURCE_REVISION='+source,'-f','deploy/'+component+'.Dockerfile','-t',tag]
+        if component=='gateway':cmd+=['--build-arg','NGINX_CONFIG=deploy/nginx.files-local.conf' if args.stage in ['r52','r53'] else 'NGINX_CONFIG=deploy/nginx.production.conf']
         completed=any(row['name']==component+'-image' and row['exitCode']==0 for row in commands)
         if not completed:run(component+'-image',cmd+['.'])
         image=json.loads(subprocess.check_output(['docker','image','inspect',tag]))[0]

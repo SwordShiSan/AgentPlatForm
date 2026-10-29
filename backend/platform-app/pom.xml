@@ -11,8 +11,42 @@
   <dependency><groupId>com.tngtech.archunit</groupId><artifactId>archunit-junit5</artifactId><scope>test</scope></dependency>
 </dependencies><build><plugins>
   <plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin>
+  <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-jar-plugin</artifactId>
+    <executions><execution><id>default-jar</id><configuration><excludes><exclude>com/agentplatform/renderer/**</exclude></excludes></configuration></execution></executions>
+  </plugin>
   <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId>
     <!-- Use Boot's resolved test agent at JVM startup, avoiding restricted dynamic attach pipes. -->
     <configuration><argLine>"-javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar"</argLine></configuration>
   </plugin>
-</plugins></build></project>
+</plugins></build>
+<profiles><profile><id>preview-renderer</id>
+  <dependencies>
+    <dependency><groupId>org.jodconverter</groupId><artifactId>jodconverter-local-lo</artifactId><version>5.1.1</version></dependency>
+    <dependency><groupId>org.apache.pdfbox</groupId><artifactId>pdfbox</artifactId><version>3.0.8</version></dependency>
+    <dependency><groupId>com.twelvemonkeys.imageio</groupId><artifactId>imageio-webp</artifactId><version>3.13.1</version></dependency>
+    <dependency><groupId>org.jsoup</groupId><artifactId>jsoup</artifactId><version>1.23.2</version></dependency>
+  </dependencies>
+  <build><plugins>
+    <plugin><groupId>org.codehaus.mojo</groupId><artifactId>build-helper-maven-plugin</artifactId><version>3.6.1</version>
+      <executions>
+        <execution><id>renderer-source</id><phase>generate-sources</phase><goals><goal>add-source</goal></goals><configuration><sources><source>src/renderer/java</source></sources></configuration></execution>
+        <execution><id>renderer-tests</id><phase>generate-test-sources</phase><goals><goal>add-test-source</goal></goals><configuration><sources><source>src/renderer-test/java</source></sources></configuration></execution>
+      </executions>
+    </plugin>
+    <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-jar-plugin</artifactId>
+      <executions>
+        <execution><id>renderer-jar</id><phase>package</phase><goals><goal>jar</goal></goals><configuration><classifier>renderer</classifier><includes><include>com/agentplatform/renderer/**</include></includes><excludes combine.self="override"/></configuration></execution>
+      </executions>
+    </plugin>
+    <plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId>
+      <configuration><excludeGroupIds>org.jodconverter,org.libreoffice,org.apache.pdfbox,com.twelvemonkeys.imageio,com.twelvemonkeys.common,org.jsoup</excludeGroupIds></configuration>
+    </plugin>
+    <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-dependency-plugin</artifactId><version>3.8.1</version>
+      <executions><execution><id>renderer-libraries</id><phase>package</phase><goals><goal>copy-dependencies</goal></goals><configuration>
+        <outputDirectory>${project.build.directory}/renderer-libs</outputDirectory><includeScope>runtime</includeScope>
+        <includeArtifactIds>jodconverter-core,jodconverter-local,jodconverter-local-lo,libreoffice,pdfbox,pdfbox-io,fontbox,commons-logging,imageio-webp,imageio-core,imageio-metadata,common-lang,common-io,common-image,jsoup,slf4j-api,gson,commons-io,commons-lang3</includeArtifactIds>
+      </configuration></execution></executions>
+    </plugin>
+  </plugins></build>
+</profile></profiles>
+</project>

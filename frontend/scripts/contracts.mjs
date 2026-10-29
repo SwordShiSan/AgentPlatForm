@@ -181,6 +181,20 @@ assert(!validateEvent({ ...toolEvent, taskId: null }), 'A tool cannot fabricate 
 
 // R4.1 rejects secret/permission fields and closed interaction decisions at the public boundary.
 const expanded = await SwaggerParser.dereference(structuredClone(api));
+// Preview jobs expose immutable source identity and bounded output metadata, never renderer internals.
+const previewRequest = ajv.compile(expanded.components.schemas.PreviewRequest);
+assert(previewRequest({ versionId: fixture.eventId, format: 'AUTO' }));
+for (const input of [{ versionId: 'bad', format: 'AUTO' }, { versionId: fixture.eventId, format: 'URL' },
+  { versionId: fixture.eventId, format: 'AUTO', endpoint: 'https://external.invalid' },
+  { versionId: fixture.eventId, format: 'AUTO', objectKey: 'private' }]) assert(!previewRequest(input), 'Unsafe preview request accepted');
+const previewProjection = ajv.compile(expanded.components.schemas.FilePreview);
+const previewFixture = { id: fixture.eventId, fileId: fixture.eventId, versionId: fixture.eventId, state: 'READY', format: 'PDF',
+  mediaType: 'application/pdf', bytes: 100, sha256: 'a'.repeat(64), pages: 1, revision: 1, errorCode: null, retryable: false, allowedActions: ['VIEW', 'DOWNLOAD_SOURCE'] };
+assert(previewProjection(previewFixture));
+assert(previewProjection({ ...previewFixture, state: 'QUEUED', format: 'AUTO', mediaType: null, bytes: null, sha256: null, pages: null, allowedActions: ['QUERY'] }));
+for (const patch of [{ bytes: -1 }, { bytes: 104857601 }, { pages: 201 }, { revision: -1 }, { versionId: 'bad' }, { sha256: 'bad' },
+  { state: 'GUESS_READY' }, { format: 'EXECUTE' }, { mediaType: 'text/html' }, { containerId: 'private' }, { objectKey: 'private' },
+  { apiKey: 'forbidden' }, { allowedActions: ['SHELL'] }]) assert(!previewProjection({ ...previewFixture, ...patch }), 'Unsafe preview projection accepted');
 const answerInteraction = ajv.compile(expanded.components.schemas.AnswerInteraction);
 const answerFixture = { expectedVersion: 1, decision: 'EXECUTE_PLAN', text: '', optionIds: [] };
 assert(answerInteraction(answerFixture));
