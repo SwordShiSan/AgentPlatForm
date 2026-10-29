@@ -68,3 +68,86 @@ for (const width of [375, 768, 1440]) test(`fixed-version PDF and opaque HTML pr
   expect(await page.evaluate(() => Object.values(sessionStorage).some(value => value.includes('Static content') || value.includes('HTML source')))).toBe(false);
   expect(errors).toEqual([]);
 });
+
+test('artifact fixed-version preview preserves source download through failed, blocked and refreshed states', async ({ page }) => {
+  const identity = (suffix: string) => `0199e000-0000-7000-8000-${suffix.padStart(12, '0')}`;
+  const taskId = identity('55'); const operationId = identity('56'); const artifactId = identity('57');
+  const fileId = identity('58'); const versionId = identity('59'); const previewId = identity('60');
+  const content = 'Fixed artifact version 666\n';
+  let state = 'FAILED'; let creates = 0; let reads = 0; let contentReads = 0;
+  let release!: () => void; const pendingCreate = new Promise<void>(done => { release = done; });
+  const errors: string[] = []; const unexpected: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  const artifact = { id: artifactId, taskId, operationId, workspaceId: id, fileId, versionId,
+    title: 'fixed-artifact.txt', sha256: 'a'.repeat(64), bytes: Buffer.byteLength(content), contentState: 'VERIFIED_CONTENT', testStatus: 'NOT_RUN' };
+  const metadata = () => ({ id: previewId, fileId, versionId, state, format: state === 'READY' ? 'TEXT' : 'AUTO',
+    mediaType: state === 'READY' ? 'text/plain' : null, bytes: state === 'READY' ? Buffer.byteLength(content) : null,
+    sha256: state === 'READY' ? 'a'.repeat(64) : null, pages: null, revision: state === 'FAILED' ? 2 : state === 'BLOCKED' ? 3 : 4,
+    errorCode: state === 'FAILED' ? 'PREVIEW_DOCUMENT_INVALID' : state === 'BLOCKED' ? 'PREVIEW_STOP_UNCONFIRMED' : null,
+    retryable: false, allowedActions: state === 'READY' ? ['VIEW', 'DOWNLOAD_SOURCE'] : ['QUERY', 'DOWNLOAD_SOURCE'] });
+  await page.route('**/api/v1/**', async route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === `/api/v1/files/${fileId}/previews`) {
+      creates++; expect(route.request().postDataJSON()).toEqual({ versionId, format: 'AUTO' });
+      await pendingCreate; return route.fulfill({ status: 202, json: metadata() });
+    }
+    if (path === `/api/v1/previews/${previewId}/content`) {
+      contentReads++; expect(state).toBe('READY'); return route.fulfill({ contentType: 'text/plain', body: content });
+    }
+    if (path === `/api/v1/previews/${previewId}`) { reads++; return route.fulfill({ json: metadata() }); }
+    let body: unknown;
+    if (path.endsWith('/auth/csrf')) body = { csrfToken: 'a'.repeat(43) };
+    else if (path.endsWith('/me')) body = { id, username: 'r53_admin', spaces: [{ id, type: 'PERSONAL' }] };
+    else if (path.endsWith('/events')) return route.fulfill({ contentType: 'text/event-stream', body: ': fixture\n\n' });
+    else if (path.endsWith('/snapshot')) body = { conversationId: id, cursor: 0, messages: [], pending: [],
+      tasks: [{ taskId, status: 'SUCCEEDED', version: 1, cancelRequested: false, reasonCode: null }] };
+    else if (path.endsWith('/operations')) body = { items: [{ operationId, taskId, toolName: 'workspace_write', status: 'SUCCEEDED',
+      phase: 'SUCCEEDED', summary: 'Fixed artifact write', createdAt: '2026-10-29T00:00:00Z', endedAt: '2026-10-29T00:00:01Z',
+      errorCode: null, traceId: null, review: null, resultAvailable: true }], nextCursor: null };
+    else if (path.endsWith('/result')) body = { operationId, taskId, status: 'SUCCEEDED', summary: 'Sealed immutable output',
+      exitCode: null, stdout: null, stderr: null, truncated: false, errorCode: null,
+      files: [{ fileId, versionId, path: artifact.title, bytes: artifact.bytes, sha256: artifact.sha256 }] };
+    else if (path.endsWith('/artifacts')) body = { items: [artifact], nextCursor: null };
+    else if (path.endsWith('/permissions')) body = { taskId, workspaceId: id, mode: 'FULL', version: 1, policyVersion: 'fixture', mutable: false, effectiveRestrictions: [], grants: [] };
+    else if (path.endsWith('/configuration')) body = { configSnapshotId: id, configHash: 'b'.repeat(64), bundleId: id,
+      values: { modelName: 'fixture', credentialSource: 'PLATFORM' }, restrictions: { credentialActive: true, modelActive: true } };
+    else if (path.endsWith('/effective-config')) body = { values: { modelId: id, credentialSource: 'PLATFORM' }, sources: { modelId: 'PLATFORM' } };
+    else if (path.endsWith('/preferences')) body = { version: 1, defaultModelId: id, defaultCredentialSource: 'PLATFORM' };
+    else if (path.endsWith('/models')) body = { items: [{ id, name: 'fixture' }] };
+    else if (path.endsWith('/usage-quota')) body = [];
+    else if (path.endsWith('/model-credentials')) body = { version: 1, userConfigured: false, platformAvailable: true };
+    else if (path.endsWith('/usage')) body = { items: [] };
+    else if (path.endsWith('/reconciliation')) body = { taskId, stopStage: 'STOPPED', stopConfirmed: true, unknownCalls: 0, calls: [], revision: 1 };
+    else if (path.endsWith('/recovery')) body = { taskId, stage: 'NONE', eligible: false, revision: 0 };
+    else if (path.endsWith('/diagnostics')) body = { taskId, traceId: id, code: null, classification: 'NONE', hasPartialOutput: false, suggestedAction: 'NONE', automaticReplayAllowed: false };
+    else if (path.endsWith('/workspaces') || path.endsWith('/conversations')) body = { items: [], nextCursor: null };
+    else { unexpected.push(path); return route.fulfill({ status: 404, json: { code: 'FIXTURE_ROUTE_MISSING', status: 404 } }); }
+    return route.fulfill({ json: body });
+  });
+  await page.goto(`/app/chat/${id}`);
+  const open = async () => {
+    await page.getByRole('button', { name: '查看产物证据', exact: true }).click();
+    const evidence = page.getByRole('region', { name: '固定版本产物证据' });
+    await expect(evidence).toContainText('功能验证：未运行');
+    await expect(evidence.getByRole('link', { name: /下载固定版本/ })).toHaveAttribute('href', `/api/v1/artifacts/${artifactId}/download`);
+    await evidence.getByRole('button', { name: '预览固定版本', exact: true }).click();
+    return page.getByRole('region', { name: '固定版本文件预览' });
+  };
+  let pane = await open();
+  try { await expect(pane).toContainText('正在读取预览'); } finally { release(); }
+  await expect(pane).toContainText('预览未能生成'); await expect(pane).toContainText('PREVIEW_DOCUMENT_INVALID');
+  await expect(pane).toContainText(versionId); await expect(pane).toContainText('明确封存的历史版本');
+  await expect(pane.getByRole('link', { name: '下载原文件', exact: true })).toHaveAttribute('href', `/api/v1/files/${fileId}/content?versionId=${versionId}`);
+  await expect(pane.getByRole('button', { name: '重试明确失败的转换', exact: true })).toHaveCount(0);
+  state = 'BLOCKED'; await pane.getByRole('button', { name: '读取原作业状态', exact: true }).click();
+  await expect(pane).toContainText('预览结果待核对，不会重复转换'); expect(contentReads).toBe(0);
+  await page.reload(); pane = await open();
+  await expect(pane).toContainText('预览结果待核对'); expect(creates).toBe(1);
+  state = 'READY'; await pane.getByRole('button', { name: '读取原作业状态', exact: true }).click();
+  await expect(pane.getByLabel('历史版本只读内容')).toHaveText(content.trim());
+  // Metadata observation and an explicit refresh may each safely read the same content;
+  // only conversion creation must remain exactly once across page reload.
+  expect(creates).toBe(1); expect(reads).toBeGreaterThanOrEqual(3);
+  expect(contentReads).toBeGreaterThanOrEqual(1); expect(contentReads).toBeLessThanOrEqual(2);
+  expect(unexpected).toEqual([]); expect(errors).toEqual([]);
+});
