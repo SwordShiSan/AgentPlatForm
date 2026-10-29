@@ -1,3 +1,7 @@
+## R5.3 VERIFIED（2026-10-29）
+
+持久预览流水线和隔离渲染已通过保护[PR137](https://github.com/SwordShiSan/AgentPlatForm/pull/137)／[PR138](https://github.com/SwordShiSan/AgentPlatForm/pull/138)晋级。支持固定版本DOCX／XLSX／PPTX→PDF、PDF／图片／文本／静态HTML，预览与业务环境共享单重型资源槽。185.667秒观察后原R4精确恢复；供应商调用0。见[验收索引](evidence/r53/acceptance-index.json)和[固定入口](deploy/R5.3-LOCAL.md)。**R5完成3/4、未RELEASED；云端继续R4，R5.4尚未启动。** V20新增，V1–V19/runtime baseline1不变。以下为历史结论。
+
 # R5.2 current conclusion (2026-10-29)
 
 R5.2文件生命周期、历史新版本恢复及固定产物证据已通过真实依赖和浏览器验收，经保护[PR133](https://github.com/SwordShiSan/AgentPlatForm/pull/133)／[PR134](https://github.com/SwordShiSan/AgentPlatForm/pull/134)晋级。R5为2/4 VERIFIED、未RELEASED，云端原R4已恢复；供应商调用0。V19新增，V1–V18不修改，runtime baseline1。见[验收索引](evidence/r52/acceptance-index.json)和[固定入口](deploy/R5.2-LOCAL.md)。R5.3另行Plan/OpenSpec，云沙箱DEFERRED不归档。以下旧结论均为历史。

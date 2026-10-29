@@ -1,22 +1,22 @@
 {
   "status": "PASS",
-  "source": "2ea9b12f64e1b322230cf3c4d6d572da157429e2",
+  "source": "841561168858ebd2b2aed674f77f87fe6d1af312",
   "commands": {
     "strict": {
       "exitCode": 0,
-      "logSha256": "80206b3359105b966a90b5e716101c7a929d9a0610b7f4cfd407d94c63636b88",
+      "logSha256": "c264ec277bf9f3a2e2c6f324325b9461fd2129e515e97122d1fec724dabacc64",
       "command": [
         "$REPO\\.tools\\node-v22.23.3-win-x64\\node.exe",
         "C:/Users/laili/AppData/Roaming/npm/node_modules/@fission-ai/openspec/bin/openspec.js",
         "validate",
-        "r5-3-preview-pipeline",
+        "--all",
         "--strict",
         "--no-interactive"
       ]
     },
     "links": {
       "exitCode": 0,
-      "logSha256": "38e4cbc76de6a737261b9785b7463d532c1fec416d423b8d8037c827e9662ac2",
+      "logSha256": "48c2cae665f370ef1c39418b4d90aa9dae7e4aa1bcefaef838a1d4c0edd9647f",
       "command": [
         "$REPO\\.tools\\node-v22.23.3-win-x64\\node.exe",
         "frontend/scripts/check-links.mjs"
@@ -81,7 +81,7 @@
   },
   "credentialScan": {
     "status": "PASS",
-    "trackedFiles": 1278,
+    "trackedFiles": 1279,
     "privateFixtureValuesChecked": 21,
     "leakedFiles": 0
   },
@@ -89,5 +89,5 @@
     "V20"
   ],
   "supplierCalls": 0,
-  "sourceReceiptSha256": "47006c8ec308757587b65fd37b3a10dc71f656174b77238703ea15d9a2ed0d6e"
+  "sourceReceiptSha256": "f1c5ac3606a21da322f0545673cc924def6fb499798ae93beb7300e91d7ba2a2"
 }
