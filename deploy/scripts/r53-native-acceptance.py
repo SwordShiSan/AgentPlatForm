@@ -168,14 +168,23 @@ def upload(client, journal, workspace, name, content):
     return frozen_entry
 
 
+def preview_request_key(name):
+    # A corrected renderer is a different frozen preview input, not a replay of an old command.
+    # Keep every original request/result in the journal, including historical failures.
+    plan = json.loads((DATA / 'native-plan.json').read_text(encoding='utf-8'))
+    image = plan['gateway']['candidate']['images']['preview-renderer']['configId']
+    return 'preview-create:' + image + ':' + name
+
+
 def preview(client, journal, file, requested='AUTO', label=None):
     name = label or file['name'] + ':' + requested
     body = {'versionId': file['versionId'], 'format': requested}
-    row = journal.once(client, 'preview-create:' + name,
+    key = preview_request_key(name)
+    row = journal.once(client, key,
                        {'method': 'POST', 'path': '/api/v1/files/' + file['id'] + '/previews', 'body': body}, body)
     result = wait_preview(client, row['id'])
     assert result['fileId'] == file['id'] and result['versionId'] == file['versionId']
-    journal.rows['preview-create:' + name]['latest'] = result
+    journal.rows[key]['latest'] = result
     journal.write()
     return result
 
@@ -230,7 +239,7 @@ def verify(client, journal, ids):
         assert forbidden.lower() not in sanitized.lower(), 'Active/external HTML was not removed'
 
     # Known successful repeat and a new idempotency identity must resolve the same cached job and cost nothing.
-    name = 'preview-create:sample.docx:AUTO'
+    name = preview_request_key('sample.docx:AUTO')
     frozen = journal.rows[name]
     before = get(client, '/api/v1/workspaces/' + ids['workspaceId'] + '/storage-usage')[1]
     repeated = client.request('POST', frozen['request']['path'], frozen['request']['body'], {'Idempotency-Key': frozen['key']})[1]

@@ -9,9 +9,9 @@ def main():
  plan=json.loads((data/'native-plan.json').read_text());cloud=plan['root'];assert cloud.startswith('/srv/agentplatform/acceptance/r44-'+args.stage+'-')
  m.remote('from pathlib import Path\nimport json\nr=Path('+repr(cloud)+');assert json.loads((r/"reports/restored.json").read_text())["status"]=="PASS"\nprint("EXACT_R4_RESTORED_BEFORE_UPDATE")\n')
  image=candidate['images']['gateway'];gateway={'source':candidate['source'],'configId':image['configId'],'archive':candidate['archive'],'archiveSha256':candidate['archiveSha256'],'candidate':candidate}
- m.local(['scp',*m.SSH,candidate['archive'],'root@124.222.55.140:'+cloud+'/candidate-update.tar.gz'],timeout=180)
+ m.local(['scp',*m.SSH,candidate['archive'],'root@124.222.55.140:'+cloud+'/candidate-update.tar.gz'],timeout=600)
  plan['previousCandidates']=plan.get('previousCandidates',[])+[{'source':plan['source'],'gatewayConfigId':plan['gateway']['configId']}]
- plan.update(source=candidate['source'],gateway=gateway)
+ plan.update(source=candidate['source'],gateway=gateway,configurationSource=m.local(['git','rev-parse','HEAD']))
  code='''from pathlib import Path
 import hashlib,json,subprocess,shutil
 r=Path(ROOT);candidate=CANDIDATE;plan=PLAN;archive=r/'candidate-update.tar.gz'
