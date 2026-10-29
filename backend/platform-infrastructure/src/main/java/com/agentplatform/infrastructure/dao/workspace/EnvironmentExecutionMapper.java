@@ -14,6 +14,8 @@ public interface EnvironmentExecutionMapper {
     List<Publication> publications(@Param("owner") UUID owner);
     int published(@Param("item") Publication item, @Param("confirmed") boolean confirmed);
     boolean knownPublication(@Param("item") Publication item);
+    boolean waitingHeavy(@Param("operation")UUID operation);
+    void deferHeavyPublication(@Param("item")Publication item);
     int inbox(@Param("eventId") UUID eventId, @Param("operationId") UUID operationId);
     Command command(@Param("operationId") UUID operationId);
     UUID observableOperation();

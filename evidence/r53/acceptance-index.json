@@ -1,0 +1,211 @@
+{
+  "stage": "R5.3",
+  "status": "FUNCTIONALLY_VERIFIED_PENDING_PROMOTION",
+  "baseline": "cb36080dae67986564cae12731890b821bb94744",
+  "source": "cfb4d04a45c381fe5f1de846619ec370d3962e1d",
+  "schemaVersion": 20,
+  "runtimeBaseline": 1,
+  "migrationsChanged": [
+    "V20"
+  ],
+  "migrationSha256": "122af3cef840045a8f2a65336264f8c10dc11b8b5df06265963e6c9711945827",
+  "supplierCalls": 0,
+  "production": "Exact R4 restored; R5 not deployed or released",
+  "images": {
+    "api": {
+      "source": "cfb4d04a45c381fe5f1de846619ec370d3962e1d",
+      "platform": "linux/amd64",
+      "configId": "sha256:017de68ad09735a798dc66806abd7c27c9b7dcbbe496ea3cbd978040aad34bd4",
+      "manifestDigest": "sha256:302c3c3b051d861b7247f45376b06fc5068c985d3e9d94da637021134f7401eb",
+      "indexDigest": "sha256:74980abb540b00a882205292035dba794c96c978a3ce55378d1c64729bab2e72",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/017de68ad09735a798dc66806abd7c27c9b7dcbbe496ea3cbd978040aad34bd4",
+          "RepoTags": [
+            "agentplatform-api:r53-cfb4d04a45c3"
+          ],
+          "Layers": [
+            "blobs/sha256/a60ef8ec184edb5ed91f5983f00261359fb2fe20f603e8d488b9477d32fcad70",
+            "blobs/sha256/49b14164d4d96e593cb68db980906b691931cdcde6f60b918280317c89e55462",
+            "blobs/sha256/7c48d168a51b541814c6814256cd298e11114f5f088e4511cffb4f6b3622d1b6",
+            "blobs/sha256/5165dac19553999758e23bf9247e5bac05f0d26ee503d13bf70c1e8873eb8d37",
+            "blobs/sha256/02e0e048361058af7411fe47569c4d90b68a917dba037514c3831b7bf7029c7b",
+            "blobs/sha256/acc93b257e6f2400f5e3fdf64cb0c7955e37069bb80a6235b95c9484a9ec0643",
+            "blobs/sha256/b4c67c4246bd8a3a74b2f66cf4a7a9072c228eb1419d253c3fbe9988482661bf",
+            "blobs/sha256/f47b9c7d3136c41e69749c00701302290162b5203ddb3956efa5fe23dd166d08"
+          ]
+        }
+      ]
+    },
+    "gateway": {
+      "source": "cfb4d04a45c381fe5f1de846619ec370d3962e1d",
+      "platform": "linux/amd64",
+      "configId": "sha256:0899c1ececdfb6925c09be89c1fba63e9d6aa69865d0afaeca083bf89ae686e2",
+      "manifestDigest": "sha256:1555e7323ee69d31afc68d2bbd494cdb2b2b43899dc403b5e3eae7ce96438489",
+      "indexDigest": "sha256:cd9af69e330fb6f8dac181cdf81d29284afd0b2cb9095e79ec05234c789b7cc6",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/0899c1ececdfb6925c09be89c1fba63e9d6aa69865d0afaeca083bf89ae686e2",
+          "RepoTags": [
+            "agentplatform-gateway:r53-cfb4d04a45c3"
+          ],
+          "Layers": [
+            "blobs/sha256/e2de96513ba9eb53b431787ec8a65cdde380ac4772a3e4c4b714dcfde2a102b5",
+            "blobs/sha256/655cdf110ce6cc8b81dc0bf0d471a4fb200eac950a7a108ed5335b91ed3ef07b",
+            "blobs/sha256/cb3dcaeaef3012c03cc5ba44f04289e06247ee28b0396073f0c1aa4667e08cd6",
+            "blobs/sha256/c792e3f2c3b45eb2b0ab9ca191eb1c881394ef80dc9b03a728d4241709cfd309",
+            "blobs/sha256/dfd17a001b4375f4b03069aa2c6c03e965543d91589d9f7399dae7c3798037bd",
+            "blobs/sha256/69146b4a52cfd86bdd87919b33fc3c6afd168c7911c27d3805d48212887b2e4f",
+            "blobs/sha256/1f9e9a0fcad78d32ce75d315476a02e8c85818e0db3191e375796df6d1594dda",
+            "blobs/sha256/db0e3cd9a4f71fb319f83c2b8da0c7ba756419e6d8a8671e117dcba315656b39",
+            "blobs/sha256/ab0d6d0b8f06a2555ffb7e2777729ed4c2c656d62a2869414c9df71b527c4b41",
+            "blobs/sha256/e3314ce5b94f581a707d402258495819964937ef3ee7c1c636df51e64f1798e7",
+            "blobs/sha256/6bae99686fe0e05be5d35f6984922291eee12a2712789d17cacc5c187837ec04"
+          ]
+        }
+      ]
+    },
+    "file-helper": {
+      "source": "cfb4d04a45c381fe5f1de846619ec370d3962e1d",
+      "platform": "linux/amd64",
+      "configId": "sha256:53bf7fdec8d9e28f74d09fbf4f3940fd5f0d3e8aeb51d1f6e614846a82b843fc",
+      "manifestDigest": "sha256:85e084122a134310c85e0d5c439efdfd0de7a418d7120b8dd211239b8b7b895b",
+      "indexDigest": "sha256:e958cf30625991d0c1f34d5637793b5d142b749de649a2ff2f6639bce00afb77",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/53bf7fdec8d9e28f74d09fbf4f3940fd5f0d3e8aeb51d1f6e614846a82b843fc",
+          "RepoTags": [
+            "agentplatform-file-helper:r53-cfb4d04a45c3"
+          ],
+          "Layers": [
+            "blobs/sha256/ecc510c1e359bdc007b39802570bb7e4dec7d6ebccf357c3201a74299113e05e",
+            "blobs/sha256/75b6a36c64a1cf3520fc4b4aae4739d5caa8a6a05c27835a920a61784c9c32f8",
+            "blobs/sha256/6912e23eb44595b44dc6d9882b34f305ad6f6e9667cec70b13e5dbc4f8cd97f4",
+            "blobs/sha256/bbc5a12237474ec0b23b5051260d56d6436a24d70d9cad961adebe7a037ed813",
+            "blobs/sha256/eb84d8ec33a3ee38efe4de9effc0ba184bcf4de1a55f1faab6c403f4fd42c2c0",
+            "blobs/sha256/8008f8619b50f7af15f5e4b1f737a09767c7cabcb671c7b1305ca190683cc75a",
+            "blobs/sha256/34d89bdfc8384de5b1574fc27c4dd5692a76c5313970296a860e943cb4cf8e3a",
+            "blobs/sha256/2341fb2bbc62085d46f8eec3e7a1c30836f74415cd98d350200d065896daee17",
+            "blobs/sha256/ef9038b143a28b7641e577d191ea6fdfa00eac507a5db5b808ec7e765dd4cc78",
+            "blobs/sha256/8fc9b58137dec9f143ba26c3db3427f986f6af3b8616f4cde13b5fd7389411e0",
+            "blobs/sha256/182c99c33f2cc5f3517e3cd0bc11316308da6f72463b7f4654125ec0fbac3574"
+          ]
+        }
+      ]
+    },
+    "preview-renderer": {
+      "source": "cfb4d04a45c381fe5f1de846619ec370d3962e1d",
+      "platform": "linux/amd64",
+      "configId": "sha256:6c1586ade9209d40ca5c10857d6ad399713515f6a0d054432a4650178237d97d",
+      "manifestDigest": "sha256:9bf5166417dee53650b6ddf3ba7a586ed0c2991a36722d25407e5fd66e944a58",
+      "indexDigest": "sha256:5c736cdcfd677fa02b021a9d46356dc0a51ac0bd70c27108919127c26a645a6f",
+      "exportManifest": [
+        {
+          "Config": "blobs/sha256/6c1586ade9209d40ca5c10857d6ad399713515f6a0d054432a4650178237d97d",
+          "RepoTags": [
+            "agentplatform-preview-renderer:r53-cfb4d04a45c3"
+          ],
+          "Layers": [
+            "blobs/sha256/a60ef8ec184edb5ed91f5983f00261359fb2fe20f603e8d488b9477d32fcad70",
+            "blobs/sha256/49b14164d4d96e593cb68db980906b691931cdcde6f60b918280317c89e55462",
+            "blobs/sha256/7c48d168a51b541814c6814256cd298e11114f5f088e4511cffb4f6b3622d1b6",
+            "blobs/sha256/5165dac19553999758e23bf9247e5bac05f0d26ee503d13bf70c1e8873eb8d37",
+            "blobs/sha256/02e0e048361058af7411fe47569c4d90b68a917dba037514c3831b7bf7029c7b",
+            "blobs/sha256/8d0899c254e60eee077630f112d8e91f5ba64b52f74a1d83ebf5d5c0bfe630c7",
+            "blobs/sha256/83d22d3c1f6cbf357631cac53eb44b97feb2a0a06cd785f21f2727aa4ee4c46f",
+            "blobs/sha256/14eec10d86f80f5aa4d697e7715401f7acb83a18f7c7ca9de12f8fe477cc32a6",
+            "blobs/sha256/1ef64663a507d0294c43b323cb4cdfec734e9d21689e22a9b9c20f127e207327",
+            "blobs/sha256/4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+            "blobs/sha256/1471a024f2c581eec8e113bb8c8184208284c1abaf59eb3811f457e064797b98",
+            "blobs/sha256/65e7d8b6650bc82e1eee712b88b443f662dd9314b005b785f0580fd80877d81c",
+            "blobs/sha256/a8e9cb2d02c1a4c7570e36f71165a6fa171830b4fe860e379867e5f89feb9f8b"
+          ]
+        }
+      ]
+    }
+  },
+  "engineering": {
+    "maven": "PASS",
+    "verifiedSource": "3a06a5307775348964406f9a9151ad1ff8188030",
+    "candidateBackendInputsIdentical": true,
+    "tests": 307,
+    "failures": 0,
+    "errors": 0,
+    "actualPgTests": 13,
+    "historicalDirectedTests": 29,
+    "frontendUnitTests": 67,
+    "frontendContractFixtureTests": 3,
+    "artifactContractFixtureTests": 1,
+    "nativeBrowserFiles": 7,
+    "scope": "Distinct source-bound unit/PG/contract/native receipts; zero-test external reactor classes are NOT_RUN there, not actual integration PASS.",
+    "strict": "PASS",
+    "persistenceBoundary": "PASS",
+    "frontendTypecheckBuildContracts": "PASS",
+    "contractsInvalidFixtures": "PASS",
+    "linksCanonical": "PASS"
+  },
+  "observation": {
+    "seconds": 185.667,
+    "serialRounds": 33,
+    "absolutePeakClaim": false,
+    "minSampledAvailableMiB": 1357.26953125,
+    "minSampledRootFreeGiB": 6.006092071533203,
+    "swapUsedFirstBytes": 232894464,
+    "swapUsedLastBytes": 232431616,
+    "fullProjectedLimitMiB": 2880
+  },
+  "reuse": {
+    "receipt": "evidence/r44/production-release.json",
+    "scope": "Unchanged XFS/gVisor isolation/backup recovery reused, not new renderer execution proof"
+  },
+  "failuresRetained": [
+    "Historical Office runtime dependencies and typed converter property failures",
+    "Docker archive cannot read tmpfs; fixed read execs with durable identities and termination receipts",
+    "Static nested configuration leaked when preview disabled; fixed actual scanner gate",
+    "Closed transport DB proof failure retained for same-process retry",
+    "Native parameterized MIME mismatch and inaccurate authority classification corrected",
+    "Identity operator Killed: same fixture identity reuse plus bounded serial-GC operator",
+    "Extra safe viewer GET corrected in fixture assertion, no duplicate conversion",
+    "Controller upload placeholder replacement failed; aborted old-controller start and restored R4, no business mutation",
+    "Windows browser output argument fell back to old ACL directory; rerun used explicit fresh output",
+    "Final observation refused insufficient window margin; full functional results reused and a separate observation-only window restored exact R4"
+  ],
+  "notInjectedInNativeFaultScript": [
+    "worker crash during physical rendering",
+    "database outage",
+    "S3 outage",
+    "unconfirmed physical stop"
+  ],
+  "receipts": {
+    "image-identities.json": "c35f764daf576d1232d4bfb97613961216f30e53aaec455862793579143fb31d",
+    "engineering.json": "4ef6e48770a937a6d5c3d4b9f655648bcb31bde575d4430726825285f8e725cc",
+    "metadata.json": "987d3f1d1dd61619957b286b8f0a8bb4630e511b7675745fd65badd5e2877d7f",
+    "frontend.json": "ae9431d6fc465d8e739ed0ca01e7551a7450cbb17f38e1d68cb865acc371cdd9",
+    "native-api-result.json": "81a0c9358417ff7b1a718be5a5c89332ba1c178ffc6d1e54edf498bcdaa7b600",
+    "native-heavy-result.json": "20243f6acf32f5071e0619d54540cd7742111e7e08ae7efc6e8e0bf35706b69f",
+    "native-observation.json": "0fdade934dd93a29fc2bf8ac5160aab5f7c13e8803a5062320796015ff4c948d",
+    "native-restoration.json": "51a38d3af3783634038dc85e7ab5e0a5cb7db4c732561789841dfb4cac4fe07d",
+    "first-native-failure.json": "2dd571a68cc2d1247167d3a4517c77f52b231b01d7941d70a8bf42763028c6fb",
+    "skill-update.json": "bbb8f5bd3f26b587b61f371c1c02d9fb14101468071d097511244c128c425751",
+    "artifact-ui-result.json": "f3c1c73dde47e3be53b2df464fdeaa831524acb03e27b935739aaf1800eb81ac",
+    "native-preview-browser-result.json": "a8f28361133ee5665e327ef6ded44d414e41b04e6116362be343a4fa2e6a761a",
+    "native-preview-faults-result.json": "576cb1db0aba78747fd9edd63e70cce81094085b5a5175dc0ba721dc8924b8e6",
+    "final-checks.json": "7fcb2e24e4561e8a3b20a2fdd79b9dfb8932c2738fff7d0a78a25648ee2f577c"
+  },
+  "promotion": {},
+  "metadataReuse": {
+    "earliestCommittedSnapshot": "9eff835",
+    "coreInputComparison": "unchanged committed SQL/Mapper/MyBatis repository and PreviewPostgresTest to final candidate; historical run originally had an uncommitted worktree and is not attributed to its HEAD alone",
+    "inputSha256": {
+      "backend/platform-app/src/main/resources/db/migration/V20__preview_pipeline.sql": "122af3cef840045a8f2a65336264f8c10dc11b8b5df06265963e6c9711945827",
+      "backend/platform-app/src/main/resources/mybatis/mapper/files/PreviewMapper.xml": "576b80f4da7dc08de3f2554f08270c70fb6e12b53903809f5b852b5c5d369520",
+      "backend/platform-infrastructure/src/main/java/com/agentplatform/infrastructure/adapter/repository/files/MyBatisPreviewRepository.java": "62cd418f3878bc825ca3593927acc88a9625bd11dd30b6e9212488c6b154c143",
+      "backend/platform-app/src/test/java/com/agentplatform/app/preview/PreviewPostgresTest.java": "3565b888e533c1acecd7f0f37b68f77d5e35e13f7059a87172d69b6230c5fbe4"
+    }
+  },
+  "configuration": {
+    "source": "acb60069e589ee4459e2365e3d5e398e90eea563",
+    "sha256": "340a812bd355fe83b31a36adbe8e88e6a1326255e0d0ce7db10d499609b0f453",
+    "imageSource": "cfb4d04a45c381fe5f1de846619ec370d3962e1d"
+  }
+}

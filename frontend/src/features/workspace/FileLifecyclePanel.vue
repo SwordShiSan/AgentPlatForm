@@ -113,7 +113,7 @@ onBeforeUnmount(() => controller.abort());
         {{ posting ? '正在受理…' : mode === 'MOVE' ? '确认移动／重命名' : mode === 'DELETE' ? '确认删除工作副本' : '确认恢复为新版本' }}
       </NButton>
     </form>
-    <FileHistoryPanel v-if="file.kind === 'FILE'" :file-id="file.id" :user-id="userId" :space-id="spaceId" :disabled="Boolean(pending) || posting" @restore="chooseVersion" />
+    <FileHistoryPanel v-if="file.kind === 'FILE'" :file-id="file.id" :name="file.name" :user-id="userId" :space-id="spaceId" :disabled="Boolean(pending) || posting" @restore="chooseVersion" />
   </section>
 </template>
 <style scoped>

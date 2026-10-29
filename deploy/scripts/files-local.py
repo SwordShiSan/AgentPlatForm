@@ -39,7 +39,7 @@ def main():
     parser.add_argument('--native',action='store_true',help='Use the explicitly approved isolated Linux maintenance window; restore R4 on stop')
     parser.add_argument('--passed',action='store_true',help='Finish only with a matching protected PASS acceptance receipt')
     parser.add_argument('--resume',action='store_true',help='Archive a failed, fully restored native attempt and resume the same isolated fixture')
-    parser.add_argument('--stage', choices=['r51', 'r52'], default='r51')
+    parser.add_argument('--stage', choices=['r51', 'r52', 'r53'], default='r51')
     args = parser.parse_args()
     global DATA, PROJECT
     DATA = ROOT / ('.cache/' + args.stage + '-local')

@@ -1,0 +1,29 @@
+{
+  "sourceReceiptSha256": "3c4cf797ca9d41c07580ebe088bc9d600889af0abe6c0970edd62ad8c256601a",
+  "status": "PASS",
+  "scope": "Frontend engineering and Chromium contract fixture only; physical conversion/native API is separate",
+  "supplierCalls": 0,
+  "typecheck": "PASS",
+  "unitTests": 67,
+  "unitFiles": 13,
+  "contracts": "PASS",
+  "featureEnabledBuild": "PASS",
+  "browserWidths": [
+    375,
+    768,
+    1440
+  ],
+  "browserTests": 3,
+  "browserLastRunSha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903",
+  "inputs": {
+    "frontend/src/features/workspace/FilePreviewPane.vue": "c783f72be050fec3f12124b8342e10291084502eeee54be0030a55ffa6614814",
+    "frontend/src/features/workspace/PdfPreview.vue": "9b52472afdbd920f80ae092de5e228d17ee26de9d917a5a19442083d18740d63",
+    "frontend/src/features/workspace/preview-content.ts": "61c3148883e5c06736aa059c1ca839eddaca0ec9d5ba5c034fa109b5fc806da4",
+    "frontend/src/features/workspace/preview-requests.ts": "8d9f783fa6814699568fd84b8c89475cce69e0cb2f73681e5c2941dafcf5cc10",
+    "frontend/tests/e2e/file-preview-ui.spec.ts": "bf565ea625cf2f3071c4a0cd720a2ea6db2e34254101f17b60d4c5ec05ab58d9",
+    "frontend/tests/e2e/file-preview-native.spec.ts": "9799a2a209d8af661bd06f1fcdd49fef728e9d150edc9a2f9c531085b66d636e",
+    "frontend/pnpm-lock.yaml": "e19d3f1dc3e7952b6126a9f8eb12991c90af712705b802fe3991087c3a851cdb",
+    "frontend/scripts/contracts.mjs": "3099b5b2b3f9202efcc52350b9b74c7e878507eb17ea41463fd6788f8ce7cf0f",
+    "deploy/nginx.files-local.conf": "f578b0241f608fde7ba5038900f8777944f33bbbecc29be9d3700b7f811d804e"
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "status": "PASS",
+  "source": "2ea9b12f64e1b322230cf3c4d6d572da157429e2",
+  "commands": {
+    "strict": {
+      "exitCode": 0,
+      "logSha256": "80206b3359105b966a90b5e716101c7a929d9a0610b7f4cfd407d94c63636b88",
+      "command": [
+        "$REPO\\.tools\\node-v22.23.3-win-x64\\node.exe",
+        "C:/Users/laili/AppData/Roaming/npm/node_modules/@fission-ai/openspec/bin/openspec.js",
+        "validate",
+        "r5-3-preview-pipeline",
+        "--strict",
+        "--no-interactive"
+      ]
+    },
+    "links": {
+      "exitCode": 0,
+      "logSha256": "38e4cbc76de6a737261b9785b7463d532c1fec416d423b8d8037c827e9662ac2",
+      "command": [
+        "$REPO\\.tools\\node-v22.23.3-win-x64\\node.exe",
+        "frontend/scripts/check-links.mjs"
+      ]
+    },
+    "persistence": {
+      "exitCode": 0,
+      "logSha256": "b25228a89382472402cdcc910ae46d39debca628b745a35cf17e35c7923cb78d",
+      "command": [
+        "python",
+        "deploy/scripts/check-persistence-boundaries.py"
+      ]
+    },
+    "contracts": {
+      "exitCode": 0,
+      "logSha256": "347d966427f256ee3b642071bed0945d1eb5b7887bdec278ae5300c42e81c80e",
+      "command": [
+        "$REPO\\.tools\\node-v22.23.3-win-x64\\node.exe",
+        "frontend/scripts/contracts.mjs",
+        "--check"
+      ]
+    },
+    "invalidFixtures": {
+      "exitCode": 0,
+      "logSha256": "347d966427f256ee3b642071bed0945d1eb5b7887bdec278ae5300c42e81c80e",
+      "command": [
+        "$REPO\\.tools\\node-v22.23.3-win-x64\\node.exe",
+        "frontend/scripts/contracts.mjs",
+        "--test"
+      ]
+    },
+    "baseDiff": {
+      "exitCode": 0,
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "command": [
+        "git",
+        "diff",
+        "cb36080dae67986564cae12731890b821bb94744",
+        "HEAD",
+        "--check"
+      ]
+    },
+    "workDiff": {
+      "exitCode": 0,
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ]
+    },
+    "stagedDiff": {
+      "exitCode": 0,
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "command": [
+        "git",
+        "diff",
+        "--cached",
+        "--check"
+      ]
+    }
+  },
+  "credentialScan": {
+    "status": "PASS",
+    "trackedFiles": 1278,
+    "privateFixtureValuesChecked": 21,
+    "leakedFiles": 0
+  },
+  "migrationsChanged": [
+    "V20"
+  ],
+  "supplierCalls": 0,
+  "sourceReceiptSha256": "47006c8ec308757587b65fd37b3a10dc71f656174b77238703ea15d9a2ed0d6e"
+}

@@ -954,10 +954,103 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/files/{id}/previews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Queue a preview of one authorized immutable file version */
+        post: operations["createFilePreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/previews/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getFilePreview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/previews/{id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getFilePreviewContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/previews/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Empty body. Only a stopped known failure is retryable; BLOCKED queries original work. */
+        post: operations["retryFilePreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        PreviewRequest: {
+            /** Format: uuid */
+            versionId: string;
+            /** @enum {string} */
+            format: "AUTO" | "PDF" | "IMAGE" | "HTML_STATIC";
+        };
+        FilePreview: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            fileId: string;
+            /** Format: uuid */
+            versionId: string;
+            /** @enum {string} */
+            state: "QUEUED" | "RUNNING" | "READY" | "FAILED" | "BLOCKED";
+            /** @enum {string} */
+            format: "AUTO" | "PDF" | "IMAGE" | "TEXT" | "HTML_STATIC";
+            /** @enum {string|null} */
+            mediaType: "application/pdf" | "image/png" | "text/plain" | null;
+            bytes: number | null;
+            sha256: string | null;
+            pages: number | null;
+            errorCode: string | null;
+            retryable: boolean;
+            revision: number;
+            allowedActions: ("VIEW" | "DOWNLOAD_SOURCE" | "RETRY" | "QUERY")[];
+        };
         TaskDirectoryGrant: {
             /** Format: uuid */
             id: string;
@@ -1723,6 +1816,7 @@ export interface components {
         };
     };
     parameters: {
+        PreviewId: string;
         EnvironmentMatch: string;
         /** @description Session-bound token; writes also require an exact allowed Origin */
         CsrfToken: string;
@@ -3776,6 +3870,144 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkspaceToolResult"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    createFilePreview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: components["parameters"]["PreviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Stable preview identity; only READY authorizes viewing committed output */
+            202: {
+                headers: {
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilePreview"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getFilePreview: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: components["parameters"]["PreviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized persistent job projection; cache identity does not grant access */
+            200: {
+                headers: {
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilePreview"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getFilePreviewContent: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description One byte range; parallel fetches must respect global transfer admission */
+                Range?: string;
+            };
+            path: {
+                id: components["parameters"]["PreviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Verified preview bytes; original attachment download remains separate */
+            200: {
+                headers: {
+                    ETag?: string;
+                    "Content-Length"?: number;
+                    "Accept-Ranges"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                    "image/png": string;
+                    "text/plain": string;
+                };
+            };
+            /** @description Authorized single-range preview response */
+            206: {
+                headers: {
+                    "Content-Range"?: string;
+                    "Content-Length"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    retryFilePreview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                "If-Match": components["parameters"]["EnvironmentMatch"];
+            };
+            path: {
+                id: components["parameters"]["PreviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stable retried preview identity */
+            202: {
+                headers: {
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilePreview"];
                 };
             };
             default: components["responses"]["IdentityProblem"];

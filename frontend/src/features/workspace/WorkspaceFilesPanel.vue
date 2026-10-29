@@ -7,9 +7,10 @@ import { ApiError } from '../../shared/api/request';
 import { newRequestId } from '../../shared/api/request-id';
 import { setCsrf } from '../../shared/api/session';
 import type { components } from '../../shared/api/generated/http';
-import { fileHash, transferFile, textPreview, MAX_PREVIEW_BYTES } from './file-transfers';
+import { fileHash, transferFile, MAX_PREVIEW_BYTES } from './file-transfers';
 import { fileRequestScope, loadFileRequest, saveFileRequest, clearFileRequests, type PendingFileRequest } from './file-requests';
 import FileEditor from './FileEditor.vue';
+import FilePreviewPane from './FilePreviewPane.vue';
 import FileTree from './FileTree.vue';
 import FileLifecyclePanel from './FileLifecyclePanel.vue';
 import { clearMutationRequests } from './file-mutation-requests';
@@ -32,9 +33,7 @@ const progress = ref(0);
 const phase = ref('');
 const error = ref('');
 const conflict = ref(false);
-const preview = ref<string>();
-const previewName = ref('');
-const previewHistorical = ref(false);
+const preview = ref<Item>();
 const editing = ref<Item>();
 const lifecycle = ref<{ file: Item; initial: LifecycleMode; deleted?: Deleted }>();
 const showDeleted = ref(false); const deletedCursor = ref<string>();
@@ -152,16 +151,7 @@ async function submit() {
     if (pending.value?.uploadId) void upload.refetch();
   } finally { if (epoch === current) busy.value = false; }
 }
-async function showPreview(item: Item) {
-  error.value = ''; preview.value = undefined;
-  if (item.bytes === null || item.bytes > MAX_PREVIEW_BYTES || !item.versionId) { error.value = '该文件请下载查看；只读文本预览上限为 2 MiB。'; return; }
-  const current = epoch;
-  try {
-    const result = await api.GET('/api/v1/files/{id}/content', { signal: controller.signal, parseAs: 'arrayBuffer', params: { path: { id: item.id }, query: { versionId: item.versionId }, header: headers.value } });
-    if (current !== epoch || !result.data) return; preview.value = textPreview(result.data); previewName.value = item.name;
-    previewHistorical.value = item.collectionState !== 'CONFIRMED';
-  } catch { if (current === epoch) error.value = '无法作为 UTF-8 文本预览，请下载或检查权限。'; }
-}
+function showPreview(item: Item) { error.value = ''; if (item.versionId) preview.value = item; }
 function openDirectory(value: string) { parent.value = value; cursor.value = undefined; preview.value = undefined; }
 function abandonDefiniteConflict() {
   if (!conflict.value || operationId.value || busy.value) return;
@@ -238,7 +228,7 @@ function readOriginalState() { if (pending.value?.uploadId) void upload.refetch(
         <progress v-if="busy" :value="progress" max="100" aria-label="文件校验或传输进度">{{ progress }}%</progress>
       </form>
       <p v-if="error" role="alert">{{ error }}</p>
-      <section v-if="preview !== undefined" aria-label="只读文本预览"><h4>{{ previewName }} · 只读{{ previewHistorical ? ' · 上次封存版本，当前内容待采集' : '' }}</h4><NButton @click="preview = undefined">关闭预览</NButton><pre tabindex="0">{{ preview }}</pre></section>
+      <FilePreviewPane v-if="preview?.versionId" :key="`${userId}:${spaceId}:${preview.id}:${preview.versionId}`" :file-id="preview.id" :version-id="preview.versionId" :name="preview.name" :user-id="userId" :space-id="spaceId" :historical="preview.collectionState !== 'CONFIRMED'" @close="preview = undefined" />
       <FileEditor v-if="editing" :key="`${userId}:${spaceId}:${workspaceId}:${editing.id}`" :file="editing" :user-id="userId" :space-id="spaceId" :workspace-id="workspaceId" @close="editing = undefined" @saved="client.invalidateQueries({ queryKey: ['workspace-files'] })" />
       <p>文本可编辑并保存版本；移动保留文件身份，删除保留历史，恢复生成新版本。执行环境释放后文件仍保留。</p>
     </template>

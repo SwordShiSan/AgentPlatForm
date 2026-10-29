@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Agent PlatForm API
   version: 0.1.0
-  description: "Contracts for released R3 and opt-in R4 Plan, permissions and workspace tools. Deployment flags control available capabilities."
+  description: "Contracts for released R4 and opt-in R5 file workbench and version-pinned previews. Deployment flags control available capabilities."
 servers:
   - url: /
 paths:
@@ -1709,6 +1709,97 @@ paths:
                 $ref: "#/components/schemas/WorkspaceToolResult"
         default:
           $ref: "#/components/responses/IdentityProblem"
+  /api/v1/files/{id}/previews:
+    post:
+      operationId: createFilePreview
+      summary: Queue a preview of one authorized immutable file version
+      security: [{ session: [] }]
+      parameters:
+        - $ref: "#/components/parameters/PreviewId"
+        - $ref: "#/components/parameters/SpaceSelector"
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreviewRequest"
+      responses:
+        "202":
+          description: Stable preview identity; only READY authorizes viewing committed output
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FilePreview" }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/previews/{id}:
+    get:
+      operationId: getFilePreview
+      security: [{ session: [] }]
+      parameters:
+        - $ref: "#/components/parameters/PreviewId"
+        - $ref: "#/components/parameters/SpaceSelector"
+      responses:
+        "200":
+          description: Authorized persistent job projection; cache identity does not grant access
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FilePreview" }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/previews/{id}/content:
+    get:
+      operationId: getFilePreviewContent
+      security: [{ session: [] }]
+      parameters:
+        - $ref: "#/components/parameters/PreviewId"
+        - $ref: "#/components/parameters/SpaceSelector"
+        - name: Range
+          in: header
+          schema: { type: string, maxLength: 128 }
+          description: One byte range; parallel fetches must respect global transfer admission
+      responses:
+        "200":
+          description: Verified preview bytes; original attachment download remains separate
+          headers:
+            ETag: { schema: { type: string } }
+            Content-Length: { schema: { type: integer, minimum: 0 } }
+            Accept-Ranges: { schema: { type: string } }
+          content:
+            application/pdf: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+            text/plain: { schema: { type: string } }
+        "206":
+          description: Authorized single-range preview response
+          headers:
+            Content-Range: { schema: { type: string } }
+            Content-Length: { schema: { type: integer, minimum: 0 } }
+          content:
+            application/pdf: { schema: { type: string, format: binary } }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/previews/{id}/retry:
+    post:
+      operationId: retryFilePreview
+      security: [{ session: [] }]
+      parameters:
+        - $ref: "#/components/parameters/PreviewId"
+        - $ref: "#/components/parameters/SpaceSelector"
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/EnvironmentMatch"
+      description: Empty body. Only a stopped known failure is retryable; BLOCKED queries original work.
+      responses:
+        "202":
+          description: Stable retried preview identity
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FilePreview" }
+        default: { $ref: "#/components/responses/IdentityProblem" }
 components:
   securitySchemes:
     session:
@@ -1716,6 +1807,11 @@ components:
       in: cookie
       name: ap_session
   parameters:
+    PreviewId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
     EnvironmentMatch:
       name: If-Match
       in: header
@@ -1752,6 +1848,34 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
   schemas:
+    PreviewRequest:
+      type: object
+      additionalProperties: false
+      required: [versionId, format]
+      properties:
+        versionId: { type: string, format: uuid }
+        format: { type: string, enum: [AUTO, PDF, IMAGE, HTML_STATIC] }
+    FilePreview:
+      type: object
+      additionalProperties: false
+      required: [id, fileId, versionId, state, format, mediaType, bytes, sha256, pages, errorCode, retryable, revision, allowedActions]
+      properties:
+        id: { type: string, format: uuid }
+        fileId: { type: string, format: uuid }
+        versionId: { type: string, format: uuid }
+        state: { type: string, enum: [QUEUED, RUNNING, READY, FAILED, BLOCKED] }
+        format: { type: string, enum: [AUTO, PDF, IMAGE, TEXT, HTML_STATIC] }
+        mediaType: { type: [string, "null"], enum: [application/pdf, image/png, text/plain, null] }
+        bytes: { type: [integer, "null"], minimum: 0, maximum: 104857600 }
+        sha256: { type: [string, "null"], pattern: '^[a-f0-9]{64}$' }
+        pages: { type: [integer, "null"], minimum: 1, maximum: 200 }
+        errorCode: { type: [string, "null"], pattern: '^[A-Z_]{1,64}$' }
+        retryable: { type: boolean }
+        revision: { type: integer, minimum: 1, maximum: 9007199254740991 }
+        allowedActions:
+          type: array
+          uniqueItems: true
+          items: { type: string, enum: [VIEW, DOWNLOAD_SOURCE, RETRY, QUERY] }
     TaskDirectoryGrant:
       type: object
       additionalProperties: false

@@ -63,7 +63,7 @@ class FilePostgresTest {
         assertTrue(url.startsWith(r52?"jdbc:postgresql://127.0.0.1:15452/file_test?":r34?"jdbc:postgresql://127.0.0.1:25434/environment_test?":"jdbc:postgresql://127.0.0.1:15450/file_test?"));
         password=Files.readString(Path.of(System.getenv(r52?"R52_TEST_PASSWORD_FILE":r34?"R34_TEST_PASSWORD_FILE":"R33_TEST_PASSWORD_FILE"))).strip();
         flyway(null).clean();flyway("18").migrate();assertEquals(18,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
-        flyway(null).migrate();assertEquals(19,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
+        flyway(null).migrate();assertEquals(20,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
     }
     private static void sql(String text) throws Exception {
@@ -93,7 +93,7 @@ class FilePostgresTest {
     @Test void apiScanAdmissionUsesScopedColumnsAndCannotReadPrivateUseBodies() throws Exception {
         for(String role:List.of("ap_migration","ap_api","ap_worker","ap_runner","ap_workspace_ops"))
             sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='"+role+"') THEN CREATE ROLE "+role+" NOLOGIN;END IF;END $$");
-        for(String name:List.of("r1-runtime-grants.sql","r2-runtime-grants.sql","r3-workspace-grants.sql","r3-environment-grants.sql","r3-file-grants.sql","r4-runtime-grants.sql","r4-permission-grants.sql","r4-approval-grants.sql","r4-workspace-tools-grants.sql","r5-file-grants.sql"))
+        for(String name:List.of("r1-runtime-grants.sql","r2-runtime-grants.sql","r3-workspace-grants.sql","r3-environment-grants.sql","r3-file-grants.sql","r4-runtime-grants.sql","r4-permission-grants.sql","r4-approval-grants.sql","r4-workspace-tools-grants.sql","r5-file-grants.sql","r5-preview-grants.sql"))
             sql(Files.readString(Path.of("../../deploy/config",name)));
         try(var api=scopedFiles("ap_api")) {
             api.repository().scheduleScan();

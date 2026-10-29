@@ -5,7 +5,7 @@ ROOT=Path(__file__).resolve().parents[2];DATA=ROOT/'.cache/r51-local';BASE='http
 STAGE='r51'
 def configure(stage):
  global DATA,BASE,STAGE
- assert stage in ['r51','r52'];STAGE=stage;DATA=ROOT/('.cache/'+stage+'-local');BASE='http://127.0.0.1:'+('18152' if stage=='r52' else '18151')
+ assert stage in ['r51','r52','r53'];STAGE=stage;DATA=ROOT/('.cache/'+stage+'-local');BASE='http://127.0.0.1:'+str(18100+int(stage[1:]))
 class Client:
  def __init__(self,name=None):
   name=name or STAGE+'_admin'

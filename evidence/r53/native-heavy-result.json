@@ -1,0 +1,84 @@
+{
+  "sourceReceiptSha256": "3f72a5d319fa11bbfbe64e98b53ca5cc35272bddeea614cd4ecb529e27024319",
+  "status": "PASS",
+  "source": "cfb4d04a45c381fe5f1de846619ec370d3962e1d",
+  "scope": "Actual durable queue/API/MQ/gVisor lifecycle: environment waits for preview, preview waits for sandbox, explicit sleep releases capacity. Physical counts are boundary samples, not continuous maxima.",
+  "supplierCalls": 0,
+  "generation": 1,
+  "finalGeneration": 1,
+  "inputSha256": {
+    "deploy/scripts/r53-native-heavy-admission.py": "db8577e61bf1c8d6f3950570c81e86bbed78ce5ff15ff829135e52119711d6a3",
+    "deploy/scripts/r53-native-acceptance.py": "36821f2c9b6feebc6e52565f3b719cf0bba13af33173f002e0a2b6ed08bbe9f3",
+    "deploy/scripts/files-native-fixture.py": "b5fb0949c905576e2cdbcabdac91fcf1c8b4c0b77947d1f69c79dbf1657ebc76",
+    "backend/platform-app/src/main/resources/db/migration/V20__preview_pipeline.sql": "122af3cef840045a8f2a65336264f8c10dc11b8b5df06265963e6c9711945827"
+  },
+  "samples": [
+    {
+      "time": 1793275250.2728987,
+      "heavyKind": "PREVIEW",
+      "environment": {
+        "state": "PREPARING",
+        "generation": 1,
+        "version": 1,
+        "waitingHeavy": true
+      },
+      "physical": [
+        {
+          "role": "preview-renderer",
+          "image": "sha256:6c1586ade9209d40ca5c10857d6ad399713515f6a0d054432a4650178237d97d",
+          "runtime": "runsc",
+          "memory": 536870912
+        }
+      ]
+    },
+    {
+      "time": 1793275258.758617,
+      "heavyKind": "SANDBOX",
+      "environment": {
+        "state": "READY",
+        "generation": 1,
+        "version": 2,
+        "waitingHeavy": false
+      },
+      "physical": [
+        {
+          "role": "sandbox",
+          "image": "sha256:9e0bd46f894ba4a82682b933a654b888ab3cb6e34f9d28cf39a7c4f65fd09a1d",
+          "runtime": "runsc",
+          "memory": 536870912
+        }
+      ]
+    },
+    {
+      "time": 1793275259.7707229,
+      "heavyKind": "SANDBOX",
+      "environment": {
+        "state": "READY",
+        "generation": 1,
+        "version": 2,
+        "waitingHeavy": false
+      },
+      "physical": [
+        {
+          "role": "sandbox",
+          "image": "sha256:9e0bd46f894ba4a82682b933a654b888ab3cb6e34f9d28cf39a7c4f65fd09a1d",
+          "runtime": "runsc",
+          "memory": 536870912
+        }
+      ]
+    },
+    {
+      "time": 1793275269.0227764,
+      "heavyKind": null,
+      "environment": {
+        "state": "STOPPED",
+        "generation": 1,
+        "version": 4,
+        "waitingHeavy": false
+      },
+      "physical": []
+    }
+  ],
+  "absolutePeakClaim": false,
+  "root": "isolated-r53-1f604661aded03c2"
+}

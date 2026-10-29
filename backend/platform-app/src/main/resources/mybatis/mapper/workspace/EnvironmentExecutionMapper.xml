@@ -10,6 +10,8 @@
     ]]></select>
     <update id="published">UPDATE pf.workspace_environment_outbox SET status=<choose><when test="confirmed">'PUBLISHED'</when><otherwise>'PENDING'</otherwise></choose>,relay_owner=NULL,relay_until=NULL WHERE id=#{item.id} AND relay_owner=#{item.relayOwner} AND generation=#{item.generation} AND fence=#{item.fence} AND status='PUBLISHING' AND relay_until&gt;clock_timestamp()</update>
     <select id="knownPublication" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.workspace_environment_outbox WHERE id=#{item.id} AND operation_id=#{item.operationId} AND space_id=#{item.spaceId} AND workspace_id=#{item.workspaceId} AND environment_id=#{item.environmentId} AND generation=#{item.generation} AND fence=#{item.fence})</select>
+    <select id="waitingHeavy" resultType="boolean">SELECT waiting_heavy FROM pf.workspace_environment_operation WHERE id=#{operation}</select>
+    <update id="deferHeavyPublication">UPDATE pf.workspace_environment_outbox SET status='PENDING',relay_owner=NULL,relay_until=NULL WHERE id=#{item.id} AND operation_id=#{item.operationId} AND generation=#{item.generation} AND fence=#{item.fence}</update>
     <insert id="inbox">INSERT INTO pf.workspace_environment_inbox(event_id,operation_id) VALUES(#{eventId},#{operationId}) ON CONFLICT(event_id) DO NOTHING</insert>
     <select id="command" resultType="com.agentplatform.domain.workspace.EnvironmentExecutionData$Command">
         SELECT o.protocol,o.kind,o.initiator,o.command_id,o.id AS operation_id,o.space_id,o.workspace_id,o.environment_id,
@@ -141,6 +143,6 @@
     <update id="projectWorkspace">UPDATE pf.workspace SET environment_state=#{state},version=version+1,updated_at=clock_timestamp() WHERE space_id=#{command.spaceId} AND id=#{command.workspaceId}</update>
     <update id="releaseSlot">UPDATE pf.workspace_sandbox_slot SET space_id=NULL,workspace_id=NULL,environment_id=NULL,generation=NULL,revision=revision+1 WHERE id=1 AND space_id=#{command.spaceId} AND workspace_id=#{command.workspaceId} AND environment_id=#{command.environmentId} AND generation=#{command.generation}</update>
     <update id="uncertain">UPDATE pf.workspace_environment_operation SET status='UNKNOWN',effect_state='MAY_HAVE_STARTED',error_code=#{code},version=version+1 WHERE <include refid="active"/></update>
-    <update id="rejectBeforeClaim">UPDATE pf.workspace_environment_operation SET status='FAILED',effect_state='NOT_STARTED',error_code='ENVIRONMENT_AUTHORIZATION_REVOKED',version=version+1 WHERE id=#{operationId} AND kind IN('PREPARE','WAKE') AND status='PENDING' AND effect_state='NOT_STARTED'</update>
+    <update id="rejectBeforeClaim">UPDATE pf.workspace_environment_operation SET status='FAILED',effect_state='NOT_STARTED',waiting_heavy=false,error_code='ENVIRONMENT_AUTHORIZATION_REVOKED',version=version+1 WHERE id=#{operationId} AND kind IN('PREPARE','WAKE') AND status='PENDING' AND effect_state='NOT_STARTED'</update>
     <update id="projectRejected">UPDATE pf.workspace_environment SET state='ERROR',error_code='ENVIRONMENT_AUTHORIZATION_REVOKED',version=version+1,updated_at=clock_timestamp() WHERE id=#{environmentId}</update>
 </mapper>
