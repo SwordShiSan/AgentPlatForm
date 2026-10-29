@@ -1,3 +1,7 @@
+# Protected promotion and closure
+
+PR133/134 accepted the exact implementation. R5.2 VERIFIED; R5 is2/4 and not RELEASED. Original R4 restored; zero supplier calls. Archive/docs/Skill and pre-closure protected copies are completed through closure PRs; final clean-main delivery is recorded separately after merge, not inferred from Git push.
+
 # Current functional conclusion (2026-10-29)
 
 All mandatory functional gates PASS; protected promotion/archival/final clean-main delivery are pending. This current conclusion supersedes historical implementation checkpoints below without rewriting their FAIL/NOT_RUN records.

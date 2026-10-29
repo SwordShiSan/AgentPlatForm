@@ -1,3 +1,7 @@
+## R5.2 VERIFIED
+
+R5.2文件生命周期、历史新版本恢复及固定产物证据已通过真实依赖和浏览器验收，经保护[PR133](https://github.com/SwordShiSan/AgentPlatForm/pull/133)／[PR134](https://github.com/SwordShiSan/AgentPlatForm/pull/134)晋级。R5为2/4 VERIFIED、未RELEASED，云端原R4已恢复；供应商调用0。V19新增，V1–V18不修改，runtime baseline1。见[验收索引](evidence/r52/acceptance-index.json)和[固定入口](deploy/R5.2-LOCAL.md)。R5.3另行Plan/OpenSpec，云沙箱DEFERRED不归档。以下旧结论均为历史。
+
 ## R5.1 VERIFIED
 
 文本编辑、并发保存、显式冲突比较／另存及会话草稿已通过真实文件API和浏览器验收，经[PR129](https://github.com/SwordShiSan/AgentPlatForm/pull/129)／[PR130](https://github.com/SwordShiSan/AgentPlatForm/pull/130)晋级。**R5完成1/4、未RELEASED；云端仍为原R4。** 无迁移、供应商调用0；验收栈已停止并核验R4恢复。见[验收索引](evidence/r51/acceptance-index.json)和[固定启动说明](deploy/R5.1-LOCAL.md)。R5.2另行Plan/OpenSpec。以下旧状态为历史。
