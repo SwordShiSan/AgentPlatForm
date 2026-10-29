@@ -29,6 +29,7 @@
     "@noble/hashes": "2.4.0",
     "@tanstack/vue-query": "5.104.2",
     "eventsource-parser": "4.1.2",
+    "monaco-editor": "0.57.0",
     "naive-ui": "2.45.3",
     "openapi-fetch": "0.17.0",
     "pinia": "3.0.4",
