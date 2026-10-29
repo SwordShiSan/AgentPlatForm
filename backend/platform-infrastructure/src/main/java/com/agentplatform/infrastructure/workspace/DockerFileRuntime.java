@@ -127,7 +127,8 @@ public final class DockerFileRuntime implements FileRuntime {
     }
     @Override public Result apply(Command command,InputStream content,Authority authority) {
         boolean scan="SCAN".equals(command.operation().kind());
-        if(!scan&&(command.upload()==null||!"APPLY_UPLOAD".equals(command.operation().kind()))||!policy.image().equals(command.operation().helperImageId())
+        boolean mutation=command.mutation()!=null&&Set.of("MOVE","DELETE","DELETE_CLEANUP","RESTORE_FILE","RESTORE_TREE").contains(command.operation().kind());
+        if(!scan&&!mutation&&(command.upload()==null||!"APPLY_UPLOAD".equals(command.operation().kind()))||!policy.image().equals(command.operation().helperImageId())
                 ||!policy.hash().equals(command.operation().helperPolicyHash()))throw new FileFailure(409,"FILE_POLICY_MISMATCH");
         var permit=slots.tryAcquire();if(permit==null)throw new FileFailure(423,"WORKSPACE_HELPER_BUSY");
         var verifierStopped=new AtomicBoolean(true);boolean release=false;
@@ -138,9 +139,14 @@ public final class DockerFileRuntime implements FileRuntime {
             catch(NotFoundException absent){createInvoked=false;/* Never recreate an existing command. */}
             createInvoked=true;
             var created=createHelper(command,authority);
-            var header=new LinkedHashMap<String,Object>();header.put("protocol",scan?"file-scan-v1":"file-stream-v2");header.put("operationId",command.operation().id());
+            var header=new LinkedHashMap<String,Object>();header.put("protocol",scan?"file-scan-v1":mutation?"file-mutation-v1":"file-stream-v2");header.put("operationId",command.operation().id());
             header.put("filesystemDevice",List.of(7,Integer.parseInt(policy.quotaDevice().substring("/dev/loop".length()))));
-            if(scan) {
+            if(mutation) {
+                var m=command.mutation();header.put("kind",m.kind());header.put("sourcePath",m.sourcePath());header.put("targetPath",m.targetPath());
+                header.put("manifestJson",m.manifestJson());header.put("manifestHash",m.manifestHash());
+                header.put("parentOperationId",m.parentOperationId());
+                if("RESTORE_FILE".equals(m.kind())){header.put("bytes",command.upload().sizeBytes());header.put("sha256",command.upload().sha256());}
+            }else if(scan) {
                 header.put("parent",command.operation().scanParent());header.put("cursor",command.operation().scanCursor());
                 header.put("epoch",command.operation().scanEpoch());header.put("stamp",command.operation().scanStamp());
             } else {
@@ -148,10 +154,12 @@ public final class DockerFileRuntime implements FileRuntime {
             }
             byte[] metadata=(JSON.writeValueAsString(header)+"\n").getBytes(StandardCharsets.UTF_8);
             String exec=docker.execCreateCmd(created.getId()).withAttachStdin(true).withAttachStdout(true).withAttachStderr(true).withTty(false)
-                    .withCmd("python3",scan?"/opt/platform/file-scan-bridge.py":"/opt/platform/file-stream-bridge.py").exec().getId();
+                    .withCmd("python3",scan?"/opt/platform/file-scan-bridge.py":mutation?"/opt/platform/file-mutation-bridge.py":"/opt/platform/file-stream-bridge.py").exec().getId();
             authority.exec(exec);authority.check();
-            InputStream payload=scan?content:new SequenceInputStream(content,
-                    new ByteArrayInputStream(HexFormat.of().parseHex(command.upload().sha256())));
+            String trailer=scan?null:mutation?("RESTORE_FILE".equals(command.operation().kind())?command.upload().sha256():
+                    "RESTORE_TREE".equals(command.operation().kind())?command.mutation().manifestHash():null):command.upload().sha256();
+            InputStream payload=trailer==null?content:new SequenceInputStream(content,
+                    new ByteArrayInputStream(HexFormat.of().parseHex(trailer)));
             input=new TrackedInput(new SequenceInputStream(new ByteArrayInputStream(metadata),payload));capture.input=input;active.put(command.operation().commandId(),capture);
             execInvoked=true;
             docker.execStartCmd(exec).withDetach(false).withTty(false).withStdIn(input).exec(capture);
@@ -168,7 +176,8 @@ public final class DockerFileRuntime implements FileRuntime {
             String result=capture.stdout();String state="UNKNOWN";
             if(capture.failure==null&&!capture.truncated&&callbacksStopped) {
                 var value=JSON.readTree(result);
-                if(Long.valueOf(0).equals(exitCode)&&"APPLIED".equals(value.path("state").asString())&&!scan)state="APPLIED";
+                if(Long.valueOf(0).equals(exitCode)&&"MUTATED".equals(value.path("state").asString())&&mutation)state="MUTATED";
+                else if(Long.valueOf(0).equals(exitCode)&&"APPLIED".equals(value.path("state").asString())&&!scan&&!mutation)state="APPLIED";
                 else if(Long.valueOf(0).equals(exitCode)&&"SCANNED".equals(value.path("state").asString())&&scan)state="SCANNED";
                 else if(exitCode!=null&&exitCode!=0&&Set.of("FILE_NAME_CONFLICT","FILE_VERSION_CONFLICT","FILE_PATH_REJECTED","FILE_KIND_REJECTED","FILE_NAME_NORMALIZATION_CONFLICT","FILE_CONTENT_MISMATCH","FILE_STORAGE_FULL","FILE_MOUNT_REJECTED","FILE_ATOMIC_CREATE_UNAVAILABLE").contains(value.path("code").asString()))state="NOT_APPLIED";
             }

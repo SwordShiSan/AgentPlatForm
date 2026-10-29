@@ -185,11 +185,17 @@ public final class MyBatisFileRepository implements FileRepository {
         if (row.operationId() != null) return files.operation(row.operationId());
         if (!"VERIFIED".equals(row.status())) throw new FileFailure(409, "UPLOAD_NOT_VERIFIED");
         if(!row.expiresAt().isAfter(files.databaseTime()))throw new FileFailure(409,"UPLOAD_EXPIRED");
-        versionCheck(actor, row.workspaceId(), new UploadRequest(row.relativePath(), row.sizeBytes(), row.sha256(),
+        var restore=files.restore(row.id());
+        if(restore==null)versionCheck(actor, row.workspaceId(), new UploadRequest(row.relativePath(), row.sizeBytes(), row.sha256(),
                 "REPLACE".equals(row.mode()) ? row.fileId() : null, row.baseVersionId(), row.expectedRevision()));
-        var operation = new Operation(Uuid7.next(), row.spaceId(), row.workspaceId(), row.actorId(), "APPLY_UPLOAD", row.id(),
+        boolean restoreConflict=restore!=null&&!files.restoreCurrent(row.id());
+        var operation = new Operation(restore==null?Uuid7.next():restore.operationId(), row.spaceId(), row.workspaceId(), row.actorId(), restore==null?"APPLY_UPLOAD":"RESTORE_FILE", row.id(),
                 Uuid7.next(), null, 1, null, null, null, "PENDING", "NOT_STARTED", null, 1,helperImageId,helperPolicyHash,null,null,null,null);
-        files.insertOperation(operation);one(files.queueUpload(id, operation.id()));files.insertOutbox(Uuid7.next(), operation);
+        files.insertOperation(operation);if(restore!=null)files.insertRestoreIntent(id);one(files.queueUpload(id, operation.id()));
+        if(restoreConflict) {
+            one(files.rejectPending(operation.id(),"FILE_VERSION_CONFLICT"));refund(row);onCommit(()->authorized(actor));return files.operation(operation.id());
+        }
+        files.insertOutbox(Uuid7.next(), operation);
         onCommit(() -> authorized(actor));return files.operation(operation.id());
     }
     @Override public List<Entry> list(Actor actor, UUID workspace, String parent, String after, int limit) {
@@ -209,12 +215,41 @@ public final class MyBatisFileRepository implements FileRepository {
     @Override public Usage usage(Actor actor, UUID workspace) {
         workspace(actor, workspace, false);return files.usage(actor.spaceId(), workspace);
     }
+    @Override public List<HistoricalVersion> versions(Actor actor,UUID id,UUID before,int limit) {
+        file(actor,id);
+        var rows=files.versions(actor.spaceId(),id,before,limit);
+        onCommit(()->file(actor,id));
+        return rows;
+    }
+    @Override public List<Artifact> artifacts(Actor actor,UUID task,UUID after,int limit) {
+        authorized(actor);
+        if(!files.readableTask(actor,task))throw new FileFailure(404,"RESOURCE_NOT_FOUND");
+        var rows=files.artifacts(actor,task,after,limit);
+        for(var row:rows)workspace(actor,row.workspaceId(),false);
+        onCommit(()->{authorized(actor);for(var row:rows)workspace(actor,row.workspaceId(),false);});
+        return rows;
+    }
+    @Override public Artifact artifact(Actor actor,UUID id) {
+        authorized(actor);var row=files.artifact(actor,id);
+        if(row==null)throw new FileFailure(404,"RESOURCE_NOT_FOUND");
+        workspace(actor,row.workspaceId(),false);
+        onCommit(()->workspace(actor,row.workspaceId(),false));return row;
+    }
     @Override public Operation operation(Actor actor, UUID id) {
         authorized(actor);var row = files.operation(id);
         if (row == null || !row.spaceId().equals(actor.spaceId())) throw new FileFailure(404, "RESOURCE_NOT_FOUND");
-        workspace(actor, row.workspaceId(), false);return row;
+        workspace(actor, row.workspaceId(), false);
+        if("DELETE".equals(row.kind())&&"COMMITTED".equals(row.status())) {
+            var child=files.cleanupOperation(row.id());
+            if(child!=null&&!"COMMITTED".equals(child.status()))return new Operation(row.id(),row.spaceId(),row.workspaceId(),row.actorId(),row.kind(),row.uploadId(),row.commandId(),row.ownerId(),row.generation(),row.fence(),row.leaseUntil(),row.deadlineAt(),
+                    "UNKNOWN".equals(child.status())||"FAILED".equals(child.status())?"UNKNOWN":"RUNNING",row.effectState(),child.errorCode(),row.revision()+child.revision(),row.helperImageId(),row.helperPolicyHash(),row.scanParent(),row.scanCursor(),row.scanEpoch(),row.scanStamp());
+        }
+        return row;
     }
     @Override public List<Publication> publications(UUID owner) { tx();return files.publications(owner); }
+    @Override public List<FileMutationData.TreeFile> treeFiles(Command command) {
+        guard(command);if(!"RESTORE_TREE".equals(command.operation().kind()))throw new FileFailure(409,"INVALID_FILE_COMMAND");return files.treeFiles(command.operation().id());
+    }
     @Override public void published(Publication item, boolean success) { tx();one(files.published(item, success)); }
     @Override public Command claim(Publication item, UUID owner) {
         tx();
@@ -227,16 +262,26 @@ public final class MyBatisFileRepository implements FileRepository {
         files.ensureLease(actor.spaceId(), workspace.id());var lease = files.lockLease(actor.spaceId(), workspace.id());
         var operation = files.lockOperation(item.operationId());
         if (!"PENDING".equals(operation.status())) { files.inbox(item);return null; }
+        if(java.util.Set.of("MOVE","DELETE").contains(operation.kind())&&!files.mutationCurrent(operation.id())) {
+            one(files.rejectPending(operation.id(),"FILE_VERSION_CONFLICT"));files.inbox(item);onCommit(()->authorized(actor));return null;
+        }
+        if("RESTORE_TREE".equals(operation.kind())&&!files.treeCurrent(operation.id())) {
+            one(files.refundTree(operation.id()));one(files.releaseTreeReservation(operation.id()));files.tombstoneTreeAssets(operation.id());
+            one(files.rejectPending(operation.id(),"FILE_VERSION_CONFLICT"));files.inbox(item);onCommit(()->authorized(actor));return null;
+        }
         boolean capture="CAPTURE".equals(operation.kind());
-        if (!"FREE".equals(lease.status()) || files.unresolvedEnvironmentUse(workspace.id())&&!(capture&&captures!=null&&captures.mayEnter(operation.id()))) throw new FileFailure(423, "WORKSPACE_BUSY");
-        if("SCAN".equals(operation.kind())||capture) {
+        boolean cleanup="DELETE_CLEANUP".equals(operation.kind())&&operation.id().equals(lease.operationId())&&files.cleanupReady(operation.id());
+        if (!"FREE".equals(lease.status())&&!cleanup || files.unresolvedEnvironmentUse(workspace.id())&&!(capture&&captures!=null&&captures.mayEnter(operation.id()))) throw new FileFailure(423, "WORKSPACE_BUSY");
+        if("SCAN".equals(operation.kind())||capture||java.util.Set.of("MOVE","DELETE","DELETE_CLEANUP","RESTORE_TREE").contains(operation.kind())) {
             if(capture&&(captures==null||!captures.mayEnter(operation.id())||captures.claimed(operation.id())!=1))throw new FileFailure(409,"CAPTURE_NOT_AUTHORIZED");
-            long fence=Math.addExact(lease.fence(),1);one(files.takeLease(operation,owner,fence));one(files.claim(operation.id(),owner,fence));files.inbox(item);
-            var command=new Command(Execution.freeze(files.operation(operation.id())),null,workspace.projectId(),null);onCommit(()->guard(command));return command;
+            long fence=Math.addExact(lease.fence(),1);one(cleanup?files.takeCleanupLease(operation,owner,fence):files.takeLease(operation,owner,fence));one(files.claim(operation.id(),owner,fence));files.inbox(item);
+            var command=new Command(Execution.freeze(files.operation(operation.id())),null,workspace.projectId(),null,files.mutation(operation.id()));onCommit(()->guard(command));return command;
         }
         var upload = ownedUpload(actor, operation.uploadId(), true);
         try {
-            versionCheck(actor, workspace.id(), new UploadRequest(upload.relativePath(), upload.sizeBytes(), upload.sha256(),
+            if("RESTORE_FILE".equals(operation.kind())) {
+                if(!files.restoreCurrent(upload.id()))throw new FileFailure(412,"FILE_VERSION_CONFLICT");
+            }else versionCheck(actor, workspace.id(), new UploadRequest(upload.relativePath(), upload.sizeBytes(), upload.sha256(),
                     "REPLACE".equals(upload.mode()) ? upload.fileId() : null, upload.baseVersionId(), upload.expectedRevision()));
         } catch(FileFailure conflict) {
             if(conflict.status()!=409&&conflict.status()!=412)throw conflict;
@@ -247,10 +292,18 @@ public final class MyBatisFileRepository implements FileRepository {
         long fence = Math.addExact(lease.fence(), 1);
         one(files.takeLease(operation, owner, fence));one(files.claim(operation.id(), owner, fence));files.inbox(item);
         var base=upload.baseVersionId()==null?null:files.version(upload.spaceId(),upload.fileId(),upload.baseVersionId());
-        var command = new Command(Execution.freeze(files.operation(operation.id())), Input.freeze(files.upload(upload.id())), workspace.projectId(),base==null?null:base.sha256());
+        var restore=files.restore(upload.id());
+        var command = new Command(Execution.freeze(files.operation(operation.id())), Input.freeze(files.upload(upload.id())), workspace.projectId(),base==null||restore!=null&&restore.sourceMissing()?null:base.sha256(),files.mutation(operation.id()));
         onCommit(() -> guard(command));return command;
     }
     @Override public void guard(Command command) {
+        ownerGuard(command);
+        var operation=command.operation();
+        if("RESTORE_FILE".equals(operation.kind())&&!files.restoreCurrent(operation.uploadId()))throw new FileFailure(412,"FILE_VERSION_CONFLICT");
+        if("RESTORE_TREE".equals(operation.kind())&&!files.treeCurrent(operation.id()))throw new FileFailure(412,"FILE_VERSION_CONFLICT");
+        if(command.mutation()!=null&&java.util.Set.of("MOVE","DELETE").contains(operation.kind())&&!files.mutationCurrent(operation.id()))throw new FileFailure(412,"FILE_VERSION_CONFLICT");
+    }
+    private void ownerGuard(Command command) {
         if(!files.toolParentAllowed(command.operation().uploadId(),command.operation().id(),false))throw new FileFailure(409,"TOOL_PARENT_NO_LONGER_AUTHORIZED");
         tx();var operation = command.operation();authorized(new Actor(operation.actorId(), operation.spaceId()));
         if (!files.current(command)) throw new FileFailure(409, "FILE_STALE_OWNER");
@@ -277,7 +330,7 @@ public final class MyBatisFileRepository implements FileRepository {
         files.lockLease(operation.spaceId(),operation.workspaceId());var current=files.lockOperation(operation.id());
         if(current==null||!Execution.freeze(current).equals(operation)||!files.projectionCurrent(command))throw new FileFailure(409,"FILE_STALE_PROJECTION");
     }
-    private void projectionGuard(Command command,boolean recovery){if(recovery)observeProjection(command);else guard(command);}
+    private void projectionGuard(Command command,boolean recovery){if(recovery)observeProjection(command);else ownerGuard(command);}
     private void commitProjection(Command command,Receipt supplied,boolean recovery) {
         if(recovery)observeProjection(command);else lockOwned(command);
         var stored = files.receipt(command);
@@ -290,6 +343,35 @@ public final class MyBatisFileRepository implements FileRepository {
             commitScan(command,stored,recovery);return;
         }
         if("CAPTURE".equals(command.operation().kind())) {commitCapture(command,stored,recovery);return;}
+        if(command.mutation()!=null&&!"RESTORE_FILE".equals(command.operation().kind())) {
+            if("UNKNOWN".equals(stored.resultState())){if(!recovery)uncertain(command,"FILE_RESULT_UNKNOWN");return;}
+            if("NOT_APPLIED".equals(stored.resultState())){
+                if("DELETE_CLEANUP".equals(command.operation().kind())){uncertain(command,"FILE_CLEANUP_UNCONFIRMED");return;}
+                if("RESTORE_TREE".equals(command.operation().kind())){one(files.refundTree(command.operation().id()));one(files.releaseTreeReservation(command.operation().id()));files.tombstoneTreeAssets(command.operation().id());}
+                one(files.failOperation(command));one(files.releaseLease(command));return;
+            }
+            var result=JSON.readTree(stored.resultText());
+            if(!"MUTATED".equals(stored.resultState())||!"file-mutation-v1".equals(result.path("protocol").asString())
+                    ||!command.operation().id().toString().equals(result.path("operationId").asString())
+                    ||!command.mutation().manifestHash().equals(result.path("manifestHash").asString())||!command.mutation().kind().equals(result.path("kind").asString()))
+                throw new FileFailure(503,"FILE_RECEIPT_MISMATCH");
+            if("MOVE".equals(command.mutation().kind())&&files.applyMove(command)!=result.path("entries").asInt(-1))throw new FileFailure(412,"FILE_VERSION_CONFLICT");
+            if("DELETE".equals(command.mutation().kind())&&files.applyDelete(command)!=result.path("entries").asInt(-1))throw new FileFailure(412,"FILE_VERSION_CONFLICT");
+            if("RESTORE_TREE".equals(command.mutation().kind())) {
+                var rows=files.treeFiles(command.operation().id());int fileCount=(int)rows.stream().filter(f->"FILE".equals(f.kind())).count();
+                if(rows.size()!=result.path("entries").asInt(-1)||files.treeVersions(command)!=fileCount||files.treeAssets(command)!=fileCount
+                        ||files.treeEntries(command)!=rows.size())throw new FileFailure(409,"FILE_RESTORE_TREE_CHANGED");
+                files.treeReferences(command);files.treeOrigins(command);one(files.settleTree(command.operation().id()));one(files.settleTreeReservation(command.operation().id()));
+            }
+            projectionGuard(command,recovery);one(files.completeOperation(command));
+            if("DELETE".equals(command.mutation().kind())) {
+                one(files.queueDeleteCleanup(command.operation().id(),Uuid7.next(),Uuid7.next(),Uuid7.next()));
+                onCommit(()->authorized(new Actor(command.operation().actorId(),command.operation().spaceId())));return;
+            }
+            one(files.releaseLease(command));
+            onCommit(()->{authorized(new Actor(command.operation().actorId(),command.operation().spaceId()));
+                if(!files.committedOwned(command,recovery))throw new FileFailure(409,"FILE_STALE_OWNER");});return;
+        }
         var upload = ownedUpload(new Actor(command.operation().actorId(), command.operation().spaceId()), command.upload().id(), true);
         if("UNKNOWN".equals(stored.resultState())) {
             if(recovery)return; // No new write, release or replay is justified by an unknown physical result.
@@ -304,8 +386,15 @@ public final class MyBatisFileRepository implements FileRepository {
                 if(!files.committedOwned(command,recovery))throw new FileFailure(409,"FILE_STALE_OWNER");
             });return;
         }
-        if(!"APPLIED".equals(stored.resultState()))throw new FileFailure(409,"FILE_RESULT_RECONCILIATION_REQUIRED");
-        var result = JSON.readValue(stored.resultText(), Applied.class);
+        boolean restoring="RESTORE_FILE".equals(command.operation().kind());
+        if(!(restoring?"MUTATED":"APPLIED").equals(stored.resultState()))throw new FileFailure(409,"FILE_RESULT_RECONCILIATION_REQUIRED");
+        Applied result;
+        if(restoring) {
+            var value=JSON.readTree(stored.resultText());
+            if(!"file-mutation-v1".equals(value.path("protocol").asString())||!command.mutation().manifestHash().equals(value.path("manifestHash").asString())
+                    ||!command.operation().id().toString().equals(value.path("operationId").asString())||!"RESTORE_FILE".equals(value.path("kind").asString()))throw new FileFailure(503,"FILE_RECEIPT_MISMATCH");
+            result=new Applied("file-stream-v2",command.operation().id(),"APPLIED",value.path("bytes").asLong(-1),value.path("sha256").asString());
+        }else result=JSON.readValue(stored.resultText(), Applied.class);
         if (!("file-stream-v1".equals(result.protocol()) || "file-stream-v2".equals(result.protocol())) || !result.operationId().equals(command.operation().id())
                 || !"APPLIED".equals(result.state()) || result.bytes() != upload.sizeBytes() || !result.sha256().equals(upload.sha256()))
             throw new FileFailure(503, "FILE_RECEIPT_MISMATCH");
@@ -316,6 +405,7 @@ public final class MyBatisFileRepository implements FileRepository {
                     "FILE", null, "PENDING", 1, null, null));
         }
         files.insertVersion(upload, command.operation().id());one(files.commitFile(upload));one(files.availableAsset(upload));
+        if(restoring)files.insertRestoreOrigin(upload.id(),command.operation().id());
         files.reference(upload);one(files.settleReservation(upload));one(files.settleSpace(upload));one(files.commitUpload(upload));
         var entry = files.file(upload.fileId());
         files.event(Uuid7.next(), upload, entry.revision(), JSON.writeValueAsString(java.util.Map.of(
@@ -372,7 +462,8 @@ public final class MyBatisFileRepository implements FileRepository {
             var operation=files.operation(id);var workspace=workspaces.workspace(operation.spaceId(),operation.workspaceId());
             var upload=operation.uploadId()==null?null:files.upload(operation.uploadId());
             var base=upload==null||upload.baseVersionId()==null?null:files.version(operation.spaceId(),upload.fileId(),upload.baseVersionId());
-            return new Command(Execution.freeze(operation),upload==null?null:Input.freeze(upload),workspace.projectId(),base==null?null:base.sha256());
+            var restore=upload==null?null:files.restore(upload.id());
+            return new Command(Execution.freeze(operation),upload==null?null:Input.freeze(upload),workspace.projectId(),base==null||restore!=null&&restore.sourceMissing()?null:base.sha256(),files.mutation(operation.id()));
         }).toList();
     }
     @Override public void scheduleScan() {

@@ -1,0 +1,84 @@
+{
+  "stage": "R5.2",
+  "status": "FUNCTIONAL_GATES_PASS_PENDING_PROTECTED_PROMOTION",
+  "baseline": "4c80f52070325cad7d4d00a4f8ff50e92c6acc19",
+  "schemaVersion": 19,
+  "runtimeBaseline": 1,
+  "migrationsChanged": [
+    "V19"
+  ],
+  "supplierCalls": 0,
+  "production": "Exact R4 restored; no R5 production deployment/tag",
+  "images": {
+    "api": {
+      "source": "157e069456febdb36b39956fd55f6c8fe58be61d",
+      "manifestDigest": "sha256:76c95dec7a04e4c42ee0170e63a62502d7e2b2eabd1f65d3b7217cd2df80dbef",
+      "configId": "sha256:8f25a31bda869aea61eb590d2821eb79feed0259306c807b60afeb18b6178696",
+      "platform": "linux/amd64"
+    },
+    "file-helper": {
+      "source": "157e069456febdb36b39956fd55f6c8fe58be61d",
+      "manifestDigest": "sha256:2de96da992760e3ef97e04eb8dc4cdbb534a26054aa9190177e9504bc8a1482a",
+      "configId": "sha256:c7b78647afecf1ec95ac68ada792a24e7a208ca1b9dc773147b39cfa8e3e3358",
+      "platform": "linux/amd64"
+    },
+    "gateway": {
+      "source": "dab373161eccea05483d10a1b53d74b793dbdefe",
+      "configId": "sha256:7d82dbd52fa12d965ea06d583e5d74c3fd510d274dd12edf2cc80eb08c7c1e7f",
+      "manifestDigest": "sha256:75514eae3a0174bd86672d9b7898873133eee0d19c232c5a72a5f1f32520107c",
+      "platform": "linux/amd64"
+    }
+  },
+  "engineering": {
+    "maven": "PASS",
+    "mavenLogSha256": "98b509882b8e4caa3e9eca28de0db085903003a98d5007d140dead79fd17985a",
+    "reviewedReceipt": "Actual whole-reactor exit0; production backend hashes unchanged. Only FilePostgresTest changed and its latest targeted13-test PG receipt passed. Preserve original conservative FAIL; deployment/browser gates are separate.",
+    "frontendUnitTests": 59,
+    "frontendTypecheckBuildContracts": "PASS",
+    "contractsInvalidFixtures": "PASS",
+    "linksCanonical": "PASS",
+    "strict": "PASS",
+    "persistenceBoundary": "PASS",
+    "helperLinuxUnitTests": 46,
+    "actualPgTargetedTests": 13,
+    "scope": "per-gate receipts retain skipped/unrun historical integrations; synthetic runner receipts are only transaction evidence"
+  },
+  "observation": {
+    "seconds": 181.011,
+    "serialRounds": 23,
+    "minSampledAvailableMiB": 1372.875,
+    "minSampledRootFreeGiB": 5.2598724365234375,
+    "swapUsedFirstBytes": 201838592,
+    "swapUsedLastBytes": 201764864,
+    "fullProjectedLimitMiB": 2880,
+    "absolutePeakClaim": false
+  },
+  "reuse": {
+    "scope": "unchanged gVisor/XFS hard quota and prior recovery evidence, not old file executors handling V19 tombstones",
+    "receipt": "evidence/r44/production-release.json"
+  },
+  "failuresRetained": [
+    "helper finite framing protocol failure before correction",
+    "per-command fixture identity uniqueness failure",
+    "test fixture singleton/quota seeds removed by cascade",
+    "composite restore transfer self-contention and multi-object receipt ownership corrected",
+    "Docker context whitelist omitted helper",
+    "old browser output ACL prevented start",
+    "browser prior terminal panel not acknowledged",
+    "fault fixture swallowed423 as lost accepted response",
+    "test gateway replacement reset polling; original operation queried",
+    "GitHub fake DNS/strict host alias route issue"
+  ],
+  "receipts": {
+    "helper-feasibility.json": "63f2ab9a0f59643be9b4a98aa1ab6ad01efda79df0eaf93a72d0dd135509b071",
+    "image-identities.json": "6e8a3dbc5a5adaf759518b270aed1b9aedfacbfc1821e478125f211e2c02e25d",
+    "native-api-result.json": "6ac0be41a36b4f69cfb097584de6ccaf2efed06002a0ed0eea34235720aa5953",
+    "native-broker-result.json": "c1bd42380f164ea4a2860dbb1c64eed43e59e62b9bfea58b76c5b5749b30fb92",
+    "native-browser-result.json": "d196923e8e9cf57f1a45159744f0a9a56f19cfebb1128969429da303ce16b201",
+    "native-compat-result.json": "f68e26b5e5cc2504c69af48d3cd6a9074d09118c1efe6532814499a26df4fc2d",
+    "native-observation.json": "6d4bbcae81ba1db4a070a44550206aef548d4f4b8e9746ab73b5de7026aa1800",
+    "native-restoration.json": "f74182387267d3ca659b08fdd3418bca438799984192c41ad7378c2ad57fc38f",
+    "native-tree-result.json": "a7af4ff5b67bd7c92dfd1e93b55b051796d702ea3c6ca994714ed2685395966f",
+    "skill-update.json": "722e27db683471efb5921b585c3aacdbd1995d7119342fcf79cffca4d4511e5c"
+  }
+}

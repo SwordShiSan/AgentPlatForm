@@ -24,6 +24,12 @@ import software.amazon.awssdk.services.s3.S3Client;
 @ConditionalOnProperty(name={"platform.workspace.enabled","platform.workspace.files.enabled"},havingValue="true")
 @EnableConfigurationProperties({FileConfiguration.Properties.class,FileExecutionProperties.class})
 public class FileConfiguration {
+    @Bean @Profile("workspace-api") com.agentplatform.api.files.FileMutationApi fileMutationApi(
+            com.agentplatform.infrastructure.dao.files.FileMutationMapper mutations,FileMapper files,WorkspaceMapper workspaces,
+            EnvironmentPreparationMapper environments,TransactionTemplate transactions,FileExecutionProperties execution,FileRepository repository,AssetStore assets,FileApi api) {
+        return new FileMutationService(new com.agentplatform.infrastructure.adapter.repository.files.MyBatisFileMutationRepository(
+                mutations,files,workspaces,environments,execution.helperImage(),execution.policyHash()),transactions,repository,assets,api);
+    }
     @ConfigurationProperties("platform.files.assets")
     public record Properties(URI endpoint,String bucket,Path accessKeyFile,Path secretKeyFile) {
         public Properties {

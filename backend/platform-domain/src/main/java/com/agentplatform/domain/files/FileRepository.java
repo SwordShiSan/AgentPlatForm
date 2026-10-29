@@ -24,8 +24,14 @@ public interface FileRepository {
     List<Entry> list(Actor actor, UUID workspace, String parent, String after, int limit);
     Entry file(Actor actor, UUID fileId);
     Version version(Actor actor, UUID fileId, UUID versionId);
+    default List<HistoricalVersion> versions(Actor actor, UUID fileId, UUID before, int limit) {
+        throw new FileFailure(503, "FILE_HISTORY_UNAVAILABLE");
+    }
+    default List<Artifact> artifacts(Actor actor,UUID task,UUID after,int limit) {throw new FileFailure(503,"ARTIFACT_UNAVAILABLE");}
+    default Artifact artifact(Actor actor,UUID id) {throw new FileFailure(503,"ARTIFACT_UNAVAILABLE");}
     Usage usage(Actor actor, UUID workspace);
     Operation operation(Actor actor, UUID id);
+    default List<FileMutationData.TreeFile> treeFiles(Command command){throw new FileFailure(503,"RESTORE_TREE_UNAVAILABLE");}
     List<Publication> publications(UUID owner);
     void published(Publication item, boolean success);
     Command claim(Publication item, UUID owner);

@@ -10,6 +10,7 @@ import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
 
 public final class TransactionalFileRunnerRepository implements FileRunnerRepository {
+    @Override public java.util.List<com.agentplatform.domain.files.FileMutationData.TreeFile> treeFiles(Command command,UUID instance){return tx(()->delegate.treeFiles(command,instance));}
     private final FileRunnerRepository delegate;
     private final TransactionTemplate transactions;
     public TransactionalFileRunnerRepository(FileRunnerRepository delegate,TransactionTemplate transactions){this.delegate=delegate;this.transactions=transactions;}

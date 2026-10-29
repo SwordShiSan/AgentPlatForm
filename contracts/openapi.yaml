@@ -963,6 +963,22 @@ paths:
         default:
           $ref: "#/components/responses/IdentityProblem"
   /api/v1/files/{id}:
+    delete:
+      operationId: deleteWorkspaceFile
+      security: [{session: []}]
+      parameters:
+        - $ref: '#/components/parameters/SpaceSelector'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/EnvironmentMatch'
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '202':
+          description: Delete accepted; history retained; operation includes cleanup
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FileOperation'}
+        default: {$ref: '#/components/responses/IdentityProblem'}
     get:
       operationId: getWorkspaceFile
       security:
@@ -982,6 +998,193 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FileItem"
+        default:
+          $ref: "#/components/responses/IdentityProblem"
+  /api/v1/workspaces/{id}/deleted-files:
+    get:
+      operationId: listDeletedWorkspaceFiles
+      security: [{session: []}]
+      parameters:
+        - $ref: '#/components/parameters/SpaceSelector'
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: cursor, in: query, schema: {type: string, format: uuid}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 100}}
+      responses:
+        '200':
+          description: Root deletion records; historical content remains authorized independently
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DeletedFilePage'}
+        default: {$ref: '#/components/responses/IdentityProblem'}
+  /api/v1/files/{id}/mutation-preview:
+    get:
+      operationId: previewFileMutation
+      security: [{session: []}]
+      parameters:
+        - $ref: '#/components/parameters/SpaceSelector'
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200':
+          description: Read-only bounded impact count; admission still freezes and rechecks facts
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FileMutationPreview'}
+        default: {$ref: '#/components/responses/IdentityProblem'}
+  /api/v1/files/{id}/mutation-requests/{requestId}:
+    get:
+      operationId: getFileMutationRequest
+      security: [{session: []}]
+      parameters:
+        - $ref: '#/components/parameters/SpaceSelector'
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: requestId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200':
+          description: Original immutable request phase; no new physical execution
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FileMutationRequest'}
+        default: {$ref: '#/components/responses/IdentityProblem'}
+  /api/v1/files/{id}/restore:
+    post:
+      operationId: restoreWorkspaceFile
+      security: [{session: []}]
+      parameters:
+        - $ref: '#/components/parameters/SpaceSelector'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/EnvironmentMatch'
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                sourceVersionId: {type: [string, 'null'], format: uuid}
+                deletionOperationId: {type: [string, 'null'], format: uuid}
+                targetParentId: {type: [string, 'null'], format: uuid}
+                name: {type: [string, 'null'], minLength: 1, maxLength: 255}
+              oneOf:
+                - required: [sourceVersionId]
+                  properties:
+                    sourceVersionId: {type: string, format: uuid}
+                    deletionOperationId: {type: 'null'}
+                - required: [deletionOperationId]
+                  properties:
+                    deletionOperationId: {type: string, format: uuid}
+                    sourceVersionId: {type: 'null'}
+      responses:
+        '202':
+          description: Restore accepted; new immutable content identity and original request
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FileOperation'}
+        default: {$ref: '#/components/responses/IdentityProblem'}
+  /api/v1/files/{id}/move:
+    post:
+      operationId: moveWorkspaceFile
+      security: [{session: []}]
+      parameters:
+        - $ref: '#/components/parameters/SpaceSelector'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/EnvironmentMatch'
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [targetParentId, name]
+              properties:
+                targetParentId: {type: [string, 'null'], format: uuid}
+                name: {type: string, minLength: 1, maxLength: 255}
+      responses:
+        '202':
+          description: Durable move accepted; bounded directories retain stable file identities
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FileOperation'}
+        default: {$ref: '#/components/responses/IdentityProblem'}
+  /api/v1/tasks/{id}/artifacts:
+    get:
+      operationId: listTaskArtifacts
+      security: [{session: []}]
+      parameters:
+        - $ref: '#/components/parameters/SpaceSelector'
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: cursor, in: query, schema: {type: string, format: uuid}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 100}}
+      responses:
+        '200':
+          description: Fact-backed immutable task artifacts
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ArtifactPage'}
+        default: {$ref: '#/components/responses/IdentityProblem'}
+  /api/v1/artifacts/{id}:
+    get:
+      operationId: getArtifact
+      security: [{session: []}]
+      parameters:
+        - $ref: '#/components/parameters/SpaceSelector'
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200':
+          description: Authorized fixed content version; test status is independent
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ArtifactItem'}
+        default: {$ref: '#/components/responses/IdentityProblem'}
+  /api/v1/artifacts/{id}/download:
+    get:
+      operationId: downloadArtifact
+      security: [{session: []}]
+      parameters:
+        - $ref: '#/components/parameters/SpaceSelector'
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: Range, in: header, schema: {type: string}}
+      responses:
+        '200':
+          description: Original immutable bytes under current authorization
+          content:
+            application/octet-stream:
+              schema: {type: string, format: binary}
+        '206':
+          description: Authorized single byte range
+          content:
+            application/octet-stream:
+              schema: {type: string, format: binary}
+        default: {$ref: '#/components/responses/IdentityProblem'}
+  /api/v1/files/{id}/versions:
+    get:
+      operationId: listFileVersions
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/SpaceSelector"
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: cursor
+          in: query
+          schema: { type: string, format: uuid }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 100 }
+      responses:
+        "200":
+          description: Authorized immutable history, newest identity first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileVersionPage"
         default:
           $ref: "#/components/responses/IdentityProblem"
   /api/v1/files/{id}/content:
@@ -1796,6 +1999,98 @@ components:
               - UPLOAD
               - COMPLETE
               - READ
+    DeletedFileItem:
+      type: object
+      additionalProperties: false
+      required: [id, workspaceId, path, kind, versionId, revision, deletionOperationId, deletedAt, retainUntil, canRestore]
+      properties:
+        id: {type: string, format: uuid}
+        workspaceId: {type: string, format: uuid}
+        path: {type: string}
+        kind: {type: string, enum: [FILE, DIRECTORY]}
+        versionId: {type: [string, 'null'], format: uuid}
+        revision: {type: integer, minimum: 1, maximum: 9007199254740991}
+        deletionOperationId: {type: string, format: uuid}
+        deletedAt: {type: string, format: date-time}
+        retainUntil: {type: string, format: date-time}
+        canRestore: {type: boolean}
+    DeletedFilePage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items: {$ref: '#/components/schemas/DeletedFileItem'}
+        nextCursor: {type: [string, 'null'], format: uuid}
+    FileMutationPreview:
+      type: object
+      additionalProperties: false
+      required: [revision, entries, allConfirmed]
+      properties:
+        revision: {type: integer, minimum: 1, maximum: 9007199254740991}
+        entries: {type: integer, minimum: 1, maximum: 1001}
+        allConfirmed: {type: boolean}
+    FileMutationRequest:
+      type: object
+      additionalProperties: false
+      required: [operationId, uploadId, state, operation]
+      properties:
+        operationId: {type: [string, 'null'], format: uuid}
+        uploadId: {type: [string, 'null'], format: uuid}
+        state: {type: string}
+        operation:
+          anyOf:
+            - {$ref: '#/components/schemas/FileOperation'}
+            - {type: 'null'}
+    ArtifactItem:
+      type: object
+      additionalProperties: false
+      required: [id, workspaceId, taskId, operationId, fileId, versionId, title, sha256, bytes, contentState, testStatus]
+      properties:
+        id: {type: string, format: uuid}
+        workspaceId: {type: string, format: uuid}
+        taskId: {type: string, format: uuid}
+        operationId: {type: string, format: uuid}
+        fileId: {type: string, format: uuid}
+        versionId: {type: string, format: uuid}
+        title: {type: string, minLength: 1, maxLength: 4096}
+        sha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+        bytes: {type: integer, minimum: 0, maximum: 104857600}
+        contentState: {type: string, enum: [VERIFIED_CONTENT]}
+        testStatus: {type: string, enum: [PASS, FAIL, NOT_RUN]}
+    ArtifactPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items: {$ref: '#/components/schemas/ArtifactItem'}
+        nextCursor: {type: [string, 'null'], format: uuid}
+    FileVersionItem:
+      type: object
+      additionalProperties: false
+      required: [id, fileId, sha256, bytes, createdAt, sourceVersionId]
+      properties:
+        id: { type: string, format: uuid }
+        fileId: { type: string, format: uuid }
+        sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+        bytes: { type: integer, minimum: 0, maximum: 104857600 }
+        createdAt: { type: string, format: date-time }
+        sourceVersionId: { type: [string, 'null'], format: uuid }
+    FileVersionPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/FileVersionItem' }
+        nextCursor: { type: [string, 'null'], format: uuid }
     FileItem:
       type: object
       additionalProperties: false
@@ -1841,6 +2136,8 @@ components:
             - CONFIRMED
             - CHANGED
             - BLOCKED
+            - MISSING
+            - DELETED
         revision:
           type: integer
           minimum: 1

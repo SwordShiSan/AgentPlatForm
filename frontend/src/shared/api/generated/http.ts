@@ -546,6 +546,150 @@ export interface paths {
         get: operations["getWorkspaceFile"];
         put?: never;
         post?: never;
+        delete: operations["deleteWorkspaceFile"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{id}/deleted-files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listDeletedWorkspaceFiles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/files/{id}/mutation-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["previewFileMutation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/files/{id}/mutation-requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getFileMutationRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/files/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["restoreWorkspaceFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/files/{id}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["moveWorkspaceFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{id}/artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listTaskArtifacts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/artifacts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getArtifact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/artifacts/{id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["downloadArtifact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/files/{id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listFileVersions"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -897,6 +1041,86 @@ export interface components {
             expiresAt: string;
             allowedActions: ("UPLOAD" | "COMPLETE" | "READ")[];
         };
+        DeletedFileItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            workspaceId: string;
+            path: string;
+            /** @enum {string} */
+            kind: "FILE" | "DIRECTORY";
+            /** Format: uuid */
+            versionId: string | null;
+            revision: number;
+            /** Format: uuid */
+            deletionOperationId: string;
+            /** Format: date-time */
+            deletedAt: string;
+            /** Format: date-time */
+            retainUntil: string;
+            canRestore: boolean;
+        };
+        DeletedFilePage: {
+            items: components["schemas"]["DeletedFileItem"][];
+            /** Format: uuid */
+            nextCursor: string | null;
+        };
+        FileMutationPreview: {
+            revision: number;
+            entries: number;
+            allConfirmed: boolean;
+        };
+        FileMutationRequest: {
+            /** Format: uuid */
+            operationId: string | null;
+            /** Format: uuid */
+            uploadId: string | null;
+            state: string;
+            operation: components["schemas"]["FileOperation"] | null;
+        };
+        ArtifactItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            workspaceId: string;
+            /** Format: uuid */
+            taskId: string;
+            /** Format: uuid */
+            operationId: string;
+            /** Format: uuid */
+            fileId: string;
+            /** Format: uuid */
+            versionId: string;
+            title: string;
+            sha256: string;
+            bytes: number;
+            /** @enum {string} */
+            contentState: "VERIFIED_CONTENT";
+            /** @enum {string} */
+            testStatus: "PASS" | "FAIL" | "NOT_RUN";
+        };
+        ArtifactPage: {
+            items: components["schemas"]["ArtifactItem"][];
+            /** Format: uuid */
+            nextCursor: string | null;
+        };
+        FileVersionItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            fileId: string;
+            sha256: string;
+            bytes: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            sourceVersionId: string | null;
+        };
+        FileVersionPage: {
+            items: components["schemas"]["FileVersionItem"][];
+            /** Format: uuid */
+            nextCursor: string | null;
+        };
         FileItem: {
             /** Format: uuid */
             id: string;
@@ -910,7 +1134,7 @@ export interface components {
             /** Format: uuid */
             versionId: string | null;
             /** @enum {string} */
-            collectionState: "PENDING" | "CONFIRMED" | "CHANGED" | "BLOCKED";
+            collectionState: "PENDING" | "CONFIRMED" | "CHANGED" | "BLOCKED" | "MISSING" | "DELETED";
             revision: number;
             sha256: string | null;
             bytes: number | null;
@@ -2702,6 +2926,329 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FileItem"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    deleteWorkspaceFile: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                "If-Match": components["parameters"]["EnvironmentMatch"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delete accepted; history retained; operation includes cleanup */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileOperation"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    listDeletedWorkspaceFiles: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Root deletion records; historical content remains authorized independently */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletedFilePage"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    previewFileMutation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Read-only bounded impact count; admission still freezes and rechecks facts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileMutationPreview"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getFileMutationRequest: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Original immutable request phase; no new physical execution */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileMutationRequest"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    restoreWorkspaceFile: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                "If-Match": components["parameters"]["EnvironmentMatch"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    sourceVersionId?: string | null;
+                    /** Format: uuid */
+                    deletionOperationId?: string | null;
+                    /** Format: uuid */
+                    targetParentId?: string | null;
+                    name?: string | null;
+                } & ({
+                    /** Format: uuid */
+                    sourceVersionId: string;
+                    deletionOperationId?: null;
+                } | {
+                    /** Format: uuid */
+                    deletionOperationId: string;
+                    sourceVersionId?: null;
+                });
+            };
+        };
+        responses: {
+            /** @description Restore accepted; new immutable content identity and original request */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileOperation"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    moveWorkspaceFile: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                "If-Match": components["parameters"]["EnvironmentMatch"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    targetParentId: string | null;
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Durable move accepted; bounded directories retain stable file identities */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileOperation"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    listTaskArtifacts: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Fact-backed immutable task artifacts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtifactPage"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getArtifact: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized fixed content version; test status is independent */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtifactItem"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    downloadArtifact: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                Range?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Original immutable bytes under current authorization */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description Authorized single byte range */
+            206: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    listFileVersions: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized immutable history, newest identity first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileVersionPage"];
                 };
             };
             default: components["responses"]["IdentityProblem"];

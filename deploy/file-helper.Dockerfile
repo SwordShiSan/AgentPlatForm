@@ -2,6 +2,7 @@ FROM python:3.12.15-slim-trixie@sha256:2b4f19dae3a777dfc3b76730bda1e82e1f66ab2a2
 ARG SOURCE_REVISION=unspecified
 LABEL org.opencontainers.image.revision=$SOURCE_REVISION
 COPY deploy/scripts/file-stream-bridge.py /opt/platform/file-stream-bridge.py
+COPY deploy/scripts/file-mutation-bridge.py /opt/platform/file-mutation-bridge.py
 COPY deploy/scripts/file-scan-bridge.py /opt/platform/file-scan-bridge.py
 COPY deploy/scripts/file-capture-bridge.py /opt/platform/file-capture-bridge.py
 COPY deploy/scripts/sandbox-file-bridge.py /opt/platform/sandbox-file-bridge.py

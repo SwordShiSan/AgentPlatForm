@@ -31,6 +31,25 @@ public final class FileController {
     private static FileApi.Caller caller(HttpServletRequest request) {
         var identity=RequestIdentity.caller(request);return new FileApi.Caller(identity.userId(),identity.spaceId());
     }
+    @GetMapping("/files/{id}/versions")
+    ResponseEntity<FileApi.VersionPage> versions(HttpServletRequest request,@PathVariable("id") String id,
+            @RequestParam(name="cursor",required=false) String cursor,@RequestParam(name="limit",defaultValue="100") int limit) {
+        return ResponseEntity.ok().header("Cache-Control","no-store").body(service.versions(caller(request),id,cursor,limit));
+    }
+    @GetMapping("/tasks/{id}/artifacts")
+    ResponseEntity<FileApi.ArtifactPage> artifacts(HttpServletRequest request,@PathVariable("id") String id,
+            @RequestParam(name="cursor",required=false) String cursor,@RequestParam(name="limit",defaultValue="100") int limit) {
+        return ResponseEntity.ok().header("Cache-Control","no-store").body(service.artifacts(caller(request),id,cursor,limit));
+    }
+    @GetMapping("/artifacts/{id}")
+    ResponseEntity<FileApi.ArtifactView> artifact(HttpServletRequest request,@PathVariable("id") String id) {
+        return ResponseEntity.ok().header("Cache-Control","no-store").body(service.artifact(caller(request),id));
+    }
+    @GetMapping("/artifacts/{id}/download")
+    void artifactDownload(HttpServletRequest request,HttpServletResponse response,@PathVariable("id") String id) throws java.io.IOException {
+        var actor=caller(request);
+        send(request,response,actor,()->service.artifactDownload(actor,id,request.getHeader("Range")));
+    }
     @PostMapping("/workspaces/{id}/uploads")
     ResponseEntity<FileApi.UploadView> create(HttpServletRequest request,@PathVariable String id,@jakarta.validation.Valid @RequestBody UploadBody body) {
         String key=request.getHeader("Idempotency-Key");if(key==null)throw new FileFailure(428,"IDEMPOTENCY_KEY_REQUIRED");
@@ -68,8 +87,12 @@ public final class FileController {
     @GetMapping("/files/{id}/content") void download(HttpServletRequest request,HttpServletResponse response,@PathVariable String id,
             @RequestParam(required=false) String versionId) throws java.io.IOException {
         var caller=caller(request);
+        send(request,response,caller,()->service.download(caller,id,versionId,request.getHeader("Range")));
+    }
+    private void send(HttpServletRequest request,HttpServletResponse response,FileApi.Caller caller,
+            java.util.function.Supplier<FileApi.Download> source) throws java.io.IOException {
         session(request,caller);
-        try(var content=service.download(caller,id,versionId,request.getHeader("Range"))) {
+        try(var content=source.get()) {
             var checked=new SessionCheckedInputStream(content.stream(),()->session(request,caller));
             response.setStatus(content.first()==null?200:206);
             response.setHeader("Cache-Control","no-store");response.setHeader("X-Content-Type-Options","nosniff");
