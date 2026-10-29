@@ -1,6 +1,6 @@
-## R5.3 功能验收通过，待保护晋级
+## R5.3 VERIFIED（2026-10-29）
 
-持久预览、DOCX／XLSX／PPTX隔离转换及PDF／图片／文本／静态HTML展示已通过真实PG／MQ／S3／签名runner／gVisor和浏览器验收。185秒最终观察、双向重型资源排队及原R4恢复通过，供应商调用0。准确源码、镜像与分层证据见[验收索引](evidence/r53/acceptance-index.json)及[固定入口](deploy/R5.3-LOCAL.md)。两级PR、归档和交付完成前仍不标阶段VERIFIED；R5未RELEASED，不部署R5、不启动R5.4。以下为历史结论。
+持久预览流水线和隔离渲染已通过保护[PR137](https://github.com/SwordShiSan/AgentPlatForm/pull/137)／[PR138](https://github.com/SwordShiSan/AgentPlatForm/pull/138)晋级。支持固定版本DOCX／XLSX／PPTX→PDF、PDF／图片／文本／静态HTML，预览与业务环境共享单重型资源槽。185.667秒观察后原R4精确恢复；供应商调用0。见[验收索引](evidence/r53/acceptance-index.json)和[固定入口](deploy/R5.3-LOCAL.md)。**R5完成3/4、未RELEASED；云端继续R4，R5.4尚未启动。** V20新增，V1–V19/runtime baseline1不变。以下为历史结论。
 
 ## R5.2 VERIFIED
 
