@@ -193,6 +193,24 @@ class PreviewRunnerServiceTest {
         verify(repository, never()).runnerReceipt(any(), any(), any());
     }
 
+    @Test void aKnownClosedSourceRetriesOnlyItsReleaseFactAfterDatabaseRecoversWithoutReadingOrRenderingAgain() throws Exception {
+        var available=new AtomicBoolean();var releaseAttempts=new AtomicInteger();var firstAttempt=new CountDownLatch(1);
+        doAnswer(call->{releaseAttempts.incrementAndGet();firstAttempt.countDown();if(!available.get())throw new FileFailure(503,"STORAGE_UNAVAILABLE");return null;})
+                .when(repository).recordSourceTransferClosed(command,instance.id());
+        var stopped=new Stop(null,null,command.imageId(),null,true,true,true,Instant.now());
+        when(runtime.reconcile(eq(command),any(),any())).thenReturn(new PreviewRuntime.Result("FAILED",null,null,0,null,null,null,false,"PREVIEW_NOT_STARTED",false,stopped));
+        post();assertTrue(firstAttempt.await(5,TimeUnit.SECONDS));
+        until(()->{assertNull(query());return releaseAttempts.get()>=2;});
+        verify(source,times(1)).close();verify(runtime,never()).render(any(),any(),any(),any());verify(runtime,never()).reconcile(any(),any(),any());
+        verify(repository,never()).runnerReceipt(any(),any(),any());
+        available.set(true);until(()->query()!=null);
+        assertEquals("FAILED",durable.get().state());assertEquals("PREVIEW_NOT_STARTED",durable.get().errorCode());
+        int confirmedAttempts=releaseAttempts.get();assertEquals("FAILED",query().state());assertEquals(confirmedAttempts,releaseAttempts.get());
+        verify(assets,times(1)).open(command.sourceObjectKey(),null,null);verify(source,times(1)).close();
+        verify(runtime,never()).render(any(),any(),any(),any());verify(runtime,times(1)).reconcile(eq(command),any(),any());
+        verify(assets,never()).put(any(),anyLong(),any(),any());verify(repository,times(1)).runnerReceipt(eq(command),eq(instance.id()),any());
+    }
+
     @Test void anUnconfirmedResultIsNotPublishedAndLaterQueryCanConfirmOnlyTheOriginalStoppedInstance() throws Exception {
         var mayConfirm = new AtomicBoolean();
         var reconciled = new AtomicInteger();

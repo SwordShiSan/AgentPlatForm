@@ -15,6 +15,7 @@ import java.security.*;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Durable handoff starts once. HTTP requests return promptly while conversion is independently owned. */
@@ -28,6 +29,8 @@ public final class PreviewRunnerService implements PreviewRunnerApi,AutoCloseabl
     private final UUID runner;
     private final Set<UUID> running=ConcurrentHashMap.newKeySet();
     private final Set<UUID> sourceUnclosed=ConcurrentHashMap.newKeySet();
+    /** One admitted physical operation; retain only this process's actually closed source fact. */
+    private final AtomicReference<UUID> sourceClosedPending=new AtomicReference<>();
     private final ConcurrentMap<UUID,PreviewRuntime.Result> completed=new ConcurrentHashMap<>();
     private final ThreadPoolExecutor executor=new ThreadPoolExecutor(1,1,0,TimeUnit.MILLISECONDS,new SynchronousQueue<>(),
             Thread.ofPlatform().name("preview-physical").factory(),new ThreadPoolExecutor.AbortPolicy());
@@ -90,6 +93,7 @@ public final class PreviewRunnerService implements PreviewRunnerApi,AutoCloseabl
     }
     private Path stage(Command c,Path dir)throws IOException {
         guard(c);
+        if(sourceClosedPending.get()!=null)throw new FileFailure(423,"PREVIEW_TRANSFER_RELEASE_PENDING");
         if(Files.getFileStore(dir).getUsableSpace()<5L*1024*1024*1024+2*PreviewData.MAX_BYTES)throw new FileFailure(503,"PREVIEW_DISK_ADMISSION");
         Path input=dir.resolve("input");
         if(Files.exists(input,LinkOption.NOFOLLOW_LINKS))throw new FileFailure(409,"PREVIEW_SOURCE_ALREADY_STAGED");
@@ -110,10 +114,18 @@ public final class PreviewRunnerService implements PreviewRunnerApi,AutoCloseabl
             if(Files.getFileStore(input).supportsFileAttributeView("posix"))Files.setPosixFilePermissions(input,PosixFilePermissions.fromString("r--------"));
         } finally {
             source.close(); // Failed close retains the transport permit and blocks publication.
+            if(!sourceClosedPending.compareAndSet(null,c.commandId()))throw new FileFailure(503,"PREVIEW_TRANSFER_RELEASE_PENDING");
             sourceUnclosed.remove(c.commandId());
-            repository.recordSourceTransferClosed(c,runner);
+            confirmClosedSource(c);
         }
         guard(c);return input;
+    }
+    private void confirmClosedSource(Command c){
+        UUID pending=sourceClosedPending.get();
+        if(c.commandId().equals(pending)){
+            repository.recordSourceTransferClosed(c,runner);
+            sourceClosedPending.compareAndSet(pending,null);
+        }
     }
     private Receipt persist(Command c,PreviewRuntime.Result result)throws IOException {
         if(result==null||result.stop()==null||!result.stop().confirmed())return null;
@@ -153,7 +165,7 @@ public final class PreviewRunnerService implements PreviewRunnerApi,AutoCloseabl
             remember(c,result);persist(c,result);
         } catch(RuntimeException|IOException failure){
             // No response body or file contents enter logs. Same command is reconciled below/through GET.
-            if(!sourceUnclosed.contains(c.commandId()))try {
+            if(!sourceUnclosed.contains(c.commandId())&&!c.commandId().equals(sourceClosedPending.get()))try {
                 var result=completed.get(c.commandId());
                 if(result==null)result=runtime.reconcile(c,directory(c).resolve("output"),authority(c));
                 if(result!=null){remember(c,result);persist(c,result);}
@@ -169,6 +181,7 @@ public final class PreviewRunnerService implements PreviewRunnerApi,AutoCloseabl
         Receipt receipt=repository.receipt(c);
         if(receipt==null&&!running.contains(c.commandId())&&!sourceUnclosed.contains(c.commandId())){
             try {
+                confirmClosedSource(c); // Retry a known local transport-close fact, never another source read.
                 if(!repository.runnerObserveNeverAccepted(c,runner))return response(c,null,path);
                 var result=completed.get(c.commandId());
                 if(result==null)result=runtime.reconcile(c,directory(c).resolve("output"),authority(c));
