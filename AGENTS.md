@@ -1,3 +1,7 @@
+# R5.2 current conclusion (2026-10-29)
+
+R5.2文件生命周期、历史新版本恢复及固定产物证据已通过真实依赖和浏览器验收，经保护[PR133](https://github.com/SwordShiSan/AgentPlatForm/pull/133)／[PR134](https://github.com/SwordShiSan/AgentPlatForm/pull/134)晋级。R5为2/4 VERIFIED、未RELEASED，云端原R4已恢复；供应商调用0。V19新增，V1–V18不修改，runtime baseline1。见[验收索引](evidence/r52/acceptance-index.json)和[固定入口](deploy/R5.2-LOCAL.md)。R5.3另行Plan/OpenSpec，云沙箱DEFERRED不归档。以下旧结论均为历史。
+
 # R5.1 current conclusion (2026-10-29)
 
 R5.1 VERIFIED via protected PR129/130; R5 is1/4 and not RELEASED, cloud remains exact R4. Frontend editor reuses existing upload/operation/version authority; no migration or backend protocol changes. Supplier calls0; native acceptance stack stopped, original R4 identities/policies/XFS UUID restored. Evidence: evidence/r51/acceptance-index.json. Keep schema18/runtime baseline1 and deferred cloud sandbox. R5.2 needs a separate Plan/OpenSpec. Prior conclusions below are historical.

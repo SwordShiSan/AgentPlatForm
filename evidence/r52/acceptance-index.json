@@ -1,6 +1,6 @@
 {
   "stage": "R5.2",
-  "status": "FUNCTIONAL_GATES_PASS_PENDING_PROTECTED_PROMOTION",
+  "status": "VERIFIED",
   "baseline": "4c80f52070325cad7d4d00a4f8ff50e92c6acc19",
   "schemaVersion": 19,
   "runtimeBaseline": 1,
@@ -79,6 +79,12 @@
     "native-observation.json": "6d4bbcae81ba1db4a070a44550206aef548d4f4b8e9746ab73b5de7026aa1800",
     "native-restoration.json": "f74182387267d3ca659b08fdd3418bca438799984192c41ad7378c2ad57fc38f",
     "native-tree-result.json": "a7af4ff5b67bd7c92dfd1e93b55b051796d702ea3c6ca994714ed2685395966f",
-    "skill-update.json": "722e27db683471efb5921b585c3aacdbd1995d7119342fcf79cffca4d4511e5c"
+    "skill-update.json": "ab788015cdb1745896670bff5dc9c5916855d9db2a31a193d204a8a25c715473"
+  },
+  "promotion": {
+    "stepToPhase": 133,
+    "phaseToMain": 134,
+    "phaseMerge": "a729739371748bdb7f9483ca863fd5b28b84204f",
+    "mainMerge": "9dbbd4c3d75fd7a2a139f24b488863ef651e4aa6"
   }
 }
