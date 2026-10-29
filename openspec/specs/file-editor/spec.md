@@ -26,4 +26,3 @@ The system SHALL use local lazy Monaco assets on desktop and a lightweight mobil
 #### Scenario: Mobile edit
 - **WHEN** a mobile user edits text
 - **THEN** save, dirty state and conflict handling remain available without Monaco
-
