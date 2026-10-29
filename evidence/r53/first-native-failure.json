@@ -1,0 +1,45 @@
+{
+  "sourceReceiptSha256": "49bad21e86a284242321a90b5af36561ff839d797f936fb9461536a8307b405f",
+  "status": "FAIL",
+  "source": "c1d17be52f033d99b02e54d0a38cebc05e3ecaf2",
+  "scope": "first actual Linux signed pipeline before MIME correction; preserve these immutable results",
+  "knownPreviews": [
+    {
+      "key": "preview-create:sample.docx:AUTO",
+      "state": "READY",
+      "errorCode": null
+    },
+    {
+      "key": "preview-create:sample.xlsx:AUTO",
+      "state": "READY",
+      "errorCode": null
+    },
+    {
+      "key": "preview-create:sample.pptx:AUTO",
+      "state": "READY",
+      "errorCode": null
+    },
+    {
+      "key": "preview-create:sample.png:AUTO",
+      "state": "READY",
+      "errorCode": null
+    },
+    {
+      "key": "preview-create:sample.gif:AUTO",
+      "state": "READY",
+      "errorCode": null
+    },
+    {
+      "key": "preview-create:sample.webp:AUTO",
+      "state": "READY",
+      "errorCode": null
+    },
+    {
+      "key": "preview-create:sample.txt:AUTO",
+      "state": "FAILED",
+      "errorCode": "PREVIEW_AUTHORIZATION_REVOKED"
+    }
+  ],
+  "productionRestored": true,
+  "supplierCalls": 0
+}

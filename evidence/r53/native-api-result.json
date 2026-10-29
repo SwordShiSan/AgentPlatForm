@@ -1,0 +1,157 @@
+{
+  "sourceReceiptSha256": "2869901d509abe91d721cfeb36924a8b21a63207af785ab53e49e4c00cdb5fd2",
+  "status": "PASS",
+  "scope": "actual API/PG/MQ/signed runner/gVisor/S3 immutable Office/PDF/image/text/static HTML, cache+idempotency/quota/Range/hash/corrupt source download/foreign denial/pinned read after move+delete",
+  "supplierCalls": 0,
+  "previews": {
+    "sample.docx": {
+      "id": "01a18787-040a-7e53-9c77-34334939cd54",
+      "format": "PDF",
+      "bytes": 28312,
+      "sha256": "b3b030e6581864b1827136564c098757162509a4b2db1f9582d803749b73bf25",
+      "pages": 1,
+      "state": "READY"
+    },
+    "sample.xlsx": {
+      "id": "01a18787-327c-7b51-b9da-794261ba676e",
+      "format": "PDF",
+      "bytes": 15838,
+      "sha256": "d7c663843acfffe9c24ae9b8253de337170d4c446639ef984fe300a02f7de2f5",
+      "pages": 1,
+      "state": "READY"
+    },
+    "sample.pptx": {
+      "id": "01a18787-4fa2-750c-a40b-8f79bab56557",
+      "format": "PDF",
+      "bytes": 14764,
+      "sha256": "a64437a9500dbae4ee82aebf414b1296fd4f680e2509d692fe8d732f2a2e3cfa",
+      "pages": 1,
+      "state": "READY"
+    },
+    "sample.png": {
+      "id": "01a18787-6f6c-74f6-9c90-2fc1c6fd6936",
+      "format": "IMAGE",
+      "bytes": 140,
+      "sha256": "ecaedffd2f58c76a1dffd9c4a598a0f052e97613474e2beb75d055f3fb3e5420",
+      "pages": null,
+      "state": "READY"
+    },
+    "sample.gif": {
+      "id": "01a18787-7b50-7ef2-b72c-91ece08a4c43",
+      "format": "IMAGE",
+      "bytes": 97,
+      "sha256": "3c7d64b891a1ceaa94f166c1b6fd3147de80f39dd1813b1fab68714bb7b6321f",
+      "pages": null,
+      "state": "READY"
+    },
+    "sample.webp": {
+      "id": "01a18787-863f-7990-aedd-a07f13ef6119",
+      "format": "IMAGE",
+      "bytes": 196,
+      "sha256": "b7fe00e63641aaa2413090deead4166ee76d950205f889e3a24d9311ccb1af16",
+      "pages": null,
+      "state": "READY"
+    },
+    "sample.txt": {
+      "id": "01a18787-920c-7e51-ad9f-b3107d394807",
+      "format": "TEXT",
+      "bytes": 28,
+      "sha256": "b8828d1d710a0844f243c015fd5cdc6f7f178fe3c645c9e2a141b2e10d5e4353",
+      "pages": null,
+      "state": "READY"
+    },
+    "sample.html": {
+      "id": "01a18787-9a0d-79b0-99b9-105f0dbd5143",
+      "format": "TEXT",
+      "bytes": 119,
+      "sha256": "a45530941e4d76d2bed1d8d0547abbfda1f2462c464dcf10e01b74f6a98acbd5",
+      "pages": null,
+      "state": "READY"
+    },
+    "empty.txt": {
+      "id": "01a18787-a548-71a6-8e5a-1def19d6b3a6",
+      "format": "TEXT",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "pages": null,
+      "state": "READY"
+    }
+  },
+  "nativePdf": {
+    "id": "01a18787-ceae-7e1f-985c-a7053ff84c60",
+    "fileId": "01a18787-c174-7de8-8e44-a22571d22c72",
+    "versionId": "01a18787-c174-7607-a407-d9753336058c",
+    "state": "READY",
+    "format": "PDF",
+    "mediaType": "application/pdf",
+    "bytes": 28312,
+    "sha256": "b3b030e6581864b1827136564c098757162509a4b2db1f9582d803749b73bf25",
+    "pages": 1,
+    "errorCode": null,
+    "retryable": false,
+    "revision": 3,
+    "allowedActions": [
+      "VIEW",
+      "DOWNLOAD_SOURCE"
+    ]
+  },
+  "staticHtml": {
+    "id": "01a18787-b115-79c1-961f-b77ccb149875",
+    "fileId": "01a1874d-8c9b-71ab-b2b4-6205bfbae402",
+    "versionId": "01a1874d-8c9b-7352-86d7-3851f342f19e",
+    "state": "READY",
+    "format": "HTML_STATIC",
+    "mediaType": "text/plain",
+    "bytes": 234,
+    "sha256": "4e35016933bf06e38f1a089b56e8628168c602d0d35e6a786fb57b00f36b88a6",
+    "pages": null,
+    "errorCode": null,
+    "retryable": false,
+    "revision": 3,
+    "allowedActions": [
+      "VIEW",
+      "DOWNLOAD_SOURCE"
+    ]
+  },
+  "corruptDocument": {
+    "id": "01a18787-ddb7-750a-b4f6-30b59a29aef6",
+    "fileId": "01a1874d-a965-7b86-a6e7-c79efdb3b5dc",
+    "versionId": "01a1874d-a965-7895-a054-54581a2ea1da",
+    "state": "FAILED",
+    "format": "AUTO",
+    "mediaType": null,
+    "bytes": 0,
+    "sha256": null,
+    "pages": null,
+    "errorCode": "PREVIEW_TYPE_MISMATCH",
+    "retryable": false,
+    "revision": 3,
+    "allowedActions": [
+      "QUERY",
+      "DOWNLOAD_SOURCE"
+    ]
+  },
+  "foreignDenials": [
+    {
+      "status": 404,
+      "code": "RESOURCE_NOT_FOUND"
+    },
+    {
+      "status": 404,
+      "code": "RESOURCE_NOT_FOUND"
+    },
+    {
+      "status": 404,
+      "code": "RESOURCE_NOT_FOUND"
+    }
+  ],
+  "quotaNativePdf": {
+    "before": 218388,
+    "after": 218388
+  },
+  "pinnedAfterDelete": {
+    "previewId": "01a18787-fb57-759c-b0e4-1db9bab0e316",
+    "sha256": "1acc1cfe7bca3ad8d94fb1f6615a51765ed5a3e582906f881ff1908ba8e91340"
+  },
+  "root": "isolated-r53-1f604661aded03c2"
+}

@@ -1,6 +1,6 @@
-## R5.3 IMPLEMENTING
+## R5.3 功能验收通过，待保护晋级
 
-正在实现持久预览、现代Office隔离转换和PDF／图片／静态HTML展示。唯一change `r5-3-preview-pipeline`已通过strict；定向真实PG、转换及UI夹具已通过，完整候选工程和Linux签名链路验收仍待完成，不能据此标VERIFIED。R5仍2/4、未RELEASED，云端继续R4，真实供应商调用0。见[固定验收入口](deploy/R5.3-LOCAL.md)；云沙箱仍DEFERRED。下方为历史阶段结论。
+持久预览、DOCX／XLSX／PPTX隔离转换及PDF／图片／文本／静态HTML展示已通过真实PG／MQ／S3／签名runner／gVisor和浏览器验收。185秒最终观察、双向重型资源排队及原R4恢复通过，供应商调用0。准确源码、镜像与分层证据见[验收索引](evidence/r53/acceptance-index.json)及[固定入口](deploy/R5.3-LOCAL.md)。两级PR、归档和交付完成前仍不标阶段VERIFIED；R5未RELEASED，不部署R5、不启动R5.4。以下为历史结论。
 
 ## R5.2 VERIFIED
 

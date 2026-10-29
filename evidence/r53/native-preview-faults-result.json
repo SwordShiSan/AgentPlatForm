@@ -1,0 +1,95 @@
+{
+  "sourceReceiptSha256": "058f5303aa1eabd20661a8d1087b700bb4593fb50ccecf3bdeffb638fc3485b9",
+  "status": "PASS",
+  "scope": "actual isolated PG/MQ/S3 broker outage, original outbox handoff, deliberate client-response discard recovery, duplicate managed publication and same-version hash",
+  "supplierCalls": 0,
+  "notInjectedHere": [
+    "worker crash during physical rendering",
+    "database outage",
+    "S3 outage",
+    "unconfirmed physical stop"
+  ],
+  "otherEvidenceScope": "PreviewPostgresTest and deterministic PreviewRunnerServiceTest cover transaction/fence/UNKNOWN/close-proof failures; these are not physical outage evidence",
+  "previewId": "01a1878e-b2e0-7001-9549-59101fe85cd6",
+  "queuedWhileBrokerDown": {
+    "state": "QUEUED",
+    "revision": 1,
+    "generation": 1,
+    "attempts": 0,
+    "assets": 0,
+    "references": 0,
+    "inbox": 0,
+    "outboxId": "01a1878e-b2e2-7a99-b950-aca9d46f2e43",
+    "outboxStatus": "PUBLISHING",
+    "quarantine": 0,
+    "committedBytes": 385611,
+    "reservedBytes": 104857600
+  },
+  "responseDiscardRecovery": {
+    "requestId": "06d567f7-1f02-41d3-8d83-ccbb51816792",
+    "originalId": "01a1878e-b2e0-7001-9549-59101fe85cd6",
+    "additionalPostRequests": 0
+  },
+  "statesObserved": [
+    "RUNNING",
+    "RUNNING",
+    "RUNNING",
+    "RUNNING",
+    "RUNNING",
+    "RUNNING",
+    "RUNNING",
+    "RUNNING",
+    "RUNNING",
+    "RUNNING",
+    "RUNNING",
+    "RUNNING",
+    "RUNNING",
+    "RUNNING",
+    "RUNNING",
+    "RUNNING",
+    "RUNNING",
+    "RUNNING",
+    "RUNNING",
+    "READY"
+  ],
+  "ready": {
+    "state": "READY",
+    "revision": 3,
+    "generation": 1,
+    "attempts": 1,
+    "assets": 1,
+    "references": 1,
+    "inbox": 1,
+    "outboxId": "01a1878e-b2e2-7a99-b950-aca9d46f2e43",
+    "outboxStatus": "PUBLISHED",
+    "quarantine": 0,
+    "committedBytes": 413923,
+    "reservedBytes": 0
+  },
+  "duplicate": {
+    "eventId": "01a1878e-b2e2-7a99-b950-aca9d46f2e43",
+    "beforeQueue": {
+      "ready": 0,
+      "unacked": 0,
+      "consumers": 1,
+      "delivered": 1,
+      "acked": 1
+    },
+    "afterQueue": {
+      "ready": 0,
+      "unacked": 0,
+      "consumers": 1,
+      "delivered": 2,
+      "acked": 2
+    },
+    "factsUnchanged": true
+  },
+  "outputSha256": "4b06901922e6aa7ce0494287541f1b18bfe0cda7c46aeb1ae0cc9080e4464b61",
+  "workerRestarted": false,
+  "workerRecovery": "original worker Spring AMQP reconnect; same container",
+  "recovery": {
+    "sameTestBrokerAndWorkerRunning": true,
+    "modelCallDelta": 0
+  },
+  "root": "isolated-r53-1f604661aded03c2"
+}

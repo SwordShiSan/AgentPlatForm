@@ -1,0 +1,30 @@
+{
+  "sourceReceiptSha256": "4a97354020102aac37f34a62c0016ac179413860bbd8244e8d5900823f347223",
+  "status": "PASS",
+  "scope": "One real Chromium UI contract fixture only: existing chat ToolCard -> ArtifactEvidencePanel -> shared pinned preview; mocked API metadata/content, not a signed physical conversion proof.",
+  "supplierCalls": 0,
+  "tests": 1,
+  "native18153Accessed": false,
+  "applicationSourceChanged": false,
+  "assertions": [
+    "Persistent artifact version and content evidence NOT_RUN remain distinct",
+    "Artifact download and source-version download retain exact IDs",
+    "Loading -> nonretryableFAILED -> manualBLOCKED -> full browser refresh -> originalpreviewID, exactly1createPOST",
+    "No read of preview content beforeREADY, no ordinary retry forFAILED/BLOCKED",
+    "Manual original-job refresh afterREADY displays exact historical text",
+    "No unexpected API paths or page errors"
+  ],
+  "inputSha256": {
+    "frontend/tests/e2e/file-preview-ui.spec.ts": "01fc87cf0a46affffb1a8534c251894d9db8026fb80fe0976e76d45e3073e843",
+    "frontend/src/features/chat/ArtifactEvidencePanel.vue": "e6ece38e8edd7b5c49ae2452cf6f56a9320b289a08a39b6b0142997da8cdca5f",
+    "frontend/src/features/chat/ToolCard.vue": "721dcc82c1711038c81c39e50cb045b5ff1a68a1a1c7da52a7375d3e24c642f3",
+    "frontend/src/features/chat/ToolOperationsPanel.vue": "c10b7e90a1592208fbc4b80cad668e16639af62b238554b498334e422f687a2d",
+    "frontend/src/features/workspace/FilePreviewPane.vue": "c783f72be050fec3f12124b8342e10291084502eeee54be0030a55ffa6614814",
+    "frontend/src/features/workspace/preview-requests.ts": "8d9f783fa6814699568fd84b8c89475cce69e0cb2f73681e5c2941dafcf5cc10",
+    "frontend/src/features/workspace/preview-content.ts": "61c3148883e5c06736aa059c1ca839eddaca0ec9d5ba5c034fa109b5fc806da4"
+  },
+  "privateReportHashes": {
+    "lastRun": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903",
+    "playwrightLog": "d2bf0cf72a3da8052829fe376db70fca5882bdfc4717ef8cfdc451f0ce2b5d42"
+  }
+}

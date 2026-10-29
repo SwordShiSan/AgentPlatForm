@@ -1,0 +1,10 @@
+{
+  "sourceReceiptSha256": "298fdf05d69e3568702566eda68367a2d1f395e179230d82bc477c513eeebe1a",
+  "status": "PASS",
+  "actualPgTests": 13,
+  "historicalDirectedTests": 29,
+  "supplierCalls": 0,
+  "postgresConfigId": "sha256:137f044b0efe3d57f39b972b9b53641b1f2045b99d879e298bbf514a25787dcf",
+  "scope": "Actual PG/Flyway/MyBatis/role facts; synthetic source and stop rows, not conversion/isolation evidence",
+  "limits": "Synthetic physical receipts verify DB transactions/fences/quota only; not gVisor or real outage proof. Later full307 covers updated application unit cases."
+}
