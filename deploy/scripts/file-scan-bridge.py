@@ -53,7 +53,7 @@ def scan(header, root="/workspace", require_device=False):
         def candidates():
             with os.scandir(fd) as entries:
                 for entry in entries:
-                    if entry.name.startswith(".ap-upload-"):
+                    if entry.name.startswith(".ap-upload-") or entry.name == '.ap-file-operations':
                         continue
                     # Root mount attestations are control metadata, not user assets.
                     if parent == "" and re.fullmatch(r"\.platform-ready-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", entry.name):

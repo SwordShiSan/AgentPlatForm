@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.files.FileMutationMapper">
+    <select id="preview" resultType="com.agentplatform.domain.files.FileMutationData$Preview">
+        SELECT f.revision,p.entries,p.all_confirmed FROM pf.file_entry f CROSS JOIN LATERAL (
+          SELECT count(*)::integer AS entries,bool_and(child.collection_state='CONFIRMED') AS all_confirmed FROM
+            (SELECT c.collection_state FROM pf.file_entry c WHERE c.space_id=f.space_id AND c.workspace_id=f.workspace_id AND c.deleted_at IS NULL
+              AND(c.relative_path=f.relative_path OR left(c.relative_path,length(f.relative_path)+1)=f.relative_path||'/') LIMIT 1001) child
+        ) p WHERE f.id=#{file} AND f.space_id=#{space} AND f.deleted_at IS NULL
+    </select>
+    <select id="deleted" resultType="com.agentplatform.domain.files.FileMutationData$Deleted">
+        SELECT f.id,f.workspace_id,f.relative_path AS path,f.kind,f.current_version_id AS version_id,f.revision,f.deletion_operation_id,f.deleted_at,f.retain_until,
+        EXISTS(SELECT 1 FROM pf.file_mutation_intent c JOIN pf.file_operation o ON o.id=c.operation_id AND o.status='COMMITTED'
+            WHERE c.parent_operation_id=f.deletion_operation_id AND c.kind='DELETE_CLEANUP') AS can_restore
+        FROM pf.file_entry f JOIN pf.file_mutation_intent m ON m.operation_id=f.deletion_operation_id AND m.root_file_id=f.id
+        WHERE f.space_id=#{space} AND f.workspace_id=#{workspace} AND f.deleted_at IS NOT NULL
+        <if test="before != null">AND f.id&lt;#{before}</if> ORDER BY f.id DESC LIMIT #{limit}
+    </select>
+    <insert id="treeIntent">
+        INSERT INTO pf.file_mutation_intent(operation_id,space_id,workspace_id,actor_id,request_id,request_hash,kind,root_file_id,source_path,target_path,
+        expected_revision,manifest_json,manifest_hash,entry_count,source_deletion_operation_id,target_parent_id,target_parent_revision)
+        VALUES(#{row.operationId},#{row.spaceId},#{row.workspaceId},#{row.actorId},#{row.requestId},#{row.requestHash},'RESTORE_TREE',#{row.rootFileId},#{row.sourcePath},#{row.targetPath},
+        #{row.expectedRevision},#{row.manifestJson},#{row.manifestHash},#{row.entryCount},#{deletion},#{row.targetParentId},#{row.targetParentRevision})
+    </insert>
+    <select id="intentById" resultType="com.agentplatform.domain.files.FileMutationData$Intent">
+        SELECT operation_id,space_id,workspace_id,actor_id,request_id,request_hash,kind,root_file_id,source_path,target_path,
+        expected_revision,manifest_json,manifest_hash,entry_count,parent_operation_id,target_parent_id,target_parent_revision FROM pf.file_mutation_intent WHERE operation_id=#{id}
+    </select>
+    <select id="deletedTree" resultType="com.agentplatform.domain.files.FileData$Entry">
+        SELECT f.id,f.space_id,f.workspace_id,f.relative_path,f.parent_path,f.name,f.kind,i.version_id AS current_version_id,f.collection_state,f.revision,i.sha256,i.size_bytes
+        FROM pf.file_mutation_item i JOIN pf.file_entry f ON f.space_id=i.space_id AND f.workspace_id=i.workspace_id AND f.id=i.file_id
+        WHERE i.operation_id=#{deletion} AND i.space_id=#{space} AND i.workspace_id=#{workspace} AND f.deletion_operation_id=#{deletion}
+        AND f.deleted_at IS NOT NULL ORDER BY i.ordinal LIMIT 1001 FOR UPDATE OF f
+    </select>
+    <insert id="treeAsset">
+        INSERT INTO pf.asset_object(id,space_id,category,version_id,object_key,sha256,size_bytes,status,created_by)
+        VALUES(#{row.assetId},#{row.spaceId},'file-version',#{row.versionId},#{row.objectKey},#{row.sha256},#{row.sizeBytes},'STAGING',#{actor})
+    </insert>
+    <insert id="treeItem">
+        INSERT INTO pf.file_tree_restore_item(operation_id,space_id,workspace_id,file_id,kind,source_path,target_path,expected_revision,parent_version_id,source_version_id,version_id,asset_id,object_key,source_object_key,size_bytes,sha256)
+        VALUES(#{row.operationId},#{row.spaceId},#{row.workspaceId},#{row.fileId},#{row.kind},#{row.sourcePath},#{row.targetPath},#{row.expectedRevision},#{row.parentVersionId},#{row.sourceVersionId},#{row.versionId},#{row.assetId},#{row.objectKey},#{row.sourceObjectKey},#{row.sizeBytes},#{row.sha256})
+    </insert>
+    <insert id="treeReservation">INSERT INTO pf.file_tree_reservation(operation_id,space_id,bytes) VALUES(#{operation},#{space},#{bytes})</insert>
+    <insert id="restoreUpload">
+        INSERT INTO pf.file_restore_upload(upload_id,operation_id,space_id,workspace_id,file_id,source_version_id,source_path,source_missing,manifest_json,manifest_hash,target_parent_id,target_parent_revision)
+        VALUES(#{row.uploadId},#{row.operationId},#{row.spaceId},#{row.workspaceId},#{row.fileId},#{row.sourceVersionId},#{row.sourcePath},#{row.sourceMissing},#{row.manifestJson},#{row.manifestHash},#{row.targetParentId},#{row.targetParentRevision})
+    </insert>
+    <select id="active" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.file_entry WHERE id=#{id} AND deleted_at IS NULL)</select>
+    <select id="tree" resultType="com.agentplatform.domain.files.FileData$Entry">
+        SELECT f.id,f.space_id,f.workspace_id,f.relative_path,f.parent_path,f.name,f.kind,f.current_version_id,f.collection_state,f.revision,v.sha256,v.size_bytes
+        FROM pf.file_entry f LEFT JOIN pf.file_version v ON v.space_id=f.space_id AND v.id=f.current_version_id
+        WHERE f.space_id=#{space} AND f.workspace_id=#{workspace} AND f.deleted_at IS NULL
+        AND(f.relative_path=#{path} OR left(f.relative_path,length(#{path})+1)=#{path}||'/')
+        ORDER BY f.relative_path COLLATE "C" LIMIT 1001 FOR UPDATE OF f
+    </select>
+    <select id="request" resultType="com.agentplatform.domain.files.FileMutationData$Intent">
+        SELECT operation_id,space_id,workspace_id,actor_id,request_id,request_hash,kind,root_file_id,source_path,target_path,
+        expected_revision,manifest_json,manifest_hash,entry_count,parent_operation_id,target_parent_id,target_parent_revision FROM pf.file_mutation_intent
+        WHERE space_id=#{actor.spaceId} AND actor_id=#{actor.userId} AND request_id=#{request}
+    </select>
+    <insert id="intent">
+        INSERT INTO pf.file_mutation_intent(operation_id,space_id,workspace_id,actor_id,request_id,request_hash,kind,
+        root_file_id,source_path,target_path,expected_revision,manifest_json,manifest_hash,entry_count,parent_operation_id,target_parent_id,target_parent_revision)
+        VALUES(#{row.operationId},#{row.spaceId},#{row.workspaceId},#{row.actorId},#{row.requestId},#{row.requestHash},#{row.kind},
+        #{row.rootFileId},#{row.sourcePath},#{row.targetPath},#{row.expectedRevision},#{row.manifestJson},#{row.manifestHash},#{row.entryCount},#{row.parentOperationId},#{row.targetParentId},#{row.targetParentRevision})
+    </insert>
+    <insert id="item">
+        INSERT INTO pf.file_mutation_item(space_id,workspace_id,operation_id,ordinal,file_id,kind,source_path,target_path,expected_revision,version_id,sha256,size_bytes)
+        VALUES(#{space},#{workspace},#{operation},#{ordinal},#{row.fileId},#{row.kind},#{row.sourcePath},#{row.targetPath},#{row.expectedRevision},#{row.versionId},#{row.sha256},#{row.sizeBytes})
+    </insert>
+    <select id="input" resultType="com.agentplatform.domain.files.FileMutationData$Input">
+        SELECT kind,root_file_id,source_path,target_path,manifest_json,manifest_hash,parent_operation_id FROM pf.file_mutation_intent WHERE operation_id=#{operation}
+    </select>
+    <select id="items" resultType="com.agentplatform.domain.files.FileMutationData$Item">
+        SELECT file_id,source_path,target_path,kind,expected_revision,version_id,sha256,size_bytes FROM pf.file_mutation_item WHERE operation_id=#{operation} ORDER BY ordinal
+    </select>
+    <update id="moveEntry">
+        UPDATE pf.file_entry SET relative_path=#{row.targetPath},parent_path=regexp_replace(#{row.targetPath},'(^|/)[^/]+$',''),
+        name=regexp_replace(#{row.targetPath},'^.*/',''),revision=revision+1
+        WHERE id=#{row.fileId} AND deleted_at IS NULL AND relative_path=#{row.sourcePath} AND revision=#{row.expectedRevision}
+        AND EXISTS(SELECT 1 FROM pf.file_mutation_intent i WHERE i.operation_id=#{operation} AND i.space_id=file_entry.space_id AND i.workspace_id=file_entry.workspace_id)
+    </update>
+</mapper>

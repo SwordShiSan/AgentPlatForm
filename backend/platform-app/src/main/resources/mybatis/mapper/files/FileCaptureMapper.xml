@@ -73,7 +73,7 @@
   <update id="failed">UPDATE pf.tool_output_capture SET status='FAILED',revision=revision+1 WHERE file_operation_id=#{command.operation.id} AND status IN('CAPTURING','RECONCILING') AND content_sha256 IS NULL</update>
   <update id="reconciling">UPDATE pf.tool_output_capture SET status='RECONCILING',revision=revision+1 WHERE file_operation_id=#{operation} AND status IN('RESERVED','CAPTURING')</update>
   <update id="markDescendantsMissing">UPDATE pf.file_entry SET collection_state='MISSING',revision=revision+1 WHERE space_id=#{space} AND workspace_id=#{workspace}
-    AND left(relative_path,length(#{path})+1)=#{path}||'/' AND collection_state&lt;&gt;'MISSING'</update>
+    AND deleted_at IS NULL AND left(relative_path,length(#{path})+1)=#{path}||'/' AND collection_state&lt;&gt;'MISSING'</update>
   <insert id="event">INSERT INTO pf.file_event(id,space_id,workspace_id,file_id,file_revision,event_type,payload_json)
     VALUES(#{id},#{row.spaceId},#{row.workspaceId},#{row.fileId},#{revision},'file.version.created',CAST(#{json} AS jsonb))</insert>
 </mapper>

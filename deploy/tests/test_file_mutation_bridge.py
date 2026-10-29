@@ -100,6 +100,92 @@ class MutationTests(unittest.TestCase):
             m.isolate(self.root, 'source', op, self.hash)
         self.assertTrue((self.root / 'source').exists())
 
+    def header(self, kind, operation):
+        import os
+        rows=m.inventory(self.root,'source')
+        public=[{k:v for k,v in row.items() if k not in ('device','inode')} for row in rows]
+        manifest=m.encoded(public).decode()
+        device=self.root.stat().st_dev
+        return {'protocol':'file-mutation-v1','operationId':operation,'kind':kind,'sourcePath':'source','targetPath':'dest',
+                'manifestJson':manifest,'manifestHash':m.hashlib.sha256(manifest.encode()).hexdigest(),
+                'filesystemDevice':[os.major(device),os.minor(device)]}
+
+    def test_versioned_move_command_uses_semantic_manifest(self):
+        header=self.header('MOVE',str(uuid.uuid4()))
+        result=m.execute(header,self.root)
+        self.assertEqual('MUTATED',result['state'])
+        self.assertEqual(header['manifestHash'],result['manifestHash'])
+        self.assertEqual(2,result['entries'])
+
+    def test_delete_and_separate_cleanup_command(self):
+        parent=str(uuid.uuid4())
+        header=self.header('DELETE',parent)
+        self.assertEqual('MUTATED',m.execute(header,self.root)['state'])
+        self.assertTrue((self.root/m.AREA/parent/'payload').exists())
+        header.update(operationId=str(uuid.uuid4()),kind='DELETE_CLEANUP',parentOperationId=parent)
+        self.assertEqual('MUTATED',m.execute(header,self.root)['state'])
+        self.assertFalse((self.root/m.AREA/parent/'payload').exists())
+
+    def test_tampered_command_rejected_before_moving(self):
+        header=self.header('MOVE',str(uuid.uuid4()))
+        header['manifestJson']='[]'
+        with self.assertRaisesRegex(m.Rejected,'FILE_RECEIPT_MISMATCH'):
+            m.execute(header,self.root)
+        self.assertTrue((self.root/'source').exists())
+
+    def restore_header(self,kind,manifest,target='restored.txt'):
+        import os
+        raw=m.encoded(manifest).decode();device=self.root.stat().st_dev
+        return {'protocol':'file-mutation-v1','operationId':str(uuid.uuid4()),'kind':kind,'sourcePath':'source/中文.txt',
+                'targetPath':target,'manifestJson':raw,'manifestHash':m.hashlib.sha256(raw.encode()).hexdigest(),
+                'filesystemDevice':[os.major(device),os.minor(device)]}
+
+    def test_active_restore_reads_stream_and_replaces_exact_base(self):
+        import io
+        original=(self.root/'source/中文.txt').read_bytes();data=b'historical bytes'
+        header=self.restore_header('RESTORE_FILE',{'sourceMissing':False,'expectedSha256':m.hashlib.sha256(original).hexdigest()},'source/中文.txt')
+        header.update(bytes=len(data),sha256=m.hashlib.sha256(data).hexdigest())
+        self.assertEqual('MUTATED',m.execute(header,self.root,io.BytesIO(data+m.hashlib.sha256(data).digest()))['state'])
+        self.assertEqual(data,(self.root/'source/中文.txt').read_bytes())
+
+    def test_missing_restore_creates_without_overwrite(self):
+        import io
+        data=b'preserved version'
+        header=self.restore_header('RESTORE_FILE',{'sourceMissing':True,'expectedSha256':None})
+        header.update(bytes=len(data),sha256=m.hashlib.sha256(data).hexdigest())
+        m.execute(header,self.root,io.BytesIO(data+m.hashlib.sha256(data).digest()))
+        with self.assertRaises(m.Rejected):m.execute(header,self.root,io.BytesIO(data+m.hashlib.sha256(data).digest()))
+        self.assertEqual(data,(self.root/'restored.txt').read_bytes())
+
+    def test_alternate_restore_failure_after_move_is_unknown(self):
+        import io
+        original=(self.root/'source/中文.txt').read_bytes()
+        header=self.restore_header('RESTORE_FILE',{'sourceMissing':False,'expectedSha256':m.hashlib.sha256(original).hexdigest()})
+        header.update(bytes=10,sha256='a'*64)
+        with self.assertRaisesRegex(m.Rejected,'FILE_RESULT_UNKNOWN'):
+            m.execute(header,self.root,io.BytesIO(b'cut'))
+        self.assertEqual(original,(self.root/'restored.txt').read_bytes())
+
+    def test_tree_restore_atomically_publishes_hash_checked_files_and_empty_directories(self):
+        import io
+        data='中文😀'.encode()
+        manifest=[{'kind':'DIRECTORY','path':''},{'kind':'DIRECTORY','path':'empty'},
+            {'kind':'FILE','path':'text.txt','bytes':len(data),'sha256':m.hashlib.sha256(data).hexdigest()},
+            {'kind':'FILE','path':'zero','bytes':0,'sha256':m.hashlib.sha256(b'').hexdigest()}]
+        header=self.restore_header('RESTORE_TREE',manifest,'tree')
+        result=m.execute(header,self.root,io.BytesIO(data+bytes.fromhex(header['manifestHash'])))
+        self.assertEqual(4,result['entries']);self.assertEqual(data,(self.root/'tree/text.txt').read_bytes())
+        self.assertTrue((self.root/'tree/empty').is_dir());self.assertEqual(b'',(self.root/'tree/zero').read_bytes())
+
+    def test_failed_tree_stream_cleans_own_staging_and_never_publishes_partial_tree(self):
+        import io
+        manifest=[{'kind':'DIRECTORY','path':''},{'kind':'FILE','path':'file','bytes':20,'sha256':'a'*64}]
+        header=self.restore_header('RESTORE_TREE',manifest,'tree')
+        with self.assertRaisesRegex(m.Rejected,'FILE_CONTENT_MISMATCH'):
+            m.execute(header,self.root,io.BytesIO(b'cut'))
+        self.assertFalse((self.root/'tree').exists())
+        self.assertFalse((self.root/m.AREA/header['operationId']/'payload').exists())
+
 
 if __name__ == '__main__':
     unittest.main()

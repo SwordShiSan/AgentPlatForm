@@ -63,20 +63,9 @@ public final class WorkspaceOperationsService implements WorkspaceOperationsApi 
             if((stdout==null?0:stdout.getBytes(StandardCharsets.UTF_8).length)+(long)(stderr==null?0:stderr.getBytes(StandardCharsets.UTF_8).length)>65536)
                 throw new IOException("Combined result bound");
             var files=new ArrayList<Artifact>();
-            if("workspace_shell".equals(record.toolName()))files.addAll(repository.workspaceOperationArtifacts(actor,record.operationId()));
-            else if(content.path("files").isArray())for(var file:content.path("files")) {
-                if(files.size()==16)throw new IOException("Artifact count bound");
-                String path=com.agentplatform.domain.files.FileRules.path(file.path("path").asString(),false);
-                String hash=com.agentplatform.domain.files.FileRules.sha256(file.path("sha256").asString());
-                long size=file.path("bytes").asLong(-1);if(size<0||size>104857600)throw new IOException("Artifact size bound");
-                files.add(new Artifact(id(file.path("fileId").asString()),id(file.path("versionId").asString()),path,size,hash));
-            }
-            if("workspace_write".equals(record.toolName())&&"SUCCEEDED".equals(record.status())&&content.path("fileId").isString()) {
-                long size=content.path("bytes").asLong(-1);if(size<0||size>104857600)throw new IOException("Artifact size bound");
-                files.add(new Artifact(id(content.path("fileId").asString()),id(content.path("versionId").asString()),
-                        com.agentplatform.domain.files.FileRules.path(record.path(),false),size,
-                        com.agentplatform.domain.files.FileRules.sha256(content.path("sha256").asString())));
-            }
+            // Result JSON is an observation, never the authority for downloadable files.
+            files.addAll(repository.workspaceOperationArtifacts(actor,record.operationId()));
+            if(files.size()>16)throw new IOException("Artifact count bound");
             if(!record.equals(repository.workspaceOperationResult(actor,record.operationId())))throw new IOException("Result changed");
             String code=content.path("code").isString()?content.path("code").asString():null;
             if(code!=null&&!code.matches("[A-Z][A-Z0-9_]{1,95}"))code="TOOL_EXECUTION_FAILED";

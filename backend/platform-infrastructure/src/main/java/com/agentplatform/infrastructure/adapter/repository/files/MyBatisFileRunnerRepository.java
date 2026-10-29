@@ -17,6 +17,9 @@ import tools.jackson.databind.json.JsonMapper;
 
 /** Narrow runner facts; this role never mutates lifecycle ownership or financial accounting. */
 public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
+    @Override public java.util.List<FileMutationData.TreeFile> treeFiles(Command command,UUID instance) {
+        guard(command,instance);if(!"RESTORE_TREE".equals(command.operation().kind()))throw stale();return files.treeFiles(command.operation().id());
+    }
     private static final JsonMapper JSON=JsonMapper.builder().build();
     private final FileRunnerMapper runner;
     private final FileMapper files;
@@ -81,7 +84,8 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
         var upload=operation.uploadId()==null?null:files.upload(operation.uploadId());
         if(upload!=null&&(!upload.spaceId().equals(space)||!upload.workspaceId().equals(workspace)))throw stale();
         var base=upload==null||upload.baseVersionId()==null?null:files.version(space,upload.fileId(),upload.baseVersionId());
-        return new Command(Execution.freeze(operation),upload==null?null:Input.freeze(upload),row.projectId(),base==null?null:base.sha256());
+        var restore=upload==null?null:files.restore(upload.id());
+        return new Command(Execution.freeze(operation),upload==null?null:Input.freeze(upload),row.projectId(),base==null||restore!=null&&restore.sourceMissing()?null:base.sha256(),files.mutation(operation.id()));
     }
     private void active(Command command,UUID instance,boolean accepted) {
         var operation=command.operation();
@@ -190,7 +194,7 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
         if(!original&&!"UNKNOWN".equals(result.state()))throw stale();
         if(!"UNKNOWN".equals(result.state()))active(command,observer,true);
         var stop=JSON.readValue(result.stopText(),FileRuntime.Stop.class);validateStop(command,physical,stop);
-        if(java.util.Set.of("APPLIED","SCANNED","CAPTURED").contains(result.state())&&(stop.neverStarted()||stop.execId()==null))throw stale();
+        if(java.util.Set.of("APPLIED","SCANNED","CAPTURED","MUTATED").contains(result.state())&&(stop.neverStarted()||stop.execId()==null))throw stale();
         if("APPLIED".equals(result.state())&&!"APPLY_UPLOAD".equals(command.operation().kind())
                 ||"SCANNED".equals(result.state())&&!"SCAN".equals(command.operation().kind())
                 ||"CAPTURED".equals(result.state())&&!"CAPTURE".equals(command.operation().kind()))throw stale();

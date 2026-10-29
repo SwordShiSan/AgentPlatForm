@@ -9,6 +9,10 @@ public interface AssetStore extends AutoCloseable {
         @Override public void close() throws java.io.IOException { stream.close(); }
     }
     Identity put(String key, long bytes, String expectedSha256, InputStream content);
+    /** One logical bounded transfer; implementations must not acquire two competing global slots. */
+    default Identity copy(String source,String target,long bytes,String sha256,Runnable authorize) {
+        throw new UnsupportedOperationException("Bounded copy is not provided by this adapter");
+    }
     Content open(String key, Long first, Long last);
     Identity inspect(String key);
     void deleteUncommitted(String key);

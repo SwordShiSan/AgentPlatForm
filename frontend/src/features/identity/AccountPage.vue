@@ -2,6 +2,7 @@
 import { useChatDrafts } from '../chat/drafts';
 import { clearEnvironmentRequests } from '../workspace/environment-requests';
 import { clearEditorDrafts } from '../workspace/editor-session';
+import { clearMutationRequests } from '../workspace/file-mutation-requests';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
@@ -26,7 +27,7 @@ async function logout() {
     if (!csrf.data) throw new Error('CSRF unavailable');
     setCsrf(csrf.data.csrfToken);
     await api.POST('/api/v1/auth/logout', { params: { header: { 'X-CSRF-Token': csrf.data.csrfToken } } });
-    setCsrf(undefined); useChatDrafts().clear(); clearEnvironmentRequests(); clearEditorDrafts(); queryClient.clear();
+    setCsrf(undefined); useChatDrafts().clear(); clearEnvironmentRequests(); clearEditorDrafts(); clearMutationRequests(); queryClient.clear();
     await router.replace('/login');
   } catch { error.value = '暂时无法退出，请重试。'; }
   finally { busy.value = false; }

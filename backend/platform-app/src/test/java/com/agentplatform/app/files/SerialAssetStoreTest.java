@@ -8,6 +8,16 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class SerialAssetStoreTest {
+    @Test void restoreCopyUsesOneGlobalPermitAndClosesBeforeRelease() throws Exception {
+        var delegate=mock(AssetStore.class);var permits=mock(FileTransferPermit.class);var owner=UUID.randomUUID();
+        when(permits.acquire("new")).thenReturn(owner);var source=spy(new ByteArrayInputStream(new byte[]{1,2,3}));
+        when(delegate.open("old",null,null)).thenReturn(new AssetStore.Content(source,3,3));
+        when(delegate.put(eq("new"),eq(3L),anyString(),any())).thenAnswer(call->{
+            assertArrayEquals(new byte[]{1,2,3},((InputStream)call.getArgument(3)).readAllBytes());return new AssetStore.Identity("new",3,call.getArgument(2));});
+        var guard=mock(Runnable.class);new SerialAssetStore(delegate,permits).copy("old","new",3,"039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81",guard);
+        verify(permits,times(1)).acquire("new");verify(permits,never()).acquire("old");
+        var order=inOrder(source,permits);order.verify(source).close();order.verify(permits).release(owner);verify(guard,atLeastOnce()).run();
+    }
     @Test void openRetainsGlobalPermitUntilActualStreamClose() throws Exception {
         var delegate=mock(AssetStore.class);var permits=mock(FileTransferPermit.class);var owner=UUID.randomUUID();
         when(permits.acquire("key")).thenReturn(owner);when(delegate.open("key",null,null)).thenReturn(new AssetStore.Content(new ByteArrayInputStream(new byte[0]),0,0));

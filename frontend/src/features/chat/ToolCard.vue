@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
 import type { components } from '../../shared/api/generated/http';
 import { api } from '../../shared/api/client';
+import ArtifactEvidencePanel from './ArtifactEvidencePanel.vue';
 
 type Operation = components['schemas']['TaskToolOperation'];
 const props = defineProps<{ operation: Operation; actor: string; space: string }>();
+const showEvidence = ref(false);
 const labels: Record<Operation['phase'], string> = {
   PREPARED: '准备操作', WAITING_APPROVAL: '等待批准', ENVIRONMENT_PREPARING: '准备执行环境', RUNNING: '执行中',
   STOPPING: '正在确认停止', SEALING: '封存文件版本', SUCCEEDED: '已完成', FAILED: '执行失败', UNKNOWN: '结果待核对', DENIED: '已拒绝',
@@ -49,6 +51,8 @@ const download = (file: components['schemas']['WorkspaceToolArtifact']) =>
       <ul v-if="result.data.value.files.length" aria-label="已封存的文件版本">
         <li v-for="file in result.data.value.files" :key="file.versionId"><a :href="download(file)" download>{{ file.path }} · 下载此版本</a><small>SHA256 {{ file.sha256 }}</small></li>
       </ul>
+      <button v-if="result.data.value.files.length" @click="showEvidence = !showEvidence">{{ showEvidence ? '收起产物证据' : '查看产物证据' }}</button>
+      <ArtifactEvidencePanel v-if="showEvidence" :task-id="operation.taskId" :operation-id="operation.operationId" :actor="actor" :space="space" />
     </template>
     <small>操作编号 {{ operation.operationId }}</small>
   </section>

@@ -9,6 +9,30 @@ import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface FileMapper {
+    com.agentplatform.domain.files.FileMutationData.Input mutation(@Param("operation")UUID operation);
+    boolean mutationCurrent(@Param("operation")UUID operation);
+    int applyMove(@Param("command")Command command);
+    int applyDelete(@Param("command")Command command);
+    int queueDeleteCleanup(@Param("parent")UUID parent,@Param("child")UUID child,@Param("command")UUID command,@Param("request")UUID request);
+    boolean cleanupReady(@Param("operation")UUID operation);
+    int takeCleanupLease(@Param("row")Operation row,@Param("owner")UUID owner,@Param("fence")long fence);
+    Operation cleanupOperation(@Param("parent")UUID parent);
+    com.agentplatform.domain.files.FileMutationData.Restore restore(@Param("upload")UUID upload);
+    boolean restoreCurrent(@Param("upload")UUID upload);
+    void insertRestoreIntent(@Param("upload")UUID upload);
+    void insertRestoreOrigin(@Param("upload")UUID upload,@Param("operation")UUID operation);
+    java.util.List<com.agentplatform.domain.files.FileMutationData.TreeFile> treeFiles(@Param("operation")UUID operation);
+    boolean treeCurrent(@Param("operation")UUID operation);
+    int treeVersions(@Param("command")Command command);
+    int treeEntries(@Param("command")Command command);
+    int treeAssets(@Param("command")Command command);
+    void treeReferences(@Param("command")Command command);
+    void treeOrigins(@Param("command")Command command);
+    int settleTree(@Param("operation")UUID operation);
+    int settleTreeReservation(@Param("operation")UUID operation);
+    int refundTree(@Param("operation")UUID operation);
+    int releaseTreeReservation(@Param("operation")UUID operation);
+    void tombstoneTreeAssets(@Param("operation")UUID operation);
     boolean abandonUnclaimed(@Param("operation")UUID operation);
     boolean toolParentAllowed(@Param("upload")UUID upload,@Param("operation")UUID operation,@Param("locks")boolean locks);
     List<Upload> uploadReconciliations(@Param("after") UUID after);
@@ -33,6 +57,11 @@ public interface FileMapper {
     List<Entry> list(@Param("space") UUID space, @Param("workspace") UUID workspace, @Param("parent") String parent,
             @Param("after") String after, @Param("limit") int limit);
     Version version(@Param("space") UUID space, @Param("file") UUID file, @Param("version") UUID version);
+    List<HistoricalVersion> versions(@Param("space") UUID space, @Param("file") UUID file,
+            @Param("before") UUID before, @Param("limit") int limit);
+    boolean readableTask(@Param("actor") Actor actor,@Param("task") UUID task);
+    List<Artifact> artifacts(@Param("actor") Actor actor,@Param("task")UUID task,@Param("after")UUID after,@Param("limit")int limit);
+    Artifact artifact(@Param("actor")Actor actor,@Param("id")UUID id);
     Usage usage(@Param("space") UUID space, @Param("workspace") UUID workspace);
     void insertOperation(@Param("row") Operation row);
     int queueUpload(@Param("id") UUID id, @Param("operation") UUID operation);

@@ -17,6 +17,15 @@ class WorkspaceOperationsServiceTest {
     private final ChatData.Actor actor=new ChatData.Actor(UUID.randomUUID(),UUID.randomUUID());
     private final ChatApi.Caller caller=new ChatApi.Caller(actor.userId().toString(),actor.spaceId().toString());
     private final UUID operation=UUID.randomUUID(),task=UUID.randomUUID();
+    @Test void plausibleResultJsonCannotInventAnArtifact() {
+        String result="{\"summary\":\"saved\",\"fileId\":\""+UUID.randomUUID()+"\",\"versionId\":\""+UUID.randomUUID()
+                +"\",\"bytes\":3,\"sha256\":\""+"a".repeat(64)+"\",\"files\":[{\"path\":\"pretend.txt\"}]}";
+        var row=new WorkspaceToolLedger.ResultRecord(operation,task,"workspace_write","SUCCEEDED",result,"pretend.txt",null,null,null,null,null);
+        when(repository.workspaceOperationResult(actor,operation)).thenReturn(row);
+        when(repository.workspaceOperationArtifacts(actor,operation)).thenReturn(List.of());
+        assertTrue(new WorkspaceOperationsService(repository,assets).result(caller,operation.toString()).files().isEmpty());
+        verify(repository).workspaceOperationArtifacts(actor,operation);
+    }
     @Test void largeOutputRequiresExactPrivateObjectHashAndIsReauthorizedAfterRead() {
         byte[] bytes="666😀error".getBytes(StandardCharsets.UTF_8);int stdout="666😀".getBytes(StandardCharsets.UTF_8).length;
         var row=new WorkspaceToolLedger.ResultRecord(operation,task,"workspace_shell","SUCCEEDED","{\"summary\":\"done\",\"exitCode\":0}",null,

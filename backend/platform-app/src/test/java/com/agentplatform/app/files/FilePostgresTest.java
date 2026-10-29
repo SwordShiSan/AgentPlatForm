@@ -6,6 +6,7 @@ import com.agentplatform.domain.files.*;
 import com.agentplatform.domain.files.FileData.*;
 import com.agentplatform.domain.workspace.WorkspaceRepository;
 import com.agentplatform.infrastructure.adapter.repository.files.MyBatisFileRepository;
+import com.agentplatform.infrastructure.adapter.repository.files.MyBatisFileMutationRepository;
 import com.agentplatform.infrastructure.adapter.repository.files.MyBatisFileRunnerRepository;
 import com.agentplatform.infrastructure.dao.files.FileRunnerMapper;
 import com.agentplatform.infrastructure.dao.files.FileTransferMapper;
@@ -40,6 +41,8 @@ class FilePostgresTest {
     private FileTransferPermit transfers;
     private FileTransferMapper transferMapper;
     private TransactionTemplate transactionBoundary;
+    private com.agentplatform.api.files.FileMutationApi mutations;
+    private FileMutationRepository mutationFacts;
     private WorkspaceRepository workspaces;
     private com.agentplatform.domain.workspace.EnvironmentPreparationRepository environmentPreparations;
     private com.agentplatform.domain.workspace.EnvironmentLifecycleRepository lifecycles;
@@ -52,14 +55,15 @@ class FilePostgresTest {
         return configuration.load();
     }
     @BeforeAll static void migrate() throws Exception {
+        boolean r52="1".equals(System.getenv("R52_ACCEPTANCE"));
         boolean r34="1".equals(System.getenv("R34_ACCEPTANCE"));
-        url=System.getenv(r34?"R34_TEST_JDBC_URL":"R33_TEST_JDBC_URL");
+        url=System.getenv(r52?"R52_TEST_JDBC_URL":r34?"R34_TEST_JDBC_URL":"R33_TEST_JDBC_URL");
         Assumptions.assumeTrue(url!=null,"R33 actual PostgreSQL not selected; NOT_RUN");
-        assertEquals("1",System.getenv(r34?"R34_ACCEPTANCE":"R33_ACCEPTANCE"));
-        assertTrue(url.startsWith(r34?"jdbc:postgresql://127.0.0.1:25434/environment_test?":"jdbc:postgresql://127.0.0.1:15450/file_test?"));
-        password=Files.readString(Path.of(System.getenv(r34?"R34_TEST_PASSWORD_FILE":"R33_TEST_PASSWORD_FILE"))).strip();
-        flyway(null).clean();flyway("12").migrate();assertEquals(12,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
-        flyway(null).migrate();assertEquals(14,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
+        assertEquals("1",System.getenv(r52?"R52_ACCEPTANCE":r34?"R34_ACCEPTANCE":"R33_ACCEPTANCE"));
+        assertTrue(url.startsWith(r52?"jdbc:postgresql://127.0.0.1:15452/file_test?":r34?"jdbc:postgresql://127.0.0.1:25434/environment_test?":"jdbc:postgresql://127.0.0.1:15450/file_test?"));
+        password=Files.readString(Path.of(System.getenv(r52?"R52_TEST_PASSWORD_FILE":r34?"R34_TEST_PASSWORD_FILE":"R33_TEST_PASSWORD_FILE"))).strip();
+        flyway(null).clean();flyway("18").migrate();assertEquals(18,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
+        flyway(null).migrate();assertEquals(19,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         assertEquals(1,count("SELECT schema_version FROM pf.baseline_version WHERE id=1"));
     }
     private static void sql(String text) throws Exception {
@@ -89,7 +93,7 @@ class FilePostgresTest {
     @Test void apiScanAdmissionUsesScopedColumnsAndCannotReadPrivateUseBodies() throws Exception {
         for(String role:List.of("ap_migration","ap_api","ap_worker","ap_runner","ap_workspace_ops"))
             sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='"+role+"') THEN CREATE ROLE "+role+" NOLOGIN;END IF;END $$");
-        for(String name:List.of("r1-runtime-grants.sql","r2-runtime-grants.sql","r3-workspace-grants.sql","r3-environment-grants.sql","r3-file-grants.sql"))
+        for(String name:List.of("r1-runtime-grants.sql","r2-runtime-grants.sql","r3-workspace-grants.sql","r3-environment-grants.sql","r3-file-grants.sql","r4-runtime-grants.sql","r4-permission-grants.sql","r4-approval-grants.sql","r4-workspace-tools-grants.sql","r5-file-grants.sql"))
             sql(Files.readString(Path.of("../../deploy/config",name)));
         try(var api=scopedFiles("ap_api")) {
             api.repository().scheduleScan();
@@ -162,7 +166,7 @@ class FilePostgresTest {
     @Test void realApiAndWorkerRolesReserveRefundAndSettleWithoutQuotaAdministration() throws Exception {
         for(String role:List.of("ap_migration","ap_api","ap_worker","ap_runner","ap_workspace_ops"))
             sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='"+role+"') THEN CREATE ROLE "+role+" NOLOGIN;END IF;END $$");
-        for(String name:List.of("r1-runtime-grants.sql","r2-runtime-grants.sql","r3-workspace-grants.sql","r3-environment-grants.sql","r3-file-grants.sql"))
+        for(String name:List.of("r1-runtime-grants.sql","r2-runtime-grants.sql","r3-workspace-grants.sql","r3-environment-grants.sql","r3-file-grants.sql","r4-runtime-grants.sql","r4-permission-grants.sql","r4-approval-grants.sql","r4-workspace-tools-grants.sql","r5-file-grants.sql"))
             sql(Files.readString(Path.of("../../deploy/config",name)));
         try(var api=scopedFiles("ap_api");var worker=scopedFiles("ap_worker")) {
             for(boolean applied:List.of(false,true)) {
@@ -256,6 +260,9 @@ class FilePostgresTest {
                         workspaceMapper,"sha256:"+"a".repeat(64),"b".repeat(64)),transactions);
         files=new TransactionalFileRepository(new MyBatisFileRepository(session.getMapper(FileMapper.class),workspaceMapper,
                 session.getMapper(EnvironmentPreparationMapper.class),"sha256:"+"a".repeat(64),"b".repeat(64)),transactions);
+        mutationFacts=new MyBatisFileMutationRepository(session.getMapper(com.agentplatform.infrastructure.dao.files.FileMutationMapper.class),
+                session.getMapper(FileMapper.class),workspaceMapper,session.getMapper(EnvironmentPreparationMapper.class),"sha256:"+"a".repeat(64),"b".repeat(64));
+        mutations=new FileMutationService(mutationFacts,transactions);
         runner=new TransactionalFileRunnerRepository(new MyBatisFileRunnerRepository(session.getMapper(FileRunnerMapper.class),session.getMapper(FileMapper.class),
                 workspaceMapper,session.getMapper(EnvironmentPreparationMapper.class),session.getMapper(EnvironmentExecutionMapper.class),session.getMapper(FileTransferMapper.class)),transactions);
         transfers=new TransactionalFileTransferPermit(new MyBatisFileTransferPermit(session.getMapper(FileTransferMapper.class)),transactions);
@@ -445,15 +452,93 @@ class FilePostgresTest {
         files.completeUpload(alice,upload.id());return files.claim(files.publications(UUID.randomUUID()).getFirst(),UUID.randomUUID());
     }
     private RunnerInstance instance(){return new RunnerInstance(UUID.randomUUID(),"c".repeat(64),"sha256:"+"d".repeat(64),Instant.now().minusSeconds(30).toString());}
+    private Entry committedMetadataFile() {
+        var c=claim(8);files.beforeCall(c);var instance=instance();runner.register(instance);runner.accept(c,instance,"e".repeat(64));
+        String json=JsonMapper.builder().build().writeValueAsString(Map.of("protocol","file-stream-v2","operationId",c.operation().id(),"state","APPLIED","bytes",8,"sha256","a".repeat(64)));
+        runner.recordResult(c,instance.id(),physicalResult(c,instance,"APPLIED",json));files.commitProjection(c,runner.receipt(c));
+        return files.file(alice,c.upload().fileId());
+    }
+    private void commitMutationMetadata(UUID operation) {
+        var publication=files.publications(UUID.randomUUID()).stream().filter(p->p.operationId().equals(operation)).findFirst().orElseThrow();
+        var c=files.claim(publication,UUID.randomUUID());files.beforeCall(c);
+        var owner=instance();runner.register(owner);runner.accept(c,owner,"e".repeat(64));
+        String json=JsonMapper.builder().build().writeValueAsString(Map.of("protocol","file-mutation-v1","operationId",operation,
+                "state","MUTATED","kind",c.mutation().kind(),"manifestHash",c.mutation().manifestHash(),"entries",JsonMapper.builder().build().readTree(c.mutation().manifestJson()).size()));
+        runner.recordResult(c,owner.id(),physicalResult(c,owner,"MUTATED",json));files.commitProjection(c,runner.receipt(c));
+    }
+    @Test void r52MoveRetainsVersionAndExactRequestIdentity() {
+        var entry=committedMetadataFile();UUID request=UUID.randomUUID();
+        var caller=new com.agentplatform.api.files.FileApi.Caller(alice.userId().toString(),alice.spaceId().toString());
+        var body=new com.agentplatform.api.files.FileMutationApi.Move(null,"renamed.txt");
+        var accepted=mutations.move(caller,entry.id().toString(),request.toString(),"\""+entry.revision()+"\"",body);
+        commitMutationMetadata(UUID.fromString(accepted.id()));
+        var moved=files.file(alice,entry.id());assertEquals("renamed.txt",moved.relativePath());assertEquals(entry.currentVersionId(),moved.currentVersionId());
+        assertEquals(accepted.id(),mutations.move(caller,entry.id().toString(),request.toString(),"\""+entry.revision()+"\"",body).id());
+        assertEquals(1,files.versions(alice,entry.id(),null,10).size());
+    }
+    @Test void r52DeleteRetainsLeaseUntilCleanupAndAllowsDistinctNewIdentity() throws Exception {
+        var entry=committedMetadataFile();
+        var caller=new com.agentplatform.api.files.FileApi.Caller(alice.userId().toString(),alice.spaceId().toString());
+        var accepted=mutations.delete(caller,entry.id().toString(),UUID.randomUUID().toString(),"\""+entry.revision()+"\"");
+        commitMutationMetadata(UUID.fromString(accepted.id()));
+        assertEquals("RUNNING",files.operation(alice,UUID.fromString(accepted.id())).status());
+        assertTrue(files.list(alice,workspace,"",null,100).isEmpty());
+        assertEquals(1,count("SELECT count(*) FROM pf.workspace_file_lease WHERE status='BLOCKED'"));
+        UUID cleanup;
+        try(var c=DriverManager.getConnection(url,"postgres",password);var s=c.createStatement();var r=s.executeQuery("SELECT operation_id FROM pf.file_mutation_intent WHERE parent_operation_id='"+accepted.id()+"'")){r.next();cleanup=r.getObject(1,UUID.class);}
+        commitMutationMetadata(cleanup);
+        assertEquals("COMMITTED",files.operation(alice,UUID.fromString(accepted.id())).status());
+        assertEquals(0,count("SELECT count(*) FROM pf.workspace_file_lease WHERE status<>'FREE'"));
+        var fresh=files.create(alice,workspace,UUID.randomUUID(),"f".repeat(64),new UploadRequest(entry.relativePath(),8,"a".repeat(64),null,null,null));
+        assertNotEquals(entry.id(),fresh.fileId());assertEquals(8,files.usage(alice,workspace).committedBytes());
+        assertEquals(entry.currentVersionId(),files.version(alice,entry.id(),entry.currentVersionId()).id());
+    }
+    private UUID cleanupFor(UUID parent) throws Exception {
+        try(var c=DriverManager.getConnection(url,"postgres",password);var s=c.createStatement();var r=s.executeQuery("SELECT operation_id FROM pf.file_mutation_intent WHERE parent_operation_id='"+parent+"'")){assertTrue(r.next());return r.getObject(1,UUID.class);}
+    }
+    @Test void r52HistoricalRestoreCreatesNewAssetVersionAndSettlesOnce() throws Exception {
+        var entry=committedMetadataFile();UUID request=UUID.randomUUID();
+        var restored=transactionBoundary.execute(s->mutationFacts.prepareRestore(alice,entry.id(),request,"c".repeat(64),entry.revision(),entry.currentVersionId(),null,null));
+        assertEquals(entry.id(),restored.fileId());assertNotEquals(entry.currentVersionId(),restored.versionId());
+        assertNotEquals(files.version(alice,entry.id(),entry.currentVersionId()).assetId(),restored.assetId());
+        var owner=UUID.randomUUID();files.beginTransfer(alice,restored.id(),owner);files.transferVerified(alice,restored.id(),owner);
+        var op=files.completeUpload(alice,restored.id());
+        var pub=files.publications(UUID.randomUUID()).stream().filter(p->p.operationId().equals(op.id())).findFirst().orElseThrow();
+        var c=files.claim(pub,UUID.randomUUID());files.beforeCall(c);var instance=instance();runner.register(instance);runner.accept(c,instance,"e".repeat(64));
+        String json=JsonMapper.builder().build().writeValueAsString(Map.of("protocol","file-mutation-v1","operationId",op.id(),"kind","RESTORE_FILE",
+                "state","MUTATED","manifestHash",c.mutation().manifestHash(),"bytes",8,"sha256","a".repeat(64)));
+        runner.recordResult(c,instance.id(),physicalResult(c,instance,"MUTATED",json));var receipt=runner.receipt(c);files.commitProjection(c,receipt);
+        assertEquals(restored.versionId(),files.file(alice,entry.id()).currentVersionId());
+        assertEquals(16,files.usage(alice,workspace).committedBytes());assertEquals(0,files.usage(alice,workspace).reservedBytes());
+        assertEquals(entry.currentVersionId(),files.versions(alice,entry.id(),null,10).getFirst().sourceVersionId());
+        assertThrows(FileFailure.class,()->files.commitProjection(c,receipt));assertEquals(16,files.usage(alice,workspace).committedBytes());
+    }
+    @Test void r52DeletedTreeRestoresSameLogicalIdsWithNewVersionsAndOrigins() throws Exception {
+        var entry=committedMetadataFile();UUID root=UUID.randomUUID();
+        sql("INSERT INTO pf.file_entry(id,space_id,workspace_id,relative_path,parent_path,name,kind,collection_state) VALUES('"+root+"','"+alice.spaceId()+"','"+workspace+"','folder','','folder','DIRECTORY','CONFIRMED');"
+                +"UPDATE pf.file_entry SET relative_path='folder/file.txt',parent_path='folder',name='file.txt',revision=revision+1 WHERE id='"+entry.id()+"';");
+        var caller=new com.agentplatform.api.files.FileApi.Caller(alice.userId().toString(),alice.spaceId().toString());
+        var deleted=mutations.delete(caller,root.toString(),UUID.randomUUID().toString(),"\"1\"");UUID deletion=UUID.fromString(deleted.id());
+        commitMutationMetadata(deletion);commitMutationMetadata(cleanupFor(deletion));
+        var tombstone=files.file(alice,root);
+        var restored=transactionBoundary.execute(s->mutationFacts.restoreTree(alice,root,UUID.randomUUID(),"d".repeat(64),tombstone.revision(),deletion,null,null));
+        commitMutationMetadata(restored.id());
+        assertEquals(root,files.file(alice,root).id());assertEquals("CONFIRMED",files.file(alice,root).collectionState());
+        var current=files.file(alice,entry.id());assertEquals("folder/file.txt",current.relativePath());assertNotEquals(entry.currentVersionId(),current.currentVersionId());
+        assertEquals(16,files.usage(alice,workspace).committedBytes());assertEquals(0,files.usage(alice,workspace).reservedBytes());
+        assertEquals(1,count("SELECT count(*) FROM pf.file_version_origin"));assertEquals(0,count("SELECT count(*) FROM pf.tool_operation"));
+    }
     private FileRuntime.Result notStarted(Command c,String state) {
         var stop=new FileRuntime.Stop(c.operation().commandId(),null,c.operation().helperImageId(),null,null,null,true,true,true,Instant.now());
         return new FileRuntime.Result(state,"{\"state\":\""+state+"\"}",JsonMapper.builder().build().writeValueAsString(stop));
     }
     private FileRuntime.Result physicalResult(Command c,RunnerInstance instance,String state,String json) {
         String started=Instant.now().minusSeconds(10).toString();
-        runner.created(c,instance.id(),"1".repeat(64));runner.startRequested(c,instance.id());runner.started(c,instance.id(),started);
-        runner.exec(c,instance.id(),"2".repeat(64));
-        var stop=new FileRuntime.Stop(c.operation().commandId(),"1".repeat(64),c.operation().helperImageId(),started,"2".repeat(64),
+        String container=RunnerSignatures.sha256(("container:"+c.operation().commandId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        String exec=RunnerSignatures.sha256(("exec:"+c.operation().commandId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        runner.created(c,instance.id(),container);runner.startRequested(c,instance.id());runner.started(c,instance.id(),started);
+        runner.exec(c,instance.id(),exec);
+        var stop=new FileRuntime.Stop(c.operation().commandId(),container,c.operation().helperImageId(),started,exec,
                 Instant.now().minusSeconds(1).toString(),false,true,true,Instant.now());
         return new FileRuntime.Result(state,json,JsonMapper.builder().build().writeValueAsString(stop));
     }

@@ -29,6 +29,18 @@ public final class SerialAssetStore implements AssetStore {
         var owner=admit(key);
         try{return delegate.put(key,bytes,hash,input);}finally{releaseStopped(owner);}
     }
+    @Override public Identity copy(String source,String target,long bytes,String hash,Runnable authorize) {
+        var owner=admit(target);Content content=null;
+        try {
+            authorize.run();content=delegate.open(source,null,null);
+            if(content.bytes()!=bytes||content.totalBytes()!=bytes)throw new FileFailure(503,"ASSET_IDENTITY_MISMATCH");
+            return delegate.put(target,bytes,hash,new AuthorizedAssetStream(content.stream(),bytes,hash,authorize));
+        } finally {
+            // A failed source close retains the original permit; it is not a stopped transfer.
+            if(content!=null)try{content.close();}catch(IOException failure){throw new FileFailure(503,"ASSET_CLOSE_UNCONFIRMED");}
+            releaseStopped(owner);
+        }
+    }
     @Override public Identity inspect(String key) {
         var owner=admit(key);try{return delegate.inspect(key);}finally{releaseStopped(owner);}
     }

@@ -27,6 +27,9 @@ public final class FileData {
             String sha256, long sizeBytes, String mime, Instant createdAt) {}
     public record Usage(long objectLimitBytes, long reservedBytes, long committedBytes, long workspaceQuotaBytes,
             long workspaceQuotaInodes, Long measuredBytes, Long measuredInodes, Instant measuredAt) {}
+    public record HistoricalVersion(UUID id, UUID fileId, String sha256, long sizeBytes, Instant createdAt, UUID sourceVersionId) {}
+    public record Artifact(UUID id,UUID spaceId,UUID workspaceId,UUID taskId,UUID operationId,UUID fileId,
+            UUID versionId,String title,String sha256,long sizeBytes,String evidenceStatus) {}
     public record Operation(UUID id, UUID spaceId, UUID workspaceId, UUID actorId, String kind, UUID uploadId,
             UUID commandId, UUID ownerId, long generation, Long fence, Instant leaseUntil, Instant deadlineAt,
             String status, String effectState, String errorCode, long revision, String helperImageId, String helperPolicyHash,
@@ -49,7 +52,10 @@ public final class FileData {
         }
     }
     /** Immutable physical command, deliberately excluding changing lease/status/revision projections. */
-    public record Command(Execution operation, Input upload, int projectId, String baseSha256) {}
+    public record Command(Execution operation, Input upload, int projectId, String baseSha256,
+            FileMutationData.Input mutation) {
+        public Command(Execution operation,Input upload,int projectId,String baseSha256) {this(operation,upload,projectId,baseSha256,null);}
+    }
     public record Receipt(UUID commandId, String resultState, String resultText, String resultHash, String stopText,
             String stopHash, UUID observerRunnerId, UUID priorRunnerProofId) {}
     public record ScanItem(String path,String kind,Long bytes,String sha256) {}

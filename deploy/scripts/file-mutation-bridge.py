@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import stat
 import uuid
+import sys
 
 spec = importlib.util.spec_from_file_location('stream', Path(__file__).with_name('file-stream-bridge.py'))
 stream = importlib.util.module_from_spec(spec)
@@ -262,3 +263,162 @@ def cleanup(root, operation, expected):
         return result
     finally:
         os.close(staging)
+
+
+def execute(header, root='/workspace', source=None):
+    if not isinstance(header,dict) or header.get('protocol')!='file-mutation-v1' or header.get('kind') not in ('MOVE','DELETE','DELETE_CLEANUP','RESTORE_FILE','RESTORE_TREE'):
+        raise Rejected('FILE_PROTOCOL_REJECTED')
+    operation=header.get('operationId')
+    if str(uuid.UUID(operation))!=operation:
+        raise Rejected('FILE_OPERATION_REJECTED')
+    stream.verify_device(root,header.get('filesystemDevice'),True)
+    manifest=header.get('manifestJson')
+    if not isinstance(manifest,str) or hashlib.sha256(manifest.encode()).hexdigest()!=header.get('manifestHash'):
+        raise Rejected('FILE_RECEIPT_MISMATCH')
+    expected=json.loads(manifest)
+    if header['kind']=='RESTORE_TREE':
+        return restore_tree(header,expected,root,source)
+    if header['kind']=='RESTORE_FILE':
+        if not isinstance(expected,dict) or type(expected.get('sourceMissing')) is not bool:
+            raise Rejected('FILE_PROTOCOL_REJECTED')
+        path(header['sourcePath']);path(header['targetPath'])
+        moved=False
+        try:
+            if not expected['sourceMissing'] and header['sourcePath']!=header['targetPath']:
+                original=inventory(root,header['sourcePath'])
+                if len(original)!=1 or original[0]['kind']!='FILE' or original[0]['sha256']!=expected['expectedSha256']:
+                    raise Rejected('FILE_VERSION_CONFLICT')
+                move(root,header['sourcePath'],header['targetPath'],digest(original));moved=True
+            result=stream.apply({'protocol':'file-stream-v2','operationId':operation,'path':header['targetPath'],
+                'bytes':header['bytes'],'sha256':header['sha256'],'expectedSha256':expected['expectedSha256'],
+                'filesystemDevice':header['filesystemDevice']},source,root,True)
+        except Exception:
+            if moved:raise Rejected('FILE_RESULT_UNKNOWN') from None
+            raise
+        return {'protocol':'file-mutation-v1','operationId':operation,'state':'MUTATED','kind':'RESTORE_FILE',
+                'manifestHash':header['manifestHash'],'bytes':result['bytes'],'sha256':result['sha256']}
+    if header['kind']=='DELETE_CLEANUP':
+        parent=header.get('parentOperationId')
+        if str(uuid.UUID(parent))!=parent:
+            raise Rejected('FILE_OPERATION_REJECTED')
+        fd=stream.parent_fd(root,[AREA,parent])
+        try:
+            descriptor=os.open('intent.json',os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)
+            with os.fdopen(descriptor,'rb') as file:
+                info=os.fstat(file.fileno())
+                if not stat.S_ISREG(info.st_mode) or info.st_nlink!=1:raise Rejected('FILE_RECEIPT_MISMATCH')
+                original=json.loads(file.read(8*1024*1024+1))
+        finally:os.close(fd)
+        public=[{k:v for k,v in row.items() if k not in ('device','inode')} for row in original['manifest']]
+        if original['operationId']!=parent or public!=expected:raise Rejected('FILE_RECEIPT_MISMATCH')
+        cleanup(root,parent,original['manifestHash'])
+        return {'protocol':'file-mutation-v1','operationId':operation,'state':'MUTATED','kind':'DELETE_CLEANUP',
+                'manifestHash':header['manifestHash'],'entries':len(expected)}
+    actual=inventory(root,header['sourcePath'])
+    public=[{k:v for k,v in row.items() if k not in ('device','inode')} for row in actual]
+    if public!=expected:
+        raise Rejected('FILE_VERSION_CONFLICT')
+    if header['kind']=='MOVE':move(root,header['sourcePath'],header['targetPath'],digest(actual))
+    else:isolate(root,header['sourcePath'],operation,digest(actual))
+    return {'protocol':'file-mutation-v1','operationId':operation,'state':'MUTATED','kind':header['kind'],
+            'manifestHash':header['manifestHash'],'entries':len(actual)}
+
+
+def remove_owned(parent,name):
+    info=os.stat(name,dir_fd=parent,follow_symlinks=False)
+    if stat.S_ISDIR(info.st_mode):
+        child=os.open(name,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=parent)
+        try:
+            for entry in os.listdir(child):remove_owned(child,entry)
+            os.fsync(child)
+        finally:os.close(child)
+        os.rmdir(name,dir_fd=parent)
+    elif stat.S_ISREG(info.st_mode) and info.st_nlink==1:os.unlink(name,dir_fd=parent)
+    else:raise Rejected('FILE_RESULT_UNKNOWN')
+    os.fsync(parent)
+
+
+def restore_tree(header,expected,root,source):
+    if not isinstance(expected,list) or not 1<=len(expected)<=1000 or expected[0]!={'kind':'DIRECTORY','path':''}:
+        raise Rejected('FILE_PROTOCOL_REJECTED')
+    seen=set();total=0
+    for row in expected:
+        if not isinstance(row,dict) or row.get('path') in seen:raise Rejected('FILE_PROTOCOL_REJECTED')
+        seen.add(row['path'])
+        if row['path']:path(row['path'])
+        if row.get('kind')=='DIRECTORY':
+            if set(row)!={'kind','path'}:raise Rejected('FILE_PROTOCOL_REJECTED')
+        elif row.get('kind')=='FILE':
+            if set(row)!={'kind','path','bytes','sha256'} or type(row['bytes']) is not int or not 0<=row['bytes']<=stream.MAX_BYTES:
+                raise Rejected('FILE_PROTOCOL_REJECTED')
+            if not isinstance(row['sha256'],str) or len(row['sha256'])!=64 or any(c not in '0123456789abcdef' for c in row['sha256']):raise Rejected('FILE_PROTOCOL_REJECTED')
+            total+=row['bytes']
+        else:raise Rejected('FILE_KIND_REJECTED')
+    if total>2147483648:raise Rejected('FILE_STORAGE_FULL')
+    target=path(header['targetPath']);destination=stream.parent_fd(root,target[:-1])
+    staging=None;published=False;created_payload=False
+    try:
+        stream.canonical_collision(destination,target[-1])
+        try:os.stat(target[-1],dir_fd=destination,follow_symlinks=False)
+        except FileNotFoundError:pass
+        else:raise Rejected('FILE_NAME_CONFLICT')
+        available=os.fstatvfs(destination);block=available.f_frsize or available.f_bsize
+        if available.f_bavail*block<total or available.f_favail<len(expected)+3:raise Rejected('FILE_STORAGE_FULL')
+        staging=operation_area(root,header['operationId'])
+        os.mkdir('payload',0o700,dir_fd=staging);created_payload=True;os.fsync(staging)
+        for row in expected[1:]:
+            parts=path(row['path'])
+            parent=stream.parent_fd(root,[AREA,header['operationId'],'payload',*parts[:-1]])
+            try:
+                if row['kind']=='DIRECTORY':os.mkdir(parts[-1],0o700,dir_fd=parent)
+                else:
+                    fd=os.open(parts[-1],os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=parent)
+                    with os.fdopen(fd,'wb') as file:
+                        remaining=row['bytes'];sha=hashlib.sha256()
+                        while remaining:
+                            chunk=source.read(min(65536,remaining))
+                            if not chunk:raise Rejected('FILE_CONTENT_MISMATCH')
+                            file.write(chunk);sha.update(chunk);remaining-=len(chunk)
+                        if sha.hexdigest()!=row['sha256']:raise Rejected('FILE_CONTENT_MISMATCH')
+                        file.flush();os.fsync(file.fileno())
+                os.fsync(parent)
+            finally:os.close(parent)
+        trailer=bytearray()
+        while len(trailer)<32:
+            chunk=source.read(32-len(trailer))
+            if not chunk:raise Rejected('FILE_CONTENT_MISMATCH')
+            trailer.extend(chunk)
+        if bytes(trailer)!=bytes.fromhex(header['manifestHash']):raise Rejected('FILE_CONTENT_MISMATCH')
+        actual=inventory(root,AREA+'/'+header['operationId']+'/payload',internal=True)
+        if [{k:v for k,v in row.items() if k not in ('device','inode')} for row in actual]!=expected:raise Rejected('FILE_CONTENT_MISMATCH')
+        no_replace(staging,'payload',destination,target[-1]);published=True
+        return {'protocol':'file-mutation-v1','operationId':header['operationId'],'state':'MUTATED','kind':'RESTORE_TREE',
+                'manifestHash':header['manifestHash'],'entries':len(expected)}
+    except Exception as failure:
+        if published:raise Rejected('FILE_RESULT_UNKNOWN') from None
+        if staging is not None and created_payload:
+            try:remove_owned(staging,'payload')
+            except Exception:raise Rejected('FILE_RESULT_UNKNOWN') from None
+        if isinstance(failure,OSError) and failure.errno in (errno.ENOSPC,errno.EDQUOT):raise Rejected('FILE_STORAGE_FULL') from None
+        raise
+    finally:
+        os.close(destination)
+        if staging is not None:os.close(staging)
+
+
+def main():
+    try:
+        raw=sys.stdin.buffer.readline(8*1024*1024+1)
+        if len(raw)>8*1024*1024 or not raw.endswith(b'\n'):
+            raise Rejected('FILE_PROTOCOL_REJECTED')
+        result=execute(json.loads(raw),source=sys.stdin.buffer)
+        print(json.dumps(result),flush=True)
+    except Rejected as failure:
+        print(json.dumps({'state':'FAILED','code':str(failure)}),flush=True)
+        raise SystemExit(1)
+    except Exception:
+        print(json.dumps({'state':'UNKNOWN','code':'FILE_RESULT_UNKNOWN'}),flush=True)
+        raise SystemExit(2)
+
+
+if __name__=='__main__':main()

@@ -2,8 +2,8 @@
 from pathlib import Path
 import argparse,fcntl,hashlib,importlib.util,json,os,re,shutil,signal,subprocess,time,traceback,urllib.request,uuid
 ROOT=Path(__file__).resolve().parent
-assert re.fullmatch('/srv/agentplatform/acceptance/r44-r51-[0-9]{14}',str(ROOT))
-PLAN=json.loads((ROOT/'operation.json').read_text());assert PLAN['root']==str(ROOT) and PLAN['project']=='agentplatform-r51-local'
+assert re.fullmatch('/srv/agentplatform/acceptance/r44-r5[12]-[0-9]{14}',str(ROOT))
+PLAN=json.loads((ROOT/'operation.json').read_text());STAGE=PLAN.get('acceptanceStage','r51');assert STAGE in ['r51','r52'] and PLAN['root']==str(ROOT) and PLAN['project']=='agentplatform-'+STAGE+'-local'
 REPORT=ROOT/'reports';os.umask(0o077)
 helper=Path('/srv/agentplatform/operations/platform-switch/platform-switch.py')
 assert hashlib.sha256(helper.read_bytes()).hexdigest()=='2d3021778267cd364568398fc44ba8f8d51b8eebc5b09ad3392e7ed2402a1e8b'
@@ -73,7 +73,7 @@ def start():
  for secret in c['secrets'].values():assert Path(secret['file']).is_file() and Path(secret['file']).parent==ROOT
  assert (ROOT/'bootstrap-access').is_file() and (ROOT/'bootstrap-secret').is_file(),'Explicit isolated bucket bootstrap approval and inputs required'
  grants='\n'.join(p.read_text() for p in ROOT.glob('*grants.sql'));assert 'ap_workspace_ops' in grants
- assert all((ROOT/'accounts'/(name+'.password')).is_file() for name in ['r51_admin','r51_user'])
+ assert all((ROOT/'accounts'/(name+'.password')).is_file() for name in [STAGE+'_admin',STAGE+'_user'])
  new,old=switch.inventory()
  save('precheck',{'requiredServices':len(new),'newAllRunning':all(r['running'] for r in new),'legacyStopped':all(not r['running'] for r in old),'idleAtRead':switch.idle(new),'time':time.time()})
  assert len(new)==11,'Selected R4 service count changed'
@@ -108,11 +108,12 @@ def start():
    if row.get('labels',{}).get('ap.role')=='runner':row['group_add']=[str(Path('/var/run/docker.sock').stat().st_gid)]
   (ROOT/'compose.json').write_text(json.dumps(c,indent=2));call(BASE+['config','--quiet'])
   call(BASE+['up','-d','--wait','--wait-timeout','150','postgres','rabbitmq'],timeout=180)
-  operator('cloud-migrate');assert sql('SELECT max(version::int) FROM pf.flyway_schema_history WHERE success;')=='18'
+  operator('cloud-migrate');assert sql('SELECT max(version::int) FROM pf.flyway_schema_history WHERE success;')==str(PLAN.get('schema',18))
   for role,secret in [('ap_api','api_password'),('ap_worker','worker_password'),('ap_runner','runner_password'),('ap_migration','postgres_password')]:
    password=Path(c['secrets'][secret]['file']).read_text().strip();assert re.fullmatch('[A-Za-z0-9_-]+',password)
    sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='"+role+"') THEN CREATE ROLE "+role+" LOGIN; END IF; END $$;ALTER ROLE "+role+" PASSWORD '"+password+"';")
   grant_files=['r1-runtime-grants.sql','r2-runtime-grants.sql','r3-workspace-grants.sql','r3-environment-grants.sql','r3-file-grants.sql','r4-runtime-grants.sql','r4-permission-grants.sql','r4-approval-grants.sql','r4-workspace-tools-grants.sql']
+  if STAGE=='r52':grant_files.append('r5-file-grants.sql')
   # Named service/ops roles must exist before any grant script; do not discover them one failure at a time.
   names=set(re.findall(r'\bap_[a-z_]+\b','\n'.join((ROOT/name).read_text() for name in grant_files)))
   for role in sorted(names):
@@ -120,8 +121,8 @@ def start():
    sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='"+role+"') THEN CREATE ROLE "+role+" NOLOGIN; END IF; END $$;")
   for name in grant_files:sql((ROOT/name).read_text())
   requests=json.loads((ROOT/'accounts/requests.json').read_text())
-  for name in ['r51_admin','r51_user']:
-   operator('identity-ops',['--identity-action='+('bootstrap' if name=='r51_admin' else 'create'),'--username='+name,'--request-id='+requests[name],'--password-file=/tmp/operator-input'],(ROOT/'accounts'/(name+'.password')).read_bytes())
+  for name in [STAGE+'_admin',STAGE+'_user']:
+   operator('identity-ops',['--identity-action='+('bootstrap' if name==STAGE+'_admin' else 'create'),'--username='+name,'--request-id='+requests[name],'--password-file=/tmp/operator-input'],(ROOT/'accounts'/(name+'.password')).read_bytes())
   call(BASE+['up','-d','master','volume','filer','s3','redis'])
   # Known internal SDK readiness and explicit once-only bucket bootstrap.
   s3_script="import boto3,time\nfrom botocore.config import Config\nfrom botocore.exceptions import ClientError\naccess=open('/run/access').read().strip();secret=open('/run/secret').read().strip()\nclient=boto3.client('s3',endpoint_url='http://s3:8333',region_name='us-east-1',aws_access_key_id=access,aws_secret_access_key=secret,config=Config(retries={'max_attempts':0},connect_timeout=2,read_timeout=5))\nexists=False\nfor index in range(30):\n try:\n  client.head_bucket(Bucket='r33-assets');exists=True;break\n except ClientError as error:\n  status=error.response['ResponseMetadata']['HTTPStatusCode']\n  if status==404:break\n  if status<500 or index==29:raise\n  time.sleep(2)\n except Exception:\n  if index==29:raise\n  time.sleep(2)\nif not exists:client.create_bucket(Bucket='r33-assets')\nclient.head_bucket(Bucket='r33-assets')\nclient.close()\nprint('R51_PRIVATE_BUCKET_READY')\n"
@@ -135,7 +136,7 @@ def start():
   else:raise RuntimeError('Runner did not become ready')
   call(BASE+['up','-d','--wait','--wait-timeout','150','api','worker','gateway'],timeout=180)
   client=urllib.request.build_opener(urllib.request.ProxyHandler({}))
-  with client.open('http://127.0.0.1:18151/api/v1/readiness',timeout=10) as response:assert json.load(response)=={'status':'READY'}
+  with client.open('http://127.0.0.1:'+str(PLAN.get('port',18151))+'/api/v1/readiness',timeout=10) as response:assert json.load(response)=={'status':'READY'}
   gateway=json.loads(call(['docker','inspect',cid('gateway')]))[0];image=json.loads(call(['docker','image','inspect',gateway['Image']]))[0]
   save('ready',{'status':'READY','root':str(ROOT),'project':PLAN['project'],'time':time.time(),'initialStagingSource':PLAN['source'],'gatewaySource':image['Config']['Labels']['org.opencontainers.image.revision'],'gatewayConfigId':gateway['Image'],'supplierCalls':0});sample()
   deadline=time.monotonic()+900
