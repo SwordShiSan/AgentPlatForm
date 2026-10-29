@@ -1,4 +1,8 @@
 # Verification
+## Protected promotion and closure
+
+Functional promotion completed through PR129 (phase merge2c2c957d78cf2d35dd3e0c9f3c0188309a1242f5) and PR130 (main merge2f0c98425dc8bc89d716214757a182119ec5d405). R5.1 VERIFIED, R5 is1/4 and not RELEASED, cloud remains R4. Canonical local/global ledgers and Skill updated; protected pre-closure body/evidence copies both hash-verified, retain30days. Final clean-main archive/delivery receipt is recorded separately after the closure PRs. No R5.2 or production tag.
+
 ## Final functional acceptance (2026-10-29; promotion pending)
 
 The following current conclusion supersedes the historical checkpoints below; their failures and NOT_RUN results remain historical facts. User explicitly approved the isolated Linux window and the scoped bootstrap credential operation. It completed successfully without expanding application roles or copying production data.

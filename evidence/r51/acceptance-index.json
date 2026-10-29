@@ -1,6 +1,6 @@
 {
   "stage": "R5.1",
-  "status": "FUNCTIONAL_GATES_PASS_PENDING_PROTECTED_PROMOTION",
+  "status": "VERIFIED",
   "baseline": "c2af12d6209a6d6f22253c5c14caf1539f3aa146",
   "gatewaySource": "322b3d8008176f774e1b1b015055f575fea827d8",
   "gatewayConfigId": "sha256:48f644f539525b2bcfc9195f2aaf789bcebcbd9ea7d77bb7f25ed363091008cf",
@@ -54,5 +54,11 @@
     "native-browser-result.json": "18a42ae84a315f45b1e6261d557ceb5c8ca6485fe11894a5fb4de338939c0697",
     "native-observation.json": "73b63827e79792c28b228560f8c1f1fb82b17af9d4e214cef29639a842df00c2",
     "native-restoration.json": "c2cb0e282719883691fe6db3b81d8ae077d47620ba2759534406954af374ad52"
+  },
+  "promotion": {
+    "stepToPhase": 129,
+    "phaseToMain": 130,
+    "phaseMerge": "2c2c957d78cf2d35dd3e0c9f3c0188309a1242f5",
+    "mainMerge": "2f0c98425dc8bc89d716214757a182119ec5d405"
   }
 }

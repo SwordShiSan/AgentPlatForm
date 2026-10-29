@@ -1,3 +1,7 @@
+# R5.1 current conclusion (2026-10-29)
+
+R5.1 VERIFIED via protected PR129/130; R5 is1/4 and not RELEASED, cloud remains exact R4. Frontend editor reuses existing upload/operation/version authority; no migration or backend protocol changes. Supplier calls0; native acceptance stack stopped, original R4 identities/policies/XFS UUID restored. Evidence: evidence/r51/acceptance-index.json. Keep schema18/runtime baseline1 and deferred cloud sandbox. R5.2 needs a separate Plan/OpenSpec. Prior conclusions below are historical.
+
 # R4 released current conclusion (2026-10-29)
 
 R4.4 VERIFIED, R4 4/4 VERIFIED and RELEASED; production tag `production-r4-57e1d081e2bb`. Cloud runs the accepted R4 application source `b676b5f933dd6375fcef72628776f0007b8ec3db` and the separately pinned gateway. Plan, scoped permissions, exact approval and four workspace tools are open within their frozen task catalogs; RISK_BASED asks for each shell, FULL does not bypass live rights or sandbox boundaries. Keep R3 rollback and legacy business containers/data stopped and retained. V18/runtime baseline1; do not change V1-V18. Cloud sandbox remains DEFERRED and unmerged; R5 requires its own Plan/OpenSpec and is not started. Exact public receipts: deploy/r4-release-acceptance.json. Prior dates below are historical.
