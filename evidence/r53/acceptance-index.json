@@ -1,6 +1,6 @@
 {
   "stage": "R5.3",
-  "status": "FUNCTIONALLY_VERIFIED_PENDING_PROMOTION",
+  "status": "VERIFIED",
   "baseline": "cb36080dae67986564cae12731890b821bb94744",
   "source": "cfb4d04a45c381fe5f1de846619ec370d3962e1d",
   "schemaVersion": 20,
@@ -186,13 +186,19 @@
     "native-observation.json": "0fdade934dd93a29fc2bf8ac5160aab5f7c13e8803a5062320796015ff4c948d",
     "native-restoration.json": "51a38d3af3783634038dc85e7ab5e0a5cb7db4c732561789841dfb4cac4fe07d",
     "first-native-failure.json": "2dd571a68cc2d1247167d3a4517c77f52b231b01d7941d70a8bf42763028c6fb",
-    "skill-update.json": "bbb8f5bd3f26b587b61f371c1c02d9fb14101468071d097511244c128c425751",
+    "skill-update.json": "19c33935fccd78cae7658a0bbdeda7b2c9dd99c926593a9c1c9b4b9083812476",
     "artifact-ui-result.json": "f3c1c73dde47e3be53b2df464fdeaa831524acb03e27b935739aaf1800eb81ac",
     "native-preview-browser-result.json": "a8f28361133ee5665e327ef6ded44d414e41b04e6116362be343a4fa2e6a761a",
     "native-preview-faults-result.json": "576cb1db0aba78747fd9edd63e70cce81094085b5a5175dc0ba721dc8924b8e6",
-    "final-checks.json": "7fcb2e24e4561e8a3b20a2fdd79b9dfb8932c2738fff7d0a78a25648ee2f577c"
+    "final-checks.json": "744de69c015bfe2cb708aa08d27c9515b307f1c562b7552a53a243e3e5fb8aca"
   },
-  "promotion": {},
+  "promotion": {
+    "stepToPhase": 137,
+    "phaseToMain": 138,
+    "stepHead": "e66959b87d427114efc6c8b34319abc2293cc05d",
+    "phaseMerge": "fa8999a41705f2482f0de58fa9e77a8dee28b766",
+    "mainMerge": "841561168858ebd2b2aed674f77f87fe6d1af312"
+  },
   "metadataReuse": {
     "earliestCommittedSnapshot": "9eff835",
     "coreInputComparison": "unchanged committed SQL/Mapper/MyBatis repository and PreviewPostgresTest to final candidate; historical run originally had an uncommitted worktree and is not attributed to its HEAD alone",
@@ -207,5 +213,13 @@
     "source": "acb60069e589ee4459e2365e3d5e398e90eea563",
     "sha256": "340a812bd355fe83b31a36adbe8e88e6a1326255e0d0ce7db10d499609b0f453",
     "imageSource": "cfb4d04a45c381fe5f1de846619ec370d3962e1d"
+  },
+  "closure": {
+    "openSpec": "r5-3-preview-pipeline",
+    "archive": "openspec/changes/archive/2026-10-29-r5-3-preview-pipeline",
+    "skill": "updated and validated; exact reference hash in receipt",
+    "delivery": "two protected local copies follow final clean-main checkout; protected paths recorded outside Git",
+    "currentSpec": "openspec/specs/durable-preview/spec.md",
+    "strictArchiveValidation": "28 items passed,0 failed; retained cloud-sandbox change validated only, not applied"
   }
 }
