@@ -9,6 +9,9 @@ import { setCsrf } from '../../shared/api/session';
 import type { components } from '../../shared/api/generated/http';
 import { fileHash, transferFile, textPreview, MAX_PREVIEW_BYTES } from './file-transfers';
 import { fileRequestScope, loadFileRequest, saveFileRequest, clearFileRequests, type PendingFileRequest } from './file-requests';
+import FileEditor from './FileEditor.vue';
+import FileTree from './FileTree.vue';
+import { continueFileUpload, bindUploadWorkspace } from './file-upload-coordinator';
 
 const props = defineProps<{ workspaceId: string; userId: string; spaceId: string; storageReady: boolean }>();
 type Item = components['schemas']['FileItem'];
@@ -28,9 +31,15 @@ const conflict = ref(false);
 const preview = ref<string>();
 const previewName = ref('');
 const previewHistorical = ref(false);
+const editing = ref<Item>();
+function edit(item: Item) {
+  if (editing.value && editing.value.id !== item.id) { error.value = '请先关闭当前编辑器，以保留或处理未保存修改。'; return; }
+  editing.value = item;
+}
 let controller = new AbortController();
 let epoch = 0;
 watch(scope, value => {
+  editing.value = undefined;
   epoch++; controller.abort(); controller = new AbortController(); selected.value = undefined; replacement.value = undefined;
   pending.value = loadFileRequest(value); path.value = pending.value?.body.path ?? ''; parent.value = ''; cursor.value = undefined;
   busy.value = false; error.value = ''; preview.value = undefined; conflict.value = false;
@@ -73,6 +82,7 @@ watch(operation.data, value => {
   }
 });
 function sessionExpired() {
+  editing.value = undefined;
   epoch++; controller.abort(); clearFileRequests(); pending.value = undefined; selected.value = undefined;
   replacement.value = undefined; preview.value = undefined; path.value = ''; client.clear();
 }
@@ -101,31 +111,8 @@ async function submit() {
         ...(replacement.value ? { ifMatch: `"${replacement.value.revision}"` } : {}) };
       saveFileRequest(initialScope, pending.value);
     }
-    const token = (await api.GET('/api/v1/auth/csrf', { signal: controller.signal })).data?.csrfToken; check();
-    if (!token) throw new Error('无法取得安全验证'); setCsrf(token);
-    if (!pending.value.uploadId) {
-      phase.value = '正在确认原上传请求';
-      const result = await api.POST('/api/v1/workspaces/{id}/uploads', { signal: controller.signal, body: pending.value.body, params: {
-        path: { id: props.workspaceId }, header: { ...headers.value, 'X-CSRF-Token': token, 'Idempotency-Key': pending.value.key, ...(pending.value.ifMatch ? { 'If-Match': pending.value.ifMatch } : {}) },
-      } }); check();
-      if (!result.data) throw new Error('上传身份未确认'); pending.value = { ...pending.value, uploadId: result.data.id }; saveFileRequest(initialScope, pending.value);
-    }
-    let state = (await api.GET('/api/v1/uploads/{id}', { signal: controller.signal, params: { path: { id: pending.value.uploadId! }, header: headers.value } })).data; check();
-    if (state?.state === 'CREATED') {
-      if (!selected.value) { phase.value = '请重新选择同一文件后继续原上传'; return; }
-      const hash = await fileHash(selected.value, controller.signal); check();
-      if (selected.value.size !== pending.value.body.bytes || hash !== pending.value.body.sha256) {
-        error.value = '所选文件与原请求内容不同，不能复用原上传编号'; return;
-      }
-      phase.value = '正在传输和校验文件'; progress.value = 0;
-      state = await transferFile(state.id, selected.value, props.spaceId, token, controller.signal, value => { if (epoch === current) progress.value = value; }); check();
-    }
-    if (state?.state === 'VERIFIED') {
-      phase.value = '正在提交文件准备作业';
-      await api.POST('/api/v1/uploads/{id}/complete', { signal: controller.signal, params: { path: { id: state.id }, header: { ...headers.value, 'X-CSRF-Token': token } } }); check();
-    } else if (state && !['QUEUED', 'COMMITTED'].includes(state.state)) {
-      phase.value = '原上传结果待核对，请读取状态；不会重新发送内容';
-    }
+    await continueFileUpload(bindUploadWorkspace(pending.value, props.workspaceId), selected.value, props.spaceId, controller.signal,
+      () => saveFileRequest(initialScope, pending.value), value => { if (epoch === current) progress.value = value; }); check();
     await client.invalidateQueries({ queryKey: ['file-upload'] }); await client.invalidateQueries({ queryKey: ['workspace-storage'] });
   } catch (failure) {
     if (epoch !== current) return;
@@ -174,6 +161,7 @@ function readOriginalState() { if (pending.value?.uploadId) void upload.refetch(
     <p v-if="!storageReady" role="status">存储就绪后可使用文件功能。</p>
     <template v-else>
       <p v-if="usage.data.value">对象已用 {{ bytes(usage.data.value.committedBytes) }}／{{ bytes(usage.data.value.objectLimitBytes) }}，预留 {{ bytes(usage.data.value.reservedBytes) }}。工作区硬额度 {{ bytes(usage.data.value.workspaceQuotaBytes) }}／{{ usage.data.value.workspaceQuotaInodes.toLocaleString() }} inode。<span v-if="usage.data.value.measuredBytes === null">实际工作区用量尚未采样。</span></p>
+      <FileTree :workspace-id="workspaceId" :space-id="spaceId" @open="edit" />
       <nav aria-label="文件目录"><NButton @click="openDirectory('')">根目录</NButton><template v-for="(part, index) in parent.split('/').filter(Boolean)" :key="index"><span aria-hidden="true">／</span><NButton @click="openDirectory(parent.split('/').slice(0, index + 1).join('/'))">{{ part }}</NButton></template></nav>
       <p v-if="query.isError.value" role="alert">文件列表暂不可用，请检查连接和权限。<NButton @click="query.refetch()">重新读取</NButton></p>
       <p v-else-if="query.isPending.value" role="status">正在读取文件…</p>
@@ -181,7 +169,7 @@ function readOriginalState() { if (pending.value?.uploadId) void upload.refetch(
       <ul v-else class="file-list">
         <li v-for="item in query.data.value?.items ?? []" :key="item.id">
           <div><NButton v-if="item.kind === 'DIRECTORY'" @click="openDirectory(item.path)">{{ item.name }}／</NButton><strong v-else>{{ item.name }}</strong><p>{{ item.kind === 'DIRECTORY' ? '目录' : item.bytes === null ? '尚未封存' : `${item.collectionState !== 'CONFIRMED' ? '上次封存版本 ' : ''}${bytes(item.bytes)}` }} · {{ item.collectionState === 'CONFIRMED' ? '已确认版本' : '存在未采集内容或待核对状态' }}</p></div>
-          <div v-if="item.kind === 'FILE' && item.versionId" class="file-actions"><NButton @click="showPreview(item)">{{ item.collectionState === 'CONFIRMED' ? '只读预览' : '预览上次封存版本' }}</NButton><a :href="downloadHref(item)" download>下载已封存版本</a><NButton :disabled="busy || Boolean(pending) || item.collectionState !== 'CONFIRMED'" @click="replace(item)">替换此文件</NButton></div>
+          <div v-if="item.kind === 'FILE' && item.versionId" class="file-actions"><NButton :disabled="item.bytes === null || item.bytes > MAX_PREVIEW_BYTES" @click="edit(item)">编辑文本</NButton><NButton @click="showPreview(item)">{{ item.collectionState === 'CONFIRMED' ? '只读预览' : '预览上次封存版本' }}</NButton><a :href="downloadHref(item)" download>下载已封存版本</a><NButton :disabled="busy || Boolean(pending) || item.collectionState !== 'CONFIRMED'" @click="replace(item)">替换此文件</NButton></div>
         </li>
       </ul>
       <NButton v-if="query.data.value?.nextCursor" @click="cursor = query.data.value.nextCursor ?? undefined">下一页</NButton>
@@ -201,7 +189,8 @@ function readOriginalState() { if (pending.value?.uploadId) void upload.refetch(
       </form>
       <p v-if="error" role="alert">{{ error }}</p>
       <section v-if="preview !== undefined" aria-label="只读文本预览"><h4>{{ previewName }} · 只读{{ previewHistorical ? ' · 上次封存版本，当前内容待采集' : '' }}</h4><NButton @click="preview = undefined">关闭预览</NButton><pre tabindex="0">{{ preview }}</pre></section>
-      <p>当前不提供文本编辑、移动、删除或历史恢复；执行环境释放后文件仍保留。</p>
+      <FileEditor v-if="editing" :key="`${userId}:${spaceId}:${workspaceId}:${editing.id}`" :file="editing" :user-id="userId" :space-id="spaceId" :workspace-id="workspaceId" @close="editing = undefined" @saved="client.invalidateQueries({ queryKey: ['workspace-files'] })" />
+      <p>文本可编辑并保存版本；移动、删除及历史恢复尚未开放。执行环境释放后文件仍保留。</p>
     </template>
   </section>
 </template>
