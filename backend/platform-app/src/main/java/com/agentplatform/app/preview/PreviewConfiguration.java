@@ -30,6 +30,7 @@ public class PreviewConfiguration {
     }
     @Bean @Profile("workspace-api") PreviewApi previewApi(PreviewRepository repository,AssetStore assets){return new PreviewApplicationService(repository,assets);}
     @Configuration(proxyBeanMethods=false) @Profile({"workspace-api","workspace-worker"})
+    @ConditionalOnProperty(name={"platform.workspace.enabled","platform.workspace.files.enabled","platform.preview.enabled"},havingValue="true")
     static class Delivery {
         @Bean ThreadPoolTaskScheduler previewTimers(){var timers=new ThreadPoolTaskScheduler();timers.setPoolSize(3);timers.setThreadNamePrefix("preview-control-");timers.setRemoveOnCancelPolicy(true);timers.setWaitForTasksToCompleteOnShutdown(false);return timers;}
         @Bean Declarables previewTopology(){var exchange=new DirectExchange(SpringPreviewMessaging.EXCHANGE,true,false);var queue=QueueBuilder.durable(SpringPreviewMessaging.QUEUE).build();return new Declarables(exchange,queue,BindingBuilder.bind(queue).to(exchange).with(SpringPreviewMessaging.ROUTE));}

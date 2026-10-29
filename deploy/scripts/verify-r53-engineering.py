@@ -124,8 +124,12 @@ def resume_proof(prior_path, current, output):
     original = json.loads((prior_path.parent / 'source-before.json').read_text(encoding='utf-8'))
     if not prior.get('inputUnchanged') or not prior.get('revisionUnchanged') or prior.get('profile') != 'preview-renderer' or prior.get('status') != 'FAIL':
         raise RuntimeError('Prior receipt is not a frozen failed whole-reactor run')
-    if prior.get('sourceInputSha256') != original.get('sourceInputSha256') or original['sourceInputFiles'] != current['sourceInputFiles']:
-        raise RuntimeError('Backend or renderer package inputs changed; app-only resume is forbidden')
+    if prior.get('sourceInputSha256') != original.get('sourceInputSha256'):
+        raise RuntimeError('Prior source snapshot does not match its recorded input hash')
+    upstream_before = {name: sha for name, sha in original['sourceInputFiles'].items() if not name.startswith('backend/platform-app/')}
+    upstream_now = {name: sha for name, sha in current['sourceInputFiles'].items() if not name.startswith('backend/platform-app/')}
+    if upstream_before != upstream_now:
+        raise RuntimeError('Upstream, root or renderer-policy inputs changed; app-only resume is forbidden')
     prior_log = prior_path.parent / 'maven.log'
     if digest(prior_log) != prior['mavenLogSha256']: raise RuntimeError('Prior Maven log changed')
     text = prior_log.read_text(encoding='utf-8', errors='replace')
@@ -157,6 +161,8 @@ def resume_proof(prior_path, current, output):
         modules[module] = hashlib.sha256(json.dumps(relevant, sort_keys=True).encode()).hexdigest()
     proof = {'status': 'PASS_REUSED', 'priorReceipt': str(prior_path.relative_to(ROOT)), 'priorReceiptSha256': digest(prior_path),
              'priorReceiptStatus': prior['status'], 'priorSource': prior['source'], 'sourceInputSha256': original['sourceInputSha256'],
+             'currentSourceInputSha256': current['sourceInputSha256'], 'upstreamInputsUnchanged': True,
+             'appInputsChanged': original['sourceInputFiles'] != current['sourceInputFiles'],
              'upstreamModuleInputSha256': modules, 'tests': sum(item['tests'] for item in records), 'failures': 0, 'errors': 0,
              'skipped': sum(item['skipped'] for item in records), 'reports': records}
     (output / 'reused-upstream-proof.json').write_text(json.dumps(proof, indent=2) + '\n', encoding='utf-8')
