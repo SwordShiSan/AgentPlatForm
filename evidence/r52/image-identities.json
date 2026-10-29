@@ -1,0 +1,68 @@
+{
+  "api": {
+    "component": "api",
+    "tag": "agentplatform-api:r52-157e069456fe",
+    "source": "157e069456febdb36b39956fd55f6c8fe58be61d",
+    "localId": "sha256:dc4c508c85d2759ffd67bbdf13f33554dc10eb58a0a0377fbcfe8784f3d7a562",
+    "indexDigest": "sha256:dc4c508c85d2759ffd67bbdf13f33554dc10eb58a0a0377fbcfe8784f3d7a562",
+    "manifestDigest": "sha256:76c95dec7a04e4c42ee0170e63a62502d7e2b2eabd1f65d3b7217cd2df80dbef",
+    "configId": "sha256:8f25a31bda869aea61eb590d2821eb79feed0259306c807b60afeb18b6178696",
+    "exportManifest": [
+      {
+        "Config": "blobs/sha256/8f25a31bda869aea61eb590d2821eb79feed0259306c807b60afeb18b6178696",
+        "RepoTags": [
+          "agentplatform-api:r52-157e069456fe"
+        ],
+        "Layers": [
+          "blobs/sha256/a60ef8ec184edb5ed91f5983f00261359fb2fe20f603e8d488b9477d32fcad70",
+          "blobs/sha256/49b14164d4d96e593cb68db980906b691931cdcde6f60b918280317c89e55462",
+          "blobs/sha256/7c48d168a51b541814c6814256cd298e11114f5f088e4511cffb4f6b3622d1b6",
+          "blobs/sha256/5165dac19553999758e23bf9247e5bac05f0d26ee503d13bf70c1e8873eb8d37",
+          "blobs/sha256/02e0e048361058af7411fe47569c4d90b68a917dba037514c3831b7bf7029c7b",
+          "blobs/sha256/acc93b257e6f2400f5e3fdf64cb0c7955e37069bb80a6235b95c9484a9ec0643",
+          "blobs/sha256/a1d6d641cf29889eadc8a3ff1b0c4b670b9882da30357bb14af86a7656bd6542",
+          "blobs/sha256/3b108becfe72c149c7a41c9ca7d99e9ea42ae27c465049270b5a2de596cba5b7"
+        ]
+      }
+    ],
+    "platform": "linux/amd64"
+  },
+  "file-helper": {
+    "component": "file-helper",
+    "tag": "agentplatform-file-helper:r52-157e069456fe",
+    "source": "157e069456febdb36b39956fd55f6c8fe58be61d",
+    "localId": "sha256:58d9e5e80b8fea4faeeac20c356432fbf57e5a1320ff3db3a37fcaf9270ba39e",
+    "indexDigest": "sha256:58d9e5e80b8fea4faeeac20c356432fbf57e5a1320ff3db3a37fcaf9270ba39e",
+    "manifestDigest": "sha256:2de96da992760e3ef97e04eb8dc4cdbb534a26054aa9190177e9504bc8a1482a",
+    "configId": "sha256:c7b78647afecf1ec95ac68ada792a24e7a208ca1b9dc773147b39cfa8e3e3358",
+    "exportManifest": [
+      {
+        "Config": "blobs/sha256/c7b78647afecf1ec95ac68ada792a24e7a208ca1b9dc773147b39cfa8e3e3358",
+        "RepoTags": [
+          "agentplatform-file-helper:r52-157e069456fe"
+        ],
+        "Layers": [
+          "blobs/sha256/ecc510c1e359bdc007b39802570bb7e4dec7d6ebccf357c3201a74299113e05e",
+          "blobs/sha256/75b6a36c64a1cf3520fc4b4aae4739d5caa8a6a05c27835a920a61784c9c32f8",
+          "blobs/sha256/6912e23eb44595b44dc6d9882b34f305ad6f6e9667cec70b13e5dbc4f8cd97f4",
+          "blobs/sha256/bbc5a12237474ec0b23b5051260d56d6436a24d70d9cad961adebe7a037ed813",
+          "blobs/sha256/eb84d8ec33a3ee38efe4de9effc0ba184bcf4de1a55f1faab6c403f4fd42c2c0",
+          "blobs/sha256/8008f8619b50f7af15f5e4b1f737a09767c7cabcb671c7b1305ca190683cc75a",
+          "blobs/sha256/34d89bdfc8384de5b1574fc27c4dd5692a76c5313970296a860e943cb4cf8e3a",
+          "blobs/sha256/2341fb2bbc62085d46f8eec3e7a1c30836f74415cd98d350200d065896daee17",
+          "blobs/sha256/ef9038b143a28b7641e577d191ea6fdfa00eac507a5db5b808ec7e765dd4cc78",
+          "blobs/sha256/8fc9b58137dec9f143ba26c3db3427f986f6af3b8616f4cde13b5fd7389411e0",
+          "blobs/sha256/182c99c33f2cc5f3517e3cd0bc11316308da6f72463b7f4654125ec0fbac3574"
+        ]
+      }
+    ],
+    "platform": "linux/amd64"
+  },
+  "gateway": {
+    "source": "dab373161eccea05483d10a1b53d74b793dbdefe",
+    "configId": "sha256:7d82dbd52fa12d965ea06d583e5d74c3fd510d274dd12edf2cc80eb08c7c1e7f",
+    "manifestDigest": "sha256:75514eae3a0174bd86672d9b7898873133eee0d19c232c5a72a5f1f32520107c",
+    "archiveSha256": "c4caa417eb6150962e9881aa976ecf5ba7811aa2300f557eb1fbb821ec1c8c87",
+    "platform": "linux/amd64"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "status": "PASS",
+  "root": "/srv/agentplatform/acceptance/r44-r52-20261029063407",
+  "operationId": "01a18679-af40-73ae-8421-0b4cbc88f2c5",
+  "scope": "actual broker stopped: accepted outbox remains pending, repeated idempotent command same operation, same broker recovery commits one move without version change",
+  "supplierCalls": 0
+}
