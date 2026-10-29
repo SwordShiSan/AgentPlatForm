@@ -89,10 +89,10 @@ public final class PreviewRendererMain {
             if(Set.of("html","htm").contains(ext)&&"HTML_STATIC".equals(requested)) {
                 Path result=output.resolve("content.html");
                 Files.writeString(result,staticHtml(text),StandardCharsets.UTF_8,StandardOpenOption.CREATE_NEW);
-                return success("HTML_STATIC","text/html;charset=UTF-8",result,Files.size(result),hash(result),null,false);
+                return success("HTML_STATIC","text/plain",result,Files.size(result),hash(result),null,false);
             }
             if(!Set.of("AUTO","TEXT").contains(requested))throw new Rejected("PREVIEW_FORMAT_UNSUPPORTED");
-            return success("TEXT","text/plain;charset=UTF-8",source,bytes,expectedHash,null,true);
+            return success("TEXT","text/plain",source,bytes,expectedHash,null,true);
         }
         throw new Rejected("PREVIEW_FORMAT_UNSUPPORTED");
     }

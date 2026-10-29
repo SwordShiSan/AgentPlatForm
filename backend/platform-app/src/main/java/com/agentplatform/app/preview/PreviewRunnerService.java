@@ -131,12 +131,11 @@ public final class PreviewRunnerService implements PreviewRunnerApi,AutoCloseabl
         if(result==null||result.stop()==null||!result.stop().confirmed())return null;
         String key=null;
         if("READY".equals(result.state())){
+            if(!supportedOutput(c,result))return failStopped(c,result,"PREVIEW_OUTPUT_FORMAT_MISMATCH");
             try{guard(c);}
             catch(FileFailure denied){
                 if(denied.status()!=401&&denied.status()!=403&&denied.status()!=409)throw denied;
-                var stopped=new Receipt(c.commandId(),c.previewId(),c.generation(),c.fence(),runner,"FAILED",null,null,
-                        0,null,null,null,false,"PREVIEW_AUTHORIZATION_REVOKED",false,result.stop());
-                repository.runnerReceipt(c,runner,stopped);completed.remove(c.commandId());retire(c,stopped);return stopped;
+                return failStopped(c,result,denied.status()==409?"PREVIEW_EXECUTION_AUTHORITY_LOST":"PREVIEW_AUTHORIZATION_REVOKED");
             }
             if(result.sourceReferenced())key=c.sourceObjectKey();
             else {
@@ -154,6 +153,22 @@ public final class PreviewRunnerService implements PreviewRunnerApi,AutoCloseabl
         var receipt=new Receipt(c.commandId(),c.previewId(),c.generation(),c.fence(),runner,result.state(),result.format(),result.mediaType(),
                 result.bytes(),result.sha256(),result.pages(),key,result.sourceReferenced(),result.errorCode(),result.retryable(),result.stop());
         repository.runnerReceipt(c,runner,receipt);completed.remove(c.commandId());retire(c,receipt);return receipt;
+    }
+    private static boolean supportedOutput(Command c,PreviewRuntime.Result result){
+        String expected=switch(c.sourceFormat()){
+            case "PDF","DOCX","XLSX","PPTX"->"PDF";
+            case "PNG","JPEG","GIF","WEBP"->"IMAGE";
+            case "HTML"->"HTML_STATIC".equals(c.requestedFormat())?"HTML_STATIC":"TEXT";
+            case "TEXT","SVG"->"TEXT";default->null;
+        };
+        if(expected==null||!expected.equals(result.format()))return false;
+        String mediaType="PDF".equals(expected)?"application/pdf":"IMAGE".equals(expected)?"image/png":"text/plain";
+        return mediaType.equals(result.mediaType());
+    }
+    private Receipt failStopped(Command c,PreviewRuntime.Result result,String code){
+        var stopped=new Receipt(c.commandId(),c.previewId(),c.generation(),c.fence(),runner,"FAILED",null,null,
+                0,null,null,null,false,code,false,result.stop());
+        repository.runnerReceipt(c,runner,stopped);completed.remove(c.commandId());retire(c,stopped);return stopped;
     }
     private void remember(Command c,PreviewRuntime.Result result){
         if(result!=null&&result.stop()!=null&&result.stop().confirmed())completed.put(c.commandId(),result);

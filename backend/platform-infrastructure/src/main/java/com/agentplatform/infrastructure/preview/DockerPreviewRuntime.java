@@ -203,7 +203,7 @@ public final class DockerPreviewRuntime implements PreviewRuntime {
             };
             if(!expectedFormat.equals(format))throw new IllegalArgumentException();
             long bytes=Long.parseLong(manifest.getProperty("bytes"));if(bytes<0||bytes>PreviewData.MAX_BYTES)throw new IllegalArgumentException();
-            String expectedMime=switch(format){case "PDF"->"application/pdf";case "IMAGE"->"image/png";case "TEXT"->"text/plain;charset=UTF-8";default->"text/html;charset=UTF-8";};
+            String expectedMime=PreviewRuntimePolicy.mediaType(format);
             if(!expectedMime.equals(mime))throw new IllegalArgumentException();
             Integer pages=manifest.getProperty("pages")==null?null:Integer.valueOf(manifest.getProperty("pages"));
             if("PDF".equals(format)&&(pages==null||pages<1||pages>200))throw new IllegalArgumentException();

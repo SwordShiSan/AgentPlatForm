@@ -21,4 +21,9 @@ public record PreviewRuntimePolicy(String image,Path stagingRoot,Path runtimeAtt
                 +"|systrap|uid10001|net-none|ro|caps-none|no-devices|one-readonly-input|memory512m-swap512m|cpu1|pids128|tmpfs256m|timeout120s|output100m|pages200|image40mp|zip500m|source-or-fixed-output|office26.2.6|jod5.1.1|pdfbox3.0.8|jsoup1.23.2|twelvemonkeys3.13.1")
                 .getBytes(StandardCharsets.UTF_8));
     }
+    /** Public preview representation contract: HTML is fetched as inert text for an isolated srcdoc view. */
+    public static String mediaType(String format) {
+        return switch(format){case "PDF"->"application/pdf";case "IMAGE"->"image/png";case "TEXT","HTML_STATIC"->"text/plain";
+            default->throw new IllegalArgumentException("Unsupported preview representation");};
+    }
 }

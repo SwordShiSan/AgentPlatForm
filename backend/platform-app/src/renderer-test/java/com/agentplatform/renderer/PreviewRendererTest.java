@@ -17,7 +17,12 @@ class PreviewRendererTest {
     @TempDir Path temporary;
     private String sha(Path source)throws Exception{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(source)));}
     private Map<String,String> render(Path source,String extension,String format)throws Exception {
-        Path out=Files.createTempDirectory(temporary,"output-");return PreviewRendererMain.render(source,out,extension,format,sha(source));
+        Path out=Files.createTempDirectory(temporary,"output-");var result=PreviewRendererMain.render(source,out,extension,format,sha(source));
+        assertWireMediaType(result);return result;
+    }
+    private void assertWireMediaType(Map<String,String> result) {
+        assertEquals(com.agentplatform.infrastructure.preview.PreviewRuntimePolicy.mediaType(result.get("format")),result.get("mediaType"),
+                "Actual renderer metadata must match the receiving runtime's public representation contract");
     }
     private void rejects(String code,Path source,String extension,String format)throws Exception {
         var error=assertThrows(PreviewRendererMain.Rejected.class,()->render(source,extension,format));assertEquals(code,error.code);
@@ -25,6 +30,7 @@ class PreviewRendererTest {
     @Test void emptyAndUnicodeTextReferenceTheOriginalBytes()throws Exception {
         Path source=temporary.resolve("source");Files.writeString(source,"");assertEquals("0",render(source,"txt","AUTO").get("bytes"));
         Files.writeString(source,"\ufeff中文🙂\r\n");var result=render(source,"txt","TEXT");assertEquals("true",result.get("sourceReferenced"));assertEquals(sha(source),result.get("sha256"));
+        assertEquals("text/plain",result.get("mediaType"));
     }
     @Test void invalidUtf8AndBinaryDoNotBecomeText()throws Exception {
         Path source=temporary.resolve("source");Files.write(source,new byte[]{(byte)0xc3,0x28});rejects("PREVIEW_TEXT_ENCODING_UNSUPPORTED",source,"txt","AUTO");
@@ -40,9 +46,10 @@ class PreviewRendererTest {
     }
     @Test void htmlIsSourceByDefaultAndExplicitStaticOutputRemovesActiveContent()throws Exception {
         Path source=temporary.resolve("source");Files.writeString(source,"<h1>中文</h1><script>fetch('/me')</script><img src='https://example.test/x'><iframe src='/app'></iframe><p onclick='steal()'>hello</p>");
-        assertEquals("TEXT",render(source,"html","AUTO").get("format"));
+        var sourceResult=render(source,"html","AUTO");assertEquals("TEXT",sourceResult.get("format"));assertEquals("text/plain",sourceResult.get("mediaType"));
         Path out=Files.createDirectory(temporary.resolve("html"));var result=PreviewRendererMain.render(source,out,"html","HTML_STATIC",sha(source));
-        String content=Files.readString(out.resolve("content.html"));assertEquals("HTML_STATIC",result.get("format"));assertTrue(content.contains("中文"));
+        assertWireMediaType(result);
+        String content=Files.readString(out.resolve("content.html"));assertEquals("HTML_STATIC",result.get("format"));assertEquals("text/plain",result.get("mediaType"));assertTrue(content.contains("中文"));
         for(String denied:List.of("<script","<img","<iframe","onclick","example.test","fetch("))assertFalse(content.contains(denied),denied);
         assertTrue(content.contains("default-src 'none'"));
     }

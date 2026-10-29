@@ -250,6 +250,18 @@ class PreviewRunnerServiceTest {
         verify(repository, times(1)).runnerReceipt(eq(command), eq(instance.id()), any());
     }
 
+    @Test void aKnownStoppedProtocolMismatchFailsOnceWithoutUploadOrWaitingForTheDeadline() throws Exception {
+        var stopped=stop(true);
+        when(runtime.render(eq(command),any(),any(),any())).thenReturn(new PreviewRuntime.Result("READY","PDF","application/pdf;charset=UTF-8",
+                OUTPUT.length,RunnerSignatures.sha256(OUTPUT),1,null,false,null,false,stopped));
+        post();assertTrue(stored.await(5,TimeUnit.SECONDS));
+        var result=query();assertEquals("FAILED",result.state());assertEquals("PREVIEW_OUTPUT_FORMAT_MISMATCH",result.errorCode());
+        assertEquals(stopped,result.stop());assertFalse(result.retryable());assertNull(result.objectKey());
+        assertEquals("FAILED",decode(post(),SignedPreviewRunnerClient.PATH).state());
+        verify(runtime,times(1)).render(eq(command),any(),any(),any());verify(runtime,never()).reconcile(any(),any(),any());
+        verify(assets,never()).put(any(),anyLong(),any(),any());verify(repository,times(1)).runnerReceipt(eq(command),eq(instance.id()),any());
+    }
+
     @Test void tamperedOrValidlySignedDifferentCommandsAreRejectedBeforePhysicalAdmission() {
         byte[] original = JSON.writeValueAsBytes(command);
         byte[] changed = new String(original, StandardCharsets.UTF_8).replace("\"requestedFormat\":\"AUTO\"", "\"requestedFormat\":\"PDF\"").getBytes(StandardCharsets.UTF_8);
