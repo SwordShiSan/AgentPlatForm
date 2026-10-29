@@ -29,7 +29,7 @@ async function selected(keys: Array<string | number>, options: Array<TreeOption 
     } else { const item = entries.get(String(node.key)); if (item?.kind === 'FILE') emit('open', item); }
   } catch { error.value = '目录读取失败，请重新读取。'; }
 }
-async function refresh() { epoch++; entries.clear(); error.value = ''; try { nodes.value = await page(''); } catch { error.value = '目录暂不可用，请检查连接或权限。'; } }
+async function refresh() { epoch++; entries.clear(); nodes.value = []; error.value = ''; try { nodes.value = await page(''); } catch { error.value = '目录暂不可用，请检查连接或权限。'; } }
 watch(() => `${props.spaceId}:${props.workspaceId}`, refresh, { immediate: true });
 </script>
 <template><section aria-label="文件目录树"><NButton @click="refresh">刷新目录树</NButton><p v-if="error" role="alert">{{ error }}</p><NTree block-line virtual-scroll :style="{ height: '300px' }" :data="nodes" :on-load="load" @update:selected-keys="selected" /></section></template>

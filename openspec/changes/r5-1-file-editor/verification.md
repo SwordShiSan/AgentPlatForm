@@ -1,4 +1,6 @@
 # Verification
+## 2026-10-29 user-approved Linux window
+Use independent R51 cloud fixture and bounded watchdog; temporarily pause current R4 and restore the same exact R4 at the end. Save before/after identities, health and source XFS UUID. No production data in fixture, no supplier requests, no R51 production release. New acceptance remains NOT_RUN until actual receipts exist.
 All implementation acceptance starts NOT_RUN. Unit: UTF8 bytes, BOM/newlines, empty and2MiB, invalid binary, draft quota/isolation, immutable pending snapshot, duplicate/unknown response. Real PG/MQ/S3: one save/version/hash/settlement; two base writers one conflict; shell lease and target change; response loss original operation. Browser: edit/save/diff/merge/save-as, dirty refresh/offline/logout,375/768/1440,200%,keyboard/themes. Engineering: Maven verify, persistence guard, pnpm typecheck/test/build/contracts checks/links and OpenSpec strict. Final180second resource sample. No paid supplier requests or cloud changes; no unrun case marked PASS.
 
 ## 2026-10-29 implementation checkpoint (not VERIFIED)
