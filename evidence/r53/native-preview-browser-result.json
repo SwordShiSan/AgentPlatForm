@@ -1,0 +1,57 @@
+{
+  "sourceReceiptSha256": "9e02901c40ee399e8f2c76973cfaa38ad0ff7d020bb299a994e93ea53fb1a210",
+  "status": "PASS",
+  "scope": "Actual API immutable version preview/current+history/local PDF worker+text layer/original download/375,768,1440/200%/keyboard/themes",
+  "supplierCalls": 0,
+  "files": [
+    {
+      "fileId": "01a1874d-3371-79ae-8f46-a5886e0d9d22",
+      "versionId": "01a1874d-336f-7c1c-8a87-8402f5b3e72f",
+      "format": "PDF",
+      "originalDownloadSha256": "6ce6a2b23c0a1923f449392b1ada22482b4528bbfa786e85b202760d10927b95",
+      "status": "PASS"
+    },
+    {
+      "fileId": "01a1874d-4707-7765-8ce6-826e068db760",
+      "versionId": "01a1874d-4707-7f8e-be50-1e79413c7961",
+      "format": "PDF",
+      "originalDownloadSha256": "c5ce27acb9aa3b567249464ae50db043df042d7a5fd14aeae85e1b6dca1b8760",
+      "status": "PASS"
+    },
+    {
+      "fileId": "01a1874d-5272-7a28-9c3b-c64808977699",
+      "versionId": "01a1874d-5272-7701-88ee-a0ac3e1705db",
+      "format": "PDF",
+      "originalDownloadSha256": "01cf115ecfd739011a117fcc6838c5d05453928ff4d11f0090ea4528f12753aa",
+      "status": "PASS"
+    },
+    {
+      "fileId": "01a1874d-5fad-7383-81d3-4bc2e377ef36",
+      "versionId": "01a1874d-5fad-73e6-92b9-c44a6cd4ca96",
+      "format": "IMAGE",
+      "originalDownloadSha256": "f40b1481dada4815fbf9208f482506d6cd519319859edc25e306353ffd5c28f0",
+      "status": "PASS"
+    },
+    {
+      "fileId": "01a1874d-811c-784b-9786-0754993578e2",
+      "versionId": "01a1874d-811c-79a7-8c1c-afd1100faf29",
+      "format": "TEXT",
+      "originalDownloadSha256": "b8828d1d710a0844f243c015fd5cdc6f7f178fe3c645c9e2a141b2e10d5e4353",
+      "status": "PASS"
+    },
+    {
+      "fileId": "01a1874d-8c9b-71ab-b2b4-6205bfbae402",
+      "versionId": "01a1874d-8c9b-7352-86d7-3851f342f19e",
+      "format": "TEXT",
+      "originalDownloadSha256": "a45530941e4d76d2bed1d8d0547abbfda1f2462c464dcf10e01b74f6a98acbd5",
+      "status": "PASS"
+    },
+    {
+      "fileId": "01a18787-c174-7de8-8e44-a22571d22c72",
+      "versionId": "01a18787-c174-7607-a407-d9753336058c",
+      "format": "PDF",
+      "originalDownloadSha256": "b3b030e6581864b1827136564c098757162509a4b2db1f9582d803749b73bf25",
+      "status": "PASS"
+    }
+  ]
+}

@@ -54,12 +54,20 @@ public final class MyBatisEnvironmentExecutionRepository implements EnvironmentE
         var operation=environments.operation(item.operationId());
         if(operation==null||!environment.operationId().equals(operation.id())||!environment.id().equals(item.environmentId())
                 ||environment.generation()!=item.generation()||environment.fence()!=item.fence()||!"PENDING".equals(operation.status())
-                ||!environment.id().equals(slot.environmentId())||!Objects.equals(slot.generation(),item.generation()))return null;
+                )return null;
         if(!parentAllowed||!allowed) {
             if(mapper.rejectBeforeClaim(operation.id())!=1)throw new WorkspaceFailure(409,"ENVIRONMENT_CONCURRENT_CHANGE");
             mapper.projectRejected(environment.id());mapper.projectWorkspace(pending,"ERROR");mapper.releaseSlot(pending);
             event(environments.environment(environment.spaceId(),environment.workspaceId()));return null;
         }
+        if(mapper.waitingHeavy(operation.id())) {
+            if(slot.environmentId()!=null&& !environment.id().equals(slot.environmentId())
+                    ||environments.reserveSlot(environment,slot.revision())!=1||mapper.waitingHeavy(operation.id())) {
+                mapper.deferHeavyPublication(item);return null;
+            }
+            slot=environments.lockSlot();
+        }
+        if(!environment.id().equals(slot.environmentId())||!Objects.equals(slot.generation(),item.generation()))return null;
         mapper.inbox(item.id(),operation.id());
         if(mapper.claim(operation.id(),owner)!=1)return null;
         return mapper.command(operation.id());

@@ -5,9 +5,9 @@ import com.agentplatform.domain.files.FileRules.Range;
 import org.springframework.http.HttpRange;
 
 /** Spring owns HTTP parsing; the product supports exactly one bounded byte range. */
-final class FileRanges {
+public final class FileRanges {
     private FileRanges() {}
-    static Range parse(String header,long bytes) {
+    public static Range parse(String header,long bytes) {
         if(header==null)return null;
         try {
             var ranges=HttpRange.parseRanges(header);

@@ -2,8 +2,8 @@
 from pathlib import Path
 import argparse,fcntl,hashlib,importlib.util,json,os,re,shutil,signal,subprocess,time,traceback,urllib.request,uuid
 ROOT=Path(__file__).resolve().parent
-assert re.fullmatch('/srv/agentplatform/acceptance/r44-r5[12]-[0-9]{14}',str(ROOT))
-PLAN=json.loads((ROOT/'operation.json').read_text());STAGE=PLAN.get('acceptanceStage','r51');assert STAGE in ['r51','r52'] and PLAN['root']==str(ROOT) and PLAN['project']=='agentplatform-'+STAGE+'-local'
+assert re.fullmatch('/srv/agentplatform/acceptance/r44-r5[123]-[0-9]{14}',str(ROOT))
+PLAN=json.loads((ROOT/'operation.json').read_text());STAGE=PLAN.get('acceptanceStage','r51');assert STAGE in ['r51','r52','r53'] and PLAN['root']==str(ROOT) and PLAN['project']=='agentplatform-'+STAGE+'-local'
 REPORT=ROOT/'reports';os.umask(0o077)
 helper=Path('/srv/agentplatform/operations/platform-switch/platform-switch.py')
 assert hashlib.sha256(helper.read_bytes()).hexdigest()=='2d3021778267cd364568398fc44ba8f8d51b8eebc5b09ad3392e7ed2402a1e8b'
@@ -56,7 +56,7 @@ def restore(snapshot):
 def operator(profile,args=[],content=None):
  c=BASE+['--profile','operator','run','--rm','-T','--no-deps','-e','SPRING_PROFILES_ACTIVE='+profile]
  if content is None:return call(c+['operator']+args)
- shell='umask 077; cat > /tmp/operator-input; java -Xms16m -Xmx112m -jar /app/platform.jar "$@"; result=$?; rm -f /tmp/operator-input; exit "$result"'
+ shell='umask 077; cat > /tmp/operator-input; java -XX:+UseSerialGC -Xms16m -Xmx128m -jar /app/platform.jar "$@"; result=$?; rm -f /tmp/operator-input; exit "$result"'
  return call(c+['--entrypoint','sh','operator','-c',shell,'operator']+args,content)
 def start():
  lock=(switch.OPS/'switch.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -95,6 +95,12 @@ def start():
   loop=call(['losetup','--find','--show',image]);assert re.fullmatch('/dev/loop[0-9]{1,5}',loop);(ROOT/'quota/loop-device').write_text(loop)
   call(['mount','-o','prjquota,noatime',loop,ROOT/'workspaces']);assert call(['findmnt','-n','-o','UUID','--target',ROOT/'workspaces'])==PLAN['uuid']
   c=json.loads((ROOT/'compose.json').read_text());runner=c['services']['runner']['environment']
+  # Operators are serial, before application services start. Count their actual cap,
+  # and retain the same low-overhead collector in both normal and stdin entrypoints.
+  op=c['services']['operator'];op['mem_limit']=op['memswap_limit']=320*1024**2
+  entry=op.get('entrypoint',[])
+  if '-XX:+UseSerialGC' not in entry:entry.insert(1,'-XX:+UseSerialGC')
+  op['entrypoint']=['-Xmx128m' if value.startswith('-Xmx') else value for value in entry]
   runtime=json.loads(Path('/etc/docker/daemon.json').read_text())['runtimes']['runsc'];digest=hashlib.sha256(Path(runtime['path']).read_bytes()).hexdigest();assert digest=='210b437a9cfae51e8f8c9074ed19b8b5e59477178e2e391a18117d8d6b924f7a'
   (ROOT/'runtime-attestation.json').write_text(json.dumps({**runtime,'sha256':digest,'verifiedAt':int(time.time())}));(ROOT/'runtime-attestation.json').chmod(0o444)
   helper_image=runner['PLATFORM_WORKSPACE_RUNNER_HELPER_IMAGE'];sandbox=runner['PLATFORM_WORKSPACE_ENVIRONMENT_IMAGE_ID'];file_image=runner['PLATFORM_WORKSPACE_FILES_HELPER_IMAGE']
@@ -113,7 +119,8 @@ def start():
    password=Path(c['secrets'][secret]['file']).read_text().strip();assert re.fullmatch('[A-Za-z0-9_-]+',password)
    sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='"+role+"') THEN CREATE ROLE "+role+" LOGIN; END IF; END $$;ALTER ROLE "+role+" PASSWORD '"+password+"';")
   grant_files=['r1-runtime-grants.sql','r2-runtime-grants.sql','r3-workspace-grants.sql','r3-environment-grants.sql','r3-file-grants.sql','r4-runtime-grants.sql','r4-permission-grants.sql','r4-approval-grants.sql','r4-workspace-tools-grants.sql']
-  if STAGE=='r52':grant_files.append('r5-file-grants.sql')
+  if STAGE in ['r52','r53']:grant_files.append('r5-file-grants.sql')
+  if STAGE=='r53':grant_files.append('r5-preview-grants.sql')
   # Named service/ops roles must exist before any grant script; do not discover them one failure at a time.
   names=set(re.findall(r'\bap_[a-z_]+\b','\n'.join((ROOT/name).read_text() for name in grant_files)))
   for role in sorted(names):
@@ -121,8 +128,21 @@ def start():
    sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='"+role+"') THEN CREATE ROLE "+role+" NOLOGIN; END IF; END $$;")
   for name in grant_files:sql((ROOT/name).read_text())
   requests=json.loads((ROOT/'accounts/requests.json').read_text())
+  identity_facts={}
   for name in [STAGE+'_admin',STAGE+'_user']:
-   operator('identity-ops',['--identity-action='+('bootstrap' if name==STAGE+'_admin' else 'create'),'--username='+name,'--request-id='+requests[name],'--password-file=/tmp/operator-input'],(ROOT/'accounts'/(name+'.password')).read_bytes())
+   action='bootstrap' if name==STAGE+'_admin' else 'create';request=requests[name]
+   assert str(uuid.UUID(request))==request,'Original canonical identity request required'
+   assert re.fullmatch('r5[123]_(admin|user)',name)
+   fingerprint=hashlib.sha256((name+':'+action).encode()).hexdigest();admin='true' if action=='bootstrap' else 'false'
+   check="SELECT u.id::text FROM pf.identity_operation o JOIN pf.app_user u ON u.id=o.user_id JOIN pf.space s ON s.owner_user_id=u.id AND s.type='PERSONAL' JOIN pf.membership m ON m.user_id=u.id AND m.space_id=s.id AND m.role='OWNER' AND m.status='ACTIVE' JOIN pf.space_storage st ON st.space_id=s.id AND st.status='ACTIVE' WHERE o.request_id='"+request+"' AND o.input_hash='"+fingerprint+"' AND o.bootstrap="+admin+" AND u.username_norm='"+name+"' AND u.status='ACTIVE' AND u.platform_admin="+admin+";"
+   existing=sql("SELECT count(*) FROM pf.identity_operation WHERE request_id='"+request+"';")
+   assert existing in ['0','1'],'Invalid identity-operation cardinality'
+   if existing=='0':
+    assert sql("SELECT count(*) FROM pf.app_user WHERE username_norm='"+name+"';")=='0','Existing username has a different request; inspect original fixture, do not recreate'
+    operator('identity-ops',['--identity-action='+action,'--username='+name,'--request-id='+request,'--password-file=/tmp/operator-input'],(ROOT/'accounts'/(name+'.password')).read_bytes())
+   user=sql(check);assert re.fullmatch('[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}',user),'Original identity request/user/personal-space/owner/storage facts do not match'
+   identity_facts[name]={'requestId':request,'userId':user,'reused':existing=='1','linksValidated':True}
+  save('identity-fixture-reuse',{'accounts':identity_facts,'passwordsUnchanged':True,'loginStillRequired':True})
   call(BASE+['up','-d','master','volume','filer','s3','redis'])
   # Known internal SDK readiness and explicit once-only bucket bootstrap.
   s3_script="import boto3,time\nfrom botocore.config import Config\nfrom botocore.exceptions import ClientError\naccess=open('/run/access').read().strip();secret=open('/run/secret').read().strip()\nclient=boto3.client('s3',endpoint_url='http://s3:8333',region_name='us-east-1',aws_access_key_id=access,aws_secret_access_key=secret,config=Config(retries={'max_attempts':0},connect_timeout=2,read_timeout=5))\nexists=False\nfor index in range(30):\n try:\n  client.head_bucket(Bucket='r33-assets');exists=True;break\n except ClientError as error:\n  status=error.response['ResponseMetadata']['HTTPStatusCode']\n  if status==404:break\n  if status<500 or index==29:raise\n  time.sleep(2)\n except Exception:\n  if index==29:raise\n  time.sleep(2)\nif not exists:client.create_bucket(Bucket='r33-assets')\nclient.head_bucket(Bucket='r33-assets')\nclient.close()\nprint('R51_PRIVATE_BUCKET_READY')\n"

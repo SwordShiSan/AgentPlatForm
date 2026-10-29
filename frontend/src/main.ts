@@ -1,3 +1,4 @@
+import { clearPreviewRequests } from './features/workspace/preview-requests';
 import { useChatDrafts } from './features/chat/drafts';
 import { clearEnvironmentRequests } from './features/workspace/environment-requests';
 import { clearEditorDrafts } from './features/workspace/editor-session';
@@ -15,7 +16,7 @@ const pinia = createPinia();
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 globalThis.addEventListener('platform:session-expired', () => {
   useChatDrafts(pinia).clear();
-  clearEnvironmentRequests();
+  clearEnvironmentRequests(); clearPreviewRequests();
   clearEditorDrafts();
   clearMutationRequests();
   setCsrf(undefined);

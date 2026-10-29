@@ -1,0 +1,9 @@
+{
+  "sourceReceiptSha256": "275a3ae00d0c25da4ae41f8767d5f08ea43270e4324bb065cde82042c2b27a56",
+  "status": "PASS",
+  "sameR4ContainersImagesAndPolicies": true,
+  "productionUuidUnchanged": true,
+  "legacyStopped": true,
+  "supplierCalls": 0,
+  "time": 1793276526.87503
+}

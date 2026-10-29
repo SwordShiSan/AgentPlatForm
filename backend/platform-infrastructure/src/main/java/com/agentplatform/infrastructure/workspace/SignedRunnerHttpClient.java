@@ -37,7 +37,7 @@ public final class SignedRunnerHttpClient implements RunnerControlPort,Environme
         byte[] body=query?new byte[0]:JSON.writeValueAsBytes(command);
         return exchange(binding(command,query?"GET":"POST",path),binding(command,"RESPONSE",path),body,query,Receipt.class);
     }
-    private <T> T exchange(RunnerSignatures.Binding requestBinding,RunnerSignatures.Binding responseBinding,
+    <T> T exchange(RunnerSignatures.Binding requestBinding,RunnerSignatures.Binding responseBinding,
             byte[] body,boolean query,Class<T> type) {
         String path=requestBinding.path();
         var request=HttpRequest.newBuilder(base.resolve(path)).timeout(timeout)

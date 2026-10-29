@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "scope": "Isolated renderer classifier only; does not authorize ordinary app classpath drift",
+  "libreOffice": {
+    "version": "26.2.6",
+    "url": "https://download.documentfoundation.org/libreoffice/stable/26.2.6/deb/x86_64/LibreOffice_26.2.6_Linux_x86-64_deb.tar.gz",
+    "sha256": "fd0e8f8f2408dd2e5b90286e60f3f97cf566ba441cd48cfc5bcc68067303e0bc"
+  },
+  "artifacts": [
+    {
+      "coordinate": "com.twelvemonkeys.common:common-image:3.13.1",
+      "sha256": "c738cf53c4effa0030203330348d7367a62e7d2055e14c92d84fd546919e39b2"
+    },
+    {
+      "coordinate": "com.twelvemonkeys.common:common-io:3.13.1",
+      "sha256": "68dcf0f9fe0a405e63cdf25e3f80355f66fad49614a47c137c36ceb946a09dc6"
+    },
+    {
+      "coordinate": "com.twelvemonkeys.common:common-lang:3.13.1",
+      "sha256": "bca77f915cb56f3f23729bf602458152e71c7d1467ab3d8b98fa977cbd6aa285"
+    },
+    {
+      "coordinate": "commons-io:commons-io:2.21.0",
+      "sha256": "7d643a2afea8b058b762aa6fb90e5b256f6c729739f8b3784c3370ddc609e88d"
+    },
+    {
+      "coordinate": "org.apache.commons:commons-lang3:3.19.0",
+      "sha256": "32733ab4bc90b45b63eb72677d886961003fd4ed113e07b1028f9877cb2ac735"
+    },
+    {
+      "coordinate": "commons-logging:commons-logging:1.3.6",
+      "sha256": "f8ead8943401081dea0aa824b5b1ba40a0e4ed297a572a0f02258150a0b62357"
+    },
+    {
+      "coordinate": "org.apache.pdfbox:fontbox:3.0.8",
+      "sha256": "a1915c24e3edbe0ecec93896dfbf6d41427810b663ade97bd4e8bae86ec3fdab"
+    },
+    {
+      "coordinate": "com.google.code.gson:gson:2.13.2",
+      "sha256": "dd0ce1b55a3ed2080cb70f9c655850cda86c206862310009dcb5e5c95265a5e0"
+    },
+    {
+      "coordinate": "com.twelvemonkeys.imageio:imageio-core:3.13.1",
+      "sha256": "662aaa5b8713dc88beeecb652b0e83f394fa8c1b43fcbe2fb847d55e635bcda7"
+    },
+    {
+      "coordinate": "com.twelvemonkeys.imageio:imageio-metadata:3.13.1",
+      "sha256": "813ca99f0ac26f3e2eb38c53d89f616c9d1533a31fc80a8fa82b38605a84cc2b"
+    },
+    {
+      "coordinate": "com.twelvemonkeys.imageio:imageio-webp:3.13.1",
+      "sha256": "2976141af57a2782fb7e1d18b896ed37d3f5e2319342fdb8bdcc7312e43b04c4"
+    },
+    {
+      "coordinate": "org.jodconverter:jodconverter-core:5.1.1",
+      "sha256": "bef461db3fb5510a035ac09e8e03fc8e763f82c5adf5fe749bf0d2597f2ff6f6"
+    },
+    {
+      "coordinate": "org.jodconverter:jodconverter-local:5.1.1",
+      "sha256": "5f2beb2b267a82db09de9137392e51a43006d7821d8dc5b3d2c771ace808757d"
+    },
+    {
+      "coordinate": "org.jodconverter:jodconverter-local-lo:5.1.1",
+      "sha256": "544679dd2e682f9088f1b3ee3e339a7d3568d9dc36ac3b6152c66e464c852500"
+    },
+    {
+      "coordinate": "org.jsoup:jsoup:1.23.2",
+      "sha256": "e9d8c856856680427f096d156f02a414289985c930998fcb519ce5be39b42003"
+    },
+    {
+      "coordinate": "org.libreoffice:libreoffice:26.2.2",
+      "sha256": "37b94f944cb35fdbdb586d08df65419b42f1bd2363e143958dbae63ca15c23b3"
+    },
+    {
+      "coordinate": "org.apache.pdfbox:pdfbox:3.0.8",
+      "sha256": "97647cfbde61ebcfc06b4cf8c9b0ffcaaee073396eceb4a7f6836a9b9128903c"
+    },
+    {
+      "coordinate": "org.apache.pdfbox:pdfbox-io:3.0.8",
+      "sha256": "36a0e04001010b4c764857817412b96339930b19755e728959805cc0352061b2"
+    },
+    {
+      "coordinate": "org.slf4j:slf4j-api:2.0.18",
+      "sha256": "44508fd1576500688c790b190acdd16fec4f8c79a3e0b900afd70503cf055f55"
+    }
+  ]
+}
