@@ -93,13 +93,13 @@ async function compare() {
   if (!meta.versionId || meta.bytes === null || meta.bytes > 2097152) throw new Error('当前版本不可作为文本编辑');
   const raw = (await api.GET('/api/v1/files/{id}/content', { signal, parseAs: 'arrayBuffer', params: { path: { id: d.fileId }, query: { versionId: meta.versionId }, header: header.value } })).data!;
   signal.throwIfAborted();
-  const decoded = decodeText(raw); current.value = { ...d, versionId: meta.versionId!, revision: meta.revision, base: decoded.text, text: decoded.text, format: decoded.format };
+  const decoded = decodeText(raw); current.value = { ...d, path: meta.path, versionId: meta.versionId!, revision: meta.revision, base: decoded.text, text: decoded.text, format: decoded.format };
   conflict.value = true; readonly.value = meta.collectionState !== 'CONFIRMED'; comparisonReady.value = !readonly.value;
   } catch { if (!signal.aborted) notice.value = '最新版本读取失败或尚未封存，本地内容已保留。'; }
 }
 function merge() {
   if (!draft.value || !current.value || draft.value.pending || !comparisonReady.value) return;
-  draft.value.versionId = current.value.versionId; draft.value.revision = current.value.revision; draft.value.base = current.value.base; draft.value.format = { ...current.value.format };
+  draft.value.path = current.value.path; draft.value.versionId = current.value.versionId; draft.value.revision = current.value.revision; draft.value.base = current.value.base; draft.value.format = { ...current.value.format };
   conflict.value = false; persist(); notice.value = '已采用最新基线；请手动合并本地文本后保存，不会自动覆盖。';
 }
 function discard() {
@@ -127,6 +127,8 @@ async function refreshState() {
         notice.value = '服务器文件已变化，本地缓冲区保留，请比较。';
       }
       if (meta) readonly.value = meta.collectionState !== 'CONFIRMED';
+      if (meta && draft.value.path !== meta.path) { draft.value.path = meta.path; persist(); }
+      if (meta?.collectionState === 'DELETED') notice.value = '工作副本已删除；本地草稿保留，历史版本仍可查看。';
     }
   } catch { /* A transient read failure is not a failed save. */ } finally { polling = false; }
 }
@@ -138,7 +140,7 @@ onBeforeUnmount(() => { clearInterval(poll); clearTimeout(timer); persist(); con
 </script>
 <template>
   <section aria-label="文件文本编辑" class="editor">
-    <h4>{{ file.name }} {{ dirty ? '· 未保存' : '' }}</h4>
+    <h4>{{ draft?.path ?? file.name }} {{ dirty ? '· 未保存' : '' }}</h4>
     <p role="status">{{ notice }}</p>
     <p v-if="memoryOnly" role="alert">草稿仅当前页面保留：浏览器存储不足或超过4MiB。</p>
     <template v-if="draft">
