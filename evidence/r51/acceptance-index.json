@@ -1,0 +1,58 @@
+{
+  "stage": "R5.1",
+  "status": "FUNCTIONAL_GATES_PASS_PENDING_PROTECTED_PROMOTION",
+  "baseline": "c2af12d6209a6d6f22253c5c14caf1539f3aa146",
+  "gatewaySource": "322b3d8008176f774e1b1b015055f575fea827d8",
+  "gatewayConfigId": "sha256:48f644f539525b2bcfc9195f2aaf789bcebcbd9ea7d77bb7f25ed363091008cf",
+  "backendSource": "b676b5f933dd6375fcef72628776f0007b8ec3db",
+  "backendUnchanged": true,
+  "schemaVersion": 18,
+  "runtimeBaseline": 1,
+  "newMigrations": 0,
+  "supplierCalls": 0,
+  "production": "R4 restored; no R5 deployment/tag",
+  "engineering": {
+    "maven": "PASS",
+    "mavenSeconds": 198.821,
+    "mavenLogSha256": "2aeca63f3f24d7af2b0fdc11b52160750d15cf7eddae5f4000f64732e73aa754",
+    "frontendTests": 54,
+    "typecheck": "PASS",
+    "build": "PASS",
+    "contracts": "PASS",
+    "links": "PASS",
+    "persistenceBoundary": "PASS",
+    "strict": "PASS"
+  },
+  "observation": {
+    "seconds": 180.085,
+    "serialRounds": 23,
+    "minimumSampledAvailableMiB": 1405.85546875,
+    "minimumSampledRootFreeGiB": 6.095710754394531,
+    "swapUsedFirstBytes": 201371648,
+    "swapUsedLastBytes": 201314304,
+    "fullProjectedLimitMiB": 2880,
+    "absolutePeakClaim": false
+  },
+  "reuse": {
+    "scope": "unchanged R4 shell whole-container stop, XFS isolation/quota and restore evidence; no new shell/isolation matrix claimed",
+    "receipt": "evidence/r44/production-release.json"
+  },
+  "historicalFailures": [
+    "pre-pause composite precheck unknown transient",
+    "missing ap_workspace_ops fixture role",
+    "double-counted preallocated XFS capacity",
+    "scoped S3 application identity cannot create bucket",
+    "missing bind input",
+    "missing MQ topology",
+    "RabbitMQ memory alarm threshold blocked publishing",
+    "first observation insufficient remaining window, restored R4; not application failure",
+    "obsolete browser output ACL; isolated output passed"
+  ],
+  "receipts": {
+    "gateway-identity.json": "8eaa48af966c41611de74e4f32c762b65d9e217ca771131c5fcb2eb24dc4e08d",
+    "native-api-result.json": "3334c6a1cd9e8bb994ece719bacfdc6d6510a6884836dba85884d83a2d9720e6",
+    "native-browser-result.json": "18a42ae84a315f45b1e6261d557ceb5c8ca6485fe11894a5fb4de338939c0697",
+    "native-observation.json": "73b63827e79792c28b228560f8c1f1fb82b17af9d4e214cef29639a842df00c2",
+    "native-restoration.json": "c2cb0e282719883691fe6db3b81d8ae077d47620ba2759534406954af374ad52"
+  }
+}

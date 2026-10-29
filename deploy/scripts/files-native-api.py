@@ -41,7 +41,10 @@ def main():
  record=DATA/'native-file-identities.json'
  if args.action=='seed':
   assert not record.exists(),'Seed already recorded; resume using original identities'
-  key=str(uuid.uuid4());(DATA/'workspace-create-request.json').write_text(json.dumps({'key':key,'name':'R51 file editor acceptance'}))
+  original=DATA/'workspace-create-request.json'
+  if original.exists():
+   frozen=json.loads(original.read_text());assert frozen['name']=='R51 file editor acceptance';key=frozen['key']
+  else:key=str(uuid.uuid4());original.write_text(json.dumps({'key':key,'name':'R51 file editor acceptance'}))
   _,workspace,_=client.request('POST','/api/v1/workspaces',{'name':'R51 file editor acceptance'},{'Idempotency-Key':key})
   for _ in range(90):
    view=client.request('GET','/api/v1/workspaces/'+workspace['id'])[1]

@@ -38,9 +38,10 @@ def main():
     parser.add_argument('action', choices=['prepare', 'build', 'start', 'status', 'stop'])
     parser.add_argument('--native',action='store_true',help='Use the explicitly approved isolated Linux maintenance window; restore R4 on stop')
     parser.add_argument('--passed',action='store_true',help='Finish only with a matching protected PASS acceptance receipt')
+    parser.add_argument('--resume',action='store_true',help='Archive a failed, fully restored native attempt and resume the same isolated fixture')
     args = parser.parse_args()
     if args.native:
-        native(args.action,args.passed);return
+        native(args.action,args.passed,args.resume);return
     if args.action == 'build':
         node = ROOT / '.tools/node-v22.23.3-win-x64/node.exe'
         env = dict(os.environ, VITE_CHAT_ENABLED='true', VITE_WORKSPACE_ENABLED='true', VITE_WORKSPACE_FILES_ENABLED='true', VITE_PLAN_ENABLED='true', VITE_WORKSPACE_TOOLS_ENABLED='true')
@@ -75,7 +76,7 @@ def main():
     print(json.dumps(record))
     if args.action == 'start' and not ready: raise RuntimeError('Required services not ready; do not repeat startup blindly')
 
-def native(action,passed=False):
+def native(action,passed=False,resume=False):
     spec=importlib.util.spec_from_file_location('native_fixture',ROOT/'deploy/scripts/files-native-fixture.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
     DATA.mkdir(parents=True,exist_ok=True)
     if action in ['build','prepare']:
@@ -85,6 +86,19 @@ def native(action,passed=False):
     plan=json.loads((DATA/'native-plan.json').read_text());root=plan['root'];assert root.startswith('/srv/agentplatform/acceptance/r44-r51-')
     prefix='from pathlib import Path\nimport json,subprocess,time,os\nr=Path('+repr(root)+')\n'
     if action=='start':
+        if resume:
+            recovery='''c=json.loads((r/'controller.json').read_text());p=Path('/proc/'+str(c['pid'])+'/stat')
+assert not p.exists() or p.read_text().split()[21]!=c['processStart'],'Original controller still active'
+assert json.loads((r/'reports/restored.json').read_text())['status']=='PASS','Exact R4 restoration required before resume'
+assert json.loads((r/'reports/window-result.json').read_text())['status']=='FAIL','Do not silently repeat a completed PASS window'
+archive=r/'reports'/('attempt-'+str(time.time_ns()));archive.mkdir(mode=0o700)
+for file in list((r/'reports').iterdir()):
+ if file.is_file():os.rename(file,archive/file.name)
+os.rename(r/'controller.json',archive/'controller.json')
+if (r/'finish-request.json').exists():os.rename(r/'finish-request.json',archive/'finish-request.json')
+print('FAILED_ATTEMPT_ARCHIVED_SAME_FIXTURE_RETAINED')
+'''
+            print(m.remote(prefix+recovery))
         body='''assert not (r/'controller.json').exists(),'Original start identity exists; query status instead'
 log=(r/'reports/controller.private.log').open('ab')
 process=subprocess.Popen(['python3',str(r/'files-native-window.py'),'start'],stdout=log,stderr=log,start_new_session=True)
@@ -100,11 +114,23 @@ for name in ['ready','window-result','restored','progress']:
  if p.exists():result[name]=json.loads(p.read_text())
 if (r/'controller.json').exists():
  c=json.loads((r/'controller.json').read_text());p=Path('/proc/'+str(c['pid'])+'/stat');result['controllerAlive']=p.exists() and p.read_text().split()[21]==c['processStart']
+if result.get('restored',{}).get('status')=='PASS':result['lastReady']=result['ready'];result['ready']=False;result['state']='TEST_STOPPED_R4_RESTORED'
 print(json.dumps(result))
 '''
     else:
         if passed:
             receipt=json.loads((DATA/'native-acceptance.json').read_text());assert receipt['status']=='PASS' and receipt['root']==root
+            observation=json.loads((DATA/'native-observation.json').read_text());assert observation['status']=='PASS' and observation['seconds']>=180
+            gateway=json.loads((DATA/'gateway.json').read_text())
+            proof='''ready=json.loads((r/'reports/ready.json').read_text());assert FIRST_SAMPLE>=ready['time'],'Old observation cannot complete a new runtime generation'
+records=[json.loads(line) for line in (r/'reports/resources.jsonl').read_text().splitlines() if line.strip()]
+selected=[row for row in records if FIRST_SAMPLE<=row['time']<=LAST_SAMPLE]
+assert selected
+for row in selected:
+ gateways=[v for v in row['required'] if v['service']=='gateway'];assert len(gateways)==1 and gateways[0]['image']==GATEWAY,'Gateway changed during observation'
+print('OBSERVATION_GENERATION_AND_IMAGE_BOUND')
+'''.replace('FIRST_SAMPLE',repr(observation['samples'][0]['time'])).replace('LAST_SAMPLE',repr(observation['samples'][-1]['time'])).replace('GATEWAY',repr(gateway['configId']))
+            print(m.remote(prefix+proof))
         body="p=r/'finish-request.json'\nif not p.exists():p.write_text(json.dumps({'status':"+repr('PASS' if passed else 'FAIL')+",'requestedAt':time.time()}))\nprint('FINISH_REQUESTED_READ_ORIGINAL_RESTORATION')\n"
     print(m.remote(prefix+body))
 

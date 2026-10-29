@@ -58,7 +58,7 @@ def prepare():
   if name in ['api','worker','runner','operator']:row['image']=found['api']
   elif name in ['master','volume','filer','s3']:row['image']=found['s3']
   elif name in found:row['image']=found[name]
-  if name=='gateway':row['image']=image['configId'];row['ports']=[{'target':8080,'published':'18151','host_ip':'127.0.0.1','protocol':'tcp'}]
+  if name=='gateway':row['image']=image['configId'];row['ports']=[{'target':8080,'published':'18151','host_ip':'127.0.0.1','protocol':'tcp'}];row.pop('volumes',None)
   elif name in ['postgres','rabbitmq','s3']:row.pop('ports',None)
   row['mem_limit']=row['memswap_limit']=caps[name]*1024**2
   row['restart']='no';row['networks']={k:v for k,v in row.get('networks',{}).items() if k!='provider-egress'}
@@ -75,7 +75,11 @@ def prepare():
  definitions=json.loads((old/'rabbitmq-definitions.json').read_text());password=(private/Path(config['secrets']['mq_password']['file']).name).read_bytes();salt=secrets.token_bytes(4)
  for user in definitions['users']:user.update(name='r51',password_hash=base64.b64encode(salt+hashlib.sha256(salt+password).digest()).decode())
  for permission in definitions['permissions']:permission['user']='r51'
- (private/'rabbitmq-definitions.json').write_text(json.dumps(definitions));(private/'rabbitmq.conf').write_text('management.load_definitions = /etc/rabbitmq/definitions.json\nvm_memory_high_watermark.absolute = 128MB\n')
+ for exchange,queue,route in [('ap.commands.v1','ap.execution.v1','execution.ready'),('ap.workspace.commands.v1','ap.workspace.provision.v1','workspace.provision'),('ap.workspace.environments.v2','ap.workspace.environment.v2','workspace.environment'),('ap.workspace.files.v1','ap.workspace.file.v1','workspace.file')]:
+  definitions.setdefault('exchanges',[]).append({'name':exchange,'vhost':'/agentplatform','type':'direct','durable':True,'auto_delete':False,'internal':False,'arguments':{}})
+  definitions.setdefault('queues',[]).append({'name':queue,'vhost':'/agentplatform','durable':True,'auto_delete':False,'arguments':{}})
+  definitions.setdefault('bindings',[]).append({'source':exchange,'vhost':'/agentplatform','destination':queue,'destination_type':'queue','routing_key':route,'arguments':{}})
+ (private/'rabbitmq-definitions.json').write_text(json.dumps(definitions));(private/'rabbitmq.conf').write_text('management.load_definitions = /etc/rabbitmq/definitions.json\nvm_memory_high_watermark.absolute = 192MiB\n')
  identities=[]
  for role in ['api','worker','runner']:
   access=(private/Path(config['secrets']['file_'+role+'_access']['file']).name).read_text();secret=(private/Path(config['secrets']['file_'+role+'_secret']['file']).name).read_text()

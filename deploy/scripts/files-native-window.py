@@ -62,10 +62,14 @@ def start():
  lock=(switch.OPS/'switch.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
  # Validate all non-live prerequisites before any production pause.
  c=json.loads((ROOT/'compose.json').read_text());assert c['name']==PLAN['project']
+ runtime=json.loads(Path('/etc/docker/daemon.json').read_text())['runtimes']['runsc'];digest=hashlib.sha256(Path(runtime['path']).read_bytes()).hexdigest();assert digest=='210b437a9cfae51e8f8c9074ed19b8b5e59477178e2e391a18117d8d6b924f7a'
+ (ROOT/'runtime-attestation.json').write_text(json.dumps({**runtime,'sha256':digest,'verifiedAt':int(time.time())}));(ROOT/'runtime-attestation.json').chmod(0o444)
  for name,row in c['services'].items():
   identity=json.loads(call(['docker','image','inspect',row['image']]))[0];assert identity['Architecture']=='amd64'
   for binding in row.get('volumes',[]):
-   if isinstance(binding,dict) and binding.get('type')=='bind':assert binding['source']=='/var/run/docker.sock' or binding['source'].startswith(str(ROOT)+'/')
+   if isinstance(binding,dict) and binding.get('type')=='bind':
+    assert binding['source']=='/var/run/docker.sock' or binding['source'].startswith(str(ROOT)+'/')
+    assert Path(binding['source']).exists(),'Missing fixture bind input before maintenance'
  for secret in c['secrets'].values():assert Path(secret['file']).is_file() and Path(secret['file']).parent==ROOT
  assert (ROOT/'bootstrap-access').is_file() and (ROOT/'bootstrap-secret').is_file(),'Explicit isolated bucket bootstrap approval and inputs required'
  grants='\n'.join(p.read_text() for p in ROOT.glob('*grants.sql'));assert 'ap_workspace_ops' in grants
@@ -132,7 +136,8 @@ def start():
   call(BASE+['up','-d','--wait','--wait-timeout','150','api','worker','gateway'],timeout=180)
   client=urllib.request.build_opener(urllib.request.ProxyHandler({}))
   with client.open('http://127.0.0.1:18151/api/v1/readiness',timeout=10) as response:assert json.load(response)=={'status':'READY'}
-  save('ready',{'status':'READY','root':str(ROOT),'project':PLAN['project'],'time':time.time(),'source':PLAN['source'],'supplierCalls':0});sample()
+  gateway=json.loads(call(['docker','inspect',cid('gateway')]))[0];image=json.loads(call(['docker','image','inspect',gateway['Image']]))[0]
+  save('ready',{'status':'READY','root':str(ROOT),'project':PLAN['project'],'time':time.time(),'initialStagingSource':PLAN['source'],'gatewaySource':image['Config']['Labels']['org.opencontainers.image.revision'],'gatewayConfigId':gateway['Image'],'supplierCalls':0});sample()
   deadline=time.monotonic()+900
   while time.monotonic()<deadline and not (ROOT/'finish-request.json').exists():time.sleep(3)
   assert (ROOT/'finish-request.json').exists(),'Native client window timed out'
