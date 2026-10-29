@@ -1,0 +1,19 @@
+{
+  "status": "PASS",
+  "exitCode": 0,
+  "sourceBaseImage": "python:3.12.15-slim-trixie@sha256:2b4f19dae3a777dfc3b76730bda1e82e1f66ab2a2686fa93ca78edbfb4f04ffe",
+  "logSha256": "167d3031e16e6d81440b1900fd4ca701a68a67ea4196f0cacc35e4e7d202eb77",
+  "scope": "Linux helper unit logic only; no XFS/runner claim",
+  "stage": "R5.2",
+  "stageStatus": "IMPLEMENTING",
+  "mandatoryAcceptance": "NOT_RUN",
+  "supplierCalls": 0,
+  "productionChanged": false,
+  "newMutationTests": 12,
+  "totalHelperTests": 38,
+  "sourceHashes": {
+    "deploy/scripts/file-mutation-bridge.py": "8272b98af6383b7ec0f008b126450d4888f3cf6d7f61b645dc9d355061d41e46",
+    "deploy/tests/test_file_mutation_bridge.py": "ea016ea3a173d6f82a86bfd069b9fd52a639217e6b99cf65eeb55abac0d6adb6",
+    "deploy/scripts/file-stream-bridge.py": "e571df0d21e28c339ab65f03c52e475b63663bdeb3e2b183c91aaebe920cb37b"
+  }
+}
