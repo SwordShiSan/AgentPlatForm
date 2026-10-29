@@ -74,7 +74,7 @@ for relative in ['tree-acceptance','tree-acceptance/empty']:
  if not d.exists():d.mkdir(mode=0o700);os.chown(d,10001,10001)
  assert stat.S_ISDIR(d.lstat().st_mode) and d.lstat().st_uid==10001
 print('FIXED_DIRECTORY_FIXTURE_READY')
-'''.replace('ROOT',repr(plan['root'])).replace('SPACE',repr(client.space)).replace('WORKSPACE',repr(wid))
+'''.replace('ROOT',repr(plan['root'])).replace('WORKSPACE',repr(wid)).replace('SPACE',repr(client.space))
  native.remote(code)
  for _ in range(60):
   rows=client.request('GET','/api/v1/workspaces/'+wid+'/files')[1]['items'];directory=next((r for r in rows if r['path']=='tree-acceptance' and r['collectionState']=='CONFIRMED'),None)
@@ -86,16 +86,26 @@ print('FIXED_DIRECTORY_FIXTURE_READY')
  moved=request(client,'POST',directory['id']+'/move',{'name':'tree-renamed','targetParentId':None},file(client,directory['id'])['revision']);wait(client,moved)
  deletion=request(client,'DELETE',directory['id'],revision=file(client,directory['id'])['revision']);wait(client,deletion)
  tombstone=file(client,directory['id']);op=request(client,'POST',directory['id']+'/restore',{'deletionOperationId':deletion['id'],'name':'tree-restored','targetParentId':None},tombstone['revision']);wait(client,op)
+ finish_tree(client,ids,directory,[one,two])
+def finish_tree(client,ids,directory,entries):
+ plan=json.loads((DATA/'native-plan.json').read_text())
  assert file(client,directory['id'])['path']=='tree-restored'
- for before in [one,two]:
+ for before in entries:
   after=file(client,before['id']);assert after['path'].startswith('tree-restored/') and after['versionId']!=before['versionId']
   actual=client.request('GET','/api/v1/files/'+after['id']+'/content?versionId='+after['versionId'],binary=True)[1];assert hashlib.sha256(actual).hexdigest()==before['sha256']
   history=client.request('GET','/api/v1/files/'+after['id']+'/versions')[1]['items'];assert history[0]['sourceVersionId']==before['versionId']
  result={'status':'PASS','root':plan['root'],'supplierCalls':0,'files':2,'emptyDirectory':True,'scope':'actual XFS directory move/delete isolation/cleanup/new-version streamed restore through PG/MQ/S3/signed runner; stable logical IDs/new bytes and zero-byte file hashes'}
  (DATA/'native-tree-result.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))
+def resume_tree(client,ids):
+ frozen=json.loads((DATA/'native-tree-identities.json').read_text());directory=frozen['directory'];plan=json.loads((DATA/'native-plan.json').read_text())
+ root=plan['root'];selected=str(uuid.UUID(directory['id']))
+ code='from pathlib import Path\nimport json,subprocess\nr=Path('+repr(root)+')\nc=json.loads((r/"compose.json").read_text());pg=subprocess.check_output(["docker","compose","-p",c["name"],"-f",str(r/"compose.json"),"ps","-q","postgres"],text=True).strip()\nquery='+repr("SELECT operation_id FROM pf.file_mutation_intent WHERE root_file_id='"+selected+"' AND kind='RESTORE_TREE' ORDER BY operation_id DESC LIMIT 1;")+'\nprint(subprocess.check_output(["docker","exec",pg,"psql","-XqAt","-U","postgres","-d","file_runtime","-c",query],text=True).strip())\n'
+ original=native.remote(code);assert str(uuid.UUID(original))==original
+ wait(client,{'id':original});finish_tree(client,ids,directory,frozen['files'])
 def main():
- p=argparse.ArgumentParser();p.add_argument('action',choices=['seed','verify','tree']);args=p.parse_args();client=api.Client();ids=seed(client)
+ p=argparse.ArgumentParser();p.add_argument('action',choices=['seed','verify','tree','resume-tree']);args=p.parse_args();client=api.Client();ids=seed(client)
  if args.action=='seed':print('R52_ACTUAL_SEED_PASS')
  elif args.action=='verify':verify(client,ids)
- else:tree(client,ids)
+ elif args.action=='tree':tree(client,ids)
+ else:resume_tree(client,ids)
 if __name__=='__main__':main()

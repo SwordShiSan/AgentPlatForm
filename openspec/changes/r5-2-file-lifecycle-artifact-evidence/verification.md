@@ -1,3 +1,15 @@
+# Current functional conclusion (2026-10-29)
+
+All mandatory functional gates PASS; protected promotion/archival/final clean-main delivery are pending. This current conclusion supersedes historical implementation checkpoints below without rewriting their FAIL/NOT_RUN records.
+
+- Actual PG/Flyway V18→V19 and fresh schema, MyBatis/Spring lifecycle/restore/artifact facts PASS (13 targeted tests; runner receipts are synthetic in this transaction group). Actual Linux helper logic46 tests PASS. Whole Maven reactor/DDD/Enforcer/Mapper, frontend59 tests/types/build, contracts including invalid fixtures, persistence guard, canonical links and strict PASS. Conservative input-drift failures retained; reviewed exact production source hashes and separately rerun changed tests support the final gate.
+- Actual independent PG/MQ/XFS/S3/signed runner: stable-ID move, delete isolation and separate stopped cleanup, new identity at deleted path, old-version original bytes, new-asset/new-version file/tree restore (including zero-byte file and empty directory), exact hash/source origins, current authorization PASS. Artifact facts derive committed task/tool/version/asset bindings, survive tombstones and remain NOT_RUN for unexecuted semantic tests.
+- Actual broker outage leaves original outbox pending; same idempotent operation converges after the same broker returns. Original R4 binary completes startup and idempotent identity provisioning on V19; this does not claim old file execution compatibility with tombstones.
+- Actual browser lifecycle/history/preview/download/response loss, explicit acknowledged terminal panels, external move preserving dirty editor text and latest-base save,375/768/1440,200%,keyboard/light/dark PASS. The lost-response fixture now drops only202, not normal423 rejection. Old output ACL/start and fixture failures remain separate.
+- Final181.011second sample:23 serial upload/replace/download rounds, zero pending file facts and zero supplier calls. Same immutable API/helper source157e069456febdb36b39956fd55f6c8fe58be61d; final gateway source dab373161eccea05483d10a1b53d74b793dbdefe. Full projected budget2880MiB; no absolute-peak/concurrency capacity claim.
+- Exact original R4 containers/images/restart policies/XFS UUID restored; acceptance stack stopped, legacy stopped and retained. Reuse unchanged R4 gVisor/quota/recovery evidence within its scope; no new all-history recovery matrix. Cloud sandbox remains DEFERRED. Public evidence: evidence/r52/acceptance-index.json; raw secrets/SQL/private logs excluded.
+- Skill acceptance-efficiency reference updated with composite transfer ownership, complete fixture seeds, immutable build context, one Maven controller, bounded accepted-response injection and stage startup/query/restore rules. Final protected two-copy package follows the clean final main checkout.
+
 # Verification
 
 All implementation gates initially NOT_RUN. Normative validation is separate from feature evidence.
