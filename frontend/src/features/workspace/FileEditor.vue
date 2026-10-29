@@ -66,7 +66,7 @@ async function save() {
   const queryOnly = Boolean(d.pending && (conflict.value || readonly.value));
   if (!d.pending && (readonly.value || conflict.value && !saveAs.value)) return;
   if (!d.pending && !dirty.value && !saveAs.value) { notice.value = '内容未变化，无需保存。'; return; }
-  busy.value = true;
+  busy.value = true; notice.value = queryOnly ? '正在读取原保存状态…' : '正在保存，等待版本封存…';
   try {
     if (!d.pending) {
       const submitted = d.text, targetPath = saveAs.value || d.path, creating = Boolean(saveAs.value);
