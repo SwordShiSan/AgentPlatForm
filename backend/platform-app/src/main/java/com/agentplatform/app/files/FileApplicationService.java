@@ -72,6 +72,32 @@ public final class FileApplicationService implements FileApi {
     @Override public OperationView complete(Caller caller,String id) { return view(repository.completeUpload(actor(caller),FileRules.id(id))); }
     @Override public OperationView operation(Caller caller,String id) { return view(repository.operation(actor(caller),FileRules.id(id))); }
     @Override public FileView file(Caller caller,String id) { return view(repository.file(actor(caller),FileRules.id(id))); }
+    private static ArtifactView artifactView(Artifact a) {
+        return new ArtifactView(id(a.id()),id(a.workspaceId()),id(a.taskId()),id(a.operationId()),id(a.fileId()),id(a.versionId()),
+                a.title(),a.sha256(),a.sizeBytes(),"VERIFIED_CONTENT",a.evidenceStatus());
+    }
+    @Override public ArtifactPage artifacts(Caller caller,String task,String cursor,int limit) {
+        if(limit<1||limit>100)throw new FileFailure(400,"INVALID_FILE_PAGE");
+        var rows=repository.artifacts(actor(caller),FileRules.id(task),cursor==null?null:FileRules.id(cursor),limit+1);
+        boolean more=rows.size()>limit;var selected=more?rows.subList(0,limit):rows;
+        return new ArtifactPage(selected.stream().map(FileApplicationService::artifactView).toList(),more?id(selected.getLast().id()):null);
+    }
+    @Override public ArtifactView artifact(Caller caller,String id) {return artifactView(repository.artifact(actor(caller),FileRules.id(id)));}
+    @Override public Download artifactDownload(Caller caller,String id,String range) {
+        var row=repository.artifact(actor(caller),FileRules.id(id));
+        var content=download(caller,row.fileId().toString(),row.versionId().toString(),range);
+        String filename=row.title().substring(row.title().lastIndexOf('/')+1);
+        return new Download(content.stream(),content.bytes(),content.totalBytes(),content.first(),content.last(),content.sha256(),filename,content.mime());
+    }
+    @Override public VersionPage versions(Caller caller,String file,String cursor,int limit) {
+        if(limit<1||limit>100)throw new FileFailure(400,"INVALID_FILE_PAGE");
+        var rows=repository.versions(actor(caller),FileRules.id(file),cursor==null?null:FileRules.id(cursor),limit+1);
+        boolean more=rows.size()>limit;
+        var selected=more?rows.subList(0,limit):rows;
+        return new VersionPage(selected.stream().map(v->new VersionView(id(v.id()),id(v.fileId()),v.sha256(),
+                v.sizeBytes(),v.createdAt().toString(),id(v.sourceVersionId()))).toList(),
+                more?id(selected.getLast().id()):null);
+    }
     @Override public Page list(Caller caller,String workspace,String parent,String cursor,int limit) {
         if(limit<1||limit>100)throw new FileFailure(400,"INVALID_FILE_PAGE");
         String after=null;
@@ -85,6 +111,7 @@ public final class FileApplicationService implements FileApi {
     @Override public Download download(Caller caller,String id,String version,String rangeHeader) {
         var actor=actor(caller);var file=repository.file(actor,FileRules.id(id));
         if(!"FILE".equals(file.kind()))throw new FileFailure(400,"FILE_CONTENT_UNAVAILABLE");
+        if("DELETED".equals(file.collectionState())&&version==null)throw new FileFailure(410,"FILE_DELETED");
         var row=repository.version(actor,file.id(),version==null?null:FileRules.id(version));
         var range=FileRanges.parse(rangeHeader,row.sizeBytes());
         if(!downloadSlot.tryAcquire())throw new FileFailure(423,"FILE_TRANSFER_BUSY");

@@ -1,0 +1,8 @@
+{
+  "status": "PASS",
+  "oldImage": "sha256:68b218b04bdb995fbc610157b02fc89f7c6e7443369fdcbf68f26c43e0709dee",
+  "schemaVersion": 19,
+  "runtimeBaseline": 1,
+  "scope": "old R4 identity binary startup and idempotent provisioning against V19; no old file executor over new tombstone semantics",
+  "supplierCalls": 0
+}

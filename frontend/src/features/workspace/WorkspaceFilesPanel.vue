@@ -11,10 +11,14 @@ import { fileHash, transferFile, textPreview, MAX_PREVIEW_BYTES } from './file-t
 import { fileRequestScope, loadFileRequest, saveFileRequest, clearFileRequests, type PendingFileRequest } from './file-requests';
 import FileEditor from './FileEditor.vue';
 import FileTree from './FileTree.vue';
+import FileLifecyclePanel from './FileLifecyclePanel.vue';
+import { clearMutationRequests } from './file-mutation-requests';
 import { continueFileUpload, bindUploadWorkspace } from './file-upload-coordinator';
 
 const props = defineProps<{ workspaceId: string; userId: string; spaceId: string; storageReady: boolean }>();
 type Item = components['schemas']['FileItem'];
+type Deleted = components['schemas']['DeletedFileItem'];
+type LifecycleMode = 'MOVE' | 'DELETE' | 'HISTORY' | 'RESTORE';
 const client = useQueryClient();
 const scope = computed(() => fileRequestScope(props.userId, props.spaceId, props.workspaceId));
 const pending = ref<PendingFileRequest>();
@@ -32,6 +36,17 @@ const preview = ref<string>();
 const previewName = ref('');
 const previewHistorical = ref(false);
 const editing = ref<Item>();
+const lifecycle = ref<{ file: Item; initial: LifecycleMode; deleted?: Deleted }>();
+const showDeleted = ref(false); const deletedCursor = ref<string>();
+function manage(file: Item, initial: LifecycleMode, deleted?: Deleted) {
+  if (editing.value) { error.value = '请先关闭编辑器，保留或处理未保存内容后再管理文件。'; return; }
+  lifecycle.value = { file, initial, deleted };
+}
+function restoreDeleted(file: Deleted) {
+  const slash = file.path.lastIndexOf('/');
+  manage({ id: file.id, workspaceId: file.workspaceId, path: file.path, name: file.path.slice(slash + 1), parent: slash < 0 ? '' : file.path.slice(0, slash),
+    kind: file.kind, versionId: file.versionId, collectionState: 'DELETED', revision: file.revision, bytes: null, sha256: null }, 'RESTORE', file);
+}
 function edit(item: Item) {
   if (editing.value && editing.value.id !== item.id) { error.value = '请先关闭当前编辑器，以保留或处理未保存修改。'; return; }
   editing.value = item;
@@ -40,6 +55,7 @@ let controller = new AbortController();
 let epoch = 0;
 watch(scope, value => {
   editing.value = undefined;
+  lifecycle.value = undefined; showDeleted.value = false; deletedCursor.value = undefined;
   epoch++; controller.abort(); controller = new AbortController(); selected.value = undefined; replacement.value = undefined;
   pending.value = loadFileRequest(value); path.value = pending.value?.body.path ?? ''; parent.value = ''; cursor.value = undefined;
   busy.value = false; error.value = ''; preview.value = undefined; conflict.value = false;
@@ -60,6 +76,19 @@ const usage = useQuery({
   enabled: computed(() => props.storageReady),
   queryFn: async ({ signal }) => (await api.GET('/api/v1/workspaces/{id}/storage-usage', { signal, params: { path: { id: props.workspaceId }, header: headers.value } })).data!,
   refetchInterval: 5000,
+});
+const deleted = useQuery({ queryKey: computed(() => ['deleted-files', props.userId, props.spaceId, props.workspaceId, deletedCursor.value]),
+  enabled: computed(() => props.storageReady && showDeleted.value),
+  queryFn: async ({ signal }) => (await api.GET('/api/v1/workspaces/{id}/deleted-files', { signal,
+    params: { path: { id: props.workspaceId }, query: { cursor: deletedCursor.value, limit: 100 }, header: headers.value } })).data!,
+});
+function lifecycleChanged() {
+  for (const key of ['workspace-files', 'file-history', 'workspace-storage', 'deleted-files']) void client.invalidateQueries({ queryKey: [key] });
+}
+watch(query.data, value => {
+  if (!lifecycle.value || lifecycle.value.deleted) return;
+  const current = value?.items.find(item => item.id === lifecycle.value?.file.id);
+  if (current) lifecycle.value.file = current;
 });
 const upload = useQuery({
   queryKey: computed(() => ['file-upload', props.userId, props.spaceId, pending.value?.uploadId]),
@@ -83,6 +112,7 @@ watch(operation.data, value => {
 });
 function sessionExpired() {
   editing.value = undefined;
+  lifecycle.value = undefined; clearMutationRequests();
   epoch++; controller.abort(); clearFileRequests(); pending.value = undefined; selected.value = undefined;
   replacement.value = undefined; preview.value = undefined; path.value = ''; client.clear();
 }
@@ -162,6 +192,19 @@ function readOriginalState() { if (pending.value?.uploadId) void upload.refetch(
     <template v-else>
       <p v-if="usage.data.value">对象已用 {{ bytes(usage.data.value.committedBytes) }}／{{ bytes(usage.data.value.objectLimitBytes) }}，预留 {{ bytes(usage.data.value.reservedBytes) }}。工作区硬额度 {{ bytes(usage.data.value.workspaceQuotaBytes) }}／{{ usage.data.value.workspaceQuotaInodes.toLocaleString() }} inode。<span v-if="usage.data.value.measuredBytes === null">实际工作区用量尚未采样。</span></p>
       <FileTree :workspace-id="workspaceId" :space-id="spaceId" @open="edit" />
+      <p v-if="editing">管理文件前请先关闭编辑器；未保存内容可保留为当前浏览器会话草稿。</p>
+      <NButton @click="showDeleted = !showDeleted">{{ showDeleted ? '收起已删除文件' : '已删除文件' }}</NButton>
+      <section v-if="showDeleted" aria-label="已删除文件">
+        <p>工作副本删除记录至少保留30天；历史版本继续计量。此处不提供永久清理。</p>
+        <p v-if="deleted.isFetching.value" role="status">正在读取删除记录…</p>
+        <p v-if="deleted.isError.value" role="alert">删除记录暂不可用。<NButton @click="deleted.refetch()">重新读取</NButton></p>
+        <p v-if="deleted.data.value && !deleted.data.value.items.length">暂无已删除文件。</p>
+        <ul><li v-for="item in deleted.data.value?.items ?? []" :key="item.id"><span>{{ item.path }} · {{ new Date(item.deletedAt).toLocaleString() }}</span>
+          <NButton :disabled="Boolean(editing) || !item.canRestore" @click="restoreDeleted(item)">查看／恢复</NButton><span v-if="!item.canRestore">正在确认清理结果</span>
+        </li></ul>
+        <NButton v-if="deleted.data.value?.nextCursor" @click="deletedCursor = deleted.data.value.nextCursor ?? undefined">下一页删除记录</NButton>
+        <NButton v-if="deletedCursor" @click="deletedCursor = undefined">返回第一页删除记录</NButton>
+      </section>
       <nav aria-label="文件目录"><NButton @click="openDirectory('')">根目录</NButton><template v-for="(part, index) in parent.split('/').filter(Boolean)" :key="index"><span aria-hidden="true">／</span><NButton @click="openDirectory(parent.split('/').slice(0, index + 1).join('/'))">{{ part }}</NButton></template></nav>
       <p v-if="query.isError.value" role="alert">文件列表暂不可用，请检查连接和权限。<NButton @click="query.refetch()">重新读取</NButton></p>
       <p v-else-if="query.isPending.value" role="status">正在读取文件…</p>
@@ -170,8 +213,15 @@ function readOriginalState() { if (pending.value?.uploadId) void upload.refetch(
         <li v-for="item in query.data.value?.items ?? []" :key="item.id">
           <div><NButton v-if="item.kind === 'DIRECTORY'" @click="openDirectory(item.path)">{{ item.name }}／</NButton><strong v-else>{{ item.name }}</strong><p>{{ item.kind === 'DIRECTORY' ? '目录' : item.bytes === null ? '尚未封存' : `${item.collectionState !== 'CONFIRMED' ? '上次封存版本 ' : ''}${bytes(item.bytes)}` }} · {{ item.collectionState === 'CONFIRMED' ? '已确认版本' : '存在未采集内容或待核对状态' }}</p></div>
           <div v-if="item.kind === 'FILE' && item.versionId" class="file-actions"><NButton :disabled="item.bytes === null || item.bytes > MAX_PREVIEW_BYTES" @click="edit(item)">编辑文本</NButton><NButton @click="showPreview(item)">{{ item.collectionState === 'CONFIRMED' ? '只读预览' : '预览上次封存版本' }}</NButton><a :href="downloadHref(item)" download>下载已封存版本</a><NButton :disabled="busy || Boolean(pending) || item.collectionState !== 'CONFIRMED'" @click="replace(item)">替换此文件</NButton></div>
+          <div class="file-actions">
+            <NButton v-if="item.kind === 'FILE' && item.versionId" :disabled="Boolean(editing)" @click="manage(item, 'HISTORY')">历史版本</NButton>
+            <NButton :disabled="Boolean(editing) || item.collectionState !== 'CONFIRMED'" @click="manage(item, 'MOVE')">移动／重命名</NButton>
+            <NButton :disabled="Boolean(editing) || item.collectionState !== 'CONFIRMED'" @click="manage(item, 'DELETE')">删除工作副本</NButton>
+          </div>
         </li>
       </ul>
+      <FileLifecyclePanel v-if="lifecycle" :key="`${userId}:${spaceId}:${workspaceId}:${lifecycle.file.id}:${lifecycle.initial}`" :file="lifecycle.file" :initial="lifecycle.initial"
+        :deleted="lifecycle.deleted" :workspace-id="workspaceId" :user-id="userId" :space-id="spaceId" @close="lifecycle = undefined" @changed="lifecycleChanged" />
       <NButton v-if="query.data.value?.nextCursor" @click="cursor = query.data.value.nextCursor ?? undefined">下一页</NButton>
       <NButton v-if="cursor" @click="cursor = undefined">返回第一页</NButton>
       <form class="file-upload" @submit.prevent="submit">
@@ -190,7 +240,7 @@ function readOriginalState() { if (pending.value?.uploadId) void upload.refetch(
       <p v-if="error" role="alert">{{ error }}</p>
       <section v-if="preview !== undefined" aria-label="只读文本预览"><h4>{{ previewName }} · 只读{{ previewHistorical ? ' · 上次封存版本，当前内容待采集' : '' }}</h4><NButton @click="preview = undefined">关闭预览</NButton><pre tabindex="0">{{ preview }}</pre></section>
       <FileEditor v-if="editing" :key="`${userId}:${spaceId}:${workspaceId}:${editing.id}`" :file="editing" :user-id="userId" :space-id="spaceId" :workspace-id="workspaceId" @close="editing = undefined" @saved="client.invalidateQueries({ queryKey: ['workspace-files'] })" />
-      <p>文本可编辑并保存版本；移动、删除及历史恢复尚未开放。执行环境释放后文件仍保留。</p>
+      <p>文本可编辑并保存版本；移动保留文件身份，删除保留历史，恢复生成新版本。执行环境释放后文件仍保留。</p>
     </template>
   </section>
 </template>

@@ -24,6 +24,12 @@ public final class FileExecution implements AutoCloseable {
         try {
             if(!accepting.get()){block(command);return;}
             repository.beforeCall(command);
+            if("RESTORE_TREE".equals(command.operation().kind())) {
+                for(var target:repository.treeFiles(command)) {
+                    if(!"FILE".equals(target.kind()))continue;
+                    assets.copy(target.sourceObjectKey(),target.objectKey(),target.sizeBytes(),target.sha256(),()->repository.guard(command));
+                }
+            }
             Receipt receipt=null;
             try{receipt="CAPTURE".equals(command.operation().kind())?
                 runner.captureFile(new FileCaptureData.Command(FileCaptureData.PROTOCOL,command,repository.captureTarget(command))):runner.applyFile(command);}

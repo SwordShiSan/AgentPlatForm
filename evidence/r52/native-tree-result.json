@@ -1,0 +1,8 @@
+{
+  "status": "PASS",
+  "root": "/srv/agentplatform/acceptance/r44-r52-20261029063407",
+  "supplierCalls": 0,
+  "files": 2,
+  "emptyDirectory": true,
+  "scope": "actual XFS directory move/delete isolation/cleanup/new-version streamed restore through PG/MQ/S3/signed runner; stable logical IDs/new bytes and zero-byte file hashes"
+}

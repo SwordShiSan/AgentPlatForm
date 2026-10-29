@@ -2,8 +2,13 @@
 from pathlib import Path
 import argparse,hashlib,http.cookiejar,json,subprocess,time,urllib.error,urllib.request,uuid
 ROOT=Path(__file__).resolve().parents[2];DATA=ROOT/'.cache/r51-local';BASE='http://127.0.0.1:18151'
+STAGE='r51'
+def configure(stage):
+ global DATA,BASE,STAGE
+ assert stage in ['r51','r52'];STAGE=stage;DATA=ROOT/('.cache/'+stage+'-local');BASE='http://127.0.0.1:'+('18152' if stage=='r52' else '18151')
 class Client:
- def __init__(self,name='r51_admin'):
+ def __init__(self,name=None):
+  name=name or STAGE+'_admin'
   self.jar=http.cookiejar.CookieJar();self.http=urllib.request.build_opener(urllib.request.ProxyHandler({}),urllib.request.HTTPCookieProcessor(self.jar));self.space=None;self.csrf=None
   token=self.request('GET','/api/v1/auth/csrf')[1]['csrfToken'];self.csrf=token
   self.request('POST','/api/v1/auth/login',{'username':name,'password':(DATA/'native/accounts'/(name+'.password')).read_text()})

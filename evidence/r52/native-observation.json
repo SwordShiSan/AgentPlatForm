@@ -1,0 +1,233 @@
+{
+  "status": "PASS",
+  "root": "/srv/agentplatform/acceptance/r44-r52-20261029063407",
+  "seconds": 181.011,
+  "serialRounds": 23,
+  "samples": [
+    {
+      "time": 1793257757.0187113,
+      "MemAvailable": 1501011968,
+      "SwapFree": 1945640960,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5667876864,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257762.011012,
+      "MemAvailable": 1505878016,
+      "SwapFree": 1945649152,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5667282944,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257769.5375,
+      "MemAvailable": 1488015360,
+      "SwapFree": 1945653248,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5667217408,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257777.546835,
+      "MemAvailable": 1488998400,
+      "SwapFree": 1945653248,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5667119104,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257785.1232371,
+      "MemAvailable": 1474564096,
+      "SwapFree": 1945653248,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5666013184,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257794.0133245,
+      "MemAvailable": 1495785472,
+      "SwapFree": 1945657344,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5651070976,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257801.8059087,
+      "MemAvailable": 1514569728,
+      "SwapFree": 1945657344,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5650685952,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257810.6862311,
+      "MemAvailable": 1473531904,
+      "SwapFree": 1945665536,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5650718720,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257818.3827813,
+      "MemAvailable": 1485664256,
+      "SwapFree": 1945665536,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5650644992,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257826.193743,
+      "MemAvailable": 1493606400,
+      "SwapFree": 1945673728,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5650587648,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257833.6099036,
+      "MemAvailable": 1483882496,
+      "SwapFree": 1945677824,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5650673664,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257841.3225513,
+      "MemAvailable": 1480704000,
+      "SwapFree": 1945677824,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5648527360,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257848.9040875,
+      "MemAvailable": 1477136384,
+      "SwapFree": 1945681920,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5648560128,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257857.7126186,
+      "MemAvailable": 1483571200,
+      "SwapFree": 1945681920,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5652332544,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257865.4055898,
+      "MemAvailable": 1439563776,
+      "SwapFree": 1945681920,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5652377600,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257873.213141,
+      "MemAvailable": 1457754112,
+      "SwapFree": 1945690112,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5648097280,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257881.0249012,
+      "MemAvailable": 1464741888,
+      "SwapFree": 1945690112,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5648023552,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257888.4455054,
+      "MemAvailable": 1466449920,
+      "SwapFree": 1945690112,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5647945728,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257896.224226,
+      "MemAvailable": 1469849600,
+      "SwapFree": 1945690112,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5647949824,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257903.7373734,
+      "MemAvailable": 1465868288,
+      "SwapFree": 1945694208,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5647945728,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257911.1674771,
+      "MemAvailable": 1482919936,
+      "SwapFree": 1945698304,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5647900672,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257919.963438,
+      "MemAvailable": 1454653440,
+      "SwapFree": 1945714688,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5647761408,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257927.866378,
+      "MemAvailable": 1474355200,
+      "SwapFree": 1945714688,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5647753216,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    },
+    {
+      "time": 1793257935.7345204,
+      "MemAvailable": 1480163328,
+      "SwapFree": 1945714688,
+      "SwapTotal": 2147479552,
+      "rootFreeBytes": 5647745024,
+      "requiredCount": 11,
+      "capSum": 2281701376
+    }
+  ],
+  "lastFileId": "01a1867d-d9c3-7d99-a316-fca7a425fb2d",
+  "lastVersionId": "01a18680-80e0-74f0-a4eb-7e7ba410969b",
+  "lastSha256": "3aeb4b38f5a181104db60e62a5ce5cb33f1626cb38f89b41e3aa555527bf3547",
+  "final": {
+    "supplierCalls": 0,
+    "pendingFileFacts": 0,
+    "fileVersions": 36
+  },
+  "scope": "same frozen gateway/backend; serial real create/replace/download and sampled resources; no new gVisor isolation matrix or capacity claim"
+}

@@ -23,7 +23,7 @@ public final class FileRules {
             throw new FileFailure(400, "INVALID_FILE_PATH");
         for (String part : result.split("/", -1))
             if (part.isEmpty() || part.equals(".") || part.equals("..") || part.getBytes(StandardCharsets.UTF_8).length > 255
-                    || part.startsWith(".ap-upload-")) throw new FileFailure(400, "INVALID_FILE_PATH");
+                    || part.startsWith(".ap-upload-") || part.equals(".ap-file-operations")) throw new FileFailure(400, "INVALID_FILE_PATH");
         return result;
     }
     public static UUID id(String value) {

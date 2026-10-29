@@ -1,10 +1,12 @@
 """One180second functional/resource observation of the final R51 candidate; no model calls."""
 from pathlib import Path
-import importlib.util,json,subprocess,time,hashlib,sys
-ROOT=Path(__file__).resolve().parents[2];DATA=ROOT/'.cache/r51-local'
+import argparse,importlib.util,json,subprocess,time,hashlib,sys
+parser=argparse.ArgumentParser();parser.add_argument('--stage',choices=['r51','r52'],default='r51');args=parser.parse_args();STAGE=args.stage
+ROOT=Path(__file__).resolve().parents[2];DATA=ROOT/('.cache/'+STAGE+'-local')
 def load(name,file):
  s=importlib.util.spec_from_file_location(name,ROOT/'deploy/scripts'/file);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);return m
 api=load('file_api_acceptance','files-native-api.py');native=load('native_fixture','files-native-fixture.py')
+api.configure(STAGE);native.configure(STAGE)
 plan=json.loads((DATA/'native-plan.json').read_text());ids=json.loads((DATA/'native-file-identities.json').read_text())
 def sample():
  code='''from pathlib import Path
@@ -18,7 +20,7 @@ def main():
  admission='from pathlib import Path\nimport json,time\nr=Path('+repr(plan['root'])+')\nready=json.loads((r/"reports/ready.json").read_text());remaining=900-(time.time()-ready["time"]);assert remaining>=240,"Observation requires full180seconds plus60seconds closure margin before any write"\nprint(int(remaining))\n'
  remaining=int(native.remote(admission));assert remaining>=240
  client=api.Client();started=time.monotonic();samples=[sample()];count=0;base=None
- name='observe-r51-'+str(time.time_ns())+'.txt'
+ name='observe-'+STAGE+'-'+str(time.time_ns())+'.txt'
  while True:
   content=('R51 observation '+str(count)+' 中文😀\r\n').encode('utf-8')
   upload,current,_=api.upload(client,ids['workspaceId'],name,content,base)
@@ -37,9 +39,9 @@ for _ in range(20):
 assert pending==0
 assert sql('SELECT count(*) FROM pf.model_call;')=='0'
 print(json.dumps({'supplierCalls':0,'pendingFileFacts':pending,'fileVersions':int(sql('SELECT count(*) FROM pf.file_version;'))}))
-'''.replace('ROOT',repr(plan['root']))
+'''.replace('ROOT',repr(plan['root'])).replace('agentplatform-r51-local','agentplatform-'+STAGE+'-local')
  result={'status':'PASS','root':plan['root'],'seconds':round(time.monotonic()-started,3),'serialRounds':count,'samples':samples,'lastFileId':base['id'],'lastVersionId':base['versionId'],'lastSha256':base['sha256'],'final':json.loads(native.remote(final)),'scope':'same frozen gateway/backend; serial real create/replace/download and sampled resources; no new gVisor isolation matrix or capacity claim'}
  (DATA/'native-observation.json').write_text(json.dumps(result,indent=2));acceptance={'status':'PASS','root':plan['root'],'api':str(DATA/'native-api-result.json'),'browser':str(DATA/'native-browser-result.json'),'observation':str(DATA/'native-observation.json'),'supplierCalls':0};(DATA/'native-acceptance.json').write_text(json.dumps(acceptance,indent=2))
- subprocess.run([sys.executable,str(ROOT/'deploy/scripts/files-local.py'),'stop','--native','--passed'],check=True)
+ subprocess.run([sys.executable,str(ROOT/'deploy/scripts/files-local.py'),'stop','--native','--passed','--stage',STAGE],check=True)
  print(json.dumps({'status':result['status'],'seconds':result['seconds'],'rounds':count,'minMemAvailableMiB':min(x['MemAvailable'] for x in samples)//1024**2,'supplierCalls':0}))
 if __name__=='__main__':main()

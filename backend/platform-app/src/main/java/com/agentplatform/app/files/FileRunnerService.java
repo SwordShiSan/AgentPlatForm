@@ -64,6 +64,16 @@ public final class FileRunnerService implements FileRunnerApi {
             if(!"CAPTURE".equals(command.operation().kind())||command.upload()!=null)throw new FileFailure(400,"INVALID_FILE_COMMAND");
             return;
         }
+        if(command.mutation()!=null) {
+            var m=command.mutation();
+            boolean restoring="RESTORE_FILE".equals(operationKind(command));
+            if(!java.util.Set.of("MOVE","DELETE","DELETE_CLEANUP","RESTORE_FILE","RESTORE_TREE").contains(operationKind(command))||!operationKind(command).equals(m.kind())||(restoring?command.upload()==null:command.upload()!=null)
+                    ||!RunnerSignatures.sha256(m.manifestJson().getBytes(java.nio.charset.StandardCharsets.UTF_8)).equals(m.manifestHash()))
+                throw new FileFailure(400,"INVALID_FILE_COMMAND");
+            FileRules.path(m.sourcePath(),false);if("MOVE".equals(m.kind())||restoring||"RESTORE_TREE".equals(m.kind()))FileRules.path(m.targetPath(),false);
+            if(restoring){FileRules.sha256(command.upload().sha256());if(command.upload().sizeBytes()<0||command.upload().sizeBytes()>FileRules.MAX_UPLOAD_BYTES)throw new FileFailure(400,"INVALID_FILE_COMMAND");}
+            if("DELETE_CLEANUP".equals(m.kind())&&m.parentOperationId()==null)throw new FileFailure(400,"INVALID_FILE_COMMAND");return;
+        }
         if("SCAN".equals(command.operation().kind())) {
             if(command.upload()!=null||command.operation().scanEpoch()==null)throw new FileFailure(400,"INVALID_FILE_COMMAND");
             FileRules.path(command.operation().scanParent(),true);return;
@@ -72,6 +82,7 @@ public final class FileRunnerService implements FileRunnerApi {
         FileRules.path(command.upload().relativePath(),false);FileRules.sha256(command.upload().sha256());
         if(command.upload().sizeBytes()<0||command.upload().sizeBytes()>FileRules.MAX_UPLOAD_BYTES)throw new FileFailure(400,"INVALID_FILE_COMMAND");
     }
+    private static String operationKind(Command command){return command.operation().kind();}
     private Receipt persistKnown(Command command,FileRuntime.Result result) {
         try {
             repository.recordResult(command,instance.id(),result);completed.remove(command.operation().commandId());var receipt=repository.receipt(command);retire(command,receipt);return receipt;
@@ -109,11 +120,12 @@ public final class FileRunnerService implements FileRunnerApi {
     }
     @Override public SignedResult operate(String token,byte[] body) {
         signatures.authenticate(token);
-        if(body==null||body.length>65536)throw new FileFailure(413,"FILE_COMMAND_TOO_LARGE");
+        if(body==null||body.length>8388608)throw new FileFailure(413,"FILE_COMMAND_TOO_LARGE");
         Command command;FileCaptureData.Command capture=null;
         try{if(captureMode){capture=JSON.readValue(body,FileCaptureData.Command.class);command=capture.file();}else command=JSON.readValue(body,Command.class);}
         catch(RuntimeException invalid){throw new FileFailure(400,"INVALID_FILE_COMMAND");}
         validate(command);signatures.verify(token,binding(command,"POST",path),body);
+        if(command.mutation()==null&&body.length>65536)throw new FileFailure(413,"FILE_COMMAND_TOO_LARGE");
         var operation=command.operation();
         if(!command.equals(repository.lookup(operation.spaceId(),operation.workspaceId(),operation.id())))throw new FileFailure(409,"FILE_COMMAND_CONFLICT");
         if(captureMode&&!repository.captureTarget(command).equals(capture.target()))throw new FileFailure(409,"FILE_COMMAND_CONFLICT");
@@ -123,11 +135,19 @@ public final class FileRunnerService implements FileRunnerApi {
         if(!running.add(operation.commandId()))throw new FileFailure(409,"FILE_COMMAND_ALREADY_RUNNING");
         try {
             repository.guard(command,instance.id());
+            if("RESTORE_TREE".equals(operation.kind())) {
+                var id=command.operation().commandId();unconfirmedTransports.add(id);
+                try(var content=new TreeAssetInputStream(repository.treeFiles(command,instance.id()),assets,AssetStore.treeTransferKey(id),()->repository.guard(command,instance.id()))) {
+                    var result=runtime.apply(command,content,authority(command));completed.put(id,result);
+                }
+                unconfirmedTransports.remove(id);
+                return signed(command,persistKnown(command,completed.get(id)),path);
+            }
             if(captureMode) {
                 var result=executeCapture(command);completed.put(operation.commandId(),result);
                 return signed(command,persistKnown(command,result),path);
             }
-            if("SCAN".equals(operation.kind())) {
+            if("SCAN".equals(operation.kind())||command.mutation()!=null&&!"RESTORE_FILE".equals(operation.kind())) {
                 var result=runtime.apply(command,new java.io.ByteArrayInputStream(new byte[0]),authority(command));completed.put(operation.commandId(),result);
                 return signed(command,persistKnown(command,result),path);
             }

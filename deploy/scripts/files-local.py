@@ -39,9 +39,13 @@ def main():
     parser.add_argument('--native',action='store_true',help='Use the explicitly approved isolated Linux maintenance window; restore R4 on stop')
     parser.add_argument('--passed',action='store_true',help='Finish only with a matching protected PASS acceptance receipt')
     parser.add_argument('--resume',action='store_true',help='Archive a failed, fully restored native attempt and resume the same isolated fixture')
+    parser.add_argument('--stage', choices=['r51', 'r52'], default='r51')
     args = parser.parse_args()
+    global DATA, PROJECT
+    DATA = ROOT / ('.cache/' + args.stage + '-local')
+    PROJECT = 'agentplatform-' + args.stage + '-local'
     if args.native:
-        native(args.action,args.passed,args.resume);return
+        native(args.action,args.passed,args.resume,args.stage);return
     if args.action == 'build':
         node = ROOT / '.tools/node-v22.23.3-win-x64/node.exe'
         env = dict(os.environ, VITE_CHAT_ENABLED='true', VITE_WORKSPACE_ENABLED='true', VITE_WORKSPACE_FILES_ENABLED='true', VITE_PLAN_ENABLED='true', VITE_WORKSPACE_TOOLS_ENABLED='true')
@@ -76,14 +80,15 @@ def main():
     print(json.dumps(record))
     if args.action == 'start' and not ready: raise RuntimeError('Required services not ready; do not repeat startup blindly')
 
-def native(action,passed=False,resume=False):
+def native(action,passed=False,resume=False,stage='r51'):
     spec=importlib.util.spec_from_file_location('native_fixture',ROOT/'deploy/scripts/files-native-fixture.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+    m.configure(stage)
     DATA.mkdir(parents=True,exist_ok=True)
     if action in ['build','prepare']:
         if action=='prepare' and (DATA/'native-plan.json').exists():
             print('Existing native operation retained; use status/start, never prepare a duplicate.');return
         getattr(m,action)();return
-    plan=json.loads((DATA/'native-plan.json').read_text());root=plan['root'];assert root.startswith('/srv/agentplatform/acceptance/r44-r51-')
+    plan=json.loads((DATA/'native-plan.json').read_text());root=plan['root'];assert root.startswith('/srv/agentplatform/acceptance/r44-'+stage+'-')
     prefix='from pathlib import Path\nimport json,subprocess,time,os\nr=Path('+repr(root)+')\n'
     if action=='start':
         if resume:

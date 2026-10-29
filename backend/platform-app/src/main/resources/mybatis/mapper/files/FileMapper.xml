@@ -1,6 +1,129 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.agentplatform.infrastructure.dao.files.FileMapper">
+    <select id="treeFiles" resultType="com.agentplatform.domain.files.FileMutationData$TreeFile">
+        SELECT operation_id,space_id,workspace_id,file_id,kind,source_path,target_path,expected_revision,parent_version_id,source_version_id,
+        version_id,asset_id,object_key,source_object_key,size_bytes,sha256 FROM pf.file_tree_restore_item WHERE operation_id=#{operation} ORDER BY source_path COLLATE "C"
+    </select>
+    <select id="treeCurrent" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM pf.file_mutation_intent m WHERE m.operation_id=#{operation} AND m.kind='RESTORE_TREE'
+        AND m.entry_count=(SELECT count(*) FROM pf.file_tree_restore_item i JOIN pf.file_entry f ON f.id=i.file_id AND f.space_id=i.space_id AND f.workspace_id=i.workspace_id
+          WHERE i.operation_id=m.operation_id AND f.deleted_at IS NOT NULL AND f.deletion_operation_id=m.source_deletion_operation_id
+          AND f.revision=i.expected_revision AND f.relative_path=i.source_path AND f.current_version_id IS NOT DISTINCT FROM i.parent_version_id)
+        AND NOT EXISTS(SELECT 1 FROM pf.file_entry occupied WHERE occupied.space_id=m.space_id AND occupied.workspace_id=m.workspace_id AND occupied.deleted_at IS NULL
+            AND(occupied.relative_path=m.target_path OR left(occupied.relative_path,length(m.target_path)+1)=m.target_path||'/'))
+        AND(m.target_parent_id IS NULL OR EXISTS(SELECT 1 FROM pf.file_entry p WHERE p.id=m.target_parent_id AND p.space_id=m.space_id AND p.workspace_id=m.workspace_id
+            AND p.deleted_at IS NULL AND p.revision=m.target_parent_revision AND p.kind='DIRECTORY')))
+    </select>
+    <insert id="treeVersions">
+        INSERT INTO pf.file_version(id,space_id,workspace_id,file_id,parent_version_id,asset_id,operation_id,sha256,size_bytes,actor_id)
+        SELECT version_id,space_id,workspace_id,file_id,parent_version_id,asset_id,operation_id,sha256,size_bytes,#{command.operation.actorId}
+        FROM pf.file_tree_restore_item WHERE operation_id=#{command.operation.id} AND kind='FILE'
+    </insert>
+    <update id="treeEntries">
+        UPDATE pf.file_entry f SET relative_path=i.target_path,parent_path=regexp_replace(i.target_path,'(^|/)[^/]+$',''),name=regexp_replace(i.target_path,'^.*/',''),
+        current_version_id=i.version_id,collection_state='CONFIRMED',observed_bytes=i.size_bytes,observed_sha256=i.sha256,
+        deleted_at=NULL,deletion_operation_id=NULL,retain_until=NULL,revision=f.revision+1 FROM pf.file_tree_restore_item i
+        WHERE i.operation_id=#{command.operation.id} AND f.id=i.file_id AND f.space_id=i.space_id AND f.workspace_id=i.workspace_id AND f.deleted_at IS NOT NULL AND f.revision=i.expected_revision
+    </update>
+    <update id="treeAssets">
+        UPDATE pf.asset_object a SET status='AVAILABLE',revision=a.revision+1 FROM pf.file_tree_restore_item i
+        WHERE i.operation_id=#{command.operation.id} AND i.kind='FILE' AND a.id=i.asset_id AND a.space_id=i.space_id AND a.version_id=i.version_id
+        AND a.status='STAGING' AND a.sha256=i.sha256 AND a.size_bytes=i.size_bytes
+    </update>
+    <insert id="treeReferences">INSERT INTO pf.asset_reference(space_id,asset_id,file_version_id) SELECT space_id,asset_id,version_id FROM pf.file_tree_restore_item WHERE operation_id=#{command.operation.id} AND kind='FILE'</insert>
+    <insert id="treeOrigins">INSERT INTO pf.file_version_origin(space_id,workspace_id,file_id,version_id,source_version_id,restore_operation_id)
+        SELECT space_id,workspace_id,file_id,version_id,source_version_id,operation_id FROM pf.file_tree_restore_item WHERE operation_id=#{command.operation.id} AND kind='FILE'</insert>
+    <update id="settleTree">UPDATE pf.space_storage s SET reserved_bytes=s.reserved_bytes-r.bytes,committed_bytes=s.committed_bytes+r.bytes,version=s.version+1
+        FROM pf.file_tree_reservation r WHERE r.operation_id=#{operation} AND r.space_id=s.space_id AND r.status='RESERVED' AND s.reserved_bytes&gt;=r.bytes</update>
+    <update id="settleTreeReservation">UPDATE pf.file_tree_reservation SET status='SETTLED',revision=revision+1 WHERE operation_id=#{operation} AND status='RESERVED'</update>
+    <update id="refundTree">UPDATE pf.space_storage s SET reserved_bytes=s.reserved_bytes-r.bytes,version=s.version+1
+        FROM pf.file_tree_reservation r WHERE r.operation_id=#{operation} AND r.space_id=s.space_id AND r.status='RESERVED' AND s.reserved_bytes&gt;=r.bytes</update>
+    <update id="releaseTreeReservation">UPDATE pf.file_tree_reservation SET status='RELEASED',revision=revision+1 WHERE operation_id=#{operation} AND status='RESERVED'</update>
+    <update id="tombstoneTreeAssets">UPDATE pf.asset_object a SET status='TOMBSTONED',revision=a.revision+1 FROM pf.file_tree_restore_item i WHERE i.operation_id=#{operation} AND a.id=i.asset_id AND a.space_id=i.space_id AND a.status='STAGING'</update>
+    <select id="restore" resultType="com.agentplatform.domain.files.FileMutationData$Restore">
+        SELECT upload_id,operation_id,space_id,workspace_id,file_id,source_version_id,source_path,source_missing,manifest_json,manifest_hash,target_parent_id,target_parent_revision FROM pf.file_restore_upload WHERE upload_id=#{upload}
+    </select>
+    <select id="restoreCurrent" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM pf.file_restore_upload r JOIN pf.upload_session u ON u.id=r.upload_id
+        JOIN pf.file_entry f ON f.id=r.file_id AND f.space_id=r.space_id AND f.workspace_id=r.workspace_id
+        WHERE r.upload_id=#{upload} AND f.revision=u.expected_revision AND f.current_version_id=u.base_version_id
+        AND f.relative_path=r.source_path AND (r.source_missing=(f.deleted_at IS NOT NULL OR f.collection_state='MISSING'))
+        AND(r.source_missing OR f.collection_state='CONFIRMED')
+        AND NOT EXISTS(SELECT 1 FROM pf.file_entry occupied WHERE occupied.space_id=r.space_id AND occupied.workspace_id=r.workspace_id
+            AND occupied.deleted_at IS NULL AND occupied.relative_path=u.relative_path AND occupied.id&lt;&gt;r.file_id)
+        AND(r.target_parent_id IS NULL OR EXISTS(SELECT 1 FROM pf.file_entry p WHERE p.id=r.target_parent_id AND p.deleted_at IS NULL
+            AND p.revision=r.target_parent_revision AND p.space_id=r.space_id AND p.workspace_id=r.workspace_id AND p.kind='DIRECTORY')))
+    </select>
+    <insert id="insertRestoreIntent">
+        INSERT INTO pf.file_mutation_intent(operation_id,space_id,workspace_id,actor_id,request_id,request_hash,kind,root_file_id,source_path,target_path,
+            expected_revision,manifest_json,manifest_hash,entry_count,source_version_id,target_parent_id,target_parent_revision)
+        SELECT r.operation_id,r.space_id,r.workspace_id,u.actor_id,u.request_id,u.request_hash,'RESTORE_FILE',r.file_id,r.source_path,u.relative_path,
+            u.expected_revision,r.manifest_json,r.manifest_hash,1,r.source_version_id,r.target_parent_id,r.target_parent_revision
+        FROM pf.file_restore_upload r JOIN pf.upload_session u ON u.id=r.upload_id WHERE r.upload_id=#{upload}
+    </insert>
+    <insert id="insertRestoreOrigin">
+        INSERT INTO pf.file_version_origin(space_id,workspace_id,file_id,version_id,source_version_id,restore_operation_id)
+        SELECT r.space_id,r.workspace_id,r.file_id,u.version_id,r.source_version_id,#{operation} FROM pf.file_restore_upload r JOIN pf.upload_session u ON u.id=r.upload_id WHERE r.upload_id=#{upload}
+    </insert>
+    <select id="mutation" resultType="com.agentplatform.domain.files.FileMutationData$Input">
+        SELECT kind,root_file_id,source_path,target_path,manifest_json,manifest_hash,parent_operation_id FROM pf.file_mutation_intent WHERE operation_id=#{operation}
+    </select>
+    <select id="mutationCurrent" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM pf.file_mutation_intent m WHERE m.operation_id=#{operation}
+        AND m.entry_count=(SELECT count(*) FROM pf.file_mutation_item i JOIN pf.file_entry f ON f.space_id=i.space_id AND f.workspace_id=i.workspace_id AND f.id=i.file_id
+            WHERE i.operation_id=m.operation_id AND f.deleted_at IS NULL AND f.revision=i.expected_revision AND f.relative_path=i.source_path
+            AND f.collection_state='CONFIRMED' AND f.current_version_id IS NOT DISTINCT FROM i.version_id)
+        AND(m.kind&lt;&gt;'MOVE' OR NOT EXISTS(SELECT 1 FROM pf.file_entry f WHERE f.space_id=m.space_id AND f.workspace_id=m.workspace_id AND f.deleted_at IS NULL
+            AND(f.relative_path=m.target_path OR left(f.relative_path,length(m.target_path)+1)=m.target_path||'/')))
+        AND(m.target_parent_id IS NULL OR EXISTS(SELECT 1 FROM pf.file_entry p WHERE p.id=m.target_parent_id AND p.space_id=m.space_id AND p.workspace_id=m.workspace_id
+            AND p.deleted_at IS NULL AND p.revision=m.target_parent_revision AND p.kind='DIRECTORY' AND p.collection_state='CONFIRMED')))
+    </select>
+    <update id="applyMove">
+        UPDATE pf.file_entry f SET relative_path=i.target_path,parent_path=regexp_replace(i.target_path,'(^|/)[^/]+$',''),
+        name=regexp_replace(i.target_path,'^.*/',''),revision=f.revision+1
+        FROM pf.file_mutation_item i WHERE i.operation_id=#{command.operation.id} AND i.space_id=f.space_id AND i.workspace_id=f.workspace_id
+        AND i.file_id=f.id AND f.deleted_at IS NULL AND f.relative_path=i.source_path AND f.revision=i.expected_revision
+    </update>
+    <update id="applyDelete">
+        UPDATE pf.file_entry f SET deleted_at=clock_timestamp(),deletion_operation_id=#{command.operation.id},
+        retain_until=clock_timestamp()+interval '30 days',revision=f.revision+1
+        FROM pf.file_mutation_item i WHERE i.operation_id=#{command.operation.id} AND i.space_id=f.space_id AND i.workspace_id=f.workspace_id
+        AND i.file_id=f.id AND f.deleted_at IS NULL AND f.relative_path=i.source_path AND f.revision=i.expected_revision
+    </update>
+    <select id="queueDeleteCleanup" resultType="int" affectData="true" flushCache="true">SELECT pf.queue_file_delete_cleanup(#{parent},#{child},#{command},#{request})</select>
+    <select id="cleanupReady" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM pf.file_mutation_intent c JOIN pf.file_operation p ON p.id=c.parent_operation_id AND p.status='COMMITTED'
+        JOIN pf.file_runner_receipt r ON r.command_id=p.command_id AND r.result_state='MUTATED'
+        WHERE c.operation_id=#{operation} AND c.kind='DELETE_CLEANUP' AND (r.stop_text::jsonb->>'execStopped')::boolean AND (r.stop_text::jsonb->>'callbacksStopped')::boolean)
+    </select>
+    <update id="takeCleanupLease">
+        UPDATE pf.workspace_file_lease SET owner_id=#{owner},fence=#{fence},lease_until=clock_timestamp()+interval '60 seconds',status='ACTIVE',revision=revision+1
+        WHERE operation_id=#{row.id} AND space_id=#{row.spaceId} AND workspace_id=#{row.workspaceId} AND status='BLOCKED' AND fence=#{fence}-1
+    </update>
+    <select id="cleanupOperation" resultType="com.agentplatform.domain.files.FileData$Operation">
+        SELECT <include refid="operationColumns"/> FROM pf.file_operation WHERE id=(SELECT operation_id FROM pf.file_mutation_intent WHERE parent_operation_id=#{parent} AND kind='DELETE_CLEANUP')
+    </select>
+    <select id="readableTask" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.task WHERE id=#{task} AND space_id=#{actor.spaceId} AND creator_id=#{actor.userId})</select>
+    <sql id="artifactColumns">a.id,a.space_id,a.workspace_id,a.task_id,a.operation_id,a.file_id,a.version_id,a.title,a.sha256,a.size_bytes,a.evidence_status</sql>
+    <sql id="artifactJoin">FROM pf.artifact a JOIN pf.task t ON t.space_id=a.space_id AND t.id=a.task_id AND t.creator_id=#{actor.userId}
+        JOIN pf.file_version v ON v.space_id=a.space_id AND v.id=a.version_id AND v.file_id=a.file_id AND v.workspace_id=a.workspace_id AND v.sha256=a.sha256 AND v.size_bytes=a.size_bytes
+        JOIN pf.asset_object b ON b.space_id=a.space_id AND b.id=a.asset_id AND b.status='AVAILABLE' AND b.version_id=v.id AND b.sha256=v.sha256 AND b.size_bytes=v.size_bytes</sql>
+    <select id="artifacts" resultType="com.agentplatform.domain.files.FileData$Artifact">
+        SELECT <include refid="artifactColumns"/> <include refid="artifactJoin"/> WHERE a.space_id=#{actor.spaceId} AND a.task_id=#{task}
+        <if test="after != null">AND a.id&gt;#{after}</if> ORDER BY a.id LIMIT #{limit}
+    </select>
+    <select id="artifact" resultType="com.agentplatform.domain.files.FileData$Artifact">
+        SELECT <include refid="artifactColumns"/> <include refid="artifactJoin"/> WHERE a.space_id=#{actor.spaceId} AND a.id=#{id}
+    </select>
+    <select id="versions" resultType="com.agentplatform.domain.files.FileData$HistoricalVersion">
+        SELECT v.id,v.file_id,v.sha256,v.size_bytes,v.created_at,o.source_version_id
+        FROM pf.file_version v JOIN pf.asset_object a ON a.space_id=v.space_id AND a.id=v.asset_id AND a.status='AVAILABLE'
+        LEFT JOIN pf.file_version_origin o ON o.space_id=v.space_id AND o.version_id=v.id
+        WHERE v.space_id=#{space} AND v.file_id=#{file}
+        <if test="before != null">AND v.id&lt;#{before}</if>
+        ORDER BY v.id DESC LIMIT #{limit}
+    </select>
     <select id="abandonUnclaimed" resultType="boolean" affectData="true" flushCache="true">SELECT pf.workspace_tool_abandon_unclaimed(#{operation})</select>
     <select id="toolParentAllowed" resultType="boolean">SELECT pf.file_tool_parent_allowed(#{upload,jdbcType=OTHER},#{operation,jdbcType=OTHER},#{locks})</select>
     <select id="databaseTime" resultType="java.time.Instant">SELECT clock_timestamp()</select>
@@ -30,10 +153,10 @@
     <update id="transferVerified">UPDATE pf.upload_session SET status='VERIFIED',transfer_owner=NULL,transfer_until=NULL,revision=revision+1 WHERE id=#{id} AND status='UPLOADING' AND transfer_owner=#{owner} AND transfer_until&gt;clock_timestamp()</update>
     <update id="transferUncertain">UPDATE pf.upload_session SET status='VERIFYING',transfer_owner=NULL,transfer_until=NULL,revision=revision+1 WHERE id=#{id} AND status='UPLOADING' AND transfer_owner=#{owner}</update>
     <update id="transferRejected">UPDATE pf.upload_session SET status='CREATED',transfer_owner=NULL,transfer_until=NULL,revision=revision+1 WHERE id=#{id} AND status='UPLOADING' AND transfer_owner=#{owner}</update>
-    <sql id="entryColumns">f.id,f.space_id,f.workspace_id,f.relative_path,f.parent_path,f.name,f.kind,f.current_version_id,f.collection_state,f.revision,v.sha256,v.size_bytes</sql>
+    <sql id="entryColumns">f.id,f.space_id,f.workspace_id,f.relative_path,f.parent_path,f.name,f.kind,f.current_version_id,CASE WHEN f.deleted_at IS NOT NULL THEN 'DELETED' ELSE f.collection_state END AS collection_state,f.revision,v.sha256,v.size_bytes</sql>
     <select id="file" resultType="com.agentplatform.domain.files.FileData$Entry">SELECT <include refid="entryColumns"/> FROM pf.file_entry f LEFT JOIN pf.file_version v ON v.space_id=f.space_id AND v.id=f.current_version_id WHERE f.id=#{id}</select>
-    <select id="path" resultType="com.agentplatform.domain.files.FileData$Entry">SELECT <include refid="entryColumns"/> FROM pf.file_entry f LEFT JOIN pf.file_version v ON v.space_id=f.space_id AND v.id=f.current_version_id WHERE f.space_id=#{space} AND f.workspace_id=#{workspace} AND f.relative_path=#{path}</select>
-    <select id="list" resultType="com.agentplatform.domain.files.FileData$Entry">SELECT <include refid="entryColumns"/> FROM pf.file_entry f LEFT JOIN pf.file_version v ON v.space_id=f.space_id AND v.id=f.current_version_id WHERE f.space_id=#{space} AND f.workspace_id=#{workspace} AND f.parent_path=#{parent}<if test="after!=null"> AND f.relative_path COLLATE "C"&gt;#{after}</if> ORDER BY f.relative_path COLLATE "C" LIMIT #{limit}</select>
+    <select id="path" resultType="com.agentplatform.domain.files.FileData$Entry">SELECT <include refid="entryColumns"/> FROM pf.file_entry f LEFT JOIN pf.file_version v ON v.space_id=f.space_id AND v.id=f.current_version_id WHERE f.space_id=#{space} AND f.workspace_id=#{workspace} AND f.relative_path=#{path} AND f.deleted_at IS NULL</select>
+    <select id="list" resultType="com.agentplatform.domain.files.FileData$Entry">SELECT <include refid="entryColumns"/> FROM pf.file_entry f LEFT JOIN pf.file_version v ON v.space_id=f.space_id AND v.id=f.current_version_id WHERE f.space_id=#{space} AND f.workspace_id=#{workspace} AND f.parent_path=#{parent} AND f.deleted_at IS NULL<if test="after!=null"> AND f.relative_path COLLATE "C"&gt;#{after}</if> ORDER BY f.relative_path COLLATE "C" LIMIT #{limit}</select>
     <select id="version" resultType="com.agentplatform.domain.files.FileData$Version">SELECT v.id,v.space_id,v.workspace_id,v.file_id,v.asset_id,a.object_key,v.sha256,v.size_bytes,a.mime,v.created_at FROM pf.file_version v JOIN pf.asset_object a ON a.space_id=v.space_id AND a.id=v.asset_id AND a.status='AVAILABLE' WHERE v.space_id=#{space} AND v.file_id=#{file} AND v.id=#{version}</select>
     <select id="usage" resultType="com.agentplatform.domain.files.FileData$Usage">SELECT s.object_limit_bytes,s.reserved_bytes,s.committed_bytes,w.quota_bytes AS workspace_quota_bytes,w.quota_inodes AS workspace_quota_inodes,NULL::bigint AS measured_bytes,NULL::bigint AS measured_inodes,NULL::timestamptz AS measured_at FROM pf.workspace w JOIN pf.space_storage s ON s.space_id=w.space_id WHERE w.space_id=#{space} AND w.id=#{workspace}</select>
     <insert id="insertOperation">INSERT INTO pf.file_operation(id,space_id,workspace_id,actor_id,kind,upload_id,command_id,status,helper_image_id,helper_policy_hash,scan_parent,scan_cursor,scan_epoch,scan_stamp) VALUES(#{row.id},#{row.spaceId},#{row.workspaceId},#{row.actorId},#{row.kind},#{row.uploadId},#{row.commandId},'PENDING',#{row.helperImageId},#{row.helperPolicyHash},#{row.scanParent},#{row.scanCursor},#{row.scanEpoch},#{row.scanStamp})</insert>
@@ -61,7 +184,15 @@
     <update id="blockLease">UPDATE pf.workspace_file_lease SET status='BLOCKED' WHERE space_id=#{command.operation.spaceId} AND workspace_id=#{command.operation.workspaceId} AND operation_id=#{command.operation.id} AND owner_id=#{command.operation.ownerId} AND fence=#{command.operation.fence} AND status='ACTIVE'</update>
     <insert id="insertFile">INSERT INTO pf.file_entry(id,space_id,workspace_id,relative_path,parent_path,name,kind) VALUES(#{entry.id},#{entry.spaceId},#{entry.workspaceId},#{entry.relativePath},#{entry.parentPath},#{entry.name},'FILE')</insert>
     <insert id="insertVersion">INSERT INTO pf.file_version(id,space_id,workspace_id,file_id,parent_version_id,asset_id,operation_id,sha256,size_bytes,actor_id) VALUES(#{row.versionId},#{row.spaceId},#{row.workspaceId},#{row.fileId},#{row.baseVersionId},#{row.assetId},#{operation},#{row.sha256},#{row.sizeBytes},#{row.actorId})</insert>
-    <update id="commitFile">UPDATE pf.file_entry SET current_version_id=#{row.versionId},collection_state='CONFIRMED',observed_sha256=#{row.sha256},observed_bytes=#{row.sizeBytes},revision=revision+1 WHERE id=#{row.fileId} AND space_id=#{row.spaceId} AND workspace_id=#{row.workspaceId}<choose><when test="row.mode=='REPLACE'"> AND current_version_id=#{row.baseVersionId} AND revision=#{row.expectedRevision}</when><otherwise> AND current_version_id IS NULL AND revision=1</otherwise></choose></update>
+    <update id="commitFile">
+        UPDATE pf.file_entry SET current_version_id=#{row.versionId},collection_state='CONFIRMED',observed_sha256=#{row.sha256},observed_bytes=#{row.sizeBytes},revision=revision+1,
+        relative_path=CASE WHEN EXISTS(SELECT 1 FROM pf.file_restore_upload WHERE upload_id=#{row.id}) THEN #{row.relativePath} ELSE relative_path END,
+        parent_path=CASE WHEN EXISTS(SELECT 1 FROM pf.file_restore_upload WHERE upload_id=#{row.id}) THEN regexp_replace(#{row.relativePath},'(^|/)[^/]+$','') ELSE parent_path END,
+        name=CASE WHEN EXISTS(SELECT 1 FROM pf.file_restore_upload WHERE upload_id=#{row.id}) THEN regexp_replace(#{row.relativePath},'^.*/','') ELSE name END,
+        deleted_at=NULL,deletion_operation_id=NULL,retain_until=NULL
+        WHERE id=#{row.fileId} AND space_id=#{row.spaceId} AND workspace_id=#{row.workspaceId}
+        <choose><when test="row.mode=='REPLACE'"> AND current_version_id=#{row.baseVersionId} AND revision=#{row.expectedRevision}</when><otherwise> AND current_version_id IS NULL AND revision=1</otherwise></choose>
+    </update>
     <update id="availableAsset">UPDATE pf.asset_object SET status='AVAILABLE',revision=revision+1 WHERE id=#{row.assetId} AND space_id=#{row.spaceId} AND version_id=#{row.versionId} AND sha256=#{row.sha256} AND size_bytes=#{row.sizeBytes} AND status='STAGING'</update>
     <update id="settleReservation">UPDATE pf.object_reservation SET status='COMMITTED',revision=revision+1 WHERE upload_id=#{row.id} AND space_id=#{row.spaceId} AND bytes=#{row.sizeBytes} AND status IN('RESERVED','RECONCILING')</update>
     <insert id="reference">INSERT INTO pf.asset_reference(space_id,asset_id,file_version_id) VALUES(#{row.spaceId},#{row.assetId},#{row.versionId})</insert>
@@ -88,8 +219,8 @@
     <insert id="ensureScanDirectory">INSERT INTO pf.file_scan_directory(space_id,workspace_id,parent_path,epoch) VALUES(#{space},#{workspace},#{parent},#{epoch}) ON CONFLICT DO NOTHING</insert>
     <select id="lockScanDirectory" resultType="com.agentplatform.domain.files.FileData$ScanDirectory">SELECT d.space_id,d.workspace_id,w.actor_id,d.parent_path,d.cursor_path AS cursor,d.epoch,d.directory_stamp AS stamp FROM pf.file_scan_directory d JOIN pf.workspace w ON w.space_id=d.space_id AND w.id=d.workspace_id WHERE d.space_id=#{space} AND d.workspace_id=#{workspace} AND d.parent_path=#{parent} FOR UPDATE OF d</select>
     <select id="unresolvedFileOperation" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.file_operation WHERE workspace_id=#{workspace} AND status IN('PENDING','CLAIMED','RUNNING','UNKNOWN'))</select>
-    <insert id="scanEntry">INSERT INTO pf.file_entry(id,space_id,workspace_id,relative_path,parent_path,name,kind,collection_state,observed_bytes,observed_sha256,last_scan_epoch) VALUES(#{id},#{command.operation.spaceId},#{command.operation.workspaceId},#{entry.path},#{command.operation.scanParent},regexp_replace(#{entry.path},'^.*/',''),#{entry.kind},<choose><when test="entry.kind=='DIRECTORY'">'CONFIRMED'</when><otherwise>'PENDING'</otherwise></choose>,#{entry.bytes},#{entry.sha256},#{command.operation.scanEpoch}) ON CONFLICT(space_id,workspace_id,relative_path) DO UPDATE SET observed_bytes=EXCLUDED.observed_bytes,observed_sha256=EXCLUDED.observed_sha256,last_scan_epoch=EXCLUDED.last_scan_epoch,collection_state=CASE WHEN file_entry.kind&lt;&gt;EXCLUDED.kind THEN 'BLOCKED' WHEN file_entry.kind='DIRECTORY' THEN 'CONFIRMED' WHEN EXISTS(SELECT 1 FROM pf.file_version v WHERE v.space_id=file_entry.space_id AND v.id=file_entry.current_version_id AND v.sha256=EXCLUDED.observed_sha256 AND v.size_bytes=EXCLUDED.observed_bytes) THEN 'CONFIRMED' WHEN file_entry.current_version_id IS NULL THEN 'PENDING' ELSE 'CHANGED' END,revision=file_entry.revision+CASE WHEN file_entry.collection_state IS DISTINCT FROM (CASE WHEN file_entry.kind&lt;&gt;EXCLUDED.kind THEN 'BLOCKED' WHEN file_entry.kind='DIRECTORY' THEN 'CONFIRMED' WHEN EXISTS(SELECT 1 FROM pf.file_version v WHERE v.space_id=file_entry.space_id AND v.id=file_entry.current_version_id AND v.sha256=EXCLUDED.observed_sha256 AND v.size_bytes=EXCLUDED.observed_bytes) THEN 'CONFIRMED' WHEN file_entry.current_version_id IS NULL THEN 'PENDING' ELSE 'CHANGED' END) THEN 1 ELSE 0 END</insert>
-    <update id="missingScanEntries">UPDATE pf.file_entry SET collection_state='CHANGED',observed_bytes=NULL,observed_sha256=NULL,revision=revision+1 WHERE space_id=#{command.operation.spaceId} AND workspace_id=#{command.operation.workspaceId} AND parent_path=#{command.operation.scanParent} AND last_scan_epoch IS DISTINCT FROM #{command.operation.scanEpoch} AND collection_state&lt;&gt;'CHANGED'</update>
+    <insert id="scanEntry">INSERT INTO pf.file_entry(id,space_id,workspace_id,relative_path,parent_path,name,kind,collection_state,observed_bytes,observed_sha256,last_scan_epoch) VALUES(#{id},#{command.operation.spaceId},#{command.operation.workspaceId},#{entry.path},#{command.operation.scanParent},regexp_replace(#{entry.path},'^.*/',''),#{entry.kind},<choose><when test="entry.kind=='DIRECTORY'">'CONFIRMED'</when><otherwise>'PENDING'</otherwise></choose>,#{entry.bytes},#{entry.sha256},#{command.operation.scanEpoch}) ON CONFLICT(space_id,workspace_id,relative_path) WHERE deleted_at IS NULL DO UPDATE SET observed_bytes=EXCLUDED.observed_bytes,observed_sha256=EXCLUDED.observed_sha256,last_scan_epoch=EXCLUDED.last_scan_epoch,collection_state=CASE WHEN file_entry.kind&lt;&gt;EXCLUDED.kind THEN 'BLOCKED' WHEN file_entry.kind='DIRECTORY' THEN 'CONFIRMED' WHEN EXISTS(SELECT 1 FROM pf.file_version v WHERE v.space_id=file_entry.space_id AND v.id=file_entry.current_version_id AND v.sha256=EXCLUDED.observed_sha256 AND v.size_bytes=EXCLUDED.observed_bytes) THEN 'CONFIRMED' WHEN file_entry.current_version_id IS NULL THEN 'PENDING' ELSE 'CHANGED' END,revision=file_entry.revision+CASE WHEN file_entry.collection_state IS DISTINCT FROM (CASE WHEN file_entry.kind&lt;&gt;EXCLUDED.kind THEN 'BLOCKED' WHEN file_entry.kind='DIRECTORY' THEN 'CONFIRMED' WHEN EXISTS(SELECT 1 FROM pf.file_version v WHERE v.space_id=file_entry.space_id AND v.id=file_entry.current_version_id AND v.sha256=EXCLUDED.observed_sha256 AND v.size_bytes=EXCLUDED.observed_bytes) THEN 'CONFIRMED' WHEN file_entry.current_version_id IS NULL THEN 'PENDING' ELSE 'CHANGED' END) THEN 1 ELSE 0 END</insert>
+    <update id="missingScanEntries">UPDATE pf.file_entry SET collection_state='CHANGED',observed_bytes=NULL,observed_sha256=NULL,revision=revision+1 WHERE space_id=#{command.operation.spaceId} AND workspace_id=#{command.operation.workspaceId} AND deleted_at IS NULL AND parent_path=#{command.operation.scanParent} AND last_scan_epoch IS DISTINCT FROM #{command.operation.scanEpoch} AND collection_state&lt;&gt;'CHANGED'</update>
     <update id="advanceScan">UPDATE pf.file_scan_directory SET cursor_path=#{page.next},epoch=#{epoch},directory_stamp=<choose><when test="page.restart or page.next==null">NULL</when><otherwise>#{page.stamp}</otherwise></choose>,last_scanned_at=clock_timestamp() WHERE space_id=#{command.operation.spaceId} AND workspace_id=#{command.operation.workspaceId} AND parent_path=#{command.operation.scanParent} AND epoch=#{command.operation.scanEpoch} AND cursor_path IS NOT DISTINCT FROM #{command.operation.scanCursor}</update>
     <update id="deferScan">UPDATE pf.file_scan_directory SET cursor_path=NULL,epoch=#{epoch},directory_stamp=NULL,last_scanned_at=clock_timestamp() WHERE space_id=#{command.operation.spaceId} AND workspace_id=#{command.operation.workspaceId} AND parent_path=#{command.operation.scanParent} AND epoch=#{command.operation.scanEpoch}</update>
     <sql id="cleanupSafe">u.expires_at&lt;clock_timestamp() AND u.status IN('CREATED','VERIFIED','ABORTED') AND a.status IN('STAGING','TOMBSTONED') AND NOT EXISTS(SELECT 1 FROM pf.asset_reference r WHERE r.space_id=a.space_id AND r.asset_id=a.id) AND(u.operation_id IS NULL OR EXISTS(SELECT 1 FROM pf.file_operation o WHERE o.id=u.operation_id AND o.status='FAILED' AND o.effect_state='CONFIRMED')) AND NOT EXISTS(SELECT 1 FROM pf.file_version v WHERE v.space_id=a.space_id AND v.asset_id=a.id)</sql>

@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "root": "/srv/agentplatform/acceptance/r44-r52-20261029063407",
+  "supplierCalls": 0,
+  "scope": "actual API/PG/MQ/signed runner/XFS/helper/S3 move/delete/cleanup/new identity/history/new restore version/original bytes/permissions",
+  "fileId": "01a18665-6364-7a46-94d4-0469c83caddc",
+  "versionId": "01a18665-c192-77e3-9e1a-06569a2ae2e3",
+  "operations": [
+    "01a18665-8987-726d-835c-53653ab44818",
+    "01a18665-9e85-7a9f-a712-036b9b2d4028",
+    "01a18665-a7b1-7003-9598-36b5ecac5a56",
+    "01a18665-c192-744c-a0fa-45d3d2b872bf"
+  ]
+}

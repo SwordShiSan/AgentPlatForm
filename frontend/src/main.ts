@@ -1,6 +1,7 @@
 import { useChatDrafts } from './features/chat/drafts';
 import { clearEnvironmentRequests } from './features/workspace/environment-requests';
 import { clearEditorDrafts } from './features/workspace/editor-session';
+import { clearMutationRequests } from './features/workspace/file-mutation-requests';
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
@@ -16,6 +17,7 @@ globalThis.addEventListener('platform:session-expired', () => {
   useChatDrafts(pinia).clear();
   clearEnvironmentRequests();
   clearEditorDrafts();
+  clearMutationRequests();
   setCsrf(undefined);
   queryClient.clear();
   if (router.currentRoute.value.meta.requiresAuth) void router.replace('/login');

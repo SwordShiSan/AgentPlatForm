@@ -15,6 +15,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 public final class TransactionalFileRepository implements FileRepository {
     private final FileRepository delegate;
     private final TransactionTemplate transactions;
+    @Override public List<FileMutationData.TreeFile> treeFiles(Command command){return tx(()->delegate.treeFiles(command));}
+    @Override public List<Artifact> artifacts(Actor actor,UUID task,UUID after,int limit){return tx(()->delegate.artifacts(actor,task,after,limit));}
+    @Override public Artifact artifact(Actor actor,UUID id){return tx(()->delegate.artifact(actor,id));}
+    @Override public List<HistoricalVersion> versions(Actor actor,UUID file,UUID before,int limit) {
+        return tx(()->delegate.versions(actor,file,before,limit));
+    }
     @Override public List<FileCaptureData.Target> admitCaptures(Actor actor,UUID operation){return tx(()->delegate.admitCaptures(actor,operation));}
     @Override public FileCaptureData.Target captureTarget(Command command){return tx(()->delegate.captureTarget(command));}
     @Override public FileCaptureData.Descriptor captureDescriptor(Command command){return tx(()->delegate.captureDescriptor(command));}
