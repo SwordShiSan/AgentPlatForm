@@ -1,3 +1,7 @@
+## R5.1 VERIFIED
+
+文本编辑、并发保存、显式冲突比较／另存及会话草稿已通过真实文件API和浏览器验收，经[PR129](https://github.com/SwordShiSan/AgentPlatForm/pull/129)／[PR130](https://github.com/SwordShiSan/AgentPlatForm/pull/130)晋级。**R5完成1/4、未RELEASED；云端仍为原R4。** 无迁移、供应商调用0；验收栈已停止并核验R4恢复。见[验收索引](evidence/r51/acceptance-index.json)和[固定启动说明](deploy/R5.1-LOCAL.md)。R5.2另行Plan/OpenSpec。以下旧状态为历史。
+
 ## R4 已发行
 
 **R4.4 VERIFIED，R4四步VERIFIED、RELEASED。** 生产已上线Plan、原工具审批、工作区文件和shell闭环：[打开平台](http://agentplatform.lailihao.cloud)。生产标签`production-r4-57e1d081e2bb`；一致备份、1818秒生产观察、独立恢复、R3回退及同一R4重启通过。见[发行证据](deploy/r4-release-acceptance.json)、[验收索引](evidence/r44/acceptance-index.json)及[运维说明](deploy/R4-RELEASE.md)。
