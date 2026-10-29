@@ -8,6 +8,15 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class SerialAssetStoreTest {
+    @Test void runnerTreeReadsSeveralObjectsUnderOneReceiptBoundPermit()throws Exception {
+        var delegate=mock(AssetStore.class);var permits=mock(FileTransferPermit.class);var owner=UUID.randomUUID();
+        when(permits.acquire("tree")).thenReturn(owner);
+        when(delegate.open(anyString(),isNull(),isNull())).thenAnswer(c->new AssetStore.Content(new ByteArrayInputStream(new byte[]{7}),1,1));
+        var batch=new SerialAssetStore(delegate,permits,true).readBatch("tree");
+        for(String key:java.util.List.of("one","two"))try(var content=batch.open(key)){assertArrayEquals(new byte[]{7},content.stream().readAllBytes());}
+        batch.close();verify(permits,times(1)).acquire("tree");verify(permits,never()).release(any());
+        assertThrows(FileFailure.class,()->batch.open("late"));
+    }
     @Test void restoreCopyUsesOneGlobalPermitAndClosesBeforeRelease() throws Exception {
         var delegate=mock(AssetStore.class);var permits=mock(FileTransferPermit.class);var owner=UUID.randomUUID();
         when(permits.acquire("new")).thenReturn(owner);var source=spy(new ByteArrayInputStream(new byte[]{1,2,3}));

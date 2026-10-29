@@ -41,6 +41,41 @@ public final class SerialAssetStore implements AssetStore {
             releaseStopped(owner);
         }
     }
+    @Override public ReadBatch readBatch(String key) {
+        var owner=admit(key);
+        return new ReadBatch() {
+            private boolean closed;
+            private final java.util.concurrent.atomic.AtomicInteger readers=new java.util.concurrent.atomic.AtomicInteger();
+            private final AtomicBoolean active=new AtomicBoolean();
+            @Override public synchronized Content open(String object) {
+                if(closed||!active.compareAndSet(false,true))throw new FileFailure(423,"FILE_TRANSFER_BUSY");
+                final Content content;
+                try{content=delegate.open(object,null,null);}catch(RuntimeException failed){active.set(false);throw failed;}
+                var stream=new FilterInputStream(content.stream()) {
+                    private final AtomicBoolean closing=new AtomicBoolean();
+                    private volatile boolean closeComplete;
+                    @Override public int read()throws IOException{byte[] one=new byte[1];return read(one,0,1)==-1?-1:one[0]&255;}
+                    @Override public int read(byte[] bytes,int offset,int length)throws IOException {
+                        readers.incrementAndGet();
+                        try{if(closing.get())throw new IOException("Asset stream closed");return in.read(bytes,offset,length);}
+                        finally{readers.decrementAndGet();}
+                    }
+                    @Override public void close()throws IOException {
+                        if(closing.compareAndSet(false,true)){super.close();closeComplete=true;}
+                        if(!closeComplete||readers.get()!=0)throw new IOException("ASSET_CLOSE_PENDING");
+                        active.set(false);
+                    }
+                };
+                return new Content(stream,content.bytes(),content.totalBytes());
+            }
+            @Override public synchronized void close()throws IOException {
+                if(closed)return;
+                if(active.get()||readers.get()!=0)throw new IOException("ASSET_CLOSE_PENDING");
+                if(!requireRunnerReceipt)releaseStopped(owner);
+                closed=true;
+            }
+        };
+    }
     @Override public Identity inspect(String key) {
         var owner=admit(key);try{return delegate.inspect(key);}finally{releaseStopped(owner);}
     }

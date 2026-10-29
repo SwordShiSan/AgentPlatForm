@@ -61,8 +61,41 @@ def verify(client,ids):
  for path in ['/api/v1/files/'+entry['id']+'/versions','/api/v1/workspaces/'+wid+'/deleted-files','/api/v1/files/'+entry['id']+'/mutation-requests/'+key]:expect_error(lambda p=path:foreign.request('GET',p),404)
  report={'status':'PASS','root':json.loads((DATA/'native-plan.json').read_text())['root'],'supplierCalls':0,'scope':'actual API/PG/MQ/signed runner/XFS/helper/S3 move/delete/cleanup/new identity/history/new restore version/original bytes/permissions','fileId':entry['id'],'versionId':alive['versionId'],'operations':[op['id'],restored['id'],deleted['id'],recovery['id']]}
  (DATA/'native-api-result.json').write_text(json.dumps(report,indent=2));print(json.dumps(report))
+def tree(client,ids):
+ plan=json.loads((DATA/'native-plan.json').read_text());wid=ids['workspaceId']
+ # Fixed fixture directories only. Public mutations still go through the production runner chain.
+ code='''from pathlib import Path
+import os,stat,uuid
+r=Path(ROOT);s=SPACE;w=WORKSPACE
+assert str(uuid.UUID(s))==s and str(uuid.UUID(w))==w
+p=r/'workspaces'/s/w/'work';assert p.is_dir() and not p.is_symlink()
+for relative in ['tree-acceptance','tree-acceptance/empty']:
+ d=p/relative
+ if not d.exists():d.mkdir(mode=0o700);os.chown(d,10001,10001)
+ assert stat.S_ISDIR(d.lstat().st_mode) and d.lstat().st_uid==10001
+print('FIXED_DIRECTORY_FIXTURE_READY')
+'''.replace('ROOT',repr(plan['root'])).replace('SPACE',repr(client.space)).replace('WORKSPACE',repr(wid))
+ native.remote(code)
+ for _ in range(60):
+  rows=client.request('GET','/api/v1/workspaces/'+wid+'/files')[1]['items'];directory=next((r for r in rows if r['path']=='tree-acceptance' and r['collectionState']=='CONFIRMED'),None)
+  if directory:break
+  time.sleep(1)
+ else:raise RuntimeError('Original directory scan not ready')
+ _,one,_=api.upload(client,wid,'tree-acceptance/one.txt','tree 中文😀\n'.encode());_,two,_=api.upload(client,wid,'tree-acceptance/two.txt',b'')
+ frozen=DATA/'native-tree-identities.json';frozen.write_text(json.dumps({'directory':directory,'files':[one,two]},indent=2))
+ moved=request(client,'POST',directory['id']+'/move',{'name':'tree-renamed','targetParentId':None},file(client,directory['id'])['revision']);wait(client,moved)
+ deletion=request(client,'DELETE',directory['id'],revision=file(client,directory['id'])['revision']);wait(client,deletion)
+ tombstone=file(client,directory['id']);op=request(client,'POST',directory['id']+'/restore',{'deletionOperationId':deletion['id'],'name':'tree-restored','targetParentId':None},tombstone['revision']);wait(client,op)
+ assert file(client,directory['id'])['path']=='tree-restored'
+ for before in [one,two]:
+  after=file(client,before['id']);assert after['path'].startswith('tree-restored/') and after['versionId']!=before['versionId']
+  actual=client.request('GET','/api/v1/files/'+after['id']+'/content?versionId='+after['versionId'],binary=True)[1];assert hashlib.sha256(actual).hexdigest()==before['sha256']
+  history=client.request('GET','/api/v1/files/'+after['id']+'/versions')[1]['items'];assert history[0]['sourceVersionId']==before['versionId']
+ result={'status':'PASS','root':plan['root'],'supplierCalls':0,'files':2,'emptyDirectory':True,'scope':'actual XFS directory move/delete isolation/cleanup/new-version streamed restore through PG/MQ/S3/signed runner; stable logical IDs/new bytes and zero-byte file hashes'}
+ (DATA/'native-tree-result.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))
 def main():
- p=argparse.ArgumentParser();p.add_argument('action',choices=['seed','verify']);args=p.parse_args();client=api.Client();ids=seed(client)
+ p=argparse.ArgumentParser();p.add_argument('action',choices=['seed','verify','tree']);args=p.parse_args();client=api.Client();ids=seed(client)
  if args.action=='seed':print('R52_ACTUAL_SEED_PASS')
- else:verify(client,ids)
+ elif args.action=='verify':verify(client,ids)
+ else:tree(client,ids)
 if __name__=='__main__':main()

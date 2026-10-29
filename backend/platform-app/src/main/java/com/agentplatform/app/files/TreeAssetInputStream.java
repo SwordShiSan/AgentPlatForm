@@ -14,14 +14,16 @@ final class TreeAssetInputStream extends InputStream {
     private AssetStore.Content content;
     private InputStream checked;
     private boolean closed;
-    TreeAssetInputStream(List<TreeFile> files,AssetStore assets,Runnable guard) {
-        this.files=files.stream().filter(f->"FILE".equals(f.kind())).toList();this.assets=assets;this.guard=guard;
+    private final String transferKey;
+    private AssetStore.ReadBatch batch;
+    TreeAssetInputStream(List<TreeFile> files,AssetStore assets,String transferKey,Runnable guard) {
+        this.files=files.stream().filter(f->"FILE".equals(f.kind())).toList();this.assets=assets;this.guard=guard;this.transferKey=transferKey;
     }
     private boolean next() throws IOException {
         if(closed)throw new IOException("Restore transport closed");
         if(checked!=null)return true;
         if(index>=files.size())return false;
-        var file=files.get(index);guard.run();content=assets.open(file.objectKey(),null,null);
+        var file=files.get(index);guard.run();if(batch==null)batch=assets.readBatch(transferKey);content=batch.open(file.objectKey());
         if(content.bytes()!=file.sizeBytes()||content.totalBytes()!=file.sizeBytes()) {content.close();content=null;throw new FileFailure(503,"ASSET_IDENTITY_MISMATCH");}
         checked=new AuthorizedAssetStream(content.stream(),file.sizeBytes(),file.sha256(),guard);return true;
     }
@@ -35,5 +37,5 @@ final class TreeAssetInputStream extends InputStream {
         return -1;
     }
     @Override public int read() throws IOException {byte[] one=new byte[1];return read(one,0,1)==-1?-1:one[0]&255;}
-    @Override public void close() throws IOException {if(closed)return;closed=true;if(content!=null)content.close();}
+    @Override public void close() throws IOException {if(closed)return;if(content!=null)content.close();if(batch!=null)batch.close();closed=true;}
 }

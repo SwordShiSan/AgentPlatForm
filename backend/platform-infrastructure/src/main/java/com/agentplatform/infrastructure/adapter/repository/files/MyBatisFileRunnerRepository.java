@@ -215,9 +215,10 @@ public final class MyBatisFileRunnerRepository implements FileRunnerRepository {
         }
         runner.receipt(command,new Receipt(command.operation().commandId(),result.state(),result.resultText(),resultHash,
                 result.stopText(),stopHash,observer,original?null:physical.runnerInstanceId()));
-        if(command.upload()!=null) {
+        if(command.upload()!=null||"RESTORE_TREE".equals(command.operation().kind())) {
             // The stop receipt includes exact helper/exec and callback quiescence. Closing an S3 stream alone is insufficient.
-            String keyHash=RunnerSignatures.sha256(command.upload().objectKey().getBytes(StandardCharsets.UTF_8));
+            String key=command.upload()!=null?command.upload().objectKey():AssetStore.treeTransferKey(command.operation().commandId());
+            String keyHash=RunnerSignatures.sha256(key.getBytes(StandardCharsets.UTF_8));
             var owner=transfers.runnerOwner(physical.runnerInstanceId(),keyHash);
             if(owner!=null)one(transfers.releaseRunner(owner,physical.runnerInstanceId(),keyHash,command.operation().commandId()));
         }

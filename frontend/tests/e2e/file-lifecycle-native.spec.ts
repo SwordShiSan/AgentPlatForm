@@ -13,14 +13,20 @@ test('actual lifecycle UI preserves identities, immutable history and original r
     await page.goto('/login'); await page.getByLabel('账号', { exact: true }).fill('r52_admin');
     await page.getByLabel('密码', { exact: true }).fill(readFileSync(resolve(root, 'native/accounts/r52_admin.password'), 'utf8'));
     await page.getByLabel('密码', { exact: true }).press('Enter'); await expect(page).not.toHaveURL(/\/login$/);
+    const original = await (await context.request.get(`/api/v1/files/${ids.browser.id}`)).json();
+    const movedName = `browser-ui-${Date.now()}.txt`;
     await page.goto(`/app/workspaces/${ids.workspaceId}`);
     const row = (name: string) => page.locator('.file-list > li').filter({ has: page.locator('strong').filter({ hasText: name }) });
-    await row('browser.txt').getByRole('button', { name: '历史版本', exact: true }).click();
+    await row(original.name).getByRole('button', { name: '历史版本', exact: true }).click();
     await page.getByRole('button', { name: '只读查看', exact: true }).first().click();
     await expect(page.getByLabel('历史版本只读内容')).toContainText('browser original');
     await page.getByRole('button', { name: '关闭面板', exact: true }).click();
-    await row('browser.txt').getByRole('button', { name: '移动／重命名', exact: true }).click();
-    await page.getByLabel('名称', { exact: true }).fill('browser-moved.txt');
+    await row(original.name).getByRole('button', { name: '移动／重命名', exact: true }).click();
+    if (await page.getByRole('button', { name: '完成并关闭', exact: true }).isVisible()) {
+      await page.getByRole('button', { name: '完成并关闭', exact: true }).click();
+      await row(original.name).getByRole('button', { name: '移动／重命名', exact: true }).click();
+    }
+    await page.getByLabel('名称', { exact: true }).fill(movedName);
     let submitted = 0;
     await page.route('**/api/v1/files/*/move', async route => {
       if (route.request().method() === 'POST') { submitted++; await route.fetch(); await route.abort('failed'); }
@@ -29,8 +35,9 @@ test('actual lifecycle UI preserves identities, immutable history and original r
     await page.getByRole('button', { name: '确认移动／重命名', exact: true }).click();
     await expect(page.getByText('操作已完成，版本记录已保存。', { exact: true })).toBeVisible({ timeout: 60000 });
     expect(submitted).toBe(1); await page.unrouteAll({ behavior: 'wait' });
-    await page.reload(); await expect(row('browser-moved.txt')).toBeVisible();
-    await row('browser-moved.txt').getByRole('button', { name: '删除工作副本', exact: true }).click();
+    await page.getByRole('button', { name: '完成并关闭', exact: true }).click();
+    await page.reload(); await expect(row(movedName)).toBeVisible();
+    await row(movedName).getByRole('button', { name: '删除工作副本', exact: true }).click();
     await expect(page.getByText('此次影响 1 项（含所选文件或目录）。', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: '确认删除工作副本', exact: true }).click();
     await expect(page.getByText('操作已完成，版本记录已保存。', { exact: true })).toBeVisible({ timeout: 60000 });

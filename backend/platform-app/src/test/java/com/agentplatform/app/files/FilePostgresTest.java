@@ -462,10 +462,16 @@ class FilePostgresTest {
         var publication=files.publications(UUID.randomUUID()).stream().filter(p->p.operationId().equals(operation)).findFirst().orElseThrow();
         var c=files.claim(publication,UUID.randomUUID());files.beforeCall(c);
         var owner=instance();runner.register(owner);runner.accept(c,owner,"e".repeat(64));
+        if("RESTORE_TREE".equals(c.operation().kind())) {
+            var scoped=new TransactionalFileTransferPermit(new MyBatisFileTransferPermit(transferMapper,"RUNNER",owner.id()),transactionBoundary);
+            scoped.acquire(AssetStore.treeTransferKey(c.operation().commandId()));
+        }
         String json=JsonMapper.builder().build().writeValueAsString(Map.of("protocol","file-mutation-v1","operationId",operation,
                 "state","MUTATED","kind",c.mutation().kind(),"manifestHash",c.mutation().manifestHash(),"entries",JsonMapper.builder().build().readTree(c.mutation().manifestJson()).size()));
         runner.recordResult(c,owner.id(),physicalResult(c,owner,"MUTATED",json));files.commitProjection(c,runner.receipt(c));
+        if("RESTORE_TREE".equals(c.operation().kind()))assertEquals(0,countUnchecked("SELECT count(*) FROM pf.file_transfer_slot WHERE owner_id IS NOT NULL"));
     }
+    private long countUnchecked(String sql) {try{return count(sql);}catch(Exception failure){throw new IllegalStateException(failure);}}
     @Test void r52MoveRetainsVersionAndExactRequestIdentity() {
         var entry=committedMetadataFile();UUID request=UUID.randomUUID();
         var caller=new com.agentplatform.api.files.FileApi.Caller(alice.userId().toString(),alice.spaceId().toString());
@@ -527,6 +533,39 @@ class FilePostgresTest {
         var current=files.file(alice,entry.id());assertEquals("folder/file.txt",current.relativePath());assertNotEquals(entry.currentVersionId(),current.currentVersionId());
         assertEquals(16,files.usage(alice,workspace).committedBytes());assertEquals(0,files.usage(alice,workspace).reservedBytes());
         assertEquals(1,count("SELECT count(*) FROM pf.file_version_origin"));assertEquals(0,count("SELECT count(*) FROM pf.tool_operation"));
+    }
+    @Test void r52ArtifactAuthorityUsesCommittedBindingsAndSurvivesTombstones() throws Exception {
+        sql("INSERT INTO pf.execution_slot(id) VALUES(1) ON CONFLICT DO NOTHING");
+        sql("INSERT INTO pf.quota_policy(id,metric,limit_value) VALUES('0199e000-0000-7000-8000-000000000015','TOKENS',1000000),('0199e000-0000-7000-8000-000000000016','COST_MICROS',NULL) ON CONFLICT DO NOTHING");
+        var chat=com.agentplatform.app.chat.ChatPersistenceFixture.create(pool,true);
+        var actor=new com.agentplatform.domain.chat.ChatData.Actor(alice.userId(),alice.spaceId());
+        UUID model=UUID.fromString("0199e000-0000-7000-8000-000000000002");
+        UUID credential=chat.importCredential(new com.agentplatform.infrastructure.chat.CredentialCipher(new byte[32]).encrypt(UUID.randomUUID(),"PLATFORM",null,null,"R52_NO_PROVIDER_FIXTURE"));
+        chat.bind(model,actor,credential,"PLATFORM");
+        var task=chat.firstAuthorized(actor,UUID.randomUUID(),"R52 artifact facts",model,"PLATFORM","fixture",false,workspace,com.agentplatform.types.TaskPermissionData.Mode.FULL).task();
+        var publication=chat.publications(UUID.randomUUID()).stream().filter(p->p.envelope().aggregateId().equals(task.id())).findFirst().orElseThrow();
+        var lease=chat.claim(publication.envelope(),UUID.randomUUID());
+        var call=new com.agentplatform.types.harness.HarnessData.Call("r52-write","workspace_write",Map.of("mode","CREATE","path","artifact.txt","text","666"),false);
+        var turn=chat.beginTurn(lease);var physical=chat.beginCall(lease,false);chat.startCall(lease,physical,false);
+        chat.commitRound(lease,turn,new com.agentplatform.types.harness.HarnessData.Turn(UUID.randomUUID().toString(),1,
+            new com.agentplatform.types.harness.HarnessData.Round("",List.of(call),"tool_calls",10,2)),new com.agentplatform.domain.chat.ExecutionLedger.CallResult(physical,true,"R52_SYNTHETIC_NO_PROVIDER",false));
+        chat.prepareWorkspaceTools(lease,List.of(call),"sha256:"+"a".repeat(64),"b".repeat(64));
+        var service=new WorkspaceFileToolService(chat,files,org.mockito.Mockito.mock(AssetStore.class),transactionBoundary);service.admit(lease,call);
+        var admission=chat.workspaceFileAdmission(lease,call);var upload=files.upload(alice,admission.uploadId());UUID transfer=UUID.randomUUID();
+        files.beginTransfer(alice,upload.id(),transfer);files.transferVerified(alice,upload.id(),transfer);
+        var operation=files.completeUpload(alice,upload.id());chat.bindWorkspaceFileOperation(lease,call,operation.id());
+        var p=files.publications(UUID.randomUUID()).stream().filter(v->v.operationId().equals(operation.id())).findFirst().orElseThrow();
+        var command=files.claim(p,UUID.randomUUID());files.beforeCall(command);var instance=instance();runner.register(instance);runner.accept(command,instance,"e".repeat(64));
+        String result=JsonMapper.builder().build().writeValueAsString(Map.of("protocol","file-stream-v2","operationId",command.operation().id(),"state","APPLIED","bytes",upload.sizeBytes(),"sha256",upload.sha256()));
+        runner.recordResult(command,instance.id(),physicalResult(command,instance,"APPLIED",result));files.commitProjection(command,runner.receipt(command));
+        chat.commitTool(lease,call,service.run(lease,call,()->false));
+        var artifacts=files.artifacts(alice,task.id(),null,10);assertEquals(1,artifacts.size());var artifact=artifacts.getFirst();
+        assertEquals(upload.versionId(),artifact.versionId());assertEquals("NOT_RUN",artifact.evidenceStatus());assertEquals(upload.sha256(),artifact.sha256());
+        assertThrows(FileFailure.class,()->files.artifact(bob,artifact.id()));
+        var current=files.file(alice,upload.fileId());var caller=new com.agentplatform.api.files.FileApi.Caller(alice.userId().toString(),alice.spaceId().toString());
+        var deletion=mutations.delete(caller,current.id().toString(),UUID.randomUUID().toString(),"\""+current.revision()+"\"");
+        commitMutationMetadata(UUID.fromString(deletion.id()));commitMutationMetadata(cleanupFor(UUID.fromString(deletion.id())));
+        assertEquals(artifact,files.artifact(alice,artifact.id()));assertEquals(upload.versionId(),files.version(alice,current.id(),artifact.versionId()).id());
     }
     private FileRuntime.Result notStarted(Command c,String state) {
         var stop=new FileRuntime.Stop(c.operation().commandId(),null,c.operation().helperImageId(),null,null,null,true,true,true,Instant.now());

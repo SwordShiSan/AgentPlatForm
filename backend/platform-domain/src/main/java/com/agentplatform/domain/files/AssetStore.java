@@ -8,6 +8,12 @@ public interface AssetStore extends AutoCloseable {
     record Content(InputStream stream, long bytes, long totalBytes) implements AutoCloseable {
         @Override public void close() throws java.io.IOException { stream.close(); }
     }
+    interface ReadBatch extends AutoCloseable {
+        Content open(String key);
+        @Override void close() throws java.io.IOException;
+    }
+    static String treeTransferKey(java.util.UUID command) {return "file-tree-restore-v1:"+command;}
+    default ReadBatch readBatch(String transferKey) {throw new UnsupportedOperationException("Sequential reads not supported");}
     Identity put(String key, long bytes, String expectedSha256, InputStream content);
     /** One logical bounded transfer; implementations must not acquire two competing global slots. */
     default Identity copy(String source,String target,long bytes,String sha256,Runnable authorize) {

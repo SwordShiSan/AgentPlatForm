@@ -137,7 +137,7 @@ public final class FileRunnerService implements FileRunnerApi {
             repository.guard(command,instance.id());
             if("RESTORE_TREE".equals(operation.kind())) {
                 var id=command.operation().commandId();unconfirmedTransports.add(id);
-                try(var content=new TreeAssetInputStream(repository.treeFiles(command,instance.id()),assets,()->repository.guard(command,instance.id()))) {
+                try(var content=new TreeAssetInputStream(repository.treeFiles(command,instance.id()),assets,AssetStore.treeTransferKey(id),()->repository.guard(command,instance.id()))) {
                     var result=runtime.apply(command,content,authority(command));completed.put(id,result);
                 }
                 unconfirmedTransports.remove(id);
