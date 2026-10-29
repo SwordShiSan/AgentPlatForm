@@ -1,0 +1,28 @@
+# Design
+
+## Baseline and architecture
+Approved Plan2026-10-29; base main cb36080dae67986564cae12731890b821bb94744, phase/r5-file-workbench, step/r5.3-preview-pipeline. Canonical body remains outside Git under 06-AgentScope重构专项. Java21/Boot4.0.8/AgentScope2.0.4, six DDD modules, existing MyBatis, Spring transactions/AMQP, AWS SDK, docker-java and Nimbus remain. Agent/Harness/tool behavior is unchanged.
+
+PreviewJobService coordinates; domain RendererPort and PreviewRepository are pure Java; MyBatis typed Mapper/PO/XML persist; TransactionTemplate provides short boundaries. An app-packaged minimal renderer entrypoint uses JODConverter5.1.1/LibreOffice26.2.6, PDFBox3.0.8, ImageIO/TwelveMonkeys3.13.1 and jsoup1.23.2. PDF.js6.4.299 and all resources ship locally. Pin actual dependencies/binaries/image/config hashes before runtime acceptance; no third-party source fork.
+
+## V20 and ownership
+Add preview job/cache identity(space, real fileVersion, renderer bundle/policy, requested format), attempt(generation/fence/owner/DB lease), independent quota reservation, command/receipt, derived-asset/reference and durable shared heavy slot. Evolve asset category/key checks without fake fileVersion/upload IDs. Existing asset/file rows remain immutable. Preview events use existing durable outbox facts; public UI polls, no new SSE authority.
+
+Create atomically authorizes the source, freezes idempotent request/cache identity and reserves derived capacity; publishes through ap.commands.v1/asset.process to ap.asset.v1 with mandatory correlated confirms/returns. Persistent claim precedes manualACK; concurrency/prefetch1. Lease60seconds, heartbeat10seconds, generation/fence/live authorization at precommit. Retry requires stopped known failure, CAS revision and new attempt; one automatic infrastructure retry maximum. BLOCKED only queries the original command. READY settles/refers once; unknown retains reservation. No DB direct-execution fallback.
+
+Shared heavy gate is acquired before existing sandbox capacity/workspace locks for prepare/wake/shell and renderer; quota locks remain before heavy admission. Preview immutable reads do not take workspace write lease. Exact stop receipts precede removal/release; mere timeout/404/lease expiry is insufficient. Existing active environment may idle-stop normally, not be forcibly evicted. API/worker have no Docker socket.
+
+## Data plane and isolation
+Runner signed command/results bind version, job/attempt, hashes, policy, generation/fence and result revision. Stage source in protected per-attempt host directory, length/hash check, then close the global source transfer before conversion/output upload. Mount only fixed source file read-only. Renderer is fixed non-root runsc/systrap, networknone, rootreadonly, capdropALL/nnp,CPU1/PID128/memory512MiB/tmpfs256MiB(in memory). No workspace/socket/secrets. JOD owns one Office process/task with macro/link updates disabled and hardened profile. Fixed fonts include CJK and common Office substitutions. Stream only expected regular result files from Docker archive with path/type/length guards; exact exec/container/callback termination is required before READY. Host staging is bounded and cleaned only after stopped identity proof.
+
+Limits:100MiB source/output,200pages,500MiB cumulative Office expansion,40MP image,120seconds active. Text and staticHTML source≤2MiB strictUTF8. Macro/encrypted/mismatched/corrupt formats fail with stable codes. NativePDF is validated then references original asset without duplicate charge; actual derivatives use separate reservation and private object reference. Same-space cache only. Derived content never updates working file/content_revision. Revoke stops new access; source move/tombstone does not erase legal version access.
+
+## Public contract/UI
+POST /api/v1/files/{id}/previews {versionId,format:AUTO|PDF|IMAGE|HTML_STATIC}, idempotency required,202.
+GET /api/v1/previews/{id}: {id,fileId,versionId,state,format,mediaType,bytes,sha256,pages,errorCode,retryable,revision,allowedActions}, ETag.
+GET /api/v1/previews/{id}/content: authorized approved MIME; PDF singleRange; original content route remains attachment.
+POST /api/v1/previews/{id}/retry: empty body, If-Match/idempotency/CSRF/Origin,202; missing428/stale412/changed-idempotency409. Creation uses immutable version, not current-file ETag.
+Shared FilePreviewPane in current/history/artifact; metadata only inQuery, UI only inPinia, binary neither. PDF uses PDFDataRangeTransport serialized chunks, disableAutoFetch/disableStream and bounded safeGET423 retry. HTML defaults source; jsoup static output in iframe sandbox without allow-scripts/allow-same-origin, no external resources. Existing session auth, not URL bearer tokens. SVG/legacyOffice download/source only; GIFfirstframe. Poll persistent state; viewer close aborts reads, logout clears viewer/query. R5.4 AI/attachment integration excluded.
+
+## Resource-first implementation and rollout
+First prove realDOCX/XLSX/PPTX/CJK/PDF/image conversion and stopped receipt before full UI. Common2176+renderer-or-sandbox512+runsc128+helper64=2880MiB. Helper is not a substitute renderer allowance. Max2887MiB, host768MiB/root5GiB reserve, no swap expansion. Necessary capability failure triggers measured reallocation then explicit blocker, never runc fallback or skipped format. IndependentR53 fixture, zero supplier calls,180second final observation(300only growth concern). Necessary Linux short window uses watchdog and exactR4 restore; reuse unchangedR4 isolation/recovery evidence. No production deployment/tag. Promote protectedstep→phase→main only after all mandatory gates, then archive and deliver protected evidence/body copies.
