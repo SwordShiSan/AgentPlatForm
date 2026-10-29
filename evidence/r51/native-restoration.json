@@ -1,0 +1,30 @@
+{
+  "window-result": {
+    "status": "PASS",
+    "supplierCalls": 0,
+    "r4Restored": true
+  },
+  "restored": {
+    "status": "PASS",
+    "sameR4ContainersImagesAndPolicies": true,
+    "productionUuidUnchanged": true,
+    "legacyStopped": true,
+    "supplierCalls": 0,
+    "time": 1793247884.7896652
+  },
+  "ready": {
+    "status": "READY",
+    "root": "/srv/agentplatform/acceptance/r44-r51-20261029030435",
+    "project": "agentplatform-r51-local",
+    "time": 1793247493.6679049,
+    "initialStagingSource": "84df61d23a0e617d5cd2371a5e2e7b1b6d3bfb7f",
+    "gatewaySource": "322b3d8008176f774e1b1b015055f575fea827d8",
+    "gatewayConfigId": "sha256:48f644f539525b2bcfc9195f2aaf789bcebcbd9ea7d77bb7f25ed363091008cf",
+    "supplierCalls": 0
+  },
+  "cleanup": {
+    "status": "PASS",
+    "testContainersRunning": 0,
+    "retainedContainers": 11
+  }
+}

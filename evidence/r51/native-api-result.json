@@ -1,0 +1,19 @@
+{
+  "status": "PASS",
+  "root": "/srv/agentplatform/acceptance/r44-r51-20261029030435",
+  "scope": "actual API create/stream/MQ/runner/XFS/S3/hash, stale base rejection, foreign user denial and old immutable read",
+  "supplierCalls": 0,
+  "current": {
+    "id": "01a185d7-80bc-7522-b913-8c18c6f1ad8f",
+    "workspaceId": "01a185ce-9381-7b40-9bc0-10aed120ec6a",
+    "path": "editor.txt",
+    "parent": "",
+    "name": "editor.txt",
+    "kind": "FILE",
+    "versionId": "01a185d8-7b97-75ed-85b1-2b35ce80cfb7",
+    "collectionState": "CONFIRMED",
+    "revision": 3,
+    "sha256": "b6a46b06626d5beff168006949e7e95aad9f154dd2e6c70604cf626aab4786b5",
+    "bytes": 28
+  }
+}
