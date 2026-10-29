@@ -38,4 +38,3 @@ The system SHALL bind artifacts to authorized task, successful operation, immuta
 #### Scenario: Revoked member
 - **WHEN** an actor loses resource permission
 - **THEN** version and artifact access are rejected regardless of retained references
-
