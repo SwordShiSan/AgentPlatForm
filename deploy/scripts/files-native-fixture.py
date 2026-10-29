@@ -52,6 +52,8 @@ def prepare():
  stamp=time.strftime('%Y%m%d%H%M%S',time.gmtime());cloud='/srv/agentplatform/acceptance/r44-'+STAGE+'-'+stamp;private=DATA/'native';private.mkdir();os.umask(0o077)
  actor=local(['whoami']);local(['icacls',private,'/inheritance:r','/grant:r',actor+':(OI)(CI)F','*S-1-5-18:(OI)(CI)F'])
  plan={'root':cloud,'project':PROJECT,'source':image['source'],'gateway':image,'uuid':str(uuid.uuid4()),'local':str(private),'supplierCalls':0,'stage':'PREPARING_NOT_PAUSED','acceptanceStage':STAGE,'schema':{'r51':18,'r52':19,'r53':20}[STAGE],'port':18100+int(STAGE[1:])}
+ plan['configurationSource']=local(['git','rev-parse','HEAD'])
+ plan['fixtureInputHashes']={str(p.relative_to(ROOT)).replace('\\','/'):sha(p) for p in [ROOT/'deploy/scripts/files-native-fixture.py',ROOT/'deploy/scripts/files-native-window.py',ROOT/'deploy/scripts/files-native-watchdog.py',*sorted((ROOT/'deploy/config').glob('*grants.sql'))]}
  (DATA/'native-plan.json').write_text(json.dumps(plan,indent=2));(private/'operation.json').write_text(json.dumps(plan,indent=2))
  # Only shape is reused; no historical password/key/database/workspace content is copied.
  oldroot=old_pointer['cloud'];config=json.loads(json.dumps(config).replace(oldroot,cloud).replace(config['name'],PROJECT));config['name']=PROJECT
@@ -123,7 +125,7 @@ def prepare():
  with tarfile.open(bundle,'w') as t:
   for p in private.iterdir():t.add(p,arcname=p.name)
  remote('from pathlib import Path\nimport os,shutil\np=Path('+repr(cloud)+');assert not p.exists();assert shutil.disk_usage("/").free>=9*1024**3;os.umask(0o077);p.mkdir(mode=0o700)\n')
- for source,name in [(bundle,'fixture-private.tar'),(Path(image['archive']),'gateway.tar')]:local(['scp',*SSH,source,'root@124.222.55.140:'+cloud+'/'+name],timeout=180)
+ for source,name in [(bundle,'fixture-private.tar'),(Path(image['archive']),'gateway.tar')]:local(['scp',*SSH,source,'root@124.222.55.140:'+cloud+'/'+name],timeout=600 if name=='gateway.tar' else 180)
  result=remote('''from pathlib import Path
 import tarfile,hashlib,subprocess,json,os,ipaddress,shutil
 p=Path(CLOUD);digest=hashlib.sha256()
