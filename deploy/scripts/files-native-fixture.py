@@ -148,11 +148,19 @@ for network in networks:
    assert all(not ipaddress.ip_network(row['Subnet']).overlaps(ipaddress.ip_network(entry['subnet'])) for v in c['networks'].values() for entry in v['ipam']['config'])
 subprocess.run(['docker','load','-i',str(p/'gateway.tar')],check=True,capture_output=True)
 assert json.loads(subprocess.check_output(['docker','image','inspect',IMAGE]))[0]['Id']==IMAGE
+for expected in CANDIDATE_IDENTITIES:
+ actual=json.loads(subprocess.check_output(['docker','image','inspect',expected['configId']]))[0]
+ assert actual['Id']==expected['configId'] and actual['Config']['Labels']['org.opencontainers.image.revision']==expected['source']
+if ACCEPTANCE_STAGE=='r54':
+ # The protected local immutable archive is retained. This is only its verified transport copy;
+ # dropping it after import avoids spending the 5GiB safety margin twice on compressed layers.
+ (p/'transport-import.json').write_text(json.dumps({'archiveSha256':DIGEST,'images':CANDIDATE_IDENTITIES,'transportCopyRemoved':True}))
+ (p/'gateway.tar').unlink()
 for name in ['master','volume','filer']+(['previews'] if (p/'previews').is_dir() else []):os.chown(p/name,10001,10001);(p/name).chmod(0o700)
 for row in c['secrets'].values():Path(row['file']).chmod(0o444)
 (p/'s3.json').chmod(0o444);(p/'rabbitmq.conf').chmod(0o444);(p/'rabbitmq-definitions.json').chmod(0o444)
 print(json.dumps({'status':'STAGED_NOT_PAUSED','root':CLOUD,'freeBytes':shutil.disk_usage('/').free}))
-'''.replace('CLOUD',repr(cloud)).replace('DIGEST',repr(image['archiveSha256'])).replace('IMAGE',repr(image['configId'])),timeout=180)
+'''.replace('CLOUD',repr(cloud)).replace('DIGEST',repr(image['archiveSha256'])).replace('IMAGE',repr(image['configId'])).replace('CANDIDATE_IDENTITIES',repr([{k:v[k] for k in ['configId','source']} for v in image.get('candidate',{}).get('images',{}).values()])).replace('ACCEPTANCE_STAGE',repr(STAGE)),timeout=180)
  print(result)
 def main():
  p=argparse.ArgumentParser();p.add_argument('action',choices=['build','prepare']);p.add_argument('--stage',choices=['r51','r52','r53','r54'],default='r51');a=p.parse_args();configure(a.stage);DATA.mkdir(parents=True,exist_ok=True)
