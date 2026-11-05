@@ -33,11 +33,12 @@ if plan['acceptanceStage']=='r54':
   config['services'][service]['mem_limit']=config['services'][service]['memswap_limit']=limit*1024**2
  config['services']['worker']['entrypoint']=['-Xmx160m' if value.startswith('-Xmx') else value for value in config['services']['worker']['entrypoint']]
  shutil.copy2(r/'rabbitmq.conf',archive/'rabbitmq.conf')
- (r/'rabbitmq.conf').write_text('management.load_definitions = /etc/rabbitmq/definitions.json\nvm_memory_high_watermark.absolute = 128MiB\n')
+ (r/'rabbitmq.conf').write_text('management.load_definitions = /etc/rabbitmq/definitions.json\\nvm_memory_high_watermark.absolute = 128MiB\\n')
  (r/'compose.json').write_text(json.dumps(config,indent=2))
 (r/'operation.json').write_text(json.dumps(plan,indent=2))
 print('STAGED_CONTROLLERS_UPDATED_NOT_STARTED')
 '''
+ compile(code,'scoped-staged-controller-update','exec')
  print(m.remote(code))
  for name in updates:(data/'native'/name).write_bytes((ROOT/'deploy/scripts'/name).read_bytes())
  if plan['acceptanceStage']=='r54':
