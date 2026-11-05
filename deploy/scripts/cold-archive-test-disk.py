@@ -16,8 +16,8 @@ def digest(path,compressed=False):
 def main():
  p=argparse.ArgumentParser(description=__doc__);p.add_argument('--root',required=True);p.add_argument('--project',required=True);p.add_argument('--stage',choices=['r53','r54'],default='r53');args=p.parse_args()
  import re
- assert re.fullmatch('/srv/agentplatform/acceptance/r44-(?:r5[123]-[0-9]{14}|full-[0-9]{8}t[0-9]{6}z)',args.root)
- assert re.fullmatch('agentplatform-(?:r5[123]-local|r44-[0-9]{8}t[0-9]{6}z)',args.project)
+ assert re.fullmatch('/srv/agentplatform/acceptance/r44-(?:r5[1234]-[0-9]{14}|full-[0-9]{8}t[0-9]{6}z)',args.root)
+ assert re.fullmatch('agentplatform-(?:r5[1234]-local|r44-[0-9]{8}t[0-9]{6}z)',args.project)
  spec=importlib.util.spec_from_file_location('native',ROOT/'deploy/scripts/files-native-fixture.py');native=importlib.util.module_from_spec(spec);spec.loader.exec_module(native);native.configure(args.stage);native.DATA.mkdir(parents=True,exist_ok=True)
  common='''from pathlib import Path
 import gzip,hashlib,json,os,shutil,subprocess,stat
