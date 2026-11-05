@@ -65,16 +65,18 @@ assert not (r/'smoke-journal.private.json').exists(),'Do not reset a sent mutati
 '''
     native.remote(prefix+guard+'print("PRE_MUTATION_DRIVER_FAILURE_CONFIRMED")\n')
     native.local(['scp',*native.SSH,source,'root@124.222.55.140:'+folder+'/r5-production-smoke.py.pending'])
-    code=prefix+guard+'digest='+repr(digest)+'''
+    code=prefix+guard+'digest='+repr(digest)+'\nsourceMain='+repr(promotion['main'])+'''
 pending=r/'r5-production-smoke.py.pending';assert hashlib.sha256(pending.read_bytes()).hexdigest()==digest;compile(pending.read_text(),pending.name,'exec')
 archive=r/'tooling-history'/str(time.time_ns());archive.mkdir(parents=True,mode=0o700)
 for name in ['r5-production-smoke.py','job-smoke.json','job-smoke.private.log','input-hashes.json']:shutil.copy2(r/name,archive/name)
 pending.replace(r/'r5-production-smoke.py')
 for name in ['job-smoke.json','job-smoke.private.log']:(r/name).rename(archive/(name+'.original'))
 hashes=json.loads((r/'input-hashes.json').read_text());hashes['r5-production-smoke.py']=digest;(r/'input-hashes.json').write_text(json.dumps(hashes,indent=2))
+(r/'smoke-driver-patch.json').write_text(json.dumps({'main':sourceMain,'sha256':digest,'beforeAnyMutation':True,'time':time.time()},indent=2))
 print('SMOKE_DRIVER_REPAIRED_NO_APPLICATION_RESTART_OR_REQUEST_REPLAY')
 '''
     compile(code,'r5-pre-mutation-smoke-repair','exec');print(native.remote(code));pointer['inputHashes']['r5-production-smoke.py']=digest
+    pointer['toolingSource']=promotion['main']
     (DATA/'release-pointer.json').write_text(json.dumps(pointer,indent=2))
 
 
