@@ -31,6 +31,7 @@ class CheckpointRecoveryProbeTest {
     }
 
     private void verifyFrozenInput(String userText, boolean large) throws Exception {
+        var bundle=large?com.agentplatform.domain.chat.ChatRuntime.contextBundle(false):Bundle.baseline();
         Scope source = FileProbeStore.scope();
         Scope target = new Scope(source.spaceId(), source.actorId(), source.conversationId(), source.taskId(), UUID.randomUUID().toString(), 2, false);
         var first = new FileProbeStore(root.resolve("source"));
@@ -69,7 +70,7 @@ class CheckpointRecoveryProbeTest {
             return CompletableFuture.completedFuture(new Round("restored", List.of(), "stop", 4, 1));
         };
         RuntimeStatePort manifests = new RuntimeStatePort() {
-            public void verifyRestore(Scope s, Bundle b) { assertEquals(target, s); assertEquals(Bundle.baseline(), b); }
+            public void verifyRestore(Scope s, Bundle b) { assertEquals(target, s); assertEquals(bundle, b); }
             public List<Message> recoveryHistory(Scope s) { return frozen; }
             public void seal(Scope s, Bundle b) {}
         };
@@ -81,7 +82,7 @@ class CheckpointRecoveryProbeTest {
             public CompletionStage<Completion> beforeStop(Scope s, Message m) { return CompletableFuture.completedFuture(Completion.PASS); }
         };
         var factory = new AgentScopeRuntimeFactory(model, (s,c)->Decision.DENY, (s,c)->CompletableFuture.failedFuture(new AssertionError()), second, manifests, List.of(), root.resolve("work"));
-        try (var run = factory.prepare(new Request(target, Bundle.baseline(), List.of(), true, List.of(), 2), boundary)) {
+        try (var run = factory.prepare(new Request(target, bundle, List.of(), true, List.of(), 2), boundary)) {
             assertEquals(Completion.PASS, run.start().toCompletableFuture().get(12, TimeUnit.SECONDS).completion());
             run.terminated().toCompletableFuture().get(5, TimeUnit.SECONDS);
         }

@@ -194,7 +194,8 @@ public final class ChatExecution implements AutoCloseable {
             }
             if(asynchronousFailure.get()!=null)error=asynchronousFailure.get();
             reason=error instanceof ChatFailure f?f.code():error instanceof TimeoutException?"PROVIDER_TIMEOUT":"MODEL_EXECUTION_FAILED";
-            System.getLogger(getClass().getName()).log(System.Logger.Level.WARNING,"Task="+lease.taskId()+" attempt="+lease.attemptId()+" failed; code="+reason+" category="+error.getClass().getSimpleName());
+            String frames=java.util.Arrays.stream(error.getStackTrace()).limit(4).map(frame->frame.getClassName()+"."+frame.getMethodName()+":"+frame.getLineNumber()).collect(java.util.stream.Collectors.joining(","));
+            System.getLogger(getClass().getName()).log(System.Logger.Level.WARNING,"Task="+lease.taskId()+" attempt="+lease.attemptId()+" failed; code="+reason+" category="+error.getClass().getSimpleName()+" locations="+frames);
             terminal="TASK_CANCEL_REQUESTED".equals(reason)?"CANCELLED":Set.of("CONTEXT_REQUIRED_TOO_LARGE","PROVIDER_USAGE_EXCEEDS_RESERVATION").contains(reason)?"BLOCKED":"FAILED";
         }finally{
             boolean quiet=control.quiesce(!completed);

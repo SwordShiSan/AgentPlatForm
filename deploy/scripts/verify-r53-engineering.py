@@ -207,6 +207,7 @@ def main():
     global DATA
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--stage', choices=['r53', 'r54'], default='r53')
+    parser.add_argument('--r54-bundle-correction-from', type=Path, help='Targeted bundle/SDK correction; reuse only hash-identical unaffected engineering inputs')
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--prepare-dependencies', action='store_true', help='Online resolve only; never claims engineering verification')
     mode.add_argument('--resume-app-from', type=Path, help='Reuse intact upstream reports and verify app only with freshly installed exact-source upstream artifacts')
@@ -215,6 +216,24 @@ def main():
     with controller_lock():
         output = DATA / (('engineering-prepare-' if args.prepare_dependencies else 'engineering-') + str(time.time_ns()))
         output.mkdir(); before = source_identity(); env = child_environment(); selected = command(args.prepare_dependencies, bool(args.resume_app_from))
+        correction=None
+        if args.r54_bundle_correction_from:
+            assert args.stage=='r54' and not args.prepare_dependencies and not args.resume_app_from
+            path=args.r54_bundle_correction_from.resolve(strict=True);assert path.is_relative_to(DATA.resolve())
+            prior=json.loads(path.read_text());original=json.loads((path.parent/'source-before.json').read_text())
+            assert prior['status']=='PASS' and prior['inputUnchanged'] and prior['revisionUnchanged']
+            allowed={
+                'backend/platform-domain/src/main/java/com/agentplatform/domain/harness/CompositionRules.java',
+                'backend/platform-domain/src/test/java/com/agentplatform/domain/harness/LargeContextCompositionTest.java',
+                'backend/platform-infrastructure/src/test/java/com/agentplatform/infrastructure/harness/agentscope/CheckpointRecoveryProbeTest.java',
+                'backend/platform-app/src/main/java/com/agentplatform/app/chat/ChatExecution.java'}
+            previous=original['sourceInputFiles'];current=before['sourceInputFiles']
+            changed={name.replace('\\','/') for name in previous.keys()|current.keys() if previous.get(name)!=current.get(name)}
+            assert changed and changed<=allowed,'Correction inputs expanded; perform appropriate wider verification'
+            selected+=['-Dtest=LargeContextCompositionTest,*ProbeTest,AgentScope*Test,Platform*Test,ArchitectureTest','-Dsurefire.failIfNoSpecifiedTests=false']
+            correction={'status':'REUSED_UNCHANGED_INPUTS','receipt':str(path.relative_to(ROOT)),'receiptSha256':digest(path),
+                        'priorSourceInputSha256':prior['sourceInputSha256'],'changedFiles':sorted(changed),
+                        'scope':'Fresh bundle/SDK/probe/architecture/package checks; other engineering inputs identical to the prior full PASS. No external gate reuse implied.'}
         (output / 'source-before.json').write_text(json.dumps(before, indent=2) + '\n', encoding='utf-8')
         (output / 'invocation.json').write_text(json.dumps({'controllerPid': os.getpid(), 'command': selected, 'javaHome': str(JAVA),
             'profile': 'preview-renderer', 'supplierCalls': 0}, indent=2) + '\n', encoding='utf-8')
@@ -258,6 +277,7 @@ def main():
                   'seconds': round(time.monotonic() - started, 3), 'supplierCalls': 0, 'mavenLogSha256': digest(log),
                   'profile': 'preview-renderer', 'checks': checks, 'error': error,
                   'scope': 'Profile/Enforcer/DDD/Mapper/unit/package gates only. External and skipped gates remain separate NOT_RUN until their actual receipts pass.'}
+        if correction is not None:result['unchangedEngineeringReuse']=correction
         if not args.prepare_dependencies:
             actual_tests = test_reports(report_before)
             if reused is not None:
