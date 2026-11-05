@@ -62,8 +62,8 @@ def main():
     images={}
     for component in (['api','gateway','file-helper','preview-renderer','provider-fixture'] if args.stage=='r54' else ['api','gateway','file-helper','preview-renderer'] if args.stage=='r53' else ['api','gateway','file-helper'] if args.stage=='r52' else ['api','gateway','file-helper','provider-fixture']):
         if reuse and component!='api':
-            item=json.loads(json.dumps(reuse['images'][component]));actual=json.loads(subprocess.check_output(['docker','image','inspect',item['configId']]))[0]
-            assert actual['Id']==item['configId'] and actual['Config']['Labels']['org.opencontainers.image.revision']==item['source']
+            item=json.loads(json.dumps(reuse['images'][component]));actual=json.loads(subprocess.check_output(['docker','--context','desktop-linux','image','inspect',item['tag']]))[0]
+            assert actual['Id']==item['localId'] and actual['Config']['Labels']['org.opencontainers.image.revision']==item['source']
             item['transportIncluded']=False;item['reuseProof']=reuse_proofs[component];images[component]=item;continue
         tag='agentplatform-'+component+':'+args.stage+'-'+source[:12]
         cmd=['docker','--context','desktop-linux','build','--platform','linux/amd64','--network='+('default' if component=='preview-renderer' else 'none'),'--pull=false','--build-arg','SOURCE_REVISION='+source,'-f','deploy/'+component+'.Dockerfile','-t',tag]
