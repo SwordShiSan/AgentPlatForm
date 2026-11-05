@@ -17,12 +17,14 @@ test('real chat sources, attachment refresh, responsive workbench, storage and a
   const context = await browser.newContext({ baseURL: process.env.BASE_URL, viewport: { width: 1440, height: 900 } });
   const foreign = await browser.newContext({ baseURL: process.env.BASE_URL });
   const page = await context.newPage(); const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+  page.setDefaultNavigationTimeout(20000); page.setDefaultTimeout(20000);
+  console.info('R54_BROWSER_PAGE_READY');
   try {
-    await login(page, 'r54_admin'); await page.goto(`/app/chat/${seed.conversationId}`);
+    await login(page, 'r54_admin'); console.info('R54_BROWSER_LOGIN_OK'); await page.goto(`/app/chat/${seed.conversationId}`);
     await expect(page.getByTestId('context-capacity')).toContainText('262,144');
     await expect(page.getByLabel('固定附件来源')).toContainText('large-context.txt');
     await expect(page.getByLabel('消息历史')).toContainText('R54_FIXED_SOURCE_666');
-    await page.getByRole('button', { name: '预览固定来源', exact: true }).click();
+    console.info('R54_BROWSER_SOURCE_VISIBLE'); await page.getByRole('button', { name: '预览固定来源', exact: true }).click();
     const viewer = page.getByRole('region', { name: '固定版本文件预览' });
     await expect(viewer.getByLabel('历史版本只读内容')).toContainText('R54_FIXED_SOURCE_666', { timeout: 125000 });
     await page.getByRole('button', { name: '关闭预览', exact: true }).click();
@@ -47,5 +49,5 @@ test('real chat sources, attachment refresh, responsive workbench, storage and a
     expect(errors).toEqual([]);
     writeFileSync(resolve(root, 'native-workbench-browser-result.json'), JSON.stringify({ status: 'PASS', supplierCalls: 0,
       scope: 'Actual API pinned attachment preview, metadata-only refresh recovery, 375/768/1440, 200%, keyboard, themes, storage and second-user denial' }, null, 2));
-  } finally { await foreign.close(); await context.close(); }
+  } finally { await Promise.allSettled([foreign.close(), context.close()]); }
 });

@@ -21,7 +21,13 @@ for row in json.loads(subprocess.check_output(['docker','inspect',*ids])) if ids
   lines=(logs.stdout+logs.stderr).splitlines();item['started']=any('Started PlatformApplication' in line for line in lines)
   item['causes']=[line.strip()[:220] for line in lines if line.startswith('Caused by:')][-3:]
  result.append(item)
-print(json.dumps({'time':time.time(),'services':result}))
+facts=None
+postgres=next((item for item in result if item['service']=='postgres' and item['state']=='running'),None)
+if postgres:
+ query="SELECT json_build_object('previews',(SELECT coalesce(json_agg(json_build_object('id',id,'state',state,'errorCode',error_code)),'[]'::json) FROM pf.preview_job),'extractions',(SELECT coalesce(json_agg(json_build_object('id',id,'status',status,'errorCode',error_code)),'[]'::json) FROM pf.document_extraction),'heavy',(SELECT kind FROM pf.heavy_runtime_slot WHERE id=1),'transferBusy',(SELECT owner_id IS NOT NULL FROM pf.file_transfer_slot WHERE id=1));"
+ response=subprocess.run(['docker','exec',postgres['id'],'psql','-XqAt','-U','postgres','-d','file_runtime','-c',query],capture_output=True,text=True)
+ if response.returncode==0:facts=json.loads(response.stdout)
+print(json.dumps({'time':time.time(),'services':result,'assetFacts':facts}))
 '''.replace('ROOT',repr(root))
     data=json.loads(m.remote(code));(m.DATA/'native-diagnostics.json').write_text(json.dumps(data,indent=2),encoding='utf-8');print(json.dumps(data))
 
