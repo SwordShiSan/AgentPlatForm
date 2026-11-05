@@ -88,7 +88,9 @@ class Window:
   assert (self.folder/'backup-r4.json').exists();self.capacity()
   assert all(not json.loads(self.run(['docker','inspect',r['Id']]))[0]['State']['Running'] for r in self.rows)
   with (ROOT/'config/s3.json').open('w') as f:f.write((self.folder/'s3.candidate.json').read_text())
-  self.start_dependencies();self.run(self.base+['--profile','operator','run','--rm','-T','-e','SPRING_PROFILES_ACTIVE=cloud-migrate','operator'],timeout=240)
+  self.start_dependencies()
+  self.run(['python3',str(self.folder/'r5-asset-topology.py'),str(self.folder)])
+  self.run(self.base+['--profile','operator','run','--rm','-T','-e','SPRING_PROFILES_ACTIVE=cloud-migrate','operator'],timeout=240)
   for f in ['r1-runtime-grants.sql','r2-runtime-grants.sql','r3-workspace-grants.sql','r3-environment-grants.sql','r3-file-grants.sql','r4-runtime-grants.sql','r4-permission-grants.sql','r4-approval-grants.sql','r4-workspace-tools-grants.sql','r5-file-grants.sql','r5-preview-grants.sql','r5-workbench-grants.sql']:
    content=(self.folder/'deploy/config'/f).read_text()
    for role in sorted(set(re.findall(r'\bap_[a-z_]+\b',content))):
