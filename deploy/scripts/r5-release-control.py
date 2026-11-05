@@ -109,7 +109,7 @@ class Window:
   Never used after real writes open. Existing data directories are retained in
   this release folder, not deleted or mixed with restored PostgreSQL files.
   """
-  assert generation in ['r4','r5'] and not (self.folder/'writes-open.json').exists()
+  assert generation in ['r4','r5'] and not (self.folder/'writes-open-intent.json').exists() and not (self.folder/'writes-open.json').exists()
   backup=self.folder/('backup-'+generation);proof=json.loads((self.folder/('backup-'+generation+'.json')).read_text())
   assert proof['status']=='PASS' and proof['migration']==(18 if generation=='r4' else 21)
   for name,digest in json.loads((backup/'checksums.json').read_text()).items():assert self.hash(backup/name)==digest
@@ -117,8 +117,8 @@ class Window:
   for row in json.loads(self.run(['docker','inspect',*ids])) if ids else []:
    assert not any(m.get('Source','').startswith(str(ROOT)+'/'+part+'/') for m in row.get('Mounts',[]) for part in ['data','config','secrets']),'Snapshot replacement requires all bound services stopped'
   assert self.run(['findmnt','-n','-o','UUID','--target',str(ROOT/'workspaces')])==proof['uuid']
-  self.run(['umount',str(ROOT/'workspaces')]);detached=self.folder/('detached-before-'+generation+'-'+str(time.time_ns()));detached.mkdir(mode=0o700)
-  self.receipt('restore-intent-'+generation,{'snapshot':str(backup),'detached':str(detached),'realWritesOpened':False})
+  self.run(['umount',str(ROOT/'workspaces')]);stamp=str(time.time_ns());detached=self.folder/('detached-before-'+generation+'-'+stamp);detached.mkdir(mode=0o700)
+  self.receipt('restore-intent-'+generation+'-'+stamp,{'snapshot':str(backup),'detached':str(detached),'realWritesOpened':False})
   with tarfile.open(backup/'cold.tgz') as archive:
    for member in archive.getmembers():
     assert member.name.split('/')[0] in ['data','config','deploy','secrets'] and (member.isdir() or member.isfile()) and (ROOT/member.name).resolve().is_relative_to(ROOT),'Unexpected snapshot path or type'
@@ -135,10 +135,10 @@ class Window:
   assert self.run(['blkid','-p','-s','UUID','-o','value',str(image)])==proof['uuid']
   self.run(['mount','-o','prjquota,noatime',self.stage['loop'],str(ROOT/'workspaces')])
   self.run(['python3',str(self.folder/'workspace-manifest.py'),'verify',str(ROOT/'workspaces'),str(backup/'workspace-files.json')])
-  self.receipt('restored-snapshot-'+generation,{'status':'PASS','migration':proof['migration'],'sourceUuidUnchanged':True,'directoriesRetained':str(detached)})
+  self.receipt('restored-snapshot-'+generation+'-'+stamp,{'status':'PASS','migration':proof['migration'],'sourceUuidUnchanged':True,'directoriesRetained':str(detached)})
 
  def rollback(self):
-  assert not (self.folder/'writes-open.json').exists(),'After real writes reopen use data-preserving repair, never an old snapshot'
+  assert not (self.folder/'writes-open-intent.json').exists() and not (self.folder/'writes-open.json').exists(),'After real writes reopen use data-preserving repair, never an old snapshot'
   running=self.run(['docker','ps','-q','--filter','label=com.docker.compose.project=agentplatform-r5-app'])
   if running:self.stop_apps('r5')
   self.stop_dependencies();self.restore_snapshot('r4')

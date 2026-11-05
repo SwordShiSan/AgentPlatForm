@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "seconds": 182.214,
+  "serialRounds": 32,
+  "minAvailableBytes": 1380810752,
+  "minRootFreeBytes": 6684516352,
+  "residentLimitBytes": 2281701376,
+  "final": {
+    "supplierCalls": 0,
+    "pendingAssetJobs": 0,
+    "activeRendererContainers": 0,
+    "deterministicModelCalls": 2
+  },
+  "scope": "actual attachment original-byte/hash and storage reads, full required graph and sampled resources; not an absolute peak or unrun crash matrix",
+  "samplesNotAbsolutePeaks": true
+}

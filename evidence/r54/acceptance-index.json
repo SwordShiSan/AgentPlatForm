@@ -1,0 +1,113 @@
+{
+  "status": "LOCAL_FUNCTIONAL_PASS_PRODUCTION_PENDING",
+  "sourceAtCollection": "0b050c8b23364438442cfc654c8c46b211d7d667",
+  "applicationSource": "b7b89884a352796fdaa45780e4216c3ed440f3d6",
+  "sourceContinuity": {
+    "correctedPackageInputChanges": [
+      "backend/platform-app/src/test/java/com/agentplatform/app/attachment/AttachmentPostgresTest.java",
+      "backend/platform-infrastructure/src/test/java/com/agentplatform/infrastructure/harness/agentscope/PlanThenToolApprovalProbeTest.java"
+    ],
+    "productionBackendInputsUnchanged": true,
+    "productionFrontendContractInputsUnchanged": true,
+    "changedTestInputs": {
+      "backend/platform-app/src/test/java/com/agentplatform/app/attachment/AttachmentPostgresTest.java": "45bb30f27139c5e7fe5ff62484ff029c5a70615016b06ad48148ce64b5f8c090",
+      "backend/platform-infrastructure/src/test/java/com/agentplatform/infrastructure/harness/agentscope/PlanThenToolApprovalProbeTest.java": "f6c9a3883aa033c63fc679144bacc0cb199e2a71963cdf195d58db424d8c4a7e"
+    }
+  },
+  "engineering": {
+    "fullReactorTests": 319,
+    "targetedBundleSdkTests": 58,
+    "freshLargePlanExactApprovalTests": 2,
+    "freshPostgresTests": 8,
+    "notSummedAsUniqueTests": true
+  },
+  "checks": {
+    "frontend": "types/unit/build/contracts PASS; identical production inputs",
+    "pagination": "10k logical nodes/virtualization PASS; browser fixture only",
+    "native": "Actual PG/MQ/S3/XFS/runsc attachment/extraction/pinned-source/chat/browser subset PASS",
+    "observation": "182seconds PASS; exact R4 restored",
+    "productionRelease": "NOT_RUN",
+    "realSupplier": "NOT_RUN; stage counter0"
+  },
+  "receipts": [
+    {
+      "path": ".cache/r54-local/engineering-1793879228741231200/result.json",
+      "sha256": "c709d8806e338c38757ca2a986f0610c23efaa725293ff12dfd477243974e27f"
+    },
+    {
+      "path": ".cache/r54-local/engineering-1793881912400504800/result.json",
+      "sha256": "9080fe6166ef15a3c7e95fd66d8ac906b255b7fe1b3ba27224d49d84792681e3"
+    },
+    {
+      "path": ".cache/r54-local/frontend-verify-1793879011125813500/result.json",
+      "sha256": "1c18fd4ae97a41bf4ff2564752d7a285462a10073ee1665a288fab1c2928023d"
+    },
+    {
+      "path": ".cache/r54-local/postgres/run-1793886674481701300/receipt.json",
+      "sha256": "d362b90c900c5610955763e96fd26488c31cae2fc5a381281e874a7afe4419e3"
+    },
+    {
+      "path": "backend/platform-infrastructure/target/surefire-reports/TEST-com.agentplatform.infrastructure.harness.agentscope.PlanThenToolApprovalProbeTest.xml",
+      "sha256": "be7e2f9da4e3ec1e05e54c311c1c9bd8316a4287b0cc555c65d5ca8df64a7ece"
+    },
+    {
+      "path": ".cache/r54-local/ui-contract-1793887276051258300/result.json",
+      "sha256": "9e2e6e811ab60b6b0e936f8e0f68cdbd730a83e3053b94b65b17cec335c06dd9"
+    },
+    {
+      "path": ".cache/r54-local/native-attachment-result.json",
+      "sha256": "49cbb59780757efef4828b9861d881ceed3dd517fe34d611155619f40c880f57"
+    },
+    {
+      "path": ".cache/r54-local/native-fixed-source-result.json",
+      "sha256": "f9a02b4a53b1e48ef9b8cfdd0ee78ccfb2c94fcc0b0599bae13f1442b64294b5"
+    },
+    {
+      "path": ".cache/r54-local/native-workbench-browser-result.json",
+      "sha256": "572e0b43a9edc12e02f7b83576c840de88bec0a987abde816ce67c33cc1ac569"
+    },
+    {
+      "path": ".cache/r54-local/native-observation.json",
+      "sha256": "ff3a4447c1151980468cebafc821d6a2862f0965fc56c18e30019992825707bd"
+    },
+    {
+      "path": ".cache/r54-local/native-acceptance.json",
+      "sha256": "2cb62ae7918bcf8d9d0c054a3d379a45c12f6d7241931e5388cb4706a6d311a8"
+    },
+    {
+      "path": ".cache/r54-local/large-plan-approval.log",
+      "sha256": "b1c045009a9db39a2f262345e062eebbeab760aa01be9d96e5298a526a172253"
+    }
+  ],
+  "images": {
+    "api": {
+      "source": "b7b89884a352796fdaa45780e4216c3ed440f3d6",
+      "configId": "sha256:8ed9d45ed8dface1cca74479806358a6ba15e3ca6fc2041cb243842a7ccf7a15",
+      "platform": "linux/amd64"
+    },
+    "gateway": {
+      "source": "e4c1cda2e5c20ac3d07bc4e3bc2be3cbb7873200",
+      "configId": "sha256:4c990cba1976b7b1352dd5477ff1c960b8149fa48eaf3a6ae9d980cf14e33b53",
+      "platform": "linux/amd64"
+    },
+    "file-helper": {
+      "source": "e4c1cda2e5c20ac3d07bc4e3bc2be3cbb7873200",
+      "configId": "sha256:2ca37bd871c3b646161dded4c6623e62f31c6f5305e7d34489d0311889d5ebeb",
+      "platform": "linux/amd64"
+    },
+    "preview-renderer": {
+      "source": "e4c1cda2e5c20ac3d07bc4e3bc2be3cbb7873200",
+      "configId": "sha256:502ba213ee70a1ed10e6a01aec519fb64c757a0c8201c774553c49d58f646545",
+      "platform": "linux/amd64"
+    },
+    "provider-fixture": {
+      "source": "e4c1cda2e5c20ac3d07bc4e3bc2be3cbb7873200",
+      "configId": "sha256:ed50d1eda501687d8975be15a4e718ea1527c67aff3b2fd86a714fa870974843",
+      "platform": "linux/amd64"
+    }
+  },
+  "migration": 21,
+  "runtimeBaseline": 1,
+  "supplierCalls": 0,
+  "scope": "Unchanged legacy/permission/isolation gates are reused only within matching artifact scope. No new throughput, minimum physical host or production claim; unresolved failures and unrun cloud gates remain separate."
+}

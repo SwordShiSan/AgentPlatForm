@@ -11,6 +11,46 @@ spec=importlib.util.spec_from_file_location('native',ROOT/'deploy/scripts/files-
 native=importlib.util.module_from_spec(spec);spec.loader.exec_module(native);native.configure('r54')
 
 
+def refresh(pointer):
+    folder=pointer['folder'];files={p.name:p for p in (ROOT/'deploy/scripts').glob('r5-*.py')}
+    files['sample.docx']=DATA/'preview-fixtures/sample.docx'
+    files['platform-switch.py']=ROOT/'deploy/scripts/platform-switch.py'
+    updates={name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in files.items()}
+    preflight='''from pathlib import Path
+import json,subprocess
+r=Path(FOLDER);assert not (r/'job-start.json').exists(),'Tooling refresh only before production maintenance'
+stage=json.loads((r/'stage.json').read_text());assert stage['maintenanceOnly']
+rows=json.loads((r/'source-containers.private.json').read_text())
+for old in rows:
+ current=json.loads(subprocess.check_output(['docker','inspect',old['Id']]))[0]
+ assert current['State']['Running'] and current['Image']==old['Image'],'Exact original R4 must remain running'
+print('PRE_MAINTENANCE_TOOLING_REFRESH')
+'''.replace('FOLDER',repr(folder))
+    native.remote(preflight)
+    for name,path in files.items():native.local(['scp',*native.SSH,path,'root@124.222.55.140:'+folder+'/'+name+'.pending'])
+    code='''from pathlib import Path
+import hashlib,json,shutil,time
+r=Path(FOLDER);updates=UPDATES
+assert not (r/'job-start.json').exists()
+archive=r/'tooling-history'/str(time.time_ns());archive.mkdir(parents=True,mode=0o700)
+hashes=json.loads((r/'input-hashes.json').read_text());shutil.copy2(r/'input-hashes.json',archive/'input-hashes.json')
+for name,digest in updates.items():
+ pending=r/(name+'.pending');assert hashlib.sha256(pending.read_bytes()).hexdigest()==digest
+ if name.endswith('.py'):compile(pending.read_text(),name,'exec')
+ if (r/name).exists():shutil.copy2(r/name,archive/name)
+ pending.replace(r/name);hashes[name]=digest
+shutil.copy2(r/'compose.json',archive/'compose.json');shutil.copy2(r/'stage.json',archive/'stage.json')
+config=json.loads((r/'compose.json').read_text());operator=config['services']['operator']
+operator['mem_limit']=operator['memswap_limit']=320*1024**2
+operator['entrypoint']=['java','-XX:+UseSerialGC','-Xms16m','-Xmx128m','-Xss512k','-XX:MaxDirectMemorySize=24m','-XX:ReservedCodeCacheSize=32m','-jar','/app/platform.jar']
+(r/'compose.json').write_text(json.dumps(config,indent=2));stage=json.loads((r/'stage.json').read_text());stage['composeSha256']=hashlib.sha256((r/'compose.json').read_bytes()).hexdigest();(r/'stage.json').write_text(json.dumps(stage,indent=2))
+(r/'input-hashes.json').write_text(json.dumps(hashes,indent=2));print('R5_TOOLING_REFRESHED_APPLICATION_UNCHANGED')
+'''.replace('FOLDER',repr(folder)).replace('UPDATES',repr(updates))
+    compile(code,'r5-pre-maintenance-refresh','exec');print(native.remote(code))
+    pointer['inputHashes'].update(updates);pointer['toolingSource']=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
+    (DATA/'release-pointer.json').write_text(json.dumps(pointer,indent=2))
+
+
 def stage():
     pointer=DATA/'release-pointer.json'
     assert not pointer.exists(),'Query the retained release, do not prepare a second one'
@@ -51,15 +91,16 @@ print((folder/'stage.json').read_text())
 
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('action',choices=['stage','status','start','backup-r5','restore','rollback-drill','redeploy']);args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('action',choices=['stage','refresh-scripts','status','start','smoke','observe','backup-r5','restore','rollback-drill','redeploy','final-smoke','final-observe','open-writes']);args=parser.parse_args()
     if args.action=='stage':stage();return
     pointer=json.loads((DATA/'release-pointer.json').read_text());folder=pointer['folder']
     assert folder.startswith('/srv/agentplatform/operations/r5-release-')
+    if args.action=='refresh-scripts':refresh(pointer);return
     prefix='from pathlib import Path\nimport hashlib,json,subprocess,time\nr=Path('+repr(folder)+')\n'
     if args.action=='status':
         code='''reports={}
 for path in r.glob('*.json'):
- if path.name in ['stage.json','start.json','activate.json','backup-r4.json','backup-r5.json','restore.json','rollback-drill.json','redeploy.json','observation.json','smoke.json','writes-open.json','final-smoke.json']:
+ if path.name in ['stage.json','start.json','activate.json','backup-r4.json','backup-r5.json','restore.json','rollback-drill.json','redeploy.json','observation.json','smoke.json','writes-open.json','final-smoke.json','final-observation.json','watchdog-r4-restored.json']:
   row=json.loads(path.read_text());reports[path.stem]={k:row[k] for k in ['status','migration','resourceBudgetMiB','recordedAt','elapsedSeconds','supplierCalls'] if k in row}
 jobs=[]
 for path in r.glob('job-*.json'):
@@ -71,6 +112,9 @@ print(json.dumps({'folder':str(r),'reports':reports,'jobs':jobs}))
         # Production actions are launched only after exact-source protected promotion evidence exists.
         promotion=json.loads((DATA/'promotion.json').read_text());assert promotion['status']=='PASS'
         if action=='restore':command=['python3',folder+'/r5-isolated-restore.py',folder]
+        elif action in ['smoke','final-smoke']:command=['python3',folder+'/r5-production-smoke.py',folder,'--real-model' if action=='smoke' else '--final']
+        elif action in ['observe','final-observe']:command=['python3',folder+'/r5-production-observe.py',folder]+(['--final'] if action=='final-observe' else [])
+        elif action=='open-writes':command=['python3',folder+'/r5-open-writes.py',folder,'--main',promotion['main']]
         else:command=['python3',folder+'/r5-release-control.py',action,folder]
         code='command='+repr(command)+'\naction='+repr(action)+'''
 assert not (r/('job-'+action+'.json')).exists(),'Query the original action identity'
@@ -85,6 +129,9 @@ process=subprocess.Popen(command,stdin=subprocess.DEVNULL,stdout=log,stderr=log,
 identity=Path('/proc/'+str(process.pid)+'/stat').read_text().split()[21]
 row={'status':'LAUNCHED_QUERY_ORIGINAL','action':action,'pid':process.pid,'processStart':identity,'time':time.time()}
 (r/('job-'+action+'.json')).write_text(json.dumps(row,indent=2));print(json.dumps(row))
+if action=='start':
+ watchdog=subprocess.Popen(['python3',str(r/'r5-maintenance-watchdog.py'),str(r)],stdin=subprocess.DEVNULL,stdout=log,stderr=log,start_new_session=True)
+ (r/'watchdog.json').write_text(json.dumps({'pid':watchdog.pid,'deadlineSeconds':2700,'stopsAfterWriteIntent':True}))
 '''
     compile(prefix+code,'r5-release-client','exec');print(native.remote(prefix+code))
 

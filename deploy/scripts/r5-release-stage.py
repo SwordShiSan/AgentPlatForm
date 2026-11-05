@@ -47,6 +47,9 @@ def main():
   actual=json.loads(read(['docker','image','inspect',service['image']]))[0];assert actual['Id']==image['configId'] and actual['Config']['Labels']['org.opencontainers.image.revision']==image['source']
   if name in caps:service['mem_limit']=caps[name]*1024**2;service['memswap_limit']=caps[name]*1024**2
   if name in heaps:service['entrypoint']=['java','-XX:+UseSerialGC','-Xms32m','-Xmx'+str(heaps[name])+'m','-Xss512k','-XX:MaxDirectMemorySize=24m','-XX:ReservedCodeCacheSize=32m','-jar','/app/platform.jar']
+  if name=='operator':
+   service['mem_limit']=service['memswap_limit']=320*1024**2
+   service['entrypoint']=['java','-XX:+UseSerialGC','-Xms16m','-Xmx128m','-Xss512k','-XX:MaxDirectMemorySize=24m','-XX:ReservedCodeCacheSize=32m','-jar','/app/platform.jar']
   check=service.get('healthcheck',{});test=check.get('test',[])
   if test[:2]==['CMD','java']:
    if '-XX:+UseSerialGC' not in test:test[2:2]=['-XX:+UseSerialGC','-Xms8m','-Xmx16m','-Xss256k','-XX:ReservedCodeCacheSize=8m','-XX:MaxMetaspaceSize=32m']

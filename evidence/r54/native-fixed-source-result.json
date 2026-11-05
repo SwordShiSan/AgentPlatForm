@@ -1,0 +1,12 @@
+{
+  "status": "PASS",
+  "supplierCalls": 0,
+  "pdfExtractionId": "01a1abe5-5e62-724a-865c-2c7847e74715",
+  "workspaceId": "01a1abe5-71fc-77de-aa89-a6b521c0ca54",
+  "fileId": "01a1abe5-7c23-7655-9a40-9d355afe9785",
+  "pinnedVersionId": "01a1abe5-7c23-7e06-b1fe-af42f4db3826",
+  "replacementVersionId": "01a1abe6-9f21-7ebf-8210-ef3ac5858c40",
+  "taskId": "01a1abe6-aa7a-7130-97c4-3854ed5f9ea9",
+  "originalSha256": "8d65865735437f72b14e4d5169b26058090520b757b715102a585541ab9d0428",
+  "scope": "Actual PDF extraction and SDK model input using old fixed file version after replacement; no supplier calls"
+}
