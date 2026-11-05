@@ -30,7 +30,7 @@ def build():
  if STAGE in ['r52','r53','r54']:
   candidate=json.loads((DATA/'candidate-pointer.json').read_text());record=json.loads((Path(candidate['folder'])/'result.json').read_text())
   assert record['status']=='BUILT_EXPORTED_NOT_ACCEPTED'
-  gateway=record['images']['gateway'];image={'source':record['source'],'configId':gateway['configId'],'archive':record['archive'],'archiveSha256':record['archiveSha256'],'candidate':record}
+  gateway=record['images']['gateway'];image={'source':gateway['source'],'applicationSource':record['source'],'configId':gateway['configId'],'archive':record['archive'],'archiveSha256':record['archiveSha256'],'candidate':record}
   (DATA/'gateway.json').write_text(json.dumps(image,indent=2));print(STAGE.upper()+'_CANDIDATE_REUSED_SAME_EXPORT');return
  source=local(['git','rev-parse','HEAD']);env=dict(os.environ,**{k:'true' for k in ['VITE_CHAT_ENABLED','VITE_PLAN_ENABLED','VITE_PERMISSIONS_ENABLED','VITE_WORKSPACE_ENABLED','VITE_WORKSPACE_FILES_ENABLED','VITE_WORKSPACE_TOOLS_ENABLED']})
  p=subprocess.run([str(ROOT/'.tools/node-v22.23.3-win-x64/node.exe'),str(ROOT/'frontend/node_modules/vite/bin/vite.js'),'build'],cwd=ROOT/'frontend',env=env,capture_output=True)
@@ -51,7 +51,7 @@ def prepare():
  old_pointer=json.loads((ROOT/'.cache/r44-local/linux-fixture-pointer.json').read_text());old=Path(old_pointer['local']);config=json.loads((old/'compose.json').read_text())
  stamp=time.strftime('%Y%m%d%H%M%S',time.gmtime());cloud='/srv/agentplatform/acceptance/r44-'+STAGE+'-'+stamp;private=DATA/'native';private.mkdir();os.umask(0o077)
  actor=local(['whoami']);local(['icacls',private,'/inheritance:r','/grant:r',actor+':(OI)(CI)F','*S-1-5-18:(OI)(CI)F'])
- plan={'root':cloud,'project':PROJECT,'source':image['source'],'gateway':image,'uuid':str(uuid.uuid4()),'local':str(private),'supplierCalls':0,'stage':'PREPARING_NOT_PAUSED','acceptanceStage':STAGE,'schema':{'r51':18,'r52':19,'r53':20,'r54':21}[STAGE],'port':18100+int(STAGE[1:])}
+ plan={'root':cloud,'project':PROJECT,'source':image.get('applicationSource',image['source']),'gateway':image,'uuid':str(uuid.uuid4()),'local':str(private),'supplierCalls':0,'stage':'PREPARING_NOT_PAUSED','acceptanceStage':STAGE,'schema':{'r51':18,'r52':19,'r53':20,'r54':21}[STAGE],'port':18100+int(STAGE[1:])}
  plan['configurationSource']=local(['git','rev-parse','HEAD'])
  plan['fixtureInputHashes']={str(p.relative_to(ROOT)).replace('\\','/'):sha(p) for p in [ROOT/'deploy/scripts/files-native-fixture.py',ROOT/'deploy/scripts/files-native-window.py',ROOT/'deploy/scripts/files-native-watchdog.py',*sorted((ROOT/'deploy/config').glob('*grants.sql'))]}
  (DATA/'native-plan.json').write_text(json.dumps(plan,indent=2));(private/'operation.json').write_text(json.dumps(plan,indent=2))
