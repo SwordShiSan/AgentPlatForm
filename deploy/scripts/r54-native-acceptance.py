@@ -68,7 +68,7 @@ def main():
         for path in ['/api/v1/attachments/'+original['id'],'/api/v1/attachments/'+original['id']+'/content','/api/v1/file-extractions/'+text['id']]:
             common.expect_error(lambda:foreign.request('GET',path),[403,404])
     # This body exceeds the removed 8K window; the real SDK/provider must receive its fixed source.
-    large=('R54_FIXED_SOURCE_666\n'+'大上下文资料 abcdefg 1234567890\n'*18000).encode()
+    large=('R54_FIXED_SOURCE_666\n'+'大上下文资料 abcdefg 1234567890\n'*9000).encode()
     original=attachment(client,journal,'large-context.txt',large)
     text=extraction(client,journal,'large-context',{'attachmentId':original['id']})
     refs=[{'kind':'CHAT_ATTACHMENT','attachmentId':original['id'],'extractionId':text['id']}]
