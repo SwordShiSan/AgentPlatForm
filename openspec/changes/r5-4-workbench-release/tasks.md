@@ -7,6 +7,6 @@
 - [x] 6. Extend fixed R54 acceptance and versioned release/switching profiles (production execution stays under task9).
 ## Verification and closure
 - [x] 7. Pass affected engineering, real dependency, 256K/512K, ownership/UNKNOWN, authorization and browser gates; matching unchanged gates reused explicitly.
-- [ ] 8. Pass 180-second candidate observation and protected step→phase→main promotion.
+- [x] 8. Pass 180-second candidate observation and protected step→phase→main promotion.
 - [ ] 9. Deploy the same R5 candidate with targeted recovery, R4 rollback drill and final observation.
 - [ ] 10. Archive, update ledgers/Skill, verify protected delivery copies and mark R5 RELEASED only after all gates.
