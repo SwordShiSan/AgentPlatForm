@@ -80,6 +80,36 @@ print('SMOKE_DRIVER_REPAIRED_NO_APPLICATION_RESTART_OR_REQUEST_REPLAY')
     (DATA/'release-pointer.json').write_text(json.dumps(pointer,indent=2))
 
 
+def resume_smoke(pointer):
+    """Resume an acknowledged journal after a definite driver timeout; never resend unknown writes."""
+    folder=pointer['folder']
+    prefix='from pathlib import Path\nimport hashlib,json,shutil,time\nr=Path('+repr(folder)+')\n'
+    guard='''assert not (r/'writes-open-intent.json').exists() and not (r/'smoke.json').exists()
+old=json.loads((r/'job-smoke.json').read_text());p=Path('/proc/'+str(old['pid'])+'/stat')
+assert not p.exists() or p.read_text().split()[21]!=old['processStart'] or p.read_text().split()[2]=='Z'
+assert 'Query the original pending operation:' in (r/'job-smoke.private.log').read_text()
+journal=json.loads((r/'smoke-journal.private.json').read_text())
+assert journal and all(row['phase'] in ['FROZEN','ACKNOWLEDGED'] for row in journal.values()),'Uncertain mutations require reconciliation'
+'''
+    native.remote(prefix+guard+'print("ACKNOWLEDGED_JOURNAL_RESUMABLE")\n')
+    updates={name:ROOT/'deploy/scripts'/name for name in ['r5-release-control.py','r5-asset-topology.py']}
+    hashes={name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in updates.items()}
+    for name,path in updates.items():native.local(['scp',*native.SSH,path,'root@124.222.55.140:'+folder+'/'+name+'.pending'])
+    code=prefix+guard+'updates='+repr(hashes)+'''
+archive=r/'tooling-history'/str(time.time_ns());archive.mkdir(parents=True,mode=0o700)
+existing=json.loads((r/'input-hashes.json').read_text());shutil.copy2(r/'input-hashes.json',archive/'input-hashes.json')
+for name,digest in updates.items():
+ pending=r/(name+'.pending');assert hashlib.sha256(pending.read_bytes()).hexdigest()==digest;compile(pending.read_text(),name,'exec')
+ if (r/name).exists():shutil.copy2(r/name,archive/name)
+ pending.replace(r/name);existing[name]=digest
+for name in ['job-smoke.json','job-smoke.private.log']:(r/name).rename(archive/name)
+(r/'input-hashes.json').write_text(json.dumps(existing,indent=2))
+print('ORIGINAL_JOURNAL_AND_PHYSICAL_METER_PRESERVED')
+'''
+    compile(code,'r5-acknowledged-smoke-resume','exec');print(native.remote(code))
+    pointer['inputHashes'].update(hashes);(DATA/'release-pointer.json').write_text(json.dumps(pointer,indent=2))
+
+
 def stage(new_attempt=False):
     pointer=DATA/'release-pointer.json'
     if new_attempt:
@@ -137,13 +167,14 @@ print((folder/'stage.json').read_text())
 
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('action',choices=['stage','refresh-scripts','repair-smoke','status','start','smoke','observe','backup-r5','restore','rollback-drill','redeploy','final-smoke','final-observe','open-writes']);parser.add_argument('--new-attempt',action='store_true',help='Archive only a failed fully restored pre-write release pointer');args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('action',choices=['stage','refresh-scripts','repair-smoke','resume-smoke','status','start','smoke','observe','backup-r5','restore','rollback-drill','redeploy','final-smoke','final-observe','open-writes']);parser.add_argument('--new-attempt',action='store_true',help='Archive only a failed fully restored pre-write release pointer');args=parser.parse_args()
     if args.action=='stage':stage(args.new_attempt);return
     assert not args.new_attempt
     pointer=json.loads((DATA/'release-pointer.json').read_text());folder=pointer['folder']
     assert folder.startswith('/srv/agentplatform/operations/r5-release-')
     if args.action=='refresh-scripts':refresh(pointer);return
     if args.action=='repair-smoke':repair_smoke(pointer);return
+    if args.action=='resume-smoke':resume_smoke(pointer);return
     prefix='from pathlib import Path\nimport hashlib,json,subprocess,time\nr=Path('+repr(folder)+')\n'
     if args.action=='status':
         code='''reports={}
