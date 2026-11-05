@@ -154,7 +154,8 @@ def start():
    for identity in identity_facts.values():
     user=identity['userId'];space=sql("SELECT id::text FROM pf.space WHERE type='PERSONAL' AND owner_user_id='"+user+"';")
     for model in ['0199e000-0000-7000-8000-000000000002','0199e000-0000-7000-8000-000000000003']:
-     operator('chat-ops',['--chat-action=bind-model','--model-id='+model,'--user-id='+user,'--space-id='+space,'--credential-id='+credentials[0],'--source-policy=PLATFORM'])
+     matched=sql("SELECT count(*) FROM pf.model_binding WHERE space_id='"+space+"' AND user_id='"+user+"' AND model_id='"+model+"' AND credential_id='"+credentials[0]+"' AND source_policy='PLATFORM';")
+     if matched!='1':operator('chat-ops',['--chat-action=bind-model','--model-id='+model,'--user-id='+user,'--space-id='+space,'--credential-id='+credentials[0],'--source-policy=PLATFORM'])
   call(BASE+['up','-d','master','volume','filer','s3','redis'])
   # Known internal SDK readiness and explicit once-only bucket bootstrap.
   s3_script="import boto3,time\nfrom botocore.config import Config\nfrom botocore.exceptions import ClientError\naccess=open('/run/access').read().strip();secret=open('/run/secret').read().strip()\nclient=boto3.client('s3',endpoint_url='http://s3:8333',region_name='us-east-1',aws_access_key_id=access,aws_secret_access_key=secret,config=Config(retries={'max_attempts':0},connect_timeout=2,read_timeout=5))\nexists=False\nfor index in range(30):\n try:\n  client.head_bucket(Bucket='r33-assets');exists=True;break\n except ClientError as error:\n  status=error.response['ResponseMetadata']['HTTPStatusCode']\n  if status==404:break\n  if status<500 or index==29:raise\n  time.sleep(2)\n except Exception:\n  if index==29:raise\n  time.sleep(2)\nif not exists:client.create_bucket(Bucket='r33-assets')\nclient.head_bucket(Bucket='r33-assets')\nclient.close()\nprint('R51_PRIVATE_BUCKET_READY')\n"
