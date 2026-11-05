@@ -15,6 +15,7 @@
   "rootReserveGiB": 5,
   "context": {"modelWindow": 1000000, "taskWindow": 262144, "maxOutput": 4096},
   "rendererBundle": "asset-parser-tika3.3.3-v2",
+  "previewStagingRoot": "/srv/agentplatform/previews",
   "observationSeconds": 180,
   "rollback": "MATCHED_PRE_UPGRADE_COLD_SNAPSHOT_BEFORE_REAL_WRITES_ONLY",
   "constantOfficeService": false

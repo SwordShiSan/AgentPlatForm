@@ -32,7 +32,8 @@ def main():
  for part in ['api','gateway','file-helper','preview-renderer']:
   image=candidate['images'][part];actual=json.loads(read(['docker','image','inspect',image['configId']]))[0]
   assert actual['Id']==image['configId'] and actual['Config']['Labels']['org.opencontainers.image.revision']==image['source']
- staging=folder/'previews';staging.mkdir(mode=0o700);os.chown(staging,10001,10001)
+ staging=Path(profile['previewStagingRoot']);assert staging==ROOT/'previews' and not staging.is_symlink()
+ staging.mkdir(mode=0o700,exist_ok=True);os.chown(staging,10001,10001);staging.chmod(0o700)
  runtime=json.loads(Path('/etc/docker/daemon.json').read_text())['runtimes']['runsc'];digest=sha(Path(runtime['path']))
  assert digest=='210b437a9cfae51e8f8c9074ed19b8b5e59477178e2e391a18117d8d6b924f7a' and runtime['runtimeArgs']==['--platform=systrap']
  attestation=folder/'runtime-attestation.json';attestation.write_text(json.dumps({**runtime,'sha256':digest,'verifiedAt':int(time.time())}));attestation.chmod(0o444)
