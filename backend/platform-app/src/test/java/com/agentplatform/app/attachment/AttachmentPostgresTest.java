@@ -32,7 +32,8 @@ class AttachmentPostgresTest {
     private static Flyway flyway(String target){var config=Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").cleanDisabled(false);if(target!=null)config.target(target);return config.load();}
     @BeforeAll static void migrate()throws Exception {
         url=System.getenv("R54_TEST_JDBC_URL");Assumptions.assumeTrue(url!=null,"R54 independent PostgreSQL NOT_RUN");
-        assertEquals("1",System.getenv("R54_ACCEPTANCE"));assertTrue(url.matches("jdbc:postgresql://127\\.0\\.0\\.1:1545[45]/workbench_test\\?sslmode=disable"));
+        assertEquals("1",System.getenv("R54_ACCEPTANCE"));int port=Integer.parseInt(System.getenv("R54_TEST_PORT"));assertTrue(port>1024&&port<65536);
+        assertEquals("jdbc:postgresql://127.0.0.1:"+port+"/workbench_test?sslmode=disable",url);
         password=Files.readString(Path.of(System.getenv("R54_TEST_PASSWORD_FILE"))).strip();
         flyway(null).clean();flyway("20").migrate();assertEquals(20,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         flyway(null).migrate();assertEquals(21,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
@@ -149,17 +150,20 @@ class AttachmentPostgresTest {
     @Test void largePrivateStateAndImmutableCheckpointUseTheFrozenProductionLimit()throws Exception {
         var repository=chat();var lease=lease(repository);
         var input=repository.executionStartup(lease).history();
-        byte[] state=("{\"fixture\":\""+"x".repeat(1_100_000)+"\"}").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        var sdkCodec=new io.agentscope.core.util.JacksonJsonCodec();
+        var sdk=sdkCodec.fromJson("{\"user_id\":\""+lease.userId()+"\",\"session_id\":\""+lease.conversationId()+"\",\"context\":[]}",io.agentscope.core.state.AgentState.class);
+        sdk.contextMutable().add(io.agentscope.core.message.Msg.builder().role(io.agentscope.core.message.MsgRole.USER).textContent("x".repeat(1_100_000)).build());
+        byte[] state=sdkCodec.toJson(sdk).getBytes(java.nio.charset.StandardCharsets.UTF_8);
         assertEquals(1,repository.stateCas(lease,"large-private-state",0,state));
         var codec=new com.fasterxml.jackson.databind.ObjectMapper();
-        assertEquals("x".repeat(1_100_000),codec.readTree(repository.state(lease,"large-private-state").body()).path("fixture").asText());
+        assertEquals(codec.readTree(state),codec.readTree(repository.state(lease,"large-private-state").body()));
         var draft=new com.agentplatform.types.harness.HarnessData.CheckpointDraft(0,state,input,com.agentplatform.types.harness.HarnessData.CheckpointPhase.INPUT_READY);
         var bundle=com.agentplatform.domain.chat.ChatRuntime.contextBundle(false);
         UUID checkpoint=repository.commitCheckpoint(lease,bundle,draft);
         repository.validateCheckpoint(lease,checkpoint,bundle);
         assertEquals(1,count("SELECT count(*) FROM pf.checkpoint WHERE id='"+checkpoint+"' AND octet_length(state_json::text)>1048576"));
         assertThrows(com.agentplatform.domain.chat.ChatFailure.class,()->repository.stateCas(lease,"large-private-state",0,state));
-        assertEquals("x".repeat(1_100_000),codec.readTree(repository.state(lease,"large-private-state").body()).path("fixture").asText());
+        assertEquals(codec.readTree(state),codec.readTree(repository.state(lease,"large-private-state").body()));
     }
     @Test void submissionSharesTheTaskTransactionAndSerializesConcurrentRequestIdentity()throws Exception {
         var repository=chat();var tx=new TransactionTemplate(new JdbcTransactionManager(pool));

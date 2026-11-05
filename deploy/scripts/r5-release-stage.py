@@ -36,7 +36,9 @@ def main():
  runtime=json.loads(Path('/etc/docker/daemon.json').read_text())['runtimes']['runsc'];digest=sha(Path(runtime['path']))
  assert digest=='210b437a9cfae51e8f8c9074ed19b8b5e59477178e2e391a18117d8d6b924f7a' and runtime['runtimeArgs']==['--platform=systrap']
  attestation=folder/'runtime-attestation.json';attestation.write_text(json.dumps({**runtime,'sha256':digest,'verifiedAt':int(time.time())}));attestation.chmod(0o444)
- nativePlan=json.loads(args.native_result.with_name('native-operation.json').read_text());sandbox=nativePlan['sandboxImage'];quota=nativePlan['quotaImage'];file=candidate['images']['file-helper']['configId']
+ nativePlan=json.loads(args.native_result.with_name('native-operation.json').read_text());assert nativePlan['schema']==21 and nativePlan['source']==candidate['source']
+ runtimeEnv=config['services']['runner']['environment'];sandbox=runtimeEnv['PLATFORM_WORKSPACE_ENVIRONMENT_IMAGE_ID'];quota=runtimeEnv['PLATFORM_WORKSPACE_RUNNER_HELPER_IMAGE'];file=candidate['images']['file-helper']['configId']
+ assert re.fullmatch('sha256:[a-f0-9]{64}',sandbox) and re.fullmatch('sha256:[a-f0-9]{64}',quota)
  policy='environment-v3|'+sandbox+'|'+quota+'|'+str(ROOT/'workspaces')+'|'+mount['uuid']+'|'+loop+'|'+digest+'|systrap|uid10001|ro|net-none|caps-none|devices-none|memory512m-swap512m|cpu1|pids128|nproc32|tmpfs64m|guest-no-file-bridge|trusted-file-helper:runc|uid10001|ro|net-none|caps-none|devices-none|memory64m-swap64m|cpu1|pids32|tmpfs8m|bridge-v3-jsonl|startup-canary-v1'
  filePolicy='file-stream-policy-v1|'+file+'|'+quota+'|'+str(ROOT/'workspaces')+'|'+mount['uuid']+'|'+loop+'|uid10001|runc-trusted-file-only|ro|net-none|caps-none|no-devices|no-socket|memory64m-swap64m|cpu1|pids32|tmpfs8m|raw64k|header64k|nfc|nofollow|sha256|single-work-bind|scan-v1-100entries-28k|create-noreplace|require-loop-device|file-stream-v2-sha256-trailer32'
  caps=profile['applicationMemoryMiB'];heaps=profile['heapMiB']
