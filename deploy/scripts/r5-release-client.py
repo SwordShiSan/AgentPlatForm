@@ -51,8 +51,25 @@ operator['entrypoint']=['java','-XX:+UseSerialGC','-Xms16m','-Xmx128m','-Xss512k
     (DATA/'release-pointer.json').write_text(json.dumps(pointer,indent=2))
 
 
-def stage():
+def stage(new_attempt=False):
     pointer=DATA/'release-pointer.json'
+    if new_attempt:
+        previous=json.loads(pointer.read_text());folder=previous['folder']
+        assert folder.startswith('/srv/agentplatform/operations/r5-release-')
+        code='''from pathlib import Path
+import json,subprocess
+r=Path(FOLDER);assert not (r/'writes-open-intent.json').exists()
+assert json.loads((r/'failure-start-restoration.json').read_text())['status']=='PASS'
+for path in r.glob('job-*.json'):
+ row=json.loads(path.read_text());p=Path('/proc/'+str(row['pid'])+'/stat')
+ assert not p.exists() or p.read_text().split()[21]!=row['processStart'] or p.read_text().split()[2]=='Z'
+for old in json.loads((r/'source-containers.private.json').read_text()):
+ now=json.loads(subprocess.check_output(['docker','inspect',old['Id']]))[0]
+ assert now['State']['Running'] and now['Image']==old['Image'] and now['HostConfig']['RestartPolicy']==old['HostConfig']['RestartPolicy']
+print('FAILED_RELEASE_RECOVERED_EXACT_R4_RETAINED')
+'''.replace('FOLDER',repr(folder))
+        print(native.remote(code));archive=DATA/'release-attempts'/Path(folder).name;archive.mkdir(parents=True,exist_ok=False)
+        (archive/'release-pointer.json').write_bytes(pointer.read_bytes());pointer.unlink()
     assert not pointer.exists(),'Query the retained release, do not prepare a second one'
     candidate=json.loads((Path(json.loads((DATA/'candidate-pointer.json').read_text())['folder'])/'result.json').read_text())
     acceptance=json.loads((DATA/'native-acceptance.json').read_text());assert acceptance['status']=='PASS' and acceptance['source']==candidate['source']
@@ -91,8 +108,9 @@ print((folder/'stage.json').read_text())
 
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('action',choices=['stage','refresh-scripts','status','start','smoke','observe','backup-r5','restore','rollback-drill','redeploy','final-smoke','final-observe','open-writes']);args=parser.parse_args()
-    if args.action=='stage':stage();return
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('action',choices=['stage','refresh-scripts','status','start','smoke','observe','backup-r5','restore','rollback-drill','redeploy','final-smoke','final-observe','open-writes']);parser.add_argument('--new-attempt',action='store_true',help='Archive only a failed fully restored pre-write release pointer');args=parser.parse_args()
+    if args.action=='stage':stage(args.new_attempt);return
+    assert not args.new_attempt
     pointer=json.loads((DATA/'release-pointer.json').read_text());folder=pointer['folder']
     assert folder.startswith('/srv/agentplatform/operations/r5-release-')
     if args.action=='refresh-scripts':refresh(pointer);return

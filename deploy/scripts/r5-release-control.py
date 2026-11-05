@@ -1,6 +1,6 @@
 """Receipted R4 -> R5 host release. All raw backup/config material stays private."""
 from pathlib import Path
-import argparse,fcntl,gzip,hashlib,importlib.util,json,os,re,shutil,signal,subprocess,tarfile,time,urllib.request
+import argparse,fcntl,gzip,hashlib,importlib.util,json,os,re,shutil,signal,subprocess,tarfile,time,traceback,urllib.request
 ROOT=Path('/srv/agentplatform');MIB=1024**2
 def interrupted(signum,frame):
  raise InterruptedError('Release termination requested; recover exact retained production graph')
@@ -133,7 +133,13 @@ class Window:
    target.flush();os.fsync(target.fileno())
   assert size==4*1024**3 and h.hexdigest()==proof['rawXfsSha256'] and self.hash(image)==h.hexdigest()
   assert self.run(['blkid','-p','-s','UUID','-o','value',str(image)])==proof['uuid']
-  self.run(['mount','-o','prjquota,noatime',self.stage['loop'],str(ROOT/'workspaces')])
+  device=self.stage['loop'];assert re.fullmatch('/dev/loop[0-9]+',device)
+  backing=Path('/sys/block/'+Path(device).name+'/loop/backing_file')
+  if backing.exists():assert Path('/'+backing.read_text().strip().lstrip('/')).resolve()==image.resolve(),'Original loop now references a different image'
+  else:
+   assert not self.run(['losetup','-j',str(image)]),'Image unexpectedly attached to another device'
+   self.run(['losetup',device,str(image)])
+  self.run(['mount','-o','prjquota,noatime',device,str(ROOT/'workspaces')])
   self.run(['python3',str(self.folder/'workspace-manifest.py'),'verify',str(ROOT/'workspaces'),str(backup/'workspace-files.json')])
   self.receipt('restored-snapshot-'+generation+'-'+stamp,{'status':'PASS','migration':proof['migration'],'sourceUuidUnchanged':True,'directoriesRetained':str(detached)})
 
@@ -176,6 +182,8 @@ def main():
     assert (w.folder/'restore.json').exists() and (w.folder/'rollback-drill.json').exists();w.stop_apps('r4');w.stop_dependencies();w.restore_snapshot('r5');w.activate('redeploy')
   except BaseException:
    try:w.receipt('failure-'+a.action+'-restoration',w.rollback() if (w.folder/'backup-r4.json').exists() else w.recover_preupgrade())
-   except BaseException:(w.folder/'restoration-required').write_text('Inspect original failure and exact retained R4 graph')
+   except BaseException:
+    (w.folder/'restoration-failure.private.log').write_text(traceback.format_exc())
+    (w.folder/'restoration-required').write_text('Inspect original failure and exact retained R4 graph')
    raise
 if __name__=='__main__':main()
