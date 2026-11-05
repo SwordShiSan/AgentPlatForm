@@ -145,6 +145,7 @@ def start():
    identity_facts[name]={'requestId':request,'userId':user,'reused':existing=='1','linksValidated':True}
   save('identity-fixture-reuse',{'accounts':identity_facts,'passwordsUnchanged':True,'loginStillRequired':True})
   if STAGE=='r54':
+   sql("INSERT INTO pf.model_definition(id,model_name,endpoint_alias,input_micros_per_million,output_micros_per_million,pricing_version) VALUES('0199e000-0000-7000-8000-000000000003','deepseek-v4-pro','DEEPSEEK',9000000,27000000,'deepseek-v4-pro-2026-11-05-peak-bound') ON CONFLICT(id) DO NOTHING;")
    credentials=sql("SELECT id::text FROM pf.credential WHERE scope_type='PLATFORM' AND status='ACTIVE' ORDER BY created_at;").splitlines()
    if not credentials:
     operator('chat-ops',['--chat-action=import-credential','--scope=PLATFORM','--key-file=/tmp/operator-input'],b'R54_DETERMINISTIC_NOT_A_SUPPLIER_KEY')

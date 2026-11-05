@@ -1,10 +1,36 @@
 """Stage a corrected immutable R52 candidate only after the exact R4 has been restored."""
 from pathlib import Path
-import argparse,importlib.util,json
+import argparse,importlib.util,json,hashlib
 ROOT=Path(__file__).resolve().parents[2]
+
+def staged_scripts(m,data):
+ plan=json.loads((data/'native-plan.json').read_text());cloud=plan['root']
+ assert cloud.startswith('/srv/agentplatform/acceptance/r44-'+plan['acceptanceStage']+'-')
+ prefix='from pathlib import Path\nimport json,subprocess,hashlib,shutil,time\nr=Path('+repr(cloud)+')\n'
+ preflight="assert not (r/'controller.json').exists(),'Controller identity exists; finish/query the original window first'\nassert not subprocess.check_output(['docker','ps','-q','--filter','label=com.docker.compose.project='+"+repr(plan['project'])+"],text=True).strip()\n"
+ m.remote(prefix+preflight+'print("STAGED_NOT_STARTED_CONFIRMED")\n')
+ updates={}
+ for name in ['files-native-window.py','files-native-watchdog.py']:
+  source=ROOT/'deploy/scripts'/name;updates[name]=hashlib.sha256(source.read_bytes()).hexdigest()
+  m.local(['scp',*m.SSH,source,'root@124.222.55.140:'+cloud+'/'+name+'.pending'])
+ plan['configurationSource']=m.local(['git','rev-parse','HEAD'])
+ for name,digest in updates.items():plan['fixtureInputHashes']['deploy/scripts/'+name]=digest
+ code=prefix+preflight+'updates='+repr(updates)+'\nplan='+repr(plan)+'''\narchive=r/'staged-history'/str(time.time_ns());archive.mkdir(parents=True,mode=0o700)
+for name,digest in updates.items():
+ pending=r/(name+'.pending');assert hashlib.sha256(pending.read_bytes()).hexdigest()==digest
+ compile(pending.read_text(),name,'exec')
+ shutil.copy2(r/name,archive/name);pending.replace(r/name)
+shutil.copy2(r/'operation.json',archive/'operation.json')
+(r/'operation.json').write_text(json.dumps(plan,indent=2))
+print('STAGED_CONTROLLERS_UPDATED_NOT_STARTED')
+'''
+ print(m.remote(code))
+ for name in updates:(data/'native'/name).write_bytes((ROOT/'deploy/scripts'/name).read_bytes())
+ for path in [data/'native-plan.json',data/'native/operation.json']:path.write_text(json.dumps(plan,indent=2),encoding='utf-8')
 def main():
- p=argparse.ArgumentParser();p.add_argument('--stage',choices=['r52','r53','r54'],default='r52');args=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('--stage',choices=['r52','r53','r54'],default='r52');p.add_argument('--staged-scripts',action='store_true');args=p.parse_args()
  s=importlib.util.spec_from_file_location('fixture',ROOT/'deploy/scripts/files-native-fixture.py');m=importlib.util.module_from_spec(s);s.loader.exec_module(m);m.configure(args.stage);data=m.DATA
+ if args.staged_scripts:staged_scripts(m,data);return
  pointer=json.loads((data/'candidate-pointer.json').read_text());candidate=json.loads((Path(pointer['folder'])/'result.json').read_text());assert m.sha(Path(candidate['archive']))==candidate['archiveSha256']
  plan=json.loads((data/'native-plan.json').read_text());cloud=plan['root'];assert cloud.startswith('/srv/agentplatform/acceptance/r44-'+args.stage+'-')
  m.remote('from pathlib import Path\nimport json\nr=Path('+repr(cloud)+');assert json.loads((r/"reports/restored.json").read_text())["status"]=="PASS"\nprint("EXACT_R4_RESTORED_BEFORE_UPDATE")\n')
@@ -31,7 +57,7 @@ for name,row in c['services'].items():
  if 'preview-renderer' in candidate['images'] and 'PLATFORM_PREVIEW_IMAGE_ID' in env:env.update(PLATFORM_PREVIEW_IMAGE_ID=candidate['images']['preview-renderer']['configId'],PLATFORM_PREVIEW_POLICY_HASH=__PREVIEW_HASH_VALUE__)
 assert shutil.disk_usage('/').free>=5*1024**3
 (r/'compose.json').write_text(json.dumps(c,indent=2));(r/'operation.json').write_text(json.dumps(plan,indent=2));print('UPDATED_SAME_FIXTURE_NOT_STARTED')
-'''.replace('ROOT',repr(cloud)).replace('CANDIDATE',repr(candidate)).replace('PLAN',repr(plan)).replace('PROJECT',repr(plan['project'])).replace('__PREVIEW_HASH_VALUE__',repr(m.preview_policy_hash(candidate['images']['preview-renderer']['configId']) if 'preview-renderer' in candidate['images'] else ''))
+'''.replace('ROOT',repr(cloud)).replace('CANDIDATE',repr(candidate)).replace('PLAN',repr(plan)).replace('PROJECT',repr(plan['project'])).replace('__PREVIEW_HASH_VALUE__',repr(m.preview_policy_hash(candidate['images']['preview-renderer']['configId'],'asset-parser-tika3.3.3-v2' if args.stage=='r54' else 'preview-bundle-v1') if 'preview-renderer' in candidate['images'] else ''))
  compile(code,'scoped-candidate-update','exec')
  print(m.remote(code,timeout=180));(data/'native-plan.json').write_text(json.dumps(plan,indent=2));(data/'gateway.json').write_text(json.dumps(gateway,indent=2))
  local=json.loads((data/'native/compose.json').read_text())
@@ -39,6 +65,6 @@ assert shutil.disk_usage('/').free>=5*1024**3
   if name in ['api','worker','runner','operator']:row['image']=candidate['images']['api']['configId']
   if name=='gateway':row['image']=candidate['images']['gateway']['configId']
   if 'PLATFORM_WORKSPACE_FILES_HELPER_IMAGE' in row.get('environment',{}):row['environment']['PLATFORM_WORKSPACE_FILES_HELPER_IMAGE']=candidate['images']['file-helper']['configId']
-  if 'preview-renderer' in candidate['images'] and 'PLATFORM_PREVIEW_IMAGE_ID' in row.get('environment',{}):row['environment'].update(PLATFORM_PREVIEW_IMAGE_ID=candidate['images']['preview-renderer']['configId'],PLATFORM_PREVIEW_POLICY_HASH=m.preview_policy_hash(candidate['images']['preview-renderer']['configId']))
+  if 'preview-renderer' in candidate['images'] and 'PLATFORM_PREVIEW_IMAGE_ID' in row.get('environment',{}):row['environment'].update(PLATFORM_PREVIEW_IMAGE_ID=candidate['images']['preview-renderer']['configId'],PLATFORM_PREVIEW_POLICY_HASH=m.preview_policy_hash(candidate['images']['preview-renderer']['configId'],'asset-parser-tika3.3.3-v2' if args.stage=='r54' else 'preview-bundle-v1'))
  (data/'native/compose.json').write_text(json.dumps(local,indent=2))
 if __name__=='__main__':main()
