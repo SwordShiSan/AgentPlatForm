@@ -88,6 +88,7 @@ def prepare():
   for k in ['PLATFORM_WORKSPACE_MESSAGING_USER','PLATFORM_CHAT_MQ_USER']:
    if k in env:env[k]=STAGE
   if name=='api':env['PLATFORM_IDENTITY_ORIGINS']='http://127.0.0.1:'+str(plan['port'])+',http://localhost:'+str(plan['port'])+(',http://agentplatform.lailihao.cloud:'+str(plan['port']) if STAGE=='r54' else '')
+  if name=='api' and STAGE=='r54':env.update(PLATFORM_IDENTITY_ORIGINS='http://agentplatform.lailihao.cloud,http://124.222.55.140',PLATFORM_IDENTITY_HTTP_DEPLOYMENT='true')
   if STAGE in ['r52','r53','r54'] and 'PLATFORM_WORKSPACE_FILES_HELPER_IMAGE' in env:env['PLATFORM_WORKSPACE_FILES_HELPER_IMAGE']=image['candidate']['images']['file-helper']['configId']
   if name=='worker':env['PLATFORM_CHAT_PROVIDER_BASE']='http://fixture:8080' if STAGE=='r54' else 'http://127.0.0.1:1';env['PLATFORM_CHAT_FIXTURE_PROVIDER']='true'
   if STAGE=='r54' and name in ['api','worker','runner']:

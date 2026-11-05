@@ -7,7 +7,12 @@ def staged_scripts(m,data):
  plan=json.loads((data/'native-plan.json').read_text());cloud=plan['root']
  assert cloud.startswith('/srv/agentplatform/acceptance/r44-'+plan['acceptanceStage']+'-')
  prefix='from pathlib import Path\nimport json,subprocess,hashlib,shutil,time\nr=Path('+repr(cloud)+')\n'
- preflight="assert not (r/'controller.json').exists(),'Controller identity exists; finish/query the original window first'\nassert not subprocess.check_output(['docker','ps','-q','--filter','label=com.docker.compose.project='+"+repr(plan['project'])+"],text=True).strip()\n"
+ preflight="""if (r/'controller.json').exists():
+ assert json.loads((r/'reports/restored.json').read_text())['status']=='PASS'
+ assert json.loads((r/'reports/window-result.json').read_text())['status']=='FAIL'
+ old=json.loads((r/'controller.json').read_text());process=Path('/proc/'+str(old['pid'])+'/stat')
+ assert not process.exists() or process.read_text().split()[21]!=old['processStart'],'Original controller still alive'
+"""+"assert not subprocess.check_output(['docker','ps','-q','--filter','label=com.docker.compose.project='+"+repr(plan['project'])+"],text=True).strip()\n"
  m.remote(prefix+preflight+'print("STAGED_NOT_STARTED_CONFIRMED")\n')
  updates={}
  for name in ['files-native-window.py','files-native-watchdog.py']:
@@ -21,11 +26,18 @@ for name,digest in updates.items():
  compile(pending.read_text(),name,'exec')
  shutil.copy2(r/name,archive/name);pending.replace(r/name)
 shutil.copy2(r/'operation.json',archive/'operation.json')
+if plan['acceptanceStage']=='r54':
+ shutil.copy2(r/'compose.json',archive/'compose.json');config=json.loads((r/'compose.json').read_text())
+ config['services']['api']['environment'].update(PLATFORM_IDENTITY_ORIGINS='http://agentplatform.lailihao.cloud,http://124.222.55.140',PLATFORM_IDENTITY_HTTP_DEPLOYMENT='true')
+ (r/'compose.json').write_text(json.dumps(config,indent=2))
 (r/'operation.json').write_text(json.dumps(plan,indent=2))
 print('STAGED_CONTROLLERS_UPDATED_NOT_STARTED')
 '''
  print(m.remote(code))
  for name in updates:(data/'native'/name).write_bytes((ROOT/'deploy/scripts'/name).read_bytes())
+ if plan['acceptanceStage']=='r54':
+  config=json.loads((data/'native/compose.json').read_text());config['services']['api']['environment'].update(PLATFORM_IDENTITY_ORIGINS='http://agentplatform.lailihao.cloud,http://124.222.55.140',PLATFORM_IDENTITY_HTTP_DEPLOYMENT='true')
+  (data/'native/compose.json').write_text(json.dumps(config,indent=2))
  for path in [data/'native-plan.json',data/'native/operation.json']:path.write_text(json.dumps(plan,indent=2),encoding='utf-8')
 def main():
  p=argparse.ArgumentParser();p.add_argument('--stage',choices=['r52','r53','r54'],default='r52');p.add_argument('--staged-scripts',action='store_true');args=p.parse_args()

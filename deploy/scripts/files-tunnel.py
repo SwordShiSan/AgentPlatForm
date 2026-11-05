@@ -33,9 +33,12 @@ def main():
             else:os.kill(prior['pid'],signal.SIGTERM)
         print(json.dumps({'status':'STOPPED','port':port}));return
     with socket.socket() as probe:probe.bind(('127.0.0.1',port))
+    if a.stage=='r54':
+        with socket.socket() as probe:probe.bind(('127.0.0.1',80))
     command=['ssh','-F','NUL' if os.name=='nt' else '/dev/null','-i','D:/java/Dev/腾讯云服务器/lailihao_shanghai.pem',
              '-o','BatchMode=yes','-o','ExitOnForwardFailure=yes','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=3',
-             '-N','-L','127.0.0.1:'+str(port)+':127.0.0.1:'+str(port),'root@124.222.55.140']
+             '-N','-L','127.0.0.1:'+str(port)+':127.0.0.1:'+str(port),
+             *(['-L','127.0.0.1:80:127.0.0.1:'+str(port)] if a.stage=='r54' else []),'root@124.222.55.140']
     with (data/'tunnel.private.log').open('ab') as log:
         process=subprocess.Popen(command,stdin=subprocess.DEVNULL,stdout=log,stderr=log,
                                  creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0,start_new_session=os.name!='nt')
