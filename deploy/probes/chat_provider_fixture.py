@@ -2,12 +2,15 @@
 from collections import Counter
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import hashlib
+import os
 import re
 import threading
 import time
 
 COUNTS = Counter()
 LOCK = threading.Lock()
+R54 = os.environ.get('AP_FIXTURE_PROFILE') == 'R54'
 
 
 def unique_object(pairs):
@@ -37,7 +40,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         length = int(self.headers.get('Content-Length', '0'))
-        if self.path != '/chat/completions' or not 0 < length <= 98304:
+        if self.path != '/chat/completions' or not 0 < length <= (8 * 1024 * 1024 if R54 else 98304):
             self.send_error(400)
             return
         try:
@@ -48,7 +51,7 @@ class Handler(BaseHTTPRequestHandler):
         if body.get('model') not in ['deepseek-flash', 'deepseek-v4-pro'] or body.get('thinking') != {'type': 'disabled'} or not body.get('stream'):
             self.send_error(422)
             return
-        if body.get('max_tokens') != 1024 or not body.get('stream_options', {}).get('include_usage'):
+        if body.get('max_tokens') not in ([4096, 8192] if R54 else [1024]) or not body.get('stream_options', {}).get('include_usage'):
             self.send_error(422)
             return
         messages = body.get('messages', [])
@@ -57,9 +60,13 @@ class Handler(BaseHTTPRequestHandler):
         prompt = messages[-1].get('content', '') if messages else ''
         if not isinstance(prompt, str):
             prompt = json.dumps(prompt)
+        # R54 accepts large document inputs; neither counters nor /status retain their text.
+        scenario = 'sha256:' + hashlib.sha256(prompt.encode()).hexdigest() if R54 else prompt
         with LOCK:
-            COUNTS[prompt] += 1
-            ordinal = COUNTS[prompt]
+            if scenario not in COUNTS and len(COUNTS) >= 1024:
+                self.send_error(429); return
+            COUNTS[scenario] += 1
+            ordinal = COUNTS[scenario]
         if prompt.startswith('fixture:balance'):
             self.send_response(402)
             self.send_header('Content-Length', '0')
@@ -166,6 +173,10 @@ class Handler(BaseHTTPRequestHandler):
                     chunks = ['慢速'] * 50
                 if prompt.startswith('fixture:history'):
                     chunks = ['history-messages=' + str(len(messages))]
+                if R54 and 'fixture:r54-document' in prompt:
+                    source = '\n'.join(str(message.get('content', '')) for message in messages)
+                    chunks = ['document-input-bytes=' + str(len(source.encode())),
+                              '; source-marker=' + ('R54_FIXED_SOURCE_666' if 'R54_FIXED_SOURCE_666' in source else 'MISSING')]
                 for index, text in enumerate(chunks):
                     chunk({'content': text, 'reasoning_content': 'FIXTURE_HIDDEN_REASONING'})
                     if prompt.startswith('fixture:partial') and index == 0:

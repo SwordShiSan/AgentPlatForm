@@ -15,7 +15,7 @@ public final class PreviewApplicationService implements PreviewApi {
     private final PreviewRepository repository;private final AssetStore assets;
     public PreviewApplicationService(PreviewRepository repository,AssetStore assets){this.repository=repository;this.assets=assets;}
     private static Actor actor(Caller c){return new Actor(FileRules.id(c.userId()),FileRules.id(c.spaceId()));}
-    private static View view(Job r){return new View(r.id().toString(),r.fileId().toString(),r.versionId().toString(),r.state(),r.format()==null?"AUTO":r.format(),r.mediaType(),r.bytes(),r.sha256(),r.pages(),r.errorCode(),r.retryable(),r.revision(),PreviewData.actions(r));}
+    private static View view(Job r){return new View(r.id().toString(),r.fileId()==null?null:r.fileId().toString(),r.versionId()==null?null:r.versionId().toString(),r.state(),r.format()==null?"AUTO":r.format(),r.mediaType(),r.bytes(),r.sha256(),r.pages(),r.errorCode(),r.retryable(),r.revision(),PreviewData.actions(r),r.sourceKind(),r.attachmentId()==null?null:r.attachmentId().toString());}
     @Override public View create(Caller caller,String file,Create body,String request) {
         if(body==null||body.versionId()==null)throw new FileFailure(400,"INVALID_PREVIEW_REQUEST");
         UUID f=FileRules.id(file),v=FileRules.id(body.versionId());String format=body.format()==null?"AUTO":body.format();
@@ -23,6 +23,11 @@ public final class PreviewApplicationService implements PreviewApi {
         return view(repository.create(actor(caller),f,v,format,FileRules.id(request),hash));
     }
     @Override public View get(Caller caller,String preview){return view(repository.get(actor(caller),FileRules.id(preview)));}
+    @Override public View createAttachment(Caller caller,String attachment,String format,String request){
+        UUID id=FileRules.id(attachment);String selected=format==null?"AUTO":format;
+        String hash=RunnerSignatures.sha256(("CHAT_ATTACHMENT\n"+id+"\n"+selected).getBytes(StandardCharsets.UTF_8));
+        return view(repository.createAttachment(actor(caller),id,selected,FileRules.id(request),hash));
+    }
     @Override public View retry(Caller caller,String preview,String ifMatch,String request) {
         if(ifMatch==null)throw new FileFailure(428,"VERSION_REQUIRED");
         long version;try{if(!ifMatch.matches("\"[1-9][0-9]*\""))throw new IllegalArgumentException();version=Long.parseLong(ifMatch.substring(1,ifMatch.length()-1));}catch(IllegalArgumentException invalid){throw new FileFailure(400,"INVALID_VERSION");}

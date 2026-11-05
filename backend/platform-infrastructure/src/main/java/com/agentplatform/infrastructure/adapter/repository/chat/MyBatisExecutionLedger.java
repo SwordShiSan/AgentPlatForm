@@ -2,6 +2,7 @@ package com.agentplatform.infrastructure.adapter.repository.chat;
 
 import com.agentplatform.domain.chat.ChatData.Lease;
 import com.agentplatform.domain.chat.ChatFailure;
+import com.agentplatform.domain.chat.ContextPolicy;
 import com.agentplatform.domain.chat.ExecutionLedger.*;
 import com.agentplatform.types.Uuid7;
 import com.agentplatform.types.harness.HarnessData.*;
@@ -28,9 +29,10 @@ final class MyBatisExecutionLedger {
 
     static void guard(ChatMappers c,Lease l) {
         owned(c,l,false);authorizeCredential(c,l);activeModel(c,l);
+        if(c.attachments()!=null&&!c.attachments().inputAuthorized(new com.agentplatform.domain.files.FileData.Actor(l.userId(),l.spaceId()),l.conversationId(),l.taskId()))throw new ChatFailure(403,"ATTACHMENT_AUTHORIZATION_REVOKED");
     }
 
-    static void commitRound(ChatMappers c,Lease l,UUID id,Turn turn,CallResult accepted) {
+    static boolean commitRound(ChatMappers c,Lease l,UUID id,Turn turn,CallResult accepted) {
         guard(c,l);
         String body=canonicalJson(turn.round()), fingerprint=hash(body),status;
         { var rows185 = c.ledger().selectModelTurn185(id, l.spaceId(), l.taskId(), l.attemptId(), l.fence()); var row185 = rows185.isEmpty() ? null : rows185.getFirst();
@@ -38,12 +40,13 @@ final class MyBatisExecutionLedger {
             if(row185.value3()!=turn.ordinal())throw new ChatFailure(409,"TURN_ORDINAL_MISMATCH");
             if("COMMITTED".equals(status)) {
                 if(!fingerprint.equals(row185.value2())||!accepted.call().id().equals(row185.value4()))throw new ChatFailure(409,"TURN_CONTENT_CONFLICT");
-                return;
+                return true;
             }
          }
         { var rows184 = c.accounting().selectModelCall184(accepted.call().id(), id, l.taskId(), l.attemptId());
             if(rows184.isEmpty())throw new ChatFailure(409,"CALL_NOT_STARTED");
          }
+        if(!settleCall(c,l,accepted.call(),accepted.usageKnown()?turn.round():null,accepted.requestId(),accepted.usageKnown()?null:"PROVIDER_USAGE_MISSING",accepted.real()))return false;
         Set<String> ids=new HashSet<>();
         for(var call:turn.round().calls()) {
             if(!ids.add(call.id()))throw new ChatFailure(409,"DUPLICATE_TOOL_CALL");
@@ -51,7 +54,7 @@ final class MyBatisExecutionLedger {
             c.recovery().bindOperation(l,operation);
         }
         c.ledger().updateModelTurn190(UUID.fromString(turn.id()), body, fingerprint, accepted.call().id(), id);
-        settleCall(c,l,accepted.call(),accepted.usageKnown()?turn.round():null,accepted.requestId(),accepted.usageKnown()?null:"PROVIDER_USAGE_MISSING",accepted.real());
+        return true;
     }
 
     static void startTool(ChatMappers c,Lease l,com.agentplatform.types.harness.HarnessData.Call call) {
@@ -97,7 +100,8 @@ final class MyBatisExecutionLedger {
     }
     static long stateCas(ChatMappers c,Lease l,String key,long version,byte[] body) {
         guard(c,l);
-        if(version<0||body==null||body.length>1024*1024)throw new ChatFailure(400,"INVALID_STATE_CAS");
+        int limit=ContextPolicy.fromSnapshot(ChatPersistenceSupport.frozen(c,l)).stateBytes();
+        if(version<0||body==null||body.length>limit)throw new ChatFailure(400,"INVALID_STATE_CAS");
         String payload=new String(body,StandardCharsets.UTF_8);long result;
         if(version==0) {
             { var rows181 = c.ledger().insertStateSlot181(l.spaceId(), l.userId(), l.conversationId(), key(l,key), payload); var row181 = rows181.isEmpty() ? null : rows181.getFirst();

@@ -21,8 +21,12 @@ public final class MyBatisPreviewRepository implements PreviewRepository {
     private final PreviewMapper mapper;
     private final FileMapper files;
     private final String image,bundle,policy;
+    private final boolean extraction;
     public MyBatisPreviewRepository(PreviewMapper mapper,FileMapper files,String image,String bundle,String policy) {
-        this.mapper=mapper;this.files=files;this.image=image;this.bundle=bundle;this.policy=policy;
+        this(mapper,files,image,bundle,policy,false);
+    }
+    public MyBatisPreviewRepository(PreviewMapper mapper,FileMapper files,String image,String bundle,String policy,boolean extraction) {
+        this.mapper=mapper;this.files=files;this.image=image;this.bundle=bundle;this.policy=policy;this.extraction=extraction;
     }
     private static void tx(){if(!TransactionSynchronizationManager.isActualTransactionActive())throw new IllegalStateException("Preview transaction required");}
     private static void one(int count){if(count!=1)throw new FileFailure(409,"PREVIEW_CONCURRENT_CHANGE");}
@@ -31,6 +35,8 @@ public final class MyBatisPreviewRepository implements PreviewRepository {
     private void authorize(Actor actor){if(!allowed(actor))throw new FileFailure(403,"PREVIEW_AUTHORIZATION_REVOKED");}
     private void commitGuard(Runnable action){TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization(){@Override public void beforeCommit(boolean readOnly){action.run();}});}
     private Source source(Actor actor,UUID file,UUID version){authorize(actor);var source=mapper.source(actor,file,version);if(source==null)throw new FileFailure(404,"RESOURCE_NOT_FOUND");return source;}
+    private Source source(Actor actor,Job row){authorize(actor);var source="CHAT_ATTACHMENT".equals(row.sourceKind())?mapper.attachmentSource(actor,row.attachmentId()):mapper.source(actor,row.fileId(),row.versionId());if(source==null)throw new FileFailure(404,"RESOURCE_NOT_FOUND");return source;}
+    private Source source(Actor actor,Command row){authorize(actor);var source="CHAT_ATTACHMENT".equals(row.sourceKind())?mapper.attachmentSource(actor,row.attachmentId()):mapper.source(actor,row.fileId(),row.versionId());if(source==null)throw new FileFailure(404,"RESOURCE_NOT_FOUND");return source;}
     private void storage(UUID space){tx();if(files.lockStorage(space)==null)throw new FileFailure(409,"SPACE_STORAGE_UNAVAILABLE");}
     private static String sourceFormat(String name) {
         String suffix=name.contains(".")?name.substring(name.lastIndexOf('.')+1).toLowerCase(Locale.ROOT):"";
@@ -50,26 +56,37 @@ public final class MyBatisPreviewRepository implements PreviewRepository {
         if(Set.of("TEXT","HTML","SVG").contains(source)&&bytes>2097152)throw new FileFailure(413,"PREVIEW_TEXT_TOO_LARGE");
     }
     private static long reservation(String source,String requested){return Set.of("PDF","TEXT","SVG").contains(source)||"HTML".equals(source)&&!"HTML_STATIC".equals(requested)?0:MAX_BYTES;}
-    private static String key(UUID space,UUID asset,UUID id){return "spaces/"+space+"/preview/"+asset+"/"+id+"/"+Uuid7.next();}
+    private String key(UUID space,UUID asset,UUID id){return "spaces/"+space+"/"+(extraction?"text-extraction":"preview")+"/"+asset+"/"+id+"/"+Uuid7.next();}
     private Job owned(Actor actor,UUID id,boolean lock) {
         authorize(actor);var row=lock?mapper.lockJob(id):mapper.job(id);
         if(row==null||!row.spaceId().equals(actor.spaceId()))throw new FileFailure(404,"RESOURCE_NOT_FOUND");
-        source(actor,row.fileId(),row.versionId());return row;
+        source(actor,row);return row;
     }
     @Override public Job create(Actor actor,UUID file,UUID version,String requested,UUID request,String hash) {
         storage(actor.spaceId());var source=source(actor,file,version);
+        return createSource(actor,source,null,requested,request,hash);
+    }
+    @Override public Job createAttachment(Actor actor,UUID attachment,String requested,UUID request,String hash) {
+        storage(actor.spaceId());authorize(actor);var source=mapper.attachmentSource(actor,attachment);
+        if(source==null)throw new FileFailure(404,"RESOURCE_NOT_FOUND");
+        return createSource(actor,source,attachment,requested,request,hash);
+    }
+    private Job createSource(Actor actor,Source source,UUID attachment,String requested,UUID request,String hash) {
         var prior=mapper.request(actor,request);
         if(prior!=null){if(!hash.equals(prior.requestHash())||!"CREATE".equals(prior.kind()))throw new FileFailure(409,"IDEMPOTENCY_CONFLICT");return owned(actor,prior.previewId(),false);}
-        if(!Set.of("AUTO","PDF","IMAGE","HTML_STATIC").contains(requested))throw new FileFailure(400,"INVALID_PREVIEW_FORMAT");
-        var cached=mapper.cached(actor.spaceId(),version,bundle,policy,requested);
+        if(extraction){if(!"TEXT_EXTRACT".equals(requested))throw new FileFailure(400,"INVALID_EXTRACTION_FORMAT");}
+        else if(!Set.of("AUTO","PDF","IMAGE","HTML_STATIC").contains(requested))throw new FileFailure(400,"INVALID_PREVIEW_FORMAT");
+        var cached=mapper.cached(actor.spaceId(),source.versionId(),attachment,bundle,policy,requested);
         if(cached!=null){mapper.insertRequest(actor,request,hash,cached.id(),"CREATE");return cached;}
-        String sourceFormat=sourceFormat(source.name());format(sourceFormat,requested,source.bytes());
+        String sourceFormat=sourceFormat(source.name());
+        if(extraction){if(!Set.of("PDF","DOCX","XLSX","PPTX","TEXT").contains(sourceFormat))throw new FileFailure(415,"EXTRACTION_FORMAT_UNSUPPORTED");}
+        else format(sourceFormat,requested,source.bytes());
         if("AUTO".equals(requested))requested=switch(sourceFormat){case "PDF","DOCX","XLSX","PPTX"->"PDF";case "PNG","JPEG","GIF","WEBP"->"IMAGE";default->"AUTO";};
         UUID id=Uuid7.next(),asset=Uuid7.next();
-        var row=new Job(id,actor.spaceId(),source.workspaceId(),actor.userId(),file,version,source.name(),requested,sourceFormat,
+        var row=new Job(id,actor.spaceId(),source.workspaceId(),actor.userId(),source.fileId(),source.versionId(),source.name(),requested,sourceFormat,
                 source.objectKey(),source.bytes(),source.sha256(),image,bundle,policy,"QUEUED",1,1,Uuid7.next(),null,null,null,null,0,
-                null,key(actor.spaceId(),asset,id),null,null,null,null,null,false,asset);
-        long reserved=reservation(sourceFormat,requested);
+                null,key(actor.spaceId(),asset,id),null,null,null,null,null,false,asset,attachment==null?"FILE_VERSION":"CHAT_ATTACHMENT",attachment);
+        long reserved=extraction?2097152:reservation(sourceFormat,requested);
         one(mapper.reserveStorage(actor.spaceId(),reserved));mapper.insert(row);mapper.reserve(id,actor.spaceId(),reserved);
         mapper.insertRequest(actor,request,hash,id,"CREATE");mapper.outbox(Uuid7.next(),row);event(row);
         commitGuard(()->authorize(actor));return row;
@@ -81,7 +98,7 @@ public final class MyBatisPreviewRepository implements PreviewRepository {
         if(row.revision()!=expected)throw new FileFailure(412,"PREVIEW_VERSION_CONFLICT");
         if(!"FAILED".equals(row.state())||!row.retryable())throw new FileFailure(409,"PREVIEW_RETRY_NOT_ALLOWED");
         var attempt=mapper.attempt(row.commandId());if(attempt==null||attempt.receiptJson()==null)throw new FileFailure(409,"PREVIEW_STOP_UNCONFIRMED");
-        long reserved=reservation(row.sourceFormat(),row.requestedFormat());one(mapper.reserveStorage(row.spaceId(),reserved));
+        long reserved=extraction?2097152:reservation(row.sourceFormat(),row.requestedFormat());one(mapper.reserveStorage(row.spaceId(),reserved));
         one(mapper.reservationState(id,"RESERVED"));reset(row);mapper.insertRequest(actor,request,hash,id,"RETRY");
         var next=mapper.job(id);mapper.outbox(Uuid7.next(),next);event(next);commitGuard(()->authorize(actor));return next;
     }
@@ -94,7 +111,7 @@ public final class MyBatisPreviewRepository implements PreviewRepository {
         storage(item.spaceId());var heavy=mapper.lockHeavy();var row=mapper.lockJob(item.previewId());
         if(row==null||!row.spaceId().equals(item.spaceId())||row.generation()!=item.generation()||!"QUEUED".equals(row.state())){mapper.inbox(item);return null;}
         var actor=new Actor(row.actorId(),row.spaceId());
-        if(!allowed(actor)||mapper.source(actor,row.fileId(),row.versionId())==null) {
+        if(!allowed(actor)||("CHAT_ATTACHMENT".equals(row.sourceKind())?mapper.attachmentSource(actor,row.attachmentId()):mapper.source(actor,row.fileId(),row.versionId()))==null) {
             one(mapper.rejectQueued(row.id()));one(mapper.releaseStorage(row.id()));one(mapper.reservationState(row.id(),"RELEASED"));mapper.inbox(item);event(mapper.job(row.id()));return null;
         }
         if(heavy.kind()!=null){mapper.defer(item);return null;}
@@ -106,7 +123,7 @@ public final class MyBatisPreviewRepository implements PreviewRepository {
         tx();var attempt=lock?mapper.lockAttempt(command.commandId()):mapper.attempt(command.commandId());
         if(attempt==null||!command.equals(JSON.readValue(attempt.commandJson(),Command.class)))throw stale();return attempt;
     }
-    @Override public void guard(Command command) {matching(command,false);source(new Actor(command.actorId(),command.spaceId()),command.fileId(),command.versionId());if(!mapper.live(command))throw stale();}
+    @Override public void guard(Command command) {matching(command,false);source(new Actor(command.actorId(),command.spaceId()),command);if(!mapper.live(command))throw stale();}
     @Override public void renew(Command command){guard(command);one(mapper.renew(command));commitGuard(()->guard(command));}
     @Override public void beforeCall(Command command){guard(command);commitGuard(()->guard(command));}
     @Override public boolean runnerClaim(Command command,UUID runner) {guard(command);var attempt=matching(command,true);if(!"CLAIMED".equals(attempt.status()))return false;boolean first=mapper.runnerClaim(command,runner)==1;commitGuard(()->guard(command));return first;}
@@ -153,12 +170,12 @@ public final class MyBatisPreviewRepository implements PreviewRepository {
         if("READY".equals(receipt.state())) {
             if(receipt.sha256()==null||!receipt.sha256().matches("[a-f0-9]{64}")||!Set.of("PDF","IMAGE","TEXT","HTML_STATIC").contains(receipt.format())
                     ||!Set.of("application/pdf","image/png","text/plain").contains(receipt.mediaType())||receipt.pages()!=null&&(receipt.pages()<1||receipt.pages()>200))throw new FileFailure(409,"PREVIEW_RECEIPT_INVALID");
-            String expected=switch(command.sourceFormat()) {
+            String expected=extraction?"TEXT":switch(command.sourceFormat()) {
                 case "PDF","DOCX","XLSX","PPTX"->"PDF";case "PNG","JPEG","GIF","WEBP"->"IMAGE";
                 case "HTML"->"HTML_STATIC".equals(command.requestedFormat())?"HTML_STATIC":"TEXT";default->"TEXT";
             };
             String mime="PDF".equals(expected)?"application/pdf":"IMAGE".equals(expected)?"image/png":"text/plain";
-            if(!expected.equals(receipt.format())||!mime.equals(receipt.mediaType())||"PDF".equals(expected)&&receipt.pages()==null)
+            if(!expected.equals(receipt.format())||!mime.equals(receipt.mediaType())||"PDF".equals(expected)&&receipt.pages()==null||extraction&&(receipt.sourceReferenced()||receipt.bytes()>2097152))
                 throw new FileFailure(409,"PREVIEW_OUTPUT_FORMAT_MISMATCH");
             if(receipt.sourceReferenced()) {
                 if(!command.sourceObjectKey().equals(receipt.objectKey())||!command.sourceSha256().equals(receipt.sha256())||command.sourceBytes()!=receipt.bytes()
@@ -177,12 +194,12 @@ public final class MyBatisPreviewRepository implements PreviewRepository {
         if(row.generation()!=command.generation()||!row.commandId().equals(command.commandId()))throw stale();
         validate(command,attempt.runnerId(),receipt,attempt);
         if(attempt.receiptJson()==null||!receipt.equals(JSON.readValue(attempt.receiptJson(),Receipt.class)))throw new FileFailure(409,"PREVIEW_RECEIPT_NOT_DURABLE");
-        var actor=new Actor(command.actorId(),command.spaceId());boolean authorized=allowed(actor)&&mapper.source(actor,command.fileId(),command.versionId())!=null;
+        var actor=new Actor(command.actorId(),command.spaceId());boolean authorized=allowed(actor)&&("CHAT_ATTACHMENT".equals(command.sourceKind())?mapper.attachmentSource(actor,command.attachmentId()):mapper.source(actor,command.fileId(),command.versionId()))!=null;
         String state=authorized?receipt.state():"FAILED",error=authorized?receipt.errorCode():"PREVIEW_AUTHORIZATION_REVOKED";
         var reservation=mapper.reservation(row.id());
         if("READY".equals(state)) {
             UUID asset;
-            if(receipt.sourceReferenced()){asset=source(actor,row.fileId(),row.versionId()).assetId();}
+            if(receipt.sourceReferenced()){asset=source(actor,row).assetId();}
             else {mapper.insertAsset(row,receipt);asset=row.assetId();}
             mapper.reference(row,asset,receipt.sourceReferenced());one(mapper.settleStorage(row.id(),receipt.sourceReferenced()?0:receipt.bytes()));one(mapper.reservationState(row.id(),"SETTLED"));
         } else {one(mapper.releaseStorage(row.id()));one(mapper.reservationState(row.id(),"RELEASED"));}

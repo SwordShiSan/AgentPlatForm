@@ -10,8 +10,9 @@ import org.apache.ibatis.annotations.*;
 @Mapper public interface PreviewMapper {
     boolean authorized(@Param("actor")Actor actor);
     Source source(@Param("actor")Actor actor,@Param("file")UUID file,@Param("version")UUID version);
+    Source attachmentSource(@Param("actor")Actor actor,@Param("attachment")UUID attachment);
     Request request(@Param("actor")Actor actor,@Param("request")UUID request);
-    Job cached(@Param("space")UUID space,@Param("version")UUID version,@Param("bundle")String bundle,@Param("policy")String policy,@Param("format")String format);
+    Job cached(@Param("space")UUID space,@Param("version")UUID version,@Param("attachment")UUID attachment,@Param("bundle")String bundle,@Param("policy")String policy,@Param("format")String format);
     Job job(@Param("id")UUID id);
     Job lockJob(@Param("id")UUID id);
     void insert(@Param("row")Job row);

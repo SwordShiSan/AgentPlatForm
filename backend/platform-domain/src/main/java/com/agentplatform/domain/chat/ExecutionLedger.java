@@ -10,6 +10,7 @@ import java.util.UUID;
 public interface ExecutionLedger {
     UUID beginTurn(Lease lease);
     void commitRound(Lease lease, UUID turnId, Turn turn, CallResult accepted);
+    default boolean commitRoundOutcome(Lease lease, UUID turnId, Turn turn, CallResult accepted) { commitRound(lease,turnId,turn,accepted); return true; }
     record CallResult(ChatData.Call call, boolean usageKnown, String requestId, boolean real) {}
     void startTool(Lease lease, com.agentplatform.types.harness.HarnessData.Call call);
     void commitTool(Lease lease, com.agentplatform.types.harness.HarnessData.Call call, Observation result);

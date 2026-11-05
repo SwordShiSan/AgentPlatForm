@@ -14,7 +14,7 @@ public final class ChatRequests {
                         @NotNull @Size(max = 128) String password) {
         @Override public String toString() { return "Login[REDACTED]"; }
     }
-    public record Input(@NotNull String text, List<Object> attachments) {}
+    public record Input(@NotNull String text, @Size(max=10) List<com.agentplatform.types.AttachmentReference> attachments) {}
     public record Options(String modelId,
                           String credentialSource,
                           Boolean planMode,
@@ -48,14 +48,21 @@ public final class ChatRequests {
         private String source;
         private boolean modelPresent;
         private boolean sourcePresent;
+        private com.agentplatform.types.WorkbenchPreferences.Layout layout;
+        private List<com.agentplatform.types.WorkbenchPreferences.RecentFile> recent;
+        private boolean layoutPresent,recentPresent;
         @JsonSetter("defaultModelId")
         public void setDefaultModelId(String value) { modelId = value; modelPresent = true; }
         @JsonSetter("defaultCredentialSource")
         public void setDefaultCredentialSource(String value) { source = value; sourcePresent = true; }
+        @JsonSetter("workbenchLayout") public void setWorkbenchLayout(com.agentplatform.types.WorkbenchPreferences.Layout value){layout=value;layoutPresent=true;}
+        @JsonSetter("recentFiles") public void setRecentFiles(List<com.agentplatform.types.WorkbenchPreferences.RecentFile> value){recent=value;recentPresent=true;}
         public Map<String, Object> values() {
             var result = new LinkedHashMap<String, Object>();
             if (modelPresent) result.put("defaultModelId", modelId);
             if (sourcePresent) result.put("defaultCredentialSource", source);
+            if (layoutPresent) result.put("workbenchLayout",layout);
+            if (recentPresent) result.put("recentFiles",recent);
             return result;
         }
     }

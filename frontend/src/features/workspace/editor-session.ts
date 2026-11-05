@@ -1,5 +1,6 @@
 import { textPreview } from './file-transfers';
 import type { PendingFileRequest } from './file-requests';
+import { storeSessionDraft } from '../../shared/draft-storage';
 export const DRAFT_PREFIX = 'agentplatform:editor:';
 export interface TextFormat { bom: boolean; eol: '\n' | '\r\n' }
 export interface EditorDraft {
@@ -22,12 +23,7 @@ export function draftKey(user: string, space: string, workspace: string, file: s
   return `${DRAFT_PREFIX}${user}:${space}:${workspace}:${file}`;
 }
 export function persistDraft(key: string, draft: EditorDraft): boolean {
-  try {
-    const raw = JSON.stringify(draft); let total = new TextEncoder().encode(raw).length;
-    for (const k of Object.keys(sessionStorage)) if (k.startsWith(DRAFT_PREFIX) && k !== key) total += new TextEncoder().encode(sessionStorage.getItem(k) ?? '').length;
-    if (total > 4 * 1024 * 1024) return false;
-    sessionStorage.setItem(key, raw); return true;
-  } catch { return false; }
+  return storeSessionDraft(key, draft);
 }
 export function restoreDraft(key: string): EditorDraft | undefined {
   try {

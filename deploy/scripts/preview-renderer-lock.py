@@ -1,6 +1,6 @@
 """Check the exact isolated renderer classpath, independent of the ordinary app runtime."""
 from pathlib import Path
-import argparse, hashlib, json, re
+import argparse, hashlib, json, re, zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 LIBS = ROOT / 'backend/platform-app/target/renderer-libs'
@@ -24,7 +24,26 @@ def actual():
         match = re.fullmatch(r'(.+?)-(\d[\w.\-]*)\.jar', path.name)
         if not match: raise SystemExit('Unrecognized renderer artifact')
         artifact, version = match.groups()
-        records.append({'coordinate': f'{group(artifact)}:{artifact}:{version}', 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()})
+        coordinates = set()
+        with zipfile.ZipFile(path) as jar:
+            for member in jar.namelist():
+                if not re.fullmatch(r'META-INF/maven/[^/]+/[^/]+/pom.properties', member): continue
+                properties = {}
+                for line in jar.read(member).decode('utf-8').splitlines():
+                    if '=' in line and not line.startswith('#'):
+                        key, value = line.split('=', 1); properties[key.strip()] = value.strip()
+                if properties.get('artifactId') == artifact and properties.get('version') == version:
+                    coordinates.add(f"{properties['groupId']}:{artifact}:{version}")
+        if len(coordinates) > 1: raise SystemExit(f'Ambiguous renderer artifact: {path.name}')
+        if not coordinates:
+            repository = Path.home() / '.m2/repository'
+            for cached in repository.glob(f'**/{artifact}/{version}/{path.name}'):
+                if hashlib.sha256(cached.read_bytes()).digest() != hashlib.sha256(path.read_bytes()).digest(): continue
+                relative = cached.relative_to(repository).parts
+                coordinates.add('.'.join(relative[:-3]) + ':' + artifact + ':' + version)
+        if len(coordinates) != 1: raise SystemExit(f'Unresolved renderer coordinate: {path.name}')
+        coordinate = next(iter(coordinates))
+        records.append({'coordinate': coordinate, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()})
     if not records: raise SystemExit('Empty renderer classpath')
     return {'schemaVersion': 1, 'scope': 'Isolated renderer classifier only; does not authorize ordinary app classpath drift',
             'libreOffice': {'version': '26.2.6', 'url': 'https://download.documentfoundation.org/libreoffice/stable/26.2.6/deb/x86_64/LibreOffice_26.2.6_Linux_x86-64_deb.tar.gz',

@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia';
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
+import type { AttachmentDraft, AttachmentReference } from './attachment-drafts';
+import { storeSessionDraft } from '../../shared/draft-storage';
 
-export interface PendingSubmission { key: string; text: string; model: string; source: 'PLATFORM' | 'USER'; conversation: string; workspaceId?: string | null; permissionMode?: 'RISK_BASED' | 'FULL'; planMode?: boolean }
-export interface ChatDraft { text: string; model: string; source: 'PLATFORM' | 'USER'; workspaceId?: string | null; permissionMode?: 'RISK_BASED' | 'FULL'; planMode?: boolean; pending?: PendingSubmission }
+export interface PendingSubmission { key: string; text: string; model: string; source: 'PLATFORM' | 'USER'; conversation: string; workspaceId?: string | null; permissionMode?: 'RISK_BASED' | 'FULL'; planMode?: boolean; attachments?: AttachmentReference[] }
+export interface ChatDraft { text: string; model: string; source: 'PLATFORM' | 'USER'; workspaceId?: string | null; permissionMode?: 'RISK_BASED' | 'FULL'; planMode?: boolean; pending?: PendingSubmission; attachments?: AttachmentDraft[] }
 export interface PlanEditorDraft { title: string; markdown: string; baseRevision: number }
 const prefix = 'agentplatform:chat-draft:';
 export function clearChatDrafts() {
@@ -10,6 +12,7 @@ export function clearChatDrafts() {
 }
 export const useChatDrafts = defineStore('chat-drafts', () => {
   const drafts = reactive<Record<string, ChatDraft>>({});
+  const storageWarning = ref(false);
   const planEditors=reactive<Record<string,PlanEditorDraft>>({});
   const planKey=(account:string,space:string,task:string)=>`${prefix}plan:${account}:${space}:${task}`;
   function loadPlan(account:string,space:string,task:string):PlanEditorDraft|undefined {
@@ -23,7 +26,7 @@ export const useChatDrafts = defineStore('chat-drafts', () => {
   function savePlan(account:string,space:string,task:string,value:PlanEditorDraft){
     if(!account||!space||!task)return;
     const key=planKey(account,space,task);planEditors[key]={...value};
-    try{sessionStorage.setItem(key,JSON.stringify(value));}catch{/* Keep the live draft if browser storage is full. */}
+    storageWarning.value = !storeSessionDraft(key, value);
   }
   function clearPlan(account:string,space:string,task:string){const key=planKey(account,space,task);delete planEditors[key];sessionStorage.removeItem(key);}
   function load(account: string, space: string, conversation: string): ChatDraft {
@@ -39,9 +42,9 @@ export const useChatDrafts = defineStore('chat-drafts', () => {
     if (account && space) {
       const key = `${prefix}${account}:${space}:${conversation || 'new'}`;
       drafts[key] = { ...value };
-      sessionStorage.setItem(key, JSON.stringify(value));
+      storageWarning.value = !storeSessionDraft(key, value);
     }
   }
   function clear() { for (const key of Object.keys(drafts)) delete drafts[key];for(const key of Object.keys(planEditors))delete planEditors[key];clearChatDrafts(); }
-  return { drafts, load, save, clear,loadPlan,savePlan,clearPlan };
+  return { drafts, load, save, clear,loadPlan,savePlan,clearPlan,storageWarning };
 });

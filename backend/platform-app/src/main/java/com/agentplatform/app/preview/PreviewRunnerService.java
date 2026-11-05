@@ -27,6 +27,7 @@ public final class PreviewRunnerService implements PreviewRunnerApi,AutoCloseabl
     private final RunnerSignatures signatures;
     private final Path root;
     private final UUID runner;
+    private final String endpoint;
     private final Set<UUID> running=ConcurrentHashMap.newKeySet();
     private final Set<UUID> sourceUnclosed=ConcurrentHashMap.newKeySet();
     /** One admitted physical operation; retain only this process's actually closed source fact. */
@@ -36,6 +37,11 @@ public final class PreviewRunnerService implements PreviewRunnerApi,AutoCloseabl
             Thread.ofPlatform().name("preview-physical").factory(),new ThreadPoolExecutor.AbortPolicy());
 
     public PreviewRunnerService(PreviewRepository repository,PreviewRuntime runtime,AssetStore assets,RunnerSignatures signatures,Path root) {
+        this(repository,runtime,assets,signatures,root,SignedPreviewRunnerClient.PATH);
+    }
+    public PreviewRunnerService(PreviewRepository repository,PreviewRuntime runtime,AssetStore assets,RunnerSignatures signatures,Path root,String endpoint) {
+        if(!Set.of(SignedPreviewRunnerClient.PATH,"/internal/extractions/v1").contains(endpoint))throw new IllegalArgumentException("Fixed asset-processing endpoint required");
+        this.endpoint=endpoint;
         this.repository=repository;this.runtime=runtime;this.assets=assets;this.signatures=signatures;this.runner=runtime.runnerInstance().id();
         this.root=root.toAbsolutePath().normalize();
         try {
@@ -70,8 +76,11 @@ public final class PreviewRunnerService implements PreviewRunnerApi,AutoCloseabl
         return new SignedResult(bytes,signatures.sign(SignedPreviewRunnerClient.binding(c,"RESPONSE",path),bytes));
     }
     private void validate(Command c){
-        if(c==null||c.commandId()==null||c.previewId()==null||c.spaceId()==null||c.workspaceId()==null||c.actorId()==null||c.versionId()==null
-                ||c.fileId()==null||c.ownerId()==null||c.generation()<1||c.fence()<1||c.deadlineAt()==null
+        if(c==null||c.commandId()==null||c.previewId()==null||c.spaceId()==null||c.actorId()==null
+                ||!("FILE_VERSION".equals(c.sourceKind())&&c.workspaceId()!=null&&c.fileId()!=null&&c.versionId()!=null&&c.attachmentId()==null
+                    ||"CHAT_ATTACHMENT".equals(c.sourceKind())&&c.workspaceId()==null&&c.fileId()==null&&c.versionId()==null&&c.attachmentId()!=null)
+                ||("/internal/extractions/v1".equals(endpoint)!= "TEXT_EXTRACT".equals(c.requestedFormat()))
+                ||c.ownerId()==null||c.generation()<1||c.fence()<1||c.deadlineAt()==null
                 ||c.sourceBytes()<0||c.sourceBytes()>PreviewData.MAX_BYTES||c.sourceSha256()==null||!c.sourceSha256().matches("[a-f0-9]{64}")
                 ||!Objects.equals(runtime.policyHash(),c.policyHash()))throw new FileFailure(400,"INVALID_PREVIEW_COMMAND");
     }
@@ -80,16 +89,16 @@ public final class PreviewRunnerService implements PreviewRunnerApi,AutoCloseabl
         if(body==null||body.length>65536)throw new FileFailure(413,"PREVIEW_COMMAND_TOO_LARGE");
         Command c;
         try{c=JSON.readValue(body,Command.class);}catch(RuntimeException invalid){throw new FileFailure(400,"INVALID_PREVIEW_COMMAND");}
-        validate(c);signatures.verify(token,SignedPreviewRunnerClient.binding(c,"POST",SignedPreviewRunnerClient.PATH),body);
+        validate(c);signatures.verify(token,SignedPreviewRunnerClient.binding(c,"POST",endpoint),body);
         if(!c.equals(repository.runnerLookup(c.previewId())))throw new FileFailure(409,"PREVIEW_COMMAND_CONFLICT");
         var receipt=repository.receipt(c);
-        if(receipt!=null){retire(c,receipt);return response(c,receipt,SignedPreviewRunnerClient.PATH);}
+        if(receipt!=null){retire(c,receipt);return response(c,receipt,endpoint);}
         if(repository.runnerClaim(c,runner)){
             running.add(c.commandId());
             try{executor.execute(()->execute(c));}
             catch(RejectedExecutionException stopping){running.remove(c.commandId());/* GET may prove this never-started command; no second POST. */}
         }
-        return response(c,null,SignedPreviewRunnerClient.PATH);
+        return response(c,null,endpoint);
     }
     private Path stage(Command c,Path dir)throws IOException {
         guard(c);
@@ -155,7 +164,7 @@ public final class PreviewRunnerService implements PreviewRunnerApi,AutoCloseabl
         repository.runnerReceipt(c,runner,receipt);completed.remove(c.commandId());retire(c,receipt);return receipt;
     }
     private static boolean supportedOutput(Command c,PreviewRuntime.Result result){
-        String expected=switch(c.sourceFormat()){
+        String expected="TEXT_EXTRACT".equals(c.requestedFormat())?"TEXT":switch(c.sourceFormat()){
             case "PDF","DOCX","XLSX","PPTX"->"PDF";
             case "PNG","JPEG","GIF","WEBP"->"IMAGE";
             case "HTML"->"HTML_STATIC".equals(c.requestedFormat())?"HTML_STATIC":"TEXT";
@@ -188,7 +197,7 @@ public final class PreviewRunnerService implements PreviewRunnerApi,AutoCloseabl
         } finally{running.remove(c.commandId());}
     }
     @Override public SignedResult query(String token,String id){
-        String path=SignedPreviewRunnerClient.PATH+"/"+id;var binding=signatures.verifiedQuery(token,path);
+        String path=endpoint+"/"+id;var binding=signatures.verifiedQuery(token,path);
         UUID preview;
         try{preview=UUID.fromString(id);}catch(IllegalArgumentException invalid){throw new FileFailure(400,"INVALID_PREVIEW_ID");}
         var c=repository.runnerLookup(preview);

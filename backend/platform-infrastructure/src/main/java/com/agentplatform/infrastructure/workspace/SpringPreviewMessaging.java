@@ -18,17 +18,23 @@ public final class SpringPreviewMessaging implements AutoCloseable {
     public interface Handoff {Command claim(Publication publication);void execute(Command command);}
     private static final JsonMapper JSON=JsonMapper.builder().build();
     private final PreviewRepository repository;private final RabbitTemplate publisher;private final SimpleMessageListenerContainer listener;
+    private final String route;
     public SpringPreviewMessaging(CachingConnectionFactory connections,PreviewRepository repository) {
+        this(connections,repository,QUEUE,ROUTE);
+    }
+    public SpringPreviewMessaging(CachingConnectionFactory connections,PreviewRepository repository,String queue,String route) {
+        if(!(QUEUE.equals(queue)&&ROUTE.equals(route)||"ap.asset-extract.v1".equals(queue)&&"asset.extract".equals(route)))throw new IllegalArgumentException("Fixed asset topology required");
+        this.route=route;
         if(!connections.isPublisherConfirms()||!connections.isPublisherReturns())throw new IllegalStateException("Correlated confirms/returns required");
         this.repository=repository;publisher=new RabbitTemplate(connections);publisher.setMandatory(true);
-        listener=new SimpleMessageListenerContainer(connections);listener.setQueueNames(QUEUE);listener.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+        listener=new SimpleMessageListenerContainer(connections);listener.setQueueNames(queue);listener.setAcknowledgeMode(AcknowledgeMode.MANUAL);
         listener.setConcurrentConsumers(1);listener.setMaxConcurrentConsumers(1);listener.setPrefetchCount(1);listener.setMissingQueuesFatal(false);
         listener.setRecoveryInterval(2000);listener.setAutoStartup(false);
     }
     public void publish(Publication item) {
         var properties=new MessageProperties();properties.setContentType(MessageProperties.CONTENT_TYPE_JSON);properties.setDeliveryMode(MessageDeliveryMode.PERSISTENT);properties.setMessageId(item.id().toString());
         var correlation=new CorrelationData(item.id().toString());
-        try{publisher.send(EXCHANGE,ROUTE,new Message(JSON.writeValueAsBytes(item),properties),correlation);
+        try{publisher.send(EXCHANGE,route,new Message(JSON.writeValueAsBytes(item),properties),correlation);
             if(!correlation.getFuture().get(2500,TimeUnit.MILLISECONDS).isAck()||correlation.getReturned()!=null)throw new IllegalStateException("Unconfirmed");
         }catch(InterruptedException interrupted){Thread.currentThread().interrupt();throw new FileFailure(503,"PREVIEW_DISPATCH_UNCONFIRMED");}
         catch(Exception failed){throw new FileFailure(503,"PREVIEW_DISPATCH_UNCONFIRMED");}

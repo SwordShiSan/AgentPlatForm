@@ -25,7 +25,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @ConditionalOnProperty(name={"platform.workspace.enabled","platform.workspace.files.enabled","platform.preview.enabled"},havingValue="true")
 @EnableConfigurationProperties(PreviewProperties.class)
 public class PreviewConfiguration {
-    @Bean PreviewRepository previewRepository(PreviewMapper previews,FileMapper files,TransactionTemplate transactions,PreviewProperties properties) {
+    @Bean @Primary PreviewRepository previewRepository(@Qualifier("previewMapper") PreviewMapper previews,FileMapper files,TransactionTemplate transactions,PreviewProperties properties) {
         return new TransactionalPreviewRepository(new MyBatisPreviewRepository(previews,files,properties.imageId(),properties.bundle(),properties.policyHash()),transactions);
     }
     @Bean @Profile("workspace-api") PreviewApi previewApi(PreviewRepository repository,AssetStore assets){return new PreviewApplicationService(repository,assets);}
@@ -34,8 +34,8 @@ public class PreviewConfiguration {
     static class Delivery {
         @Bean ThreadPoolTaskScheduler previewTimers(){var timers=new ThreadPoolTaskScheduler();timers.setPoolSize(3);timers.setThreadNamePrefix("preview-control-");timers.setRemoveOnCancelPolicy(true);timers.setWaitForTasksToCompleteOnShutdown(false);return timers;}
         @Bean Declarables previewTopology(){var exchange=new DirectExchange(SpringPreviewMessaging.EXCHANGE,true,false);var queue=QueueBuilder.durable(SpringPreviewMessaging.QUEUE).build();return new Declarables(exchange,queue,BindingBuilder.bind(queue).to(exchange).with(SpringPreviewMessaging.ROUTE));}
-        @Bean(destroyMethod="close") SpringPreviewMessaging previewMessaging(CachingConnectionFactory connections,PreviewRepository repository){return new SpringPreviewMessaging(connections,repository);}
-        @Bean(destroyMethod="close") @Profile("workspace-worker") PreviewExecution previewExecution(PreviewRepository repository,PreviewRunnerPort runner,AssetStore assets,@Qualifier("previewTimers")ThreadPoolTaskScheduler timers){return new PreviewExecution(repository,runner,assets,timers.getScheduledExecutor());}
+        @Bean(destroyMethod="close") @Primary SpringPreviewMessaging previewMessaging(CachingConnectionFactory connections,PreviewRepository repository){return new SpringPreviewMessaging(connections,repository);}
+        @Bean(destroyMethod="close") @Profile("workspace-worker") @Primary PreviewExecution previewExecution(PreviewRepository repository,PreviewRunnerPort runner,AssetStore assets,@Qualifier("previewTimers")ThreadPoolTaskScheduler timers){return new PreviewExecution(repository,runner,assets,timers.getScheduledExecutor());}
         @Bean SmartLifecycle previewLifecycle(PreviewRepository repository,SpringPreviewMessaging messaging,@Qualifier("previewTimers")ThreadPoolTaskScheduler timers,ObjectProvider<PreviewExecution> execution,Environment environment) {
             return new SmartLifecycle(){
                 private volatile boolean running;private java.util.concurrent.ScheduledFuture<?> relay,reconciliation;private final UUID owner=UUID.randomUUID();

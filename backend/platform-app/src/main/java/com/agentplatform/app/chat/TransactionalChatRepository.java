@@ -1,6 +1,7 @@
 package com.agentplatform.app.chat;
 
 import com.agentplatform.domain.chat.ChatRepository;
+import com.agentplatform.domain.chat.ContextPolicy;
 import com.agentplatform.domain.chat.ChatData.*;
 import com.agentplatform.domain.chat.ChatFailure;
 import com.agentplatform.domain.chat.ExecutionLedger.*;
@@ -23,6 +24,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /** Application atomic boundaries; network and provider calls never run inside these transactions. */
 public final class TransactionalChatRepository implements ChatRepository {
+    @Override public List<com.agentplatform.domain.attachment.AttachmentSource> attachmentSources(Lease lease){return tx(transactions,()->delegate.attachmentSources(lease));}
+    @Override public UUID commitAttachmentCheckpoint(Lease lease,Bundle bundle,HarnessData.CheckpointDraft draft,Map<UUID,String> texts){return tx(transactions,()->delegate.commitAttachmentCheckpoint(lease,bundle,draft,texts));}
     @Override public java.util.List<com.agentplatform.types.WorkspaceOperationData.Artifact> workspaceOperationArtifacts(Actor actor,UUID operation){return tx(snapshots,()->delegate.workspaceOperationArtifacts(actor,operation));}
     @Override public Bundle executionBundle(Lease lease){return tx(transactions,()->delegate.executionBundle(lease));}
     @Override public boolean workspaceToolTask(Lease lease){return tx(transactions,()->delegate.workspaceToolTask(lease));}
@@ -87,9 +90,12 @@ public final class TransactionalChatRepository implements ChatRepository {
     @Override public List<HarnessData.Message> history(Lease lease) { return tx(transactions, () -> delegate.history(lease)); }
     @Override public void delta(Lease lease, String text) { tx(transactions, () -> { delegate.delta(lease, text); return null; }); }
     @Override public Call beginCall(Lease lease, boolean real) { return tx(transactions, () -> delegate.beginCall(lease, real)); }
+    @Override public Call beginCall(Lease lease, boolean real, long estimatedInput) { return tx(transactions, () -> delegate.beginCall(lease, real, estimatedInput)); }
+    @Override public ContextPolicy contextPolicy(Lease lease) { return tx(transactions, () -> delegate.contextPolicy(lease)); }
     @Override public void startCall(Lease lease, Call call, boolean real) { tx(transactions, () -> { delegate.startCall(lease, call, real); return null; }); }
     @Override public void permitAcceptanceCall(Lease l,Call call,UUID run){tx(transactions,()->{delegate.permitAcceptanceCall(l,call,run);return null;});}
-    @Override public void settle(Lease lease, Call call, HarnessData.Round round, String requestId, String error, boolean real) { tx(transactions, () -> { delegate.settle(lease, call, round, requestId, error, real); return null; }); }
+    @Override public void settle(Lease lease, Call call, HarnessData.Round round, String requestId, String error, boolean real) { if(!settleOutcome(lease,call,round,requestId,error,real))throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION"); }
+    @Override public boolean settleOutcome(Lease lease, Call call, HarnessData.Round round, String requestId, String error, boolean real) { return tx(transactions, () -> delegate.settleOutcome(lease,call,round,requestId,error,real)); }
     @Override public Credential credential(Lease lease, UUID callId) { return tx(transactions, () -> delegate.credential(lease, callId)); }
     @Override public void finish(Lease lease, String status, String reason) { tx(transactions, () -> { delegate.finish(lease, status, reason); return null; }); }
     @Override public void recoverStopped(UUID owner) { tx(transactions, () -> { delegate.recoverStopped(owner); return null; }); }
@@ -109,7 +115,8 @@ public final class TransactionalChatRepository implements ChatRepository {
     @Override public String modelName(Lease lease) { return tx(transactions, () -> delegate.modelName(lease)); }
     @Override public boolean ready() { try { return tx(transactions, delegate::ready); } catch (ChatFailure unavailable) { return false; } }
     @Override public UUID beginTurn(Lease lease) { return tx(transactions, () -> delegate.beginTurn(lease)); }
-    @Override public void commitRound(Lease lease, UUID turnId, Turn turn, CallResult accepted) { tx(transactions, () -> { delegate.commitRound(lease, turnId, turn, accepted); return null; }); }
+    @Override public void commitRound(Lease lease, UUID turnId, Turn turn, CallResult accepted) { if(!commitRoundOutcome(lease,turnId,turn,accepted))throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION"); }
+    @Override public boolean commitRoundOutcome(Lease lease, UUID turnId, Turn turn, CallResult accepted) { return tx(transactions, () -> delegate.commitRoundOutcome(lease,turnId,turn,accepted)); }
     @Override public void startTool(Lease lease, com.agentplatform.types.harness.HarnessData.Call call) { tx(transactions, () -> { delegate.startTool(lease, call); return null; }); }
     @Override public void commitTool(Lease lease, com.agentplatform.types.harness.HarnessData.Call call, Observation result) { tx(transactions, () -> { delegate.commitTool(lease, call, result); return null; }); }
     @Override public StateSlot state(Lease lease, String key) { return tx(transactions, () -> delegate.state(lease, key)); }

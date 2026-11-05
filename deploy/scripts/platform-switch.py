@@ -10,7 +10,7 @@ def release_profile():
  path=OPS/'release-selection.json'
  if not path.exists():return 'agentplatform-app',NEW_APP,None
  profile=json.loads(path.read_text())
- assert profile['appProject'] in ['agentplatform-r3-app','agentplatform-r4-app'] and profile['appServices']==['runner','api','worker','gateway']
+ assert profile['appProject'] in ['agentplatform-r3-app','agentplatform-r4-app','agentplatform-r5-app'] and profile['appServices']==['runner','api','worker','gateway']
  return profile['appProject'],profile['appServices'],hashlib.sha256(path.read_bytes()).hexdigest()
 
 def expected_services():
@@ -83,8 +83,11 @@ def new_sql(new,sql):
 def business_idle(new):return new_sql(new,"SELECT (SELECT count(*) FROM pf.execution_slot WHERE task_id IS NOT NULL)+(SELECT count(*) FROM pf.task WHERE status IN ('QUEUED','RUNNING'));")=='0'
 def idle(new):
  if not business_idle(new):return False
- if release_profile()[0] not in ['agentplatform-r3-app','agentplatform-r4-app']:return True
- return new_sql(new,"SELECT (SELECT count(*) FROM pf.file_operation WHERE status NOT IN('COMMITTED','FAILED'))+(SELECT count(*) FROM pf.workspace_file_lease WHERE status<>'FREE')+(SELECT count(*) FROM pf.file_transfer_slot WHERE owner_id IS NOT NULL)+(SELECT count(*) FROM pf.workspace_environment_operation WHERE status NOT IN('COMMITTED','FAILED'))+(SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL);")=='0'
+ app=release_profile()[0]
+ if app not in ['agentplatform-r3-app','agentplatform-r4-app','agentplatform-r5-app']:return True
+ query="SELECT (SELECT count(*) FROM pf.file_operation WHERE status NOT IN('COMMITTED','FAILED'))+(SELECT count(*) FROM pf.workspace_file_lease WHERE status<>'FREE')+(SELECT count(*) FROM pf.file_transfer_slot WHERE owner_id IS NOT NULL)+(SELECT count(*) FROM pf.workspace_environment_operation WHERE status NOT IN('COMMITTED','FAILED'))+(SELECT count(*) FROM pf.workspace_sandbox_slot WHERE environment_id IS NOT NULL)"
+ if app=='agentplatform-r5-app':query+="+(SELECT count(*) FROM pf.heavy_runtime_slot WHERE kind IS NOT NULL)+(SELECT count(*) FROM pf.preview_job WHERE state IN('QUEUED','RUNNING','BLOCKED'))+(SELECT count(*) FROM pf.document_extraction WHERE status IN('QUEUED','RUNNING','BLOCKED'))"
+ return new_sql(new,query+';')=='0'
 def ordered_new(new):
  app,services,_=release_profile()
  return [next(x for x in new if x['project']==project and x['service']==service) for project,items in [('agentplatform-env',NEW_ENV),(app,services)] for service in items]

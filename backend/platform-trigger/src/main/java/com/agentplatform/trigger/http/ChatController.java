@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 public final class ChatController {
     @org.springframework.beans.factory.annotation.Value("${platform.chat.plan-enabled:false}") private boolean planEnabled;
     @org.springframework.beans.factory.annotation.Value("${platform.chat.permissions-enabled:false}") private boolean permissionsEnabled;
+    @org.springframework.beans.factory.annotation.Value("${platform.attachments.enabled:false}") private boolean attachmentsEnabled;
     private final ChatApi chat;private final IdentityApi identity;private final com.agentplatform.api.chat.ChatEventStream streams;
     public ChatController(ChatApi chat,IdentityApi identity,com.agentplatform.api.chat.ChatEventStream streams){this.chat=chat;this.identity=identity;this.streams=streams;}
     private ChatApi.Caller caller(HttpServletRequest request,boolean write) { return RequestIdentity.caller(request); }
@@ -23,13 +24,13 @@ public final class ChatController {
     @PostMapping("/conversations") ResponseEntity<ChatApi.ConversationView> create(HttpServletRequest request,@jakarta.validation.Valid @RequestBody ChatRequests.Conversation body) {
         var who=caller(request,true);
         if(body.workspaceId()!=null)throw new ChatFailure(422,"WORKSPACE_NOT_AVAILABLE");
-        if(body.initialTask()!=null){var input=parseTask(body.initialTask());return ResponseEntity.status(201).body(chat.firstAuthorized(who,key(request),body.title(),input.model(),input.source(),input.text(),input.plan(),input.workspace(),input.mode()));}
+        if(body.initialTask()!=null){var input=parseTask(body.initialTask());return ResponseEntity.status(201).body(chat.firstAttached(who,key(request),body.title(),input.model(),input.source(),input.text(),input.plan(),input.workspace(),input.mode(),body.initialTask().input().attachments()));}
         return ResponseEntity.status(201).body(chat.create(who,key(request),body.title()));
     }
     private record Input(String model,String source,String text,boolean plan,String workspace,com.agentplatform.types.TaskPermissionData.Mode mode) {}
     private Input parseTask(ChatRequests.Task body) {
         var input=body.input();var options=body.options();
-        if((input.attachments()!=null&&!input.attachments().isEmpty())||(Boolean.TRUE.equals(options.planMode())&&!planEnabled)||(!permissionsEnabled&&(options.workspaceId()!=null||"FULL".equals(options.permissionMode()))))throw new ChatFailure(422,"CAPABILITY_NOT_AVAILABLE");
+        if((!attachmentsEnabled&&input.attachments()!=null&&!input.attachments().isEmpty())||(Boolean.TRUE.equals(options.planMode())&&!planEnabled)||(!permissionsEnabled&&(options.workspaceId()!=null||"FULL".equals(options.permissionMode()))))throw new ChatFailure(422,"CAPABILITY_NOT_AVAILABLE");
         com.agentplatform.types.TaskPermissionData.Mode mode;
         try{mode=options.permissionMode()==null?com.agentplatform.types.TaskPermissionData.Mode.RISK_BASED:com.agentplatform.types.TaskPermissionData.Mode.valueOf(options.permissionMode());}
         catch(IllegalArgumentException invalid){throw new ChatFailure(400,"INVALID_PERMISSION_MODE");}
@@ -46,7 +47,7 @@ public final class ChatController {
     @DeleteMapping("/me/model-credentials/deepseek") Object revokeCredential(HttpServletRequest request){return versioned(chat.replaceCredential(caller(request,true),version(request),null));}
     @GetMapping("/conversations/{id}") Object conversation(HttpServletRequest request,@PathVariable("id")String id){return chat.conversation(caller(request,false),id);}
     @GetMapping("/conversations/{id}/snapshot") Object snapshot(HttpServletRequest request,@PathVariable("id")String id){return chat.snapshot(caller(request,false),id);}
-    @PostMapping("/conversations/{id}/tasks") ResponseEntity<ChatApi.Accepted> submit(HttpServletRequest request,@PathVariable("id")String id,@jakarta.validation.Valid @RequestBody ChatRequests.Task body){var who=caller(request,true);var input=parseTask(body);return ResponseEntity.accepted().body(chat.submitAuthorized(who,id,key(request),input.model(),input.source(),input.text(),input.plan(),input.workspace(),input.mode()));}
+    @PostMapping("/conversations/{id}/tasks") ResponseEntity<ChatApi.Accepted> submit(HttpServletRequest request,@PathVariable("id")String id,@jakarta.validation.Valid @RequestBody ChatRequests.Task body){var who=caller(request,true);var input=parseTask(body);return ResponseEntity.accepted().body(chat.submitAttached(who,id,key(request),input.model(),input.source(),input.text(),input.plan(),input.workspace(),input.mode(),body.input().attachments()));}
     @GetMapping("/tasks/{id}") Object task(HttpServletRequest request,@PathVariable("id")String id){return chat.task(caller(request,false),id);}
     @GetMapping("/tasks/{id}/diagnostics") Object diagnostics(HttpServletRequest request,@PathVariable("id")String id){return chat.diagnostics(caller(request,false),id);}
     @GetMapping("/tasks/{id}/reconciliation") ChatApi.ReconciliationView reconciliation(HttpServletRequest request,@PathVariable("id")String id){return chat.reconciliation(caller(request,false),id);}

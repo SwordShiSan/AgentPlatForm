@@ -17,6 +17,7 @@ public final class TransactionalPreviewRepository implements PreviewRepository {
     private <T>T tx(Supplier<T> action){try{return transactions.execute(status->action.get());}catch(DuplicateKeyException|ConcurrencyFailureException conflict){throw new FileFailure(409,"PREVIEW_CONCURRENT_CHANGE");}catch(DataAccessException|TransactionException unavailable){var f=new FileFailure(503,"PREVIEW_STORAGE_UNAVAILABLE");f.initCause(unavailable);throw f;}}
     private void run(Runnable action){tx(()->{action.run();return null;});}
     @Override public Job create(Actor a,UUID f,UUID v,String format,UUID request,String hash){return tx(()->delegate.create(a,f,v,format,request,hash));}
+    @Override public Job createAttachment(Actor a,UUID attachment,String format,UUID request,String hash){return tx(()->delegate.createAttachment(a,attachment,format,request,hash));}
     @Override public Job get(Actor a,UUID p){return tx(()->delegate.get(a,p));}
     @Override public Job retry(Actor a,UUID p,long version,UUID request,String hash){return tx(()->delegate.retry(a,p,version,request,hash));}
     @Override public List<Publication> publications(UUID owner){return tx(()->delegate.publications(owner));}

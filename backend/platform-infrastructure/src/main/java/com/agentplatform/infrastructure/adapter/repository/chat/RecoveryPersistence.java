@@ -40,10 +40,13 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
         return List.of(JSON.readValue(json(value),Message[].class));
     }
     static List<Message> history(ChatMappers c,Lease l) {
-        MyBatisExecutionLedger.guard(c,l);var values=new ArrayList<>(input(c,l));
-        var operations=c.recovery().operations(l.taskId());
-        var controlInputs=c.plan().consumedInputs(l.taskId());
-        for(var turn:c.recovery().turns(l.taskId()))if("COMMITTED".equals(turn.status())) {
+        MyBatisExecutionLedger.guard(c,l);return projectHistory(c,l.taskId(),input(c,l));
+    }
+    static List<Message> projectHistory(ChatMappers c,UUID task,List<Message> inputHistory){
+        var values=new ArrayList<>(inputHistory);
+        var operations=c.recovery().operations(task);
+        var controlInputs=c.plan().consumedInputs(task);
+        for(var turn:c.recovery().turns(task))if("COMMITTED".equals(turn.status())) {
             Round round=JSON.readValue(turn.roundJson(),Round.class);
             values.add(new Message(Role.ASSISTANT,round.text(),round.calls(),List.of()));
             var observations=operations.stream().filter(o->o.turnId().equals(turn.id())&&Set.of("SUCCEEDED","DENIED","FAILED").contains(o.status()))
@@ -63,12 +66,21 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
     }
     static String canonicalJson(Object value) { return MyBatisExecutionLedger.canonicalJson(value); }
 
-    public UUID commitCheckpoint(Lease l,Bundle bundle,CheckpointDraft draft) { return tx(c->{
+    public List<com.agentplatform.domain.attachment.AttachmentSource> attachmentSources(Lease l){return tx(c->{MyBatisExecutionLedger.guard(c,l);return c.attachments()==null?List.of():c.attachments().inputSources(l.spaceId(),l.conversationId(),l.taskId());});}
+    public UUID commitCheckpoint(Lease l,Bundle bundle,CheckpointDraft draft){return commitCheckpoint(l,bundle,draft,Map.of());}
+    public UUID commitCheckpoint(Lease l,Bundle bundle,CheckpointDraft draft,Map<UUID,String> attachmentTexts) { return tx(c->{
         MyBatisExecutionLedger.guard(c,l);MyBatisExecutionLedger.verifyBundle(c,l,bundle);
+        var policy=ContextPolicy.fromSnapshot(frozen(c,l));
+        if(draft.state().length>policy.stateBytes())throw new ChatFailure(400,"INVALID_STATE_CAS");
         var history=history(c,l);
+        boolean materializing=draft.phase()==CheckpointPhase.INPUT_READY&&com.agentplatform.domain.attachment.AttachmentContext.unresolved(history);
+        if(materializing){
+            if(c.attachments()==null)throw new ChatFailure(409,"ATTACHMENT_SOURCE_UNAVAILABLE");
+            history=com.agentplatform.domain.attachment.AttachmentContext.materialize(history,c.attachments().inputSources(l.spaceId(),l.conversationId(),l.taskId()),attachmentTexts);
+        }
         if(!canonicalJson(history).equals(canonicalJson(draft.history())))throw new ChatFailure(409,"CHECKPOINT_HISTORY_CHANGED");
         if(draft.phase()==CheckpointPhase.INPUT_READY&&!c.recovery().turns(l.taskId()).isEmpty())throw new ChatFailure(409,"CHECKPOINT_INPUT_TOO_LATE");
-        var facts=canonical(c,l);String body=canonicalJson(facts),bodyHash=hash(body);
+        var facts=canonical(c,l);if(materializing)facts.put("input",history);String body=canonicalJson(facts),bodyHash=hash(body);
         long version=MyBatisExecutionLedger.stateCas(c,l,"checkpoint_agent_state",draft.expectedVersion(),draft.state());
         if(version<1)throw new ChatFailure(409,"STATE_CAS_CONFLICT");
         String encoded=Base64.getEncoder().encodeToString(draft.state());
@@ -77,13 +89,18 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
         long watermark=c.recovery().turns(l.taskId()).stream().filter(t->"COMMITTED".equals(t.status())).count();
         String manifest=canonicalJson(Map.of("version",2,"phase",draft.phase().name(),"bundle",bundle,"watermark",watermark,
                 "canonicalHash",bodyHash,"stateHash",stateHash,"states",Map.of("agent_state",Map.of("version",version,"hash",hash(new String(draft.state(),StandardCharsets.UTF_8))))));
+        long envelopeBytes=(long)body.getBytes(StandardCharsets.UTF_8).length+stateJson.getBytes(StandardCharsets.UTF_8).length+manifest.getBytes(StandardCharsets.UTF_8).length;
+        if(ContextPolicy.CURRENT_VERSION.equals(policy.version())&&envelopeBytes>policy.checkpointBytes())throw new ChatFailure(422,"CHECKPOINT_TOO_LARGE");
         UUID id=Uuid7.next();c.recovery().insertCheckpoint(l,id,WorkspaceToolPersistence.bundleId(c,l.spaceId(),l.taskId()),bundle.hash(),draft.phase().name(),manifest,hash(manifest),body,bodyHash,stateJson,stateHash,watermark);
         return id;
     }); }
 
     static CheckpointRow verifySnapshot(ChatMappers c,TaskRow task,UUID id,Bundle bundle) {
         var cp=c.recovery().checkpoint(id,task.id());if(cp==null)throw new ChatFailure(409,"CHECKPOINT_NOT_COMMITTED");
+        var policy=ContextPolicy.fromSnapshot(frozen(c,task.id(),task.spaceId()));
         try {
+            long envelopeBytes=(long)cp.manifestJson().getBytes(StandardCharsets.UTF_8).length+cp.canonicalJson().getBytes(StandardCharsets.UTF_8).length+cp.stateJson().getBytes(StandardCharsets.UTF_8).length;
+            if(ContextPolicy.CURRENT_VERSION.equals(policy.version())&&envelopeBytes>policy.checkpointBytes())throw new ChatFailure(409,"CHECKPOINT_HASH_MISMATCH");
             var manifest=object(cp.manifestJson());
             if(!bundle.hash().equals(cp.bundleHash())||!canonicalJson(bundle).equals(canonicalJson(manifest.get("bundle"))))throw new ChatFailure(409,"BUNDLE_INCOMPATIBLE");
             for(var part:List.of(List.of(cp.manifestJson(),cp.manifestHash()),List.of(cp.canonicalJson(),cp.canonicalHash()),List.of(cp.stateJson(),cp.stateHash())))
@@ -99,7 +116,7 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
             if(cp.watermark()!=committed)throw new ChatFailure(409,"CHECKPOINT_LEDGER_ADVANCED");
             var states=object(cp.stateJson());if(!states.keySet().equals(Set.of("agent_state")))throw new ChatFailure(409,"CHECKPOINT_STATE_MISSING");
             var state=object(json(states.get("agent_state")));byte[] bytes=Base64.getDecoder().decode((String)state.get("body"));
-            if(bytes.length==0||bytes.length>1048576||((Number)state.get("version")).longValue()<1||!hash(new String(bytes,StandardCharsets.UTF_8)).equals(state.get("hash")))throw new ChatFailure(409,"CHECKPOINT_HASH_MISMATCH");
+            if(bytes.length==0||bytes.length>policy.stateBytes()||((Number)state.get("version")).longValue()<1||!hash(new String(bytes,StandardCharsets.UTF_8)).equals(state.get("hash")))throw new ChatFailure(409,"CHECKPOINT_HASH_MISMATCH");
             var expected=Map.of("agent_state",Map.of("version",state.get("version"),"hash",state.get("hash")));
             if(!canonicalJson(expected).equals(canonicalJson(manifest.get("states"))))throw new ChatFailure(409,"CHECKPOINT_HASH_MISMATCH");
             var sdk=object(new String(bytes,StandardCharsets.UTF_8));

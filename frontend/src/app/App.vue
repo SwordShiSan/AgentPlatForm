@@ -16,6 +16,7 @@ const workspaceEnabled = import.meta.env.VITE_WORKSPACE_ENABLED === 'true';
       <nav class="site-nav" aria-label="主要导航">
         <RouterLink v-if="chatEnabled" to="/app/chat">聊天</RouterLink>
         <RouterLink v-if="workspaceEnabled" to="/app/workspaces">工作区</RouterLink>
+        <RouterLink v-if="workspaceEnabled" to="/app/storage">数据与存储</RouterLink>
         <RouterLink v-if="chatEnabled" to="/app/settings/account">账号</RouterLink>
         <RouterLink to="/status">连接状态</RouterLink>
       </nav>

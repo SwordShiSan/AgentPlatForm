@@ -8,6 +8,7 @@ import java.util.UUID;
 /** Short transactions only. Renderer/transport operations always occur outside these calls. */
 public interface PreviewRepository {
     Job create(Actor actor,UUID file,UUID version,String format,UUID request,String requestHash);
+    default Job createAttachment(Actor actor,UUID attachment,String format,UUID request,String requestHash){throw new UnsupportedOperationException("Attachment source not configured");}
     Job get(Actor actor,UUID preview);
     Job retry(Actor actor,UUID preview,long expected,UUID request,String requestHash);
     List<Publication> publications(UUID relayOwner);

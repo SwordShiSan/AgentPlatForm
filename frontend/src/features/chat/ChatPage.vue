@@ -6,6 +6,10 @@ import QuestionCard from './QuestionCard.vue';
 import ApprovalCard from './ApprovalCard.vue';
 import ToolOperationsPanel from './ToolOperationsPanel.vue';
 import RecoveryNotice from './RecoveryNotice.vue';
+import AttachmentComposer from './AttachmentComposer.vue';
+import WorkspaceFilesPanel from '../workspace/WorkspaceFilesPanel.vue';
+import FilePreviewPane from '../workspace/FilePreviewPane.vue';
+import type { AttachmentDraft, AttachmentReference } from './attachment-drafts';
 import { useChatDrafts, type PendingSubmission } from './drafts';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -25,6 +29,12 @@ const permissionsEnabled = import.meta.env.VITE_PERMISSIONS_ENABLED === 'true';
 const workspaceToolsEnabled = import.meta.env.VITE_WORKSPACE_TOOLS_ENABLED === 'true';
 const permissionMode = ref<'RISK_BASED' | 'FULL'>('RISK_BASED');const workspaceId = ref('');
 const draft = ref(''); const error = ref(''); const busy = ref(false);
+const attachmentsEnabled = import.meta.env.VITE_WORKSPACE_FILES_ENABLED === 'true';
+const attachmentDrafts = ref<AttachmentDraft[]>([]); const attachmentRefs = ref<AttachmentReference[]>([]); const attachmentsProcessing = ref(false);
+const attachmentComposer = ref<InstanceType<typeof AttachmentComposer>>();
+const sourcePreview = ref<components['schemas']['ChatFileReferenceBlock']>();
+const workbenchView = ref<'SPLIT' | 'CHAT' | 'FILES'>('SPLIT'); const workbenchWorkspace = ref('');
+const workbenchFile = computed(() => workspaces.data.value?.items.find(item => item.id === (workbenchWorkspace.value || workspaceId.value) && item.state === 'READY'));
 const pending = ref<PendingSubmission>();
 const selectedModel = ref(''); const source = ref<'PLATFORM' | 'USER'>('PLATFORM'); const drafts = useChatDrafts();
 const selected = computed(() => typeof route.params.id === 'string' ? route.params.id : '');
@@ -34,6 +44,42 @@ const space = computed(() => me.data.value?.spaces.find(item => item.type === 'P
 const workspaces = useQuery({ queryKey: computed(() => ['chat', actor.value, space.value, 'workspace-choices']), enabled: computed(() => permissionsEnabled && !!actor.value && !!space.value), queryFn: async () => (await api.GET('/api/v1/workspaces', { params: { query: { limit: 100 } } })).data! });
 const effective = useQuery({ queryKey: computed(() => ['chat', actor.value, 'effective-config']), enabled: computed(() => !!actor.value), queryFn: async () => (await api.GET('/api/v1/effective-config')).data! });
 const preferences = useQuery({ queryKey: computed(() => ['chat', actor.value, 'preferences']), enabled: computed(() => !!actor.value), queryFn: async () => (await api.GET('/api/v1/me/preferences')).data! });
+watch(() => preferences.data.value?.workbenchLayout, value => { if (value) workbenchView.value = value.view; }, { immediate: true });
+async function selectWorkbench(view: 'SPLIT' | 'CHAT' | 'FILES') {
+  workbenchView.value = view;
+  if (!preferences.data.value) return;
+  try { const token = await csrf(); await api.PATCH('/api/v1/me/preferences', { body: { workbenchLayout: { view, sidebarWidth: 384 } }, params: { header: { 'If-Match': `"${preferences.data.value.version}"`, 'X-CSRF-Token': token } } }); await preferences.refetch(); }
+  catch { error.value = '布局偏好未保存，请核对后重试。'; await preferences.refetch(); }
+}
+async function referenceFile(file: components['schemas']['FileItem'], modify = false) {
+  if (!file.versionId || busy.value || pending.value) return;
+  if (modify) {
+    workspaceId.value = file.workspaceId; planMode.value = true;
+    const request = `请修改工作区文件「${file.path}」，先说明方案；等待我的确认，不自动批准工具。`;
+    draft.value = draft.value ? `${draft.value}\n\n${request}` : request;
+  }
+  await attachmentComposer.value?.addVersion(file.id, file.versionId, file.name);
+  workbenchView.value = 'CHAT';
+  if (preferences.data.value) try {
+    const recent = [{ workspaceId: file.workspaceId, fileId: file.id, versionId: file.versionId }, ...(preferences.data.value.recentFiles ?? []).filter(item => item.fileId !== file.id)].slice(0, 20);
+    const token = await csrf(); await api.PATCH('/api/v1/me/preferences', { body: { recentFiles: recent }, params: { header: { 'If-Match': `"${preferences.data.value.version}"`, 'X-CSRF-Token': token } } }); await preferences.refetch();
+  } catch { error.value = '文件引用已保留；最近文件偏好未保存，请刷新核对。'; await preferences.refetch(); }
+}
+const linkedSource = computed(() => {
+  const { sourceFile, sourceVersion } = route.query;
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return typeof sourceFile === 'string' && typeof sourceVersion === 'string' && uuid.test(sourceFile) && uuid.test(sourceVersion)
+    ? { fileId: sourceFile, versionId: sourceVersion } : undefined;
+});
+async function addLinkedSource() {
+  if (!linkedSource.value || busy.value || pending.value) return;
+  try {
+    const file = (await api.GET('/api/v1/files/{id}', { params: { path: { id: linkedSource.value.fileId } } })).data!;
+    await referenceFile({ ...file, versionId: linkedSource.value.versionId });
+    const query = { ...route.query }; delete query.sourceFile; delete query.sourceVersion; delete query.sourceWorkspace;
+    await router.replace({ path: route.path, query });
+  } catch { error.value = '无法引用此固定版本，请核对文件权限或版本状态。'; }
+}
 
 const listKey = computed(() => ['chat', actor.value, 'conversations']);
 const snapshotKey = computed(() => ['chat', actor.value, space.value, 'snapshot', selected.value]);
@@ -67,7 +113,7 @@ const stopLabel = computed(() => {
   if (reconciliationState.value?.stopStage === 'STOPPING') return '正在停止，请等待执行者及连接退出。';
   return '';
 });
-const config = useQuery({ queryKey: computed(() => ['chat', actor.value, 'configuration', lastTask.value?.taskId]), enabled: computed(() => !!lastTask.value), queryFn: async () => (await api.GET('/api/v1/tasks/{id}/configuration', { params: { path: { id: lastTask.value!.taskId } } })).data! });
+const config = useQuery({ queryKey: computed(() => ['chat', actor.value, 'configuration', lastTask.value?.taskId, lastTask.value?.version]), enabled: computed(() => !!lastTask.value), queryFn: async () => (await api.GET('/api/v1/tasks/{id}/configuration', { params: { path: { id: lastTask.value!.taskId } } })).data! });
 const running = computed(() => snapshot.data.value?.tasks.some(item => ['QUEUED', 'RUNNING', 'WAITING_INPUT'].includes(item.status)) ?? false);
 const diagnostics = useQuery({ queryKey: computed(() => ['chat', actor.value, space.value, 'diagnostics', lastTask.value?.taskId, lastTask.value?.version]), enabled: computed(() => !!lastTask.value && !running.value), queryFn: async () => (await api.GET('/api/v1/tasks/{id}/diagnostics', { params: { path: { id: lastTask.value!.taskId } } })).data! });
 const diagnosticCopy = ref('');
@@ -130,7 +176,7 @@ function connect() {
         return applyChatEvent(previous, body);
       });
       if (body.type === 'task.permissions_changed') void cache.invalidateQueries({ queryKey: ['chat', user, selectedSpace, 'permissions'] });
-      if (body.type === 'usage.updated') { void cache.invalidateQueries({ queryKey: ['chat', user, 'usage'] }); void quota.refetch(); }
+      if (body.type === 'usage.updated') { void cache.invalidateQueries({ queryKey: ['chat', user, 'usage'] }); void quota.refetch(); void config.refetch(); }
     },
     rebase: async signal => {
       const result = await api.GET('/api/v1/conversations/{id}/snapshot', { signal, params: { path: { id: conversation }, header: { 'X-Space-Id': selectedSpace } } });
@@ -147,12 +193,13 @@ function restoreDraft() {
   if (!actor.value || !space.value) return;
   restoring = true;
   const value = drafts.load(actor.value, space.value, selected.value);
+  attachmentDrafts.value = value.attachments ?? [];
   planMode.value = value.planMode ?? false; workspaceId.value = value.workspaceId ?? ''; permissionMode.value = value.permissionMode ?? 'RISK_BASED'; draft.value = value.text; pending.value = value.pending; selectedModel.value = value.model || effective.data.value?.values.modelId || ''; source.value = value.model ? value.source : effective.data.value?.values.credentialSource || 'PLATFORM';
   restoring = false;
 }
-watch([actor, space, selected], () => { stopStream(); error.value = ''; restoreDraft(); connect(); }, { immediate: true, flush: 'sync' });
+watch([actor, space, selected], () => { stopStream(); sourcePreview.value = undefined; error.value = ''; restoreDraft(); connect(); }, { immediate: true, flush: 'sync' });
 watch(() => effective.data.value, () => { if (!selectedModel.value) restoreDraft(); });
-watch([draft, selectedModel, source, pending, planMode, workspaceId, permissionMode], () => { if (mounted && !restoring) drafts.save(actor.value, space.value, selected.value, { text: draft.value, model: selectedModel.value, source: source.value, planMode: planMode.value, workspaceId: workspaceId.value, permissionMode: permissionMode.value, ...(pending.value ? { pending: pending.value } : {}) }); }, { deep: true, flush: 'sync' });
+watch([draft, selectedModel, source, pending, planMode, workspaceId, permissionMode, attachmentDrafts], () => { if (mounted && !restoring) drafts.save(actor.value, space.value, selected.value, { text: draft.value, model: selectedModel.value, source: source.value, planMode: planMode.value, workspaceId: workspaceId.value, permissionMode: permissionMode.value, attachments: attachmentDrafts.value, ...(pending.value ? { pending: pending.value } : {}) }); }, { deep: true, flush: 'sync' });
 onBeforeUnmount(() => { mounted = false; stopStream(); });
 
 async function create() {
@@ -177,17 +224,17 @@ async function moreConversations() {
   finally { busy.value = false; }
 }
 async function submit() {
-  if (busy.value || (!pending.value && (!draft.value.trim() || running.value))) return;
+  if (busy.value || (!pending.value && (!draft.value.trim() || running.value || attachmentsProcessing.value))) return;
   const model = models.data.value?.items.find(item => item.id === selectedModel.value); if (!model) { error.value = '所选模型或凭据不可用，请检查配置。'; return; }
-  pending.value ??= { key: newRequestId(), text: draft.value, model: model.id, source: source.value, conversation: selected.value, planMode: planEnabled && planMode.value, workspaceId: permissionsEnabled ? workspaceId.value || null : null, permissionMode: permissionsEnabled ? permissionMode.value : 'RISK_BASED' };
+  pending.value ??= { key: newRequestId(), text: draft.value, model: model.id, source: source.value, conversation: selected.value, planMode: planEnabled && planMode.value, workspaceId: permissionsEnabled ? workspaceId.value || null : null, permissionMode: permissionsEnabled ? permissionMode.value : 'RISK_BASED', attachments: attachmentRefs.value.map(value => ({ ...value })) };
   const value = pending.value; busy.value = true; error.value = '';
   try {
     const token = await csrf();
-    const body = { input: { text: value.text, attachments: [] }, options: { modelId: value.model, credentialSource: value.source, planMode: value.planMode ?? false, permissionMode: value.permissionMode ?? 'RISK_BASED', ...(value.workspaceId ? { workspaceId: value.workspaceId } : {}) } };
+    const body = { input: { text: value.text, attachments: value.attachments ?? [] }, options: { modelId: value.model, credentialSource: value.source, planMode: value.planMode ?? false, permissionMode: value.permissionMode ?? 'RISK_BASED', ...(value.workspaceId ? { workspaceId: value.workspaceId } : {}) } };
     let conversation = value.conversation;
     if (conversation) await api.POST('/api/v1/conversations/{id}/tasks', { params: { path: { id: conversation }, header: { 'Idempotency-Key': value.key, 'X-CSRF-Token': token } }, body });
     else { const accepted = (await api.POST('/api/v1/conversations', { params: { header: { 'Idempotency-Key': value.key, 'X-CSRF-Token': token } }, body: { title: '新对话', initialTask: body } })).data!; conversation = accepted.id; }
-    pending.value = undefined; draft.value = ''; stopStream(); await cache.invalidateQueries({ queryKey: listKey.value });
+    pending.value = undefined; draft.value = ''; attachmentDrafts.value = []; attachmentRefs.value = []; stopStream(); await cache.invalidateQueries({ queryKey: listKey.value });
     if (!value.conversation) {
       drafts.save(actor.value, space.value, '', { text: '', model: '', source: 'PLATFORM' });
       drafts.save(actor.value, space.value, conversation, { text: '', model: value.model, source: value.source });
@@ -218,7 +265,13 @@ async function cancel() {
 </script>
 
 <template>
-  <main id="main-content" class="chat-layout" tabindex="-1">
+  <main id="main-content" :class="['chat-layout', { 'workbench-layout': attachmentsEnabled }]" :data-view="workbenchView" tabindex="-1">
+    <nav v-if="attachmentsEnabled" class="workbench-tabs" aria-label="工作台布局">
+      <button type="button" :aria-pressed="workbenchView === 'CHAT'" @click="selectWorkbench('CHAT')">聊天</button>
+      <button type="button" :aria-pressed="workbenchView === 'FILES'" @click="selectWorkbench('FILES')">文件</button>
+      <button type="button" class="split-view-option" :aria-pressed="workbenchView === 'SPLIT'" @click="selectWorkbench('SPLIT')">分栏</button>
+      <RouterLink to="/app/storage">数据与存储</RouterLink>
+    </nav>
     <aside class="chat-sidebar" aria-label="对话导航">
       <p class="eyebrow">个人空间</p>
       <button :disabled="busy || !models.data.value?.items.length" @click="create">新建对话</button>
@@ -228,16 +281,26 @@ async function cancel() {
     </aside>
     <section class="chat-content" aria-label="普通聊天">
       <header><h1>普通聊天</h1><p class="intro">{{ models.data.value?.items.find(item => item.id === selectedModel)?.name ?? '请选择模型' }}</p></header>
+      <p v-if="effective.data.value?.context" class="intro" data-testid="context-capacity">任务上下文 {{ effective.data.value.context.window.toLocaleString() }} tokens，输入可用 {{ effective.data.value.context.inputLimit.toLocaleString() }}，输出上限 {{ effective.data.value.context.maxOutput.toLocaleString() }}；模型能力 {{ effective.data.value.context.modelWindow.toLocaleString() }}。与每日额度分别管理，使用量由服务端估算准入及供应商结算。</p>
       <p v-if="!selected" class="intro">新对话草稿，发送首条消息后保存。</p>
       <p v-if="snapshot.isError.value" role="alert">对话暂时不可用。</p>
       <p v-if="selected && ['reconnecting', 'offline'].includes(streamStatus)" role="status">{{ streamStatus === 'offline' ? '网络已断开，联网后继续读取。' : '正在重新连接，已有消息已保留。' }}</p>
       <div class="chat-messages" aria-label="消息历史" :aria-busy="snapshot.isFetching.value">
         <article v-for="message in snapshot.data.value?.messages" :key="message.id" :class="['chat-message', message.role.toLowerCase()]">
           <p class="eyebrow">{{ message.role === 'USER' ? '你' : '助手' }}<span v-if="message.status === 'PARTIAL'"> · 回复未完成</span></p>
-          <p v-for="block in message.blocks" :key="block.blockId" class="chat-text">{{ block.text || (message.status === 'STREAMING' ? '等待回复…' : '未产生回复') }}</p>
+          <template v-for="block in message.blocks" :key="block.blockId">
+            <p v-if="block.type === 'TEXT'" class="chat-text">{{ block.text || (message.status === 'STREAMING' ? '等待回复…' : '未产生回复') }}</p>
+            <aside v-else-if="block.type === 'FILE_REFERENCE'" class="source-card" aria-label="固定附件来源">
+              <strong>{{ block.name }}</strong><p>已固定原字节与正文提取版本</p>
+              <RouterLink v-if="block.fileId" :to="`/app/workspaces?file=${block.fileId}&version=${block.versionId}`">打开来源</RouterLink>
+              <a v-if="block.attachmentId" :href="`/api/v1/attachments/${block.attachmentId}/content`">下载原文件</a>
+              <button type="button" @click="sourcePreview = block">预览固定来源</button>
+            </aside>
+          </template>
           <p v-if="!message.blocks.length" class="chat-text">暂无可显示的文本内容。</p>
         </article>
       </div>
+      <FilePreviewPane v-if="sourcePreview && actor && space" :key="`${actor}:${space}:${sourcePreview.blockId}`" :file-id="sourcePreview.fileId" :version-id="sourcePreview.versionId" :attachment-id="sourcePreview.attachmentId" :name="sourcePreview.name" :user-id="actor" :space-id="space" historical @close="sourcePreview = undefined" />
       <template v-for="interaction in snapshot.data.value?.pending" :key="interaction.interactionId">
         <PlanCard v-if="interaction.kind === 'PLAN_APPROVAL'" :interaction="{ ...interaction, question: null }" :actor="actor" :space="space" :ready="snapshot.data.value?.tasks.find(task => task.taskId === interaction.taskId)?.status === 'WAITING_INPUT'" @refresh="refreshInteractions" />
         <QuestionCard v-else-if="interaction.kind === 'QUESTION'" :interaction="{ ...interaction, plan: null }" :ready="interaction.optional || snapshot.data.value?.tasks.find(task => task.taskId === interaction.taskId)?.status === 'WAITING_INPUT'" @refresh="refreshInteractions" />
@@ -277,11 +340,22 @@ async function cancel() {
         </div>
         <label v-if="planEnabled" class="plan-toggle"><input v-model="planMode" type="checkbox" :disabled="busy || !!pending || running" /> {{ workspaceToolsEnabled ? '先制定计划，再确认执行' : '先制定计划，再确认文本执行' }}</label>
         <label for="chat-input">消息</label>
+        <p v-if="attachmentsEnabled && linkedSource" role="status">已选择固定产物版本，尚未添加到消息。<button type="button" :disabled="busy || !!pending" @click="addLinkedSource">添加此来源</button></p>
+        <AttachmentComposer v-if="attachmentsEnabled" ref="attachmentComposer" :key="`${actor}:${space}:${selected}`" v-model="attachmentDrafts" :actor="actor" :space="space" :disabled="busy || !!pending" @references="attachmentRefs = $event" @processing="attachmentsProcessing = $event" />
+        <p v-if="drafts.storageWarning" role="alert">浏览器草稿空间不足，内容仅当前页面保留；请先保存或发送。</p>
         <textarea id="chat-input" v-model="draft" rows="3" :disabled="busy || !!pending" placeholder="输入文字，按 Ctrl + Enter 发送" @keydown.ctrl.enter.prevent="submit" @keydown.meta.enter.prevent="submit" />
-        <div class="chat-actions"><button type="submit" :disabled="busy || (!pending && (running || !draft.trim())) || !modelAvailable">{{ pending ? '重试同一条消息' : '发送' }}</button><button v-if="running" type="button" :disabled="busy || lastTask?.cancelRequested" @click="cancel">取消回复</button></div>
+        <div class="chat-actions"><button type="submit" :disabled="busy || (!pending && (running || !draft.trim() || attachmentsProcessing)) || !modelAvailable">{{ pending ? '重试同一条消息' : '发送' }}</button><button v-if="running" type="button" :disabled="busy || lastTask?.cancelRequested" @click="cancel">取消回复</button></div>
       </form>
-      <details v-if="config.data.value"><summary>当前任务配置</summary><p>模型：{{ config.data.value.values.modelName }}；来源：{{ config.data.value.values.credentialSource }}</p><p class="chat-text">快照 {{ config.data.value.configSnapshotId }} · {{ config.data.value.configHash }}</p><p v-if="!config.data.value.restrictions.credentialActive">此任务凭据已撤销。</p></details>
+      <details v-if="config.data.value"><summary>当前任务配置</summary><p>模型：{{ config.data.value.values.modelName }}；来源：{{ config.data.value.values.credentialSource }}</p><p>冻结上下文 {{ config.data.value.values.window }} tokens，输出上限 {{ config.data.value.values.maxOutput }}。</p><p v-if="config.data.value.contextUsage">最近请求输入估算：{{ config.data.value.contextUsage.estimatedInputTokens?.toLocaleString() ?? '调用前计算' }} tokens；估算不等于计费值。</p><p class="chat-text">快照 {{ config.data.value.configSnapshotId }} · {{ config.data.value.configHash }}</p><p v-if="!config.data.value.restrictions.credentialActive">此任务凭据已撤销。</p></details>
       <ModelSettings v-if="actor" :actor="actor" />
     </section>
+    <aside v-if="attachmentsEnabled" class="workbench-files" aria-label="文件工作台">
+      <label for="workbench-workspace">浏览工作区</label>
+      <select id="workbench-workspace" v-model="workbenchWorkspace"><option value="">{{ workspaceId ? '使用当前草稿绑定的工作区' : '请选择工作区' }}</option><option v-for="item in workspaces.data.value?.items.filter(item => item.state === 'READY')" :key="item.id" :value="item.id">{{ item.name }}</option></select>
+      <p>浏览或引用文件不自动授予修改权限；“让AI修改”只准备草稿，不发送任务。</p>
+      <WorkspaceFilesPanel v-if="workbenchFile && actor && space" :key="`${actor}:${space}:${workbenchFile.id}`" :workspace-id="workbenchFile.id" :user-id="actor" :space-id="space" storage-ready reference-enabled @reference="referenceFile($event)" @modify="referenceFile($event, true)" />
+      <p v-else role="status">选择已就绪的工作区以浏览、编辑、预览或引用固定版本。普通聊天上传不需要工作区。</p>
+      <details v-if="preferences.data.value?.recentFiles?.length"><summary>最近引用的文件</summary><ul><li v-for="file in preferences.data.value.recentFiles" :key="`${file.fileId}:${file.versionId}`"><RouterLink :to="`/app/workspaces/${file.workspaceId}?file=${file.fileId}&version=${file.versionId}`">打开固定版本 {{ file.versionId.slice(0, 8) }}</RouterLink></li></ul></details>
+    </aside>
   </main>
 </template>

@@ -8,6 +8,22 @@
   },
   "artifacts": [
     {
+      "coordinate": "org.bouncycastle:bcjmail-jdk18on:1.86",
+      "sha256": "a6c26f418de462f7f3e575de7561fa5af1995c220f236515963b56f31c347acb"
+    },
+    {
+      "coordinate": "org.bouncycastle:bcpkix-jdk18on:1.83",
+      "sha256": "d3c4c6b700c74ef8164bb15e549d939721b8f14fc0ff89fe19b220243bcfcbd8"
+    },
+    {
+      "coordinate": "org.bouncycastle:bcprov-jdk18on:1.83",
+      "sha256": "82cf3a2af766c3bc874f6d36b9f20a8b99a8f09762dc776e8a227a45d8daaafb"
+    },
+    {
+      "coordinate": "org.bouncycastle:bcutil-jdk18on:1.83",
+      "sha256": "ee7d0eb4e74de70a735f7fb36b604dd5c6ad35720d50b914604db042114a0185"
+    },
+    {
       "coordinate": "com.twelvemonkeys.common:common-image:3.13.1",
       "sha256": "c738cf53c4effa0030203330348d7367a62e7d2055e14c92d84fd546919e39b2"
     },
@@ -20,6 +36,22 @@
       "sha256": "bca77f915cb56f3f23729bf602458152e71c7d1467ab3d8b98fa977cbd6aa285"
     },
     {
+      "coordinate": "commons-codec:commons-codec:1.19.0",
+      "sha256": "5c3881e4f556855e9c532927ee0c9dfde94cc66760d5805c031a59887070af5f"
+    },
+    {
+      "coordinate": "org.apache.commons:commons-collections4:4.5.0",
+      "sha256": "00f93263c267be201b8ae521b44a7137271b16688435340bf629db1bac0a5845"
+    },
+    {
+      "coordinate": "org.apache.commons:commons-compress:1.28.0",
+      "sha256": "e1522945218456f3649a39bc4afd70ce4bd466221519dba7d378f2141a4642ca"
+    },
+    {
+      "coordinate": "org.apache.commons:commons-csv:1.14.1",
+      "sha256": "32be0e1e76673092f5d12cb790bd2acb6c2ab04c4ea6efc69ea5ee17911c24fe"
+    },
+    {
       "coordinate": "commons-io:commons-io:2.21.0",
       "sha256": "7d643a2afea8b058b762aa6fb90e5b256f6c729739f8b3784c3370ddc609e88d"
     },
@@ -30,6 +62,14 @@
     {
       "coordinate": "commons-logging:commons-logging:1.3.6",
       "sha256": "f8ead8943401081dea0aa824b5b1ba40a0e4ed297a572a0f02258150a0b62357"
+    },
+    {
+      "coordinate": "org.apache.commons:commons-math3:3.6.1",
+      "sha256": "1e56d7b058d28b65abd256b8458e3885b674c1d588fa43cd7d1cbb9c7ef2b308"
+    },
+    {
+      "coordinate": "com.github.virtuald:curvesapi:1.08",
+      "sha256": "ad95b08b8bbf9d7d17e5e00814898fa23324f32bc5b62f1a37801e6a56ce0079"
     },
     {
       "coordinate": "org.apache.pdfbox:fontbox:3.0.8",
@@ -52,6 +92,18 @@
       "sha256": "2976141af57a2782fb7e1d18b896ed37d3f5e2319342fdb8bdcc7312e43b04c4"
     },
     {
+      "coordinate": "com.healthmarketscience.jackcess:jackcess:5.0.2",
+      "sha256": "f8ebe0fe664fd12e679dece335872f00f7b0458d230545e108ad5a3d19011e8c"
+    },
+    {
+      "coordinate": "com.healthmarketscience.jackcess:jackcess-encrypt:5.0.1",
+      "sha256": "63931d7b81617a265681f24ccf615607af00f5e1e645163ae187a9cd23b89605"
+    },
+    {
+      "coordinate": "com.pff:java-libpst:0.9.3",
+      "sha256": "039cd61635ded94dba67f909d3b1763e13f9c23d02f9750eb6259af10e1dabdb"
+    },
+    {
       "coordinate": "org.jodconverter:jodconverter-core:5.1.1",
       "sha256": "bef461db3fb5510a035ac09e8e03fc8e763f82c5adf5fe749bf0d2597f2ff6f6"
     },
@@ -68,8 +120,16 @@
       "sha256": "e9d8c856856680427f096d156f02a414289985c930998fcb519ce5be39b42003"
     },
     {
+      "coordinate": "com.github.albfernandez:juniversalchardet:2.5.0",
+      "sha256": "ceb271653ed99e15ffe52e4aedecdef8918434f19a4378a67f7ebe0ea8439058"
+    },
+    {
       "coordinate": "org.libreoffice:libreoffice:26.2.2",
       "sha256": "37b94f944cb35fdbdb586d08df65419b42f1bd2363e143958dbae63ca15c23b3"
+    },
+    {
+      "coordinate": "org.apache.logging.log4j:log4j-api:2.25.5",
+      "sha256": "64777f73ea0b3104c04eb82befbdccc30a425a19e83ad06cb2f93aa303511863"
     },
     {
       "coordinate": "org.apache.pdfbox:pdfbox:3.0.8",
@@ -80,8 +140,60 @@
       "sha256": "36a0e04001010b4c764857817412b96339930b19755e728959805cc0352061b2"
     },
     {
+      "coordinate": "org.apache.poi:poi:5.5.1",
+      "sha256": "6c52e876ca75775a11b56e4b36a7541f682827f56406725fcd87560b792ee3d8"
+    },
+    {
+      "coordinate": "org.apache.poi:poi-ooxml:5.5.1",
+      "sha256": "bd7be2fdfe3fd2c1684fa813351c2798fd636b44f6236e0674500d4f8ff1c2f9"
+    },
+    {
+      "coordinate": "org.apache.poi:poi-ooxml-full:5.5.1",
+      "sha256": "dbc7c6e6108ceb9f151c2fc866a2b287d48af3a10b05425da21315eec16ce022"
+    },
+    {
+      "coordinate": "org.apache.poi:poi-scratchpad:5.5.1",
+      "sha256": "24c3f407eff517432d5cfd5628b6b8a091f94c1dbb7481384599b5a0fbeedeb9"
+    },
+    {
       "coordinate": "org.slf4j:slf4j-api:2.0.18",
       "sha256": "44508fd1576500688c790b190acdd16fec4f8c79a3e0b900afd70503cf055f55"
+    },
+    {
+      "coordinate": "com.zaxxer:SparseBitSet:1.3",
+      "sha256": "f76b85adb0c00721ae267b7cfde4da7f71d3121cc2160c9fc00c0c89f8c53c8a"
+    },
+    {
+      "coordinate": "org.apache.tika:tika-core:3.3.3",
+      "sha256": "e0c5fc32206f1daef85e549a7d93110a708613ed4b00d2c1e895c1d5d83a1326"
+    },
+    {
+      "coordinate": "org.apache.tika:tika-parser-html-module:3.3.3",
+      "sha256": "060d2e628b341db60d5e7f00d4c4e546cb77c1ac16f7676b458dc9cb9e69b955"
+    },
+    {
+      "coordinate": "org.apache.tika:tika-parser-mail-commons:3.3.3",
+      "sha256": "7776b92dbfddfcda2d12a16b9db3aeed4a2f73d492200d6e68e556e38e03e0f7"
+    },
+    {
+      "coordinate": "org.apache.tika:tika-parser-microsoft-module:3.3.3",
+      "sha256": "e5dab7f55d3a678938a830680a7ceb6a2889c97ba4d97c2ad20ebb176ea8f4d8"
+    },
+    {
+      "coordinate": "org.apache.tika:tika-parser-text-module:3.3.3",
+      "sha256": "099bc909ddb532889fc0383fa43dff8b3b3611a4085a2053131d84e30061aabc"
+    },
+    {
+      "coordinate": "org.apache.tika:tika-parser-xml-module:3.3.3",
+      "sha256": "e9f08db78284b9f39b6f7d3c8f59903173858e03973b6def9eaab2a643407529"
+    },
+    {
+      "coordinate": "org.apache.tika:tika-parser-zip-commons:3.3.3",
+      "sha256": "66a38e960b784b7c5a5cc191606e0749df20a558ea98394071ab5122d2c5bcbc"
+    },
+    {
+      "coordinate": "org.apache.xmlbeans:xmlbeans:5.3.0",
+      "sha256": "6cc69da3b4d35b83c5e477cd4daba204e44109833e34af2b9a8a2c8788289917"
     }
   ]
 }
