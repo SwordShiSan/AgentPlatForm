@@ -65,7 +65,7 @@ assert all(not v['State']['Running'] for v in json.loads(subprocess.check_output
 subprocess.run(['docker','load','-i',str(archive)],check=True,capture_output=True)
 for part,row in candidate['images'].items():
  actual=json.loads(subprocess.check_output(['docker','image','inspect',row['configId']]))[0]
- assert actual['Id']==row['configId'] and actual['Config']['Labels']['org.opencontainers.image.revision']==candidate['source']
+ assert actual['Id']==row['configId'] and actual['Config']['Labels']['org.opencontainers.image.revision']==row['source']
 for name,row in c['services'].items():
  if name in ['api','worker','runner','operator']:row['image']=candidate['images']['api']['configId']
  if name=='gateway':row['image']=candidate['images']['gateway']['configId']

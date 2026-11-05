@@ -73,7 +73,8 @@ def main():
     text=extraction(client,journal,'large-context',{'attachmentId':original['id']})
     refs=[{'kind':'CHAT_ATTACHMENT','attachmentId':original['id'],'extractionId':text['id']}]
     body={'title':'R54 attachment acceptance','initialTask':{'input':{'text':'fixture:r54-document 请核对固定资料标记','attachments':refs},'options':{'modelId':'0199e000-0000-7000-8000-000000000002','credentialSource':'PLATFORM','planMode':False,'permissionMode':'FULL'}}}
-    request_identity='conversation:document:'+common.sha(json.dumps(body,sort_keys=True).encode())
+    candidate=json.loads((DATA/'native-plan.json').read_text())
+    request_identity='conversation:document:'+candidate['gateway']['candidate']['images']['api']['configId']+':'+common.sha(json.dumps(body,sort_keys=True).encode())
     conversation=journal.once(client,request_identity,{'method':'POST','path':'/api/v1/conversations','body':body},body)
     task=wait(client,'/api/v1/tasks/'+conversation['initialTask']['taskId'],terminal=('SUCCEEDED','FAILED','BLOCKED','CANCELLED'))
     assert task['status']=='SUCCEEDED',task.get('reasonCode')
