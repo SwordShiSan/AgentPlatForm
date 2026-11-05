@@ -71,7 +71,7 @@ def prepare():
  found=json.loads(remote("import json,subprocess\nnames={'api':'agentplatform-r4-app-api-1','postgres':'agentplatform-env-postgres-1','rabbitmq':'agentplatform-env-rabbitmq-1','s3':'agentplatform-env-s3-1','redis':'agentplatform-env-redis-1'}\nprint(json.dumps({k:json.loads(subprocess.check_output(['docker','inspect',n]))[0]['Image'] for k,n in names.items()}))\n"))
  if STAGE in ['r52','r53','r54']:found['api']=image['candidate']['images']['api']['configId']
  caps={'api':480,'worker':336,'runner':336,'operator':256,'gateway':32,'postgres':192,'rabbitmq':256,'master':112,'volume':96,'filer':96,'s3':224,'redis':16}
- if STAGE=='r54':caps.update(api=512,worker=320,runner=320,rabbitmq=192) # 64MiB deterministic provider uses the test broker allowance; total unchanged.
+ if STAGE=='r54':caps.update(api=512,worker=320,runner=320,s3=160) # Test-only provider takes64MiB from S3; retain the measured broker cold-start cap.
  for name,row in config['services'].items():
   if name in ['api','worker','runner','operator']:row['image']=found['api']
   elif name in ['master','volume','filer','s3']:row['image']=found['s3']
@@ -113,7 +113,7 @@ def prepare():
   definitions.setdefault('bindings',[]).append({'source':exchange,'vhost':'/agentplatform','destination':queue,'destination_type':'queue','routing_key':route,'arguments':{}})
  for kind,keys in [('exchanges',('vhost','name')),('queues',('vhost','name')),('bindings',('vhost','source','destination','routing_key'))]:
   definitions[kind]=list({tuple(row.get(key) for key in keys):row for row in definitions[kind]}.values())
- (private/'rabbitmq-definitions.json').write_text(json.dumps(definitions));(private/'rabbitmq.conf').write_text('management.load_definitions = /etc/rabbitmq/definitions.json\nvm_memory_high_watermark.absolute = '+('128MiB' if STAGE=='r54' else '192MiB')+'\n')
+ (private/'rabbitmq-definitions.json').write_text(json.dumps(definitions));(private/'rabbitmq.conf').write_text('management.load_definitions = /etc/rabbitmq/definitions.json\nvm_memory_high_watermark.absolute = '+'192MiB'+'\n')
  identities=[]
  for role in ['api','worker','runner']:
   access=(private/Path(config['secrets']['file_'+role+'_access']['file']).name).read_text();secret=(private/Path(config['secrets']['file_'+role+'_secret']['file']).name).read_text()
