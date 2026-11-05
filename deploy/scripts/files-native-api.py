@@ -5,7 +5,7 @@ ROOT=Path(__file__).resolve().parents[2];DATA=ROOT/'.cache/r51-local';BASE='http
 STAGE='r51'
 def configure(stage):
  global DATA,BASE,STAGE
- assert stage in ['r51','r52','r53'];STAGE=stage;DATA=ROOT/('.cache/'+stage+'-local');BASE='http://127.0.0.1:'+str(18100+int(stage[1:]))
+ assert stage in ['r51','r52','r53','r54'];STAGE=stage;DATA=ROOT/('.cache/'+stage+'-local');BASE='http://127.0.0.1:'+str(18100+int(stage[1:]))
 class Client:
  def __init__(self,name=None):
   name=name or STAGE+'_admin'
@@ -15,7 +15,7 @@ class Client:
   self.csrf=self.request('GET','/api/v1/auth/csrf')[1]['csrfToken'];self.me=self.request('GET','/api/v1/me')[1];self.space=next(s['id'] for s in self.me['spaces'] if s['type']=='PERSONAL')
  def request(self,method,path,body=None,headers=None,binary=False):
   data=body if isinstance(body,bytes) else json.dumps(body,ensure_ascii=False).encode() if body is not None else b'' if method not in ['GET','HEAD'] else None
-  h={'Origin':BASE,**({'X-Space-Id':self.space} if self.space else {}),**({'X-CSRF-Token':self.csrf} if self.csrf and method!='GET' else {}),**({'Content-Type':'application/json'} if data is not None else {}),**(headers or {})}
+  h={'Origin':BASE,**({'Host':'124.222.55.140'} if STAGE=='r54' else {}),**({'X-Space-Id':self.space} if self.space else {}),**({'X-CSRF-Token':self.csrf} if self.csrf and method!='GET' else {}),**({'Content-Type':'application/json'} if data is not None else {}),**(headers or {})}
   req=urllib.request.Request(BASE+path,data=data,method=method,headers=h)
   try:
    with self.http.open(req,timeout=130) as response:raw=response.read();return response.status,raw if binary else json.loads(raw),dict(response.headers)

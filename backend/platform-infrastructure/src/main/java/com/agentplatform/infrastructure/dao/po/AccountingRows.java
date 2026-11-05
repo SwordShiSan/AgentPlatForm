@@ -5,7 +5,8 @@ public final class AccountingRows {
     private AccountingRows() {}
     public record ModelCallRow5(Boolean value1) {}
     public record ModelCallRow24(Boolean value1, Boolean value2) {}
-    public record BudgetReservationRow34(String value1) {}
+    public record BudgetReservationRow34(String value1, Long tokens, Long amountMicros, Long estimatedInputTokens, Integer maxOutputTokens, String contextPolicyVersion) {}
+    public record ObservedUsageRow(Long inputTokens, Long outputTokens, Long costMicros, String providerRequestId) {}
     public record ModelCallRow35(Integer value1, Instant value2) {}
     public record ModelCallRow50(UUID id, String status, Long inputTokens, Long outputTokens, Long costMicros, Boolean estimated) {}
 }

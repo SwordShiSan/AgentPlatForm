@@ -16,8 +16,10 @@ import tools.jackson.databind.json.JsonMapper;
 /** Conversation persistence use cases over typed MyBatis collaborators. */
 final class ConversationPersistence extends ChatPersistenceSupport {
     private final boolean workspaceTools;
-    ConversationPersistence(ChatMappers mappers) { this(mappers,false); }
-    ConversationPersistence(ChatMappers mappers,boolean workspaceTools) { super(mappers);this.workspaceTools=workspaceTools; }
+    private final ContextPolicy contextPolicy;
+    ConversationPersistence(ChatMappers mappers) { this(mappers,false,ContextPolicy.legacy()); }
+    ConversationPersistence(ChatMappers mappers,boolean workspaceTools) { this(mappers,workspaceTools,ContextPolicy.legacy()); }
+    ConversationPersistence(ChatMappers mappers,boolean workspaceTools,ContextPolicy contextPolicy) { super(mappers);this.workspaceTools=workspaceTools;this.contextPolicy=Objects.requireNonNull(contextPolicy); }
 
     public List<Model> models(Actor a){return tx(c->{auth(c,a);List<Model> result=new ArrayList<>();{ var rows67 = c.configuration().selectModelDefinition67(a.spaceId(), a.userId(), a.spaceId(), a.userId()); for (var row67 : rows67)result.add(new Model(row67.value1(),row67.value2(),row67.value3())); }return List.copyOf(result);});}
     public Conversation create(Actor a,UUID key,String title){return tx(c->{
@@ -36,8 +38,8 @@ final class ConversationPersistence extends ChatPersistenceSupport {
         { var rows61 = c.conversation().selectTask61(a.spaceId(), id); for (var row61 : rows61)tasks.add(readTask(row61)); }
         return new Snapshot(id,cursor,List.copyOf(messages),List.copyOf(tasks),new PlanPersistence(c).pending(a,id));
     });}
-    public Task submit(Actor a,UUID convo,UUID key,UUID model,String text){return tx(c->{String source=null;{ var rows60 = c.configuration().selectModelBinding60(a.spaceId(), a.userId(), model); var row60 = rows60.isEmpty() ? null : rows60.getFirst(); if(row60 != null)source=row60.value1(); }return submit(c,a,convo,key,model,source,text);});}
-    public Task submitConfigured(Actor a,UUID convo,UUID key,UUID model,String source,String text){return tx(c->submit(c,a,convo,key,model,source,text));}
+    public Task submit(Actor a,UUID convo,UUID key,UUID model,String text){return tx(c->{String source=null;{ var rows60 = c.configuration().selectModelBinding60(a.spaceId(), a.userId(), model); var row60 = rows60.isEmpty() ? null : rows60.getFirst(); if(row60 != null)source=row60.value1(); }return submit(c,a,convo,key,model,source,text,false,null,com.agentplatform.types.TaskPermissionData.Mode.RISK_BASED,false,contextPolicy);});}
+    public Task submitConfigured(Actor a,UUID convo,UUID key,UUID model,String source,String text){return tx(c->submit(c,a,convo,key,model,source,text,false,null,com.agentplatform.types.TaskPermissionData.Mode.RISK_BASED,false,contextPolicy));}
     public Task task(Actor a,UUID id){return tx(c->{auth(c,a);return task(c,a,id,false);});}
     public Task cancel(Actor a,UUID id,UUID key){return tx(c->{
         auth(c,a);Task t=task(c,a,id,false);new MyBatisQuotaLedger(c.quota()).lock(a.userId());c.dispatch().updateExecutionSlot87();conversation(c,a,t.conversationId(),true);t=task(c,a,id,true);
@@ -67,15 +69,15 @@ final class ConversationPersistence extends ChatPersistenceSupport {
     });}
     public List<Usage> usage(Actor a,UUID id){return tx(c->{auth(c,a);task(c,a,id,false);List<Usage> result=new ArrayList<>();{ var rows50 = c.accounting().selectModelCall50(a.spaceId(), id); for (var row50 : rows50)result.add(new Usage(row50.id(),row50.status(),row50.inputTokens(),row50.outputTokens(),row50.costMicros(),row50.estimated())); }return List.copyOf(result);});}
     public First first(Actor a,UUID key,String title,UUID model,String source,String text){return firstPlan(a,key,title,model,source,text,false);}
-    public Task submitPlan(Actor a,UUID convo,UUID key,UUID model,String source,String text,boolean plan){return tx(c->submit(c,a,convo,key,model,source,text,plan));}
-    public Task submitAuthorized(Actor a,UUID convo,UUID key,UUID model,String source,String text,boolean plan,UUID workspace,com.agentplatform.types.TaskPermissionData.Mode mode){return tx(c->submit(c,a,convo,key,model,source,text,plan,workspace,mode,workspaceTools));}
+    public Task submitPlan(Actor a,UUID convo,UUID key,UUID model,String source,String text,boolean plan){return tx(c->submit(c,a,convo,key,model,source,text,plan,null,com.agentplatform.types.TaskPermissionData.Mode.RISK_BASED,false,contextPolicy));}
+    public Task submitAuthorized(Actor a,UUID convo,UUID key,UUID model,String source,String text,boolean plan,UUID workspace,com.agentplatform.types.TaskPermissionData.Mode mode){return tx(c->submit(c,a,convo,key,model,source,text,plan,workspace,mode,workspaceTools,contextPolicy));}
     public First firstPlan(Actor a,UUID key,String title,UUID model,String source,String text,boolean plan){return firstAuthorized(a,key,title,model,source,text,plan,null,com.agentplatform.types.TaskPermissionData.Mode.RISK_BASED);}
     public First firstAuthorized(Actor a,UUID key,String title,UUID model,String source,String text,boolean plan,UUID workspace,com.agentplatform.types.TaskPermissionData.Mode mode){return tx(c->{
         auth(c,a);String name=title==null?"新对话":title;if(name.isBlank()||name.codePointCount(0,name.length())>120)throw new ChatFailure(400,"INVALID_TITLE");
         String fingerprint=hash(json(Arrays.asList(name,model,source,text)));if(plan)fingerprint=hash(fingerprint+"\nplan=true");if(workspace!=null||mode!=com.agentplatform.types.TaskPermissionData.Mode.RISK_BASED)fingerprint=hash(fingerprint+"\nworkspace="+workspace+"\nmode="+mode);UUID existing=idempotency(c,a,key,"/conversations",fingerprint);
         if(existing!=null){Conversation convo;{ var rows18 = c.conversation().selectConversation18(a.spaceId(), existing); var row18 = rows18.isEmpty() ? null : rows18.getFirst(); if(row18 == null)throw new ChatFailure(404,"RESOURCE_NOT_FOUND");convo=readConversation(row18); }{ var rows17 = c.conversation().selectTask17(existing); var row17 = rows17.isEmpty() ? null : rows17.getFirst(); if(row17 == null)throw new ChatFailure(409,"IDEMPOTENCY_CONFLICT");return new First(convo,readTask(row17)); }}
         UUID id=Uuid7.next();c.conversation().insertConversation164(id, a.spaceId(), a.userId(), name);
-        Task task=submit(c,a,id,key,model,source,text,plan,workspace,mode,workspaceTools);remember(c,a,key,"/conversations",fingerprint,id);
+        Task task=submit(c,a,id,key,model,source,text,plan,workspace,mode,workspaceTools,contextPolicy);remember(c,a,key,"/conversations",fingerprint,id);
         { var rows16 = c.conversation().selectConversation16(id); var row16 = rows16.isEmpty() ? null : rows16.getFirst(); return new First(readConversation(row16),task); }
     });}
 

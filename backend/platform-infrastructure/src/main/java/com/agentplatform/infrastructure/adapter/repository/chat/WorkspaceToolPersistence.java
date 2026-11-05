@@ -12,16 +12,25 @@ import java.util.*;
 /** Version resolution is task-scoped: deploying R4.4 does not rewrite old bundle identities. */
 final class WorkspaceToolPersistence extends ChatPersistenceSupport {
     static final UUID BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000020");
+    static final UUID CONTEXT_BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000021");
+    static final UUID CONTEXT_WORKSPACE_BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000022");
     WorkspaceToolPersistence(ChatMappers mappers){super(mappers);}
     static boolean enabled(ChatMappers c,UUID space,UUID task) {
         var catalog=c.workspaceTools().catalog(space,task);
         if(catalog==null)return false;
-        if(!WorkspaceTools.VERSION.equals(catalog.catalogVersion())||!BUNDLE.equals(catalog.runtimeBundleId()))
+        if(!WorkspaceTools.VERSION.equals(catalog.catalogVersion())||!BUNDLE.equals(catalog.runtimeBundleId())&&!CONTEXT_WORKSPACE_BUNDLE.equals(catalog.runtimeBundleId()))
             throw new ChatFailure(409,"TOOL_CATALOG_INCOMPATIBLE");
         return true;
     }
-    static Bundle bundle(ChatMappers c,UUID space,UUID task){return enabled(c,space,task)?ChatRuntime.workspaceBundle():ChatRuntime.bundle();}
-    static UUID bundleId(ChatMappers c,UUID space,UUID task){return enabled(c,space,task)?BUNDLE:ChatPersistenceSupport.BUNDLE;}
+    static Bundle bundle(ChatMappers c,UUID space,UUID task){
+        boolean workspace=enabled(c,space,task);
+        return ContextPolicy.CURRENT_VERSION.equals(ContextPolicy.fromSnapshot(frozen(c,task,space)).version())?ChatRuntime.contextBundle(workspace):(workspace?ChatRuntime.workspaceBundle():ChatRuntime.bundle());
+    }
+    static UUID bundleId(ChatMappers c,UUID space,UUID task){
+        boolean workspace=enabled(c,space,task);
+        if(ContextPolicy.CURRENT_VERSION.equals(ContextPolicy.fromSnapshot(frozen(c,task,space)).version()))return workspace?CONTEXT_WORKSPACE_BUNDLE:CONTEXT_BUNDLE;
+        return workspace?BUNDLE:ChatPersistenceSupport.BUNDLE;
+    }
     static void resourceGuard(ChatMappers c,Lease lease) {
         new MyBatisQuotaLedger(c.quota()).lock(lease.userId());
         if(c.workspaceTools().lockObjectQuota(lease.spaceId())==null)throw new ChatFailure(409,"OBJECT_QUOTA_UNAVAILABLE");

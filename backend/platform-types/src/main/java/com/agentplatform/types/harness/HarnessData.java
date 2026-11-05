@@ -124,7 +124,7 @@ public final class HarnessData {
     /** Defensive copy, not a reference to mutable SDK state or a second message authority. */
     public record CheckpointDraft(long expectedVersion, byte[] state, List<Message> history, CheckpointPhase phase) {
         public CheckpointDraft {
-            if (expectedVersion < 0 || state == null || state.length == 0 || state.length > 1048576)
+            if (expectedVersion < 0 || state == null || state.length == 0 || state.length > 8 * 1024 * 1024)
                 throw new IllegalArgumentException("Invalid checkpoint state");
             state = state.clone(); history = List.copyOf(history); Objects.requireNonNull(phase);
             if (history.isEmpty()) throw new IllegalArgumentException("Checkpoint input required");

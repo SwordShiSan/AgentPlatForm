@@ -89,7 +89,8 @@ def packages():
         if 'BOOT-INF/classes/com/agentplatform/app/PlatformApplication.class' not in entries:
             raise RuntimeError('Normal application package lacks its main class')
         denied_classes = [entry for entry in entries if entry.startswith('BOOT-INF/classes/com/agentplatform/renderer/')]
-        prefixes = ['jodconverter-', 'libreoffice-', 'pdfbox-', 'fontbox-', 'imageio-', 'common-image-', 'common-lang-', 'common-io-', 'jsoup-']
+        prefixes = ['jodconverter-', 'libreoffice-', 'pdfbox-', 'fontbox-', 'imageio-', 'common-image-', 'common-lang-', 'common-io-', 'jsoup-',
+                    'tika-', 'poi-', 'xmlbeans-', 'jackcess-', 'java-libpst-', 'SparseBitSet-', 'bcjmail-', 'apache-mime4j-', 'commons-csv-', 'commons-math3-', 'universalchardet-']
         denied_libraries = [entry for entry in entries if entry.startswith('BOOT-INF/lib/') and any(Path(entry).name.startswith(prefix) for prefix in prefixes)]
         if denied_classes or denied_libraries: raise RuntimeError('Office/renderer payload leaked into the ordinary app package')
     with ZipFile(renderer) as archive:
@@ -203,11 +204,14 @@ def install_verified_upstream(env, output):
 
 
 def main():
+    global DATA
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--stage', choices=['r53', 'r54'], default='r53')
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--prepare-dependencies', action='store_true', help='Online resolve only; never claims engineering verification')
     mode.add_argument('--resume-app-from', type=Path, help='Reuse intact upstream reports and verify app only with freshly installed exact-source upstream artifacts')
     args = parser.parse_args()
+    DATA = ROOT / ('.cache/' + args.stage + '-local')
     with controller_lock():
         output = DATA / (('engineering-prepare-' if args.prepare_dependencies else 'engineering-') + str(time.time_ns()))
         output.mkdir(); before = source_identity(); env = child_environment(); selected = command(args.prepare_dependencies, bool(args.resume_app_from))

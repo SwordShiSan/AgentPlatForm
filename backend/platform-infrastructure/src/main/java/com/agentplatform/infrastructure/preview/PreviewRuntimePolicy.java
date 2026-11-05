@@ -14,7 +14,7 @@ public record PreviewRuntimePolicy(String image,Path stagingRoot,Path runtimeAtt
         Objects.requireNonNull(stagingRoot);Objects.requireNonNull(runtimeAttestation);
         stagingRoot=stagingRoot.normalize();runtimeAttestation=runtimeAttestation.normalize();
         String root=stagingRoot.toString().replace('\\','/');
-        if(!root.equals("/srv/agentplatform/previews")&&!root.matches("/srv/agentplatform/acceptance/r44-r53-[0-9a-z-]+/previews"))throw new IllegalArgumentException("Protected preview staging root required");
+        if(!root.equals("/srv/agentplatform/previews")&&!root.matches("/srv/agentplatform/acceptance/r44-r5[34]-[0-9a-z-]+/previews"))throw new IllegalArgumentException("Protected preview staging root required");
     }
     public String hash() {
         return RunnerSignatures.sha256(("preview-runtime-v1|"+image+"|"+bundle+"|"+SandboxPolicy.RUNSC_SHA256

@@ -26,10 +26,16 @@ export function textPreview(content: ArrayBuffer) {
 }
 /** Raw browser File stays outside Query/Pinia/storage. The upload id is the frozen content identity. */
 export function transferFile(id: string, file: File, space: string, csrf: string, signal: AbortSignal, progress: (value: number) => void) {
-  return new Promise<components['schemas']['FileUpload']>((resolve, reject) => {
+  return transferBinary<components['schemas']['FileUpload']>('uploads', id, file, space, csrf, signal, progress);
+}
+export function transferAttachment(id: string, file: File, space: string, csrf: string, signal: AbortSignal, progress: (value: number) => void) {
+  return transferBinary<components['schemas']['AttachmentUpload']>('attachment-uploads', id, file, space, csrf, signal, progress);
+}
+function transferBinary<T>(resource: 'uploads' | 'attachment-uploads', id: string, file: File, space: string, csrf: string, signal: AbortSignal, progress: (value: number) => void) {
+  return new Promise<T>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const abort = () => xhr.abort();
-    xhr.open('PUT', `/api/v1/uploads/${encodeURIComponent(id)}/content`);
+    xhr.open('PUT', `/api/v1/${resource}/${encodeURIComponent(id)}/content`);
     xhr.withCredentials = true; xhr.timeout = 125000;
     xhr.setRequestHeader('Content-Type', 'application/octet-stream');
     xhr.setRequestHeader('X-Space-Id', space); xhr.setRequestHeader('X-CSRF-Token', csrf);
@@ -42,7 +48,7 @@ export function transferFile(id: string, file: File, space: string, csrf: string
         const problem = body as Partial<components['schemas']['Problem']>;
         reject(new ApiError({ type: problem.type ?? 'urn:agentplatform:error:file-transfer', title: '文件传输未完成',
           status: xhr.status, code: problem.code ?? 'FILE_TRANSFER_UNCONFIRMED', traceId: problem.traceId ?? '', retryable: false }));
-      } else resolve(body as components['schemas']['FileUpload']);
+      } else resolve(body as T);
     };
     xhr.onerror = xhr.ontimeout = () => reject(new Error('连接中断，请读取原上传状态，不要重复提交'));
     xhr.onabort = () => reject(new DOMException('传输已中止', 'AbortError'));

@@ -11,14 +11,19 @@ public final class SignedPreviewRunnerClient implements PreviewRunnerPort, AutoC
     public static final String PATH="/internal/previews/v1";
     private static final JsonMapper JSON=JsonMapper.builder().build();
     private final SignedRunnerHttpClient transport;
+    private final String endpoint;
     public SignedPreviewRunnerClient(URI base,RunnerSignatures signatures) {
-        this.transport=new SignedRunnerHttpClient(base,signatures);
+        this(base,signatures,PATH);
+    }
+    public SignedPreviewRunnerClient(URI base,RunnerSignatures signatures,String endpoint) {
+        if(!java.util.Set.of(PATH,"/internal/extractions/v1").contains(endpoint))throw new IllegalArgumentException("Fixed asset-processing endpoint required");
+        this.transport=new SignedRunnerHttpClient(base,signatures);this.endpoint=endpoint;
     }
     public static RunnerSignatures.Binding binding(Command c,String method,String path) {
         return new RunnerSignatures.Binding(method,path,c.commandId(),c.previewId(),c.spaceId(),c.workspaceId(),c.generation(),c.fence());
     }
     private Receipt exchange(Command c,boolean query) {
-        String path=PATH+(query?"/"+c.previewId():"");byte[] body=query?new byte[0]:JSON.writeValueAsBytes(c);
+        String path=endpoint+(query?"/"+c.previewId():"");byte[] body=query?new byte[0]:JSON.writeValueAsBytes(c);
             var result=transport.exchange(binding(c,query?"GET":"POST",path),binding(c,"RESPONSE",path),body,query,Receipt.class);
             if(result!=null&&(!c.commandId().equals(result.commandId())||!c.previewId().equals(result.previewId())
                     ||c.generation()!=result.generation()||c.fence()!=result.fence()))throw new WorkspaceFailure(503,"PREVIEW_RECEIPT_MISMATCH");

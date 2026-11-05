@@ -17,7 +17,7 @@ final class CheckpointPersistence extends ChatPersistenceSupport {
     CheckpointPersistence(ChatMappers mappers) { super(mappers); }
 
     public UUID beginTurn(Lease l){return tx(c->MyBatisExecutionLedger.beginTurn(c,l));}
-    public void commitRound(Lease l,UUID id,HarnessData.Turn turn,ExecutionLedger.CallResult accepted){tx(c->{MyBatisExecutionLedger.commitRound(c,l,id,turn,accepted);return null;});}
+    public boolean commitRoundOutcome(Lease l,UUID id,HarnessData.Turn turn,ExecutionLedger.CallResult accepted){return tx(c->MyBatisExecutionLedger.commitRound(c,l,id,turn,accepted));}
     public void startTool(Lease l,HarnessData.Call call){tx(c->{MyBatisExecutionLedger.startTool(c,l,call);return null;});}
     public void commitTool(Lease l,HarnessData.Call call,HarnessData.Observation result){tx(c->{MyBatisExecutionLedger.commitTool(c,l,call,result);return null;});}
     public HarnessData.StateSlot state(Lease l,String key){return tx(c->MyBatisExecutionLedger.state(c,l,key));}

@@ -80,6 +80,24 @@ a { color: var(--accent); }
 .error-action { display: inline-flex; align-items: center; min-height: 44px; padding: var(--space-3); }
 @media (max-width: 767px) { .page { margin-top: 40px; } .card-heading { flex-wrap: wrap; } }
 .chat-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); max-width: 1200px; margin: 0 auto; min-height: calc(100dvh - 90px); }
+.workbench-layout { max-width: 1680px; grid-template-columns: 200px minmax(0, 1fr) minmax(320px, 384px); align-items: start; }
+.workbench-tabs { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .5rem; padding: .75rem 1rem; border-bottom: 1px solid var(--border); }
+.workbench-tabs button, .attachment-composer button, .workbench-files select { min-height: 44px; padding: .5rem .75rem; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+.workbench-tabs [aria-pressed="true"] { font-weight: 700; outline: 2px solid var(--primary, #2563eb); }
+.workbench-files { min-width: 0; padding: 1rem; border-left: 1px solid var(--border); overflow-wrap: anywhere; }
+.workbench-files select { width: 100%; }
+.workbench-layout[data-view="CHAT"], .workbench-layout[data-view="FILES"] { grid-template-columns: 200px minmax(0, 1fr); }
+.workbench-layout[data-view="CHAT"] .workbench-files, .workbench-layout[data-view="FILES"] .chat-content { display: none; }
+.source-card { padding: .75rem; border: 1px solid var(--border); border-radius: 8px; overflow-wrap: anywhere; }
+.attachment-composer { padding: .75rem; border: 1px solid var(--border); border-radius: 8px; }
+.attachment-composer li, .file-list-item { min-width: 0; overflow-wrap: anywhere; padding-block: .75rem; border-bottom: 1px solid var(--border); }
+@media (max-width: 1100px) {
+  .workbench-layout, .workbench-layout[data-view="CHAT"], .workbench-layout[data-view="FILES"] { grid-template-columns: minmax(0, 1fr); }
+  .workbench-layout .chat-sidebar { border-right: 0; border-bottom: 1px solid var(--border); padding: 1rem; }
+  .workbench-layout .chat-sidebar nav { max-height: 120px; }
+  .workbench-layout[data-view="SPLIT"] .workbench-files, .split-view-option { display: none; }
+  .workbench-files { border-left: 0; }
+}
 .chat-sidebar { padding: 24px; border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 20px; }
 .chat-sidebar nav { display: flex; flex-direction: column; gap: 8px; max-height: 55dvh; overflow: auto; }
 .chat-sidebar a { overflow-wrap: anywhere; padding: 8px; border-radius: 8px; }

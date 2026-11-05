@@ -1,6 +1,7 @@
 package com.agentplatform.infrastructure.harness.agentscope;
 
 import com.agentplatform.domain.chat.ChatFailure;
+import com.agentplatform.domain.chat.ContextPolicy;
 import com.agentplatform.domain.chat.WorkspaceTools;
 import com.agentplatform.types.harness.HarnessData.*;
 import java.util.List;
@@ -8,6 +9,28 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class AgentScopeContextAdmissionTest {
+    @Test void fullConfiguredWindowIsUsableAndOversizeInputIsRejectedIntact() {
+        var standard=ContextPolicy.current(262_144,4_096);var extended=ContextPolicy.current(524_288,8_192);
+        // Select a deterministic input between both real SDK-estimated capacities;
+        // do not assume English characters have an exact billable token ratio.
+        int low=60_000,high=125_000;
+        while(low<high){int middle=(low+high)/2;long measured=AgentScopeContextAdmission.estimate(List.of(Message.text(Role.USER,"context ".repeat(middle))),WorkspaceTools.DEFINITIONS);
+            if(measured<300_000)low=middle+1;else high=middle;}
+        String text="context ".repeat(low);
+        var history=List.of(Message.text(Role.USER,text));
+        long estimate=AgentScopeContextAdmission.estimate(history,WorkspaceTools.DEFINITIONS);
+        assertTrue(estimate>standard.inputLimit(),"Fixture must exercise the 256K boundary");
+        assertTrue(estimate<extended.inputLimit(),"Fixture must fit the configured 512K window; estimate="+estimate);
+        assertThrows(ChatFailure.class,()->AgentScopeContextAdmission.requireFits(history,WorkspaceTools.DEFINITIONS,standard));
+        assertEquals(estimate,AgentScopeContextAdmission.requireFits(history,WorkspaceTools.DEFINITIONS,extended));
+        assertEquals(text,history.getFirst().text());
+    }
+    @Test void largeContextUsesFrozenPolicyInsteadOfLegacyCeiling() {
+        var history=List.of(Message.text(Role.USER,"context ".repeat(4_000)));
+        assertThrows(ChatFailure.class,()->AgentScopeContextAdmission.requireFits(history,List.of()));
+        long estimate=AgentScopeContextAdmission.requireFits(history,List.of(),ContextPolicy.current(262_144,4_096));
+        assertTrue(estimate>7_168);
+    }
     @Test void shortPlanAndApprovedRevisionFitWithTheActualWorkspaceSchemas() {
         var history = List.of(Message.text(Role.USER,"Write 666 and seal the declared output."),
                 Message.text(Role.ASSISTANT,"Save plan and request review. ".repeat(50)),

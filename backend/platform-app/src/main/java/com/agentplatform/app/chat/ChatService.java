@@ -9,7 +9,10 @@ import java.util.Set;
 import java.util.UUID;
 
 public final class ChatService implements ChatApi {
+    private static final tools.jackson.databind.json.JsonMapper JSON=tools.jackson.databind.json.JsonMapper.builder().build();
     private final ChatRepository repository;private final ChatCursor cursor;private final com.agentplatform.infrastructure.chat.CredentialCipher encryption;
+    private com.agentplatform.app.attachment.AttachmentSubmission attachmentSubmission;
+    public void configureAttachments(com.agentplatform.app.attachment.AttachmentSubmission submission){if(attachmentSubmission!=null)throw new IllegalStateException("Attachment composition already fixed");attachmentSubmission=java.util.Objects.requireNonNull(submission);}
     public ChatService(ChatRepository repository,ChatCursor cursor){this(repository,cursor,null);}
     public ChatService(ChatRepository repository,ChatCursor cursor,com.agentplatform.infrastructure.chat.CredentialCipher encryption){this.repository=repository;this.cursor=cursor;this.encryption=encryption;}
     private static UUID id(String value){try{return UUID.fromString(value);}catch(Exception invalid){throw new ChatFailure(400,"INVALID_UUID");}}
@@ -48,7 +51,18 @@ public final class ChatService implements ChatApi {
         return new RecoveryView(state.taskId().toString(),state.eligible(),state.stage(),state.reasonCode(),state.revision(),
                 state.taskVersion(),state.checkpointId()==null?null:state.checkpointId().toString(),state.traceId().toString());
     }
-    private static List<java.util.Map<String,Object>> publicBlocks(Message message){return message.blocks().stream().filter(b->"TEXT".equals(b.get("type"))&&b.get("blockId") instanceof String&&b.get("text") instanceof String).map(b->java.util.Map.<String,Object>of("type","TEXT","blockId",b.get("blockId"),"text",b.get("text"))).toList();}
+    private static List<java.util.Map<String,Object>> publicBlocks(Message message){
+        var result=new java.util.ArrayList<java.util.Map<String,Object>>();
+        for(var block:message.blocks()){
+            if("TEXT".equals(block.get("type"))&&block.get("blockId") instanceof String&&block.get("text") instanceof String)result.add(java.util.Map.of("type","TEXT","blockId",block.get("blockId"),"text",block.get("text")));
+            else if("FILE_REFERENCE".equals(block.get("type"))){
+                var projected=new java.util.LinkedHashMap<String,Object>();
+                for(String key:List.of("type","blockId","sourceKind","extractionId","name","sourceSha256","textSha256","fileId","versionId","attachmentId"))if(block.get(key) instanceof String)projected.put(key,block.get(key));
+                result.add(java.util.Map.copyOf(projected));
+            }
+        }
+        return List.copyOf(result);
+    }
     public Snapshot snapshot(Caller c,String value){var snapshot=repository.snapshot(actor(c),id(value));return new Snapshot(1,snapshot.cursor(),snapshot.messages().stream().filter(m->List.of("USER","ASSISTANT").contains(m.role())).map(m->new MessageView(m.id().toString(),m.taskId().toString(),m.role(),publicBlocks(m),m.status(),m.version())).toList(),snapshot.tasks().stream().map(ChatService::view).toList(),snapshot.pending(),List.of());}
     public List<EventView> events(Caller c,String value,long after){return repository.events(actor(c),id(value),after).stream().map(e->new EventView(1,e.id().toString(),e.spaceId().toString(),e.conversationId().toString(),e.taskId()==null?null:e.taskId().toString(),e.seq(),e.type(),e.occurredAt().toString(),e.version(),e.payload())).toList();}
     public List<UsageView> usage(Caller c,String value){return repository.usage(actor(c),id(value)).stream().map(u->new UsageView(u.callId().toString(),u.status(),u.inputTokens(),u.outputTokens(),u.costMicros(),u.estimated())).toList();}
@@ -85,5 +99,17 @@ public final class ChatService implements ChatApi {
     public Accepted submitAuthorized(Caller c,String conversation,String k,String model,String source,String text,boolean plan,String workspace,com.agentplatform.types.TaskPermissionData.Mode mode){
         Actor a=actor(c);var task=repository.submitAuthorized(a,id(conversation),id(k),model==null?null:id(model),source,text,plan,workspace==null?null:id(workspace),mode);
         return new Accepted(task.id().toString(),task.conversationId().toString(),task.status(),repository.snapshot(a,task.conversationId()).cursor());
+    }
+    @Override public ConversationView firstAttached(Caller caller,String key,String title,String model,String source,String text,boolean plan,String workspace,com.agentplatform.types.TaskPermissionData.Mode mode,List<com.agentplatform.types.AttachmentReference> attachments){
+        if(attachmentSubmission==null){if(attachments!=null&&!attachments.isEmpty())throw new ChatFailure(422,"CAPABILITY_NOT_AVAILABLE");return firstAuthorized(caller,key,title,model,source,text,plan,workspace,mode);}
+        var actor=actor(caller);String body=JSON.writeValueAsString(java.util.Arrays.asList(title,model,source,text,plan,workspace,mode));
+        return attachmentSubmission.submit(new com.agentplatform.domain.files.FileData.Actor(actor.userId(),actor.spaceId()),id(key),"/conversations",body,text,null,plan,workspace!=null,attachments,
+                ()->firstAuthorized(caller,key,title,model,source,text,plan,workspace,mode),result->id(result.initialTask().taskId()));
+    }
+    @Override public Accepted submitAttached(Caller caller,String conversation,String key,String model,String source,String text,boolean plan,String workspace,com.agentplatform.types.TaskPermissionData.Mode mode,List<com.agentplatform.types.AttachmentReference> attachments){
+        if(attachmentSubmission==null){if(attachments!=null&&!attachments.isEmpty())throw new ChatFailure(422,"CAPABILITY_NOT_AVAILABLE");return submitAuthorized(caller,conversation,key,model,source,text,plan,workspace,mode);}
+        var actor=actor(caller);String body=JSON.writeValueAsString(java.util.Arrays.asList(model,source,text,plan,workspace,mode));
+        return attachmentSubmission.submit(new com.agentplatform.domain.files.FileData.Actor(actor.userId(),actor.spaceId()),id(key),"/conversations/"+conversation+"/tasks",body,text,id(conversation),plan,workspace!=null,attachments,
+                ()->submitAuthorized(caller,conversation,key,model,source,text,plan,workspace,mode),result->id(result.taskId()));
     }
 }

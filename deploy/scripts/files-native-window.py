@@ -2,8 +2,8 @@
 from pathlib import Path
 import argparse,fcntl,hashlib,importlib.util,json,os,re,shutil,signal,subprocess,time,traceback,urllib.request,uuid
 ROOT=Path(__file__).resolve().parent
-assert re.fullmatch('/srv/agentplatform/acceptance/r44-r5[123]-[0-9]{14}',str(ROOT))
-PLAN=json.loads((ROOT/'operation.json').read_text());STAGE=PLAN.get('acceptanceStage','r51');assert STAGE in ['r51','r52','r53'] and PLAN['root']==str(ROOT) and PLAN['project']=='agentplatform-'+STAGE+'-local'
+assert re.fullmatch('/srv/agentplatform/acceptance/r44-r5[1234]-[0-9]{14}',str(ROOT))
+PLAN=json.loads((ROOT/'operation.json').read_text());STAGE=PLAN.get('acceptanceStage','r51');assert STAGE in ['r51','r52','r53','r54'] and PLAN['root']==str(ROOT) and PLAN['project']=='agentplatform-'+STAGE+'-local'
 REPORT=ROOT/'reports';os.umask(0o077)
 helper=Path('/srv/agentplatform/operations/platform-switch/platform-switch.py')
 assert hashlib.sha256(helper.read_bytes()).hexdigest()=='2d3021778267cd364568398fc44ba8f8d51b8eebc5b09ad3392e7ed2402a1e8b'
@@ -20,13 +20,13 @@ def cid(name):return call(BASE+['ps','-a','-q',name])
 def sql(text):return call(['docker','exec','-i',cid('postgres'),'psql','-XqAt','-v','ON_ERROR_STOP=1','-U','postgres','-d','file_runtime'],text.encode())
 def status():
  rows=[]
- for name in ['api','worker','runner','gateway','postgres','rabbitmq','master','volume','filer','s3','redis']:
+ for name in ['api','worker','runner','gateway','postgres','rabbitmq','master','volume','filer','s3','redis',*(['fixture'] if STAGE=='r54' else [])]:
   identity=cid(name)
   if identity:
    r=json.loads(call(['docker','inspect',identity]))[0];rows.append({'service':name,'id':r['Id'],'image':r['Image'],'running':r['State']['Running'],'oom':r['State']['OOMKilled'],'memory':r['HostConfig']['Memory']})
  return rows
 def sample():
- rows=status();assert len(rows)==11 and all(r['running'] and not r['oom'] for r in rows)
+ rows=status();assert len(rows)==(12 if STAGE=='r54' else 11) and all(r['running'] and not r['oom'] for r in rows)
  memory={line.split(':')[0]:int(line.split()[1])*1024 for line in Path('/proc/meminfo').read_text().splitlines() if line.startswith(('MemAvailable:','SwapFree:','SwapTotal:'))}
  assert memory['MemAvailable']>=768*1024**2 and shutil.disk_usage('/').free>=5*1024**3
  assert sum(r['memory'] for r in rows)+704*1024**2<=2887*1024**2
@@ -119,8 +119,9 @@ def start():
    password=Path(c['secrets'][secret]['file']).read_text().strip();assert re.fullmatch('[A-Za-z0-9_-]+',password)
    sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='"+role+"') THEN CREATE ROLE "+role+" LOGIN; END IF; END $$;ALTER ROLE "+role+" PASSWORD '"+password+"';")
   grant_files=['r1-runtime-grants.sql','r2-runtime-grants.sql','r3-workspace-grants.sql','r3-environment-grants.sql','r3-file-grants.sql','r4-runtime-grants.sql','r4-permission-grants.sql','r4-approval-grants.sql','r4-workspace-tools-grants.sql']
-  if STAGE in ['r52','r53']:grant_files.append('r5-file-grants.sql')
-  if STAGE=='r53':grant_files.append('r5-preview-grants.sql')
+  if STAGE in ['r52','r53','r54']:grant_files.append('r5-file-grants.sql')
+  if STAGE in ['r53','r54']:grant_files.append('r5-preview-grants.sql')
+  if STAGE=='r54':grant_files.append('r5-workbench-grants.sql')
   # Named service/ops roles must exist before any grant script; do not discover them one failure at a time.
   names=set(re.findall(r'\bap_[a-z_]+\b','\n'.join((ROOT/name).read_text() for name in grant_files)))
   for role in sorted(names):
@@ -132,7 +133,7 @@ def start():
   for name in [STAGE+'_admin',STAGE+'_user']:
    action='bootstrap' if name==STAGE+'_admin' else 'create';request=requests[name]
    assert str(uuid.UUID(request))==request,'Original canonical identity request required'
-   assert re.fullmatch('r5[123]_(admin|user)',name)
+   assert re.fullmatch('r5[1234]_(admin|user)',name)
    fingerprint=hashlib.sha256((name+':'+action).encode()).hexdigest();admin='true' if action=='bootstrap' else 'false'
    check="SELECT u.id::text FROM pf.identity_operation o JOIN pf.app_user u ON u.id=o.user_id JOIN pf.space s ON s.owner_user_id=u.id AND s.type='PERSONAL' JOIN pf.membership m ON m.user_id=u.id AND m.space_id=s.id AND m.role='OWNER' AND m.status='ACTIVE' JOIN pf.space_storage st ON st.space_id=s.id AND st.status='ACTIVE' WHERE o.request_id='"+request+"' AND o.input_hash='"+fingerprint+"' AND o.bootstrap="+admin+" AND u.username_norm='"+name+"' AND u.status='ACTIVE' AND u.platform_admin="+admin+";"
    existing=sql("SELECT count(*) FROM pf.identity_operation WHERE request_id='"+request+"';")
@@ -143,6 +144,16 @@ def start():
    user=sql(check);assert re.fullmatch('[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}',user),'Original identity request/user/personal-space/owner/storage facts do not match'
    identity_facts[name]={'requestId':request,'userId':user,'reused':existing=='1','linksValidated':True}
   save('identity-fixture-reuse',{'accounts':identity_facts,'passwordsUnchanged':True,'loginStillRequired':True})
+  if STAGE=='r54':
+   credentials=sql("SELECT id::text FROM pf.credential WHERE scope_type='PLATFORM' AND status='ACTIVE' ORDER BY created_at;").splitlines()
+   if not credentials:
+    operator('chat-ops',['--chat-action=import-credential','--scope=PLATFORM','--key-file=/tmp/operator-input'],b'R54_DETERMINISTIC_NOT_A_SUPPLIER_KEY')
+    credentials=sql("SELECT id::text FROM pf.credential WHERE scope_type='PLATFORM' AND status='ACTIVE' ORDER BY created_at;").splitlines()
+   assert len(credentials)==1 and re.fullmatch('[a-f0-9-]{36}',credentials[0])
+   for identity in identity_facts.values():
+    user=identity['userId'];space=sql("SELECT id::text FROM pf.space WHERE type='PERSONAL' AND owner_user_id='"+user+"';")
+    for model in ['0199e000-0000-7000-8000-000000000002','0199e000-0000-7000-8000-000000000003']:
+     operator('chat-ops',['--chat-action=bind-model','--model-id='+model,'--user-id='+user,'--space-id='+space,'--credential-id='+credentials[0],'--source-policy=PLATFORM'])
   call(BASE+['up','-d','master','volume','filer','s3','redis'])
   # Known internal SDK readiness and explicit once-only bucket bootstrap.
   s3_script="import boto3,time\nfrom botocore.config import Config\nfrom botocore.exceptions import ClientError\naccess=open('/run/access').read().strip();secret=open('/run/secret').read().strip()\nclient=boto3.client('s3',endpoint_url='http://s3:8333',region_name='us-east-1',aws_access_key_id=access,aws_secret_access_key=secret,config=Config(retries={'max_attempts':0},connect_timeout=2,read_timeout=5))\nexists=False\nfor index in range(30):\n try:\n  client.head_bucket(Bucket='r33-assets');exists=True;break\n except ClientError as error:\n  status=error.response['ResponseMetadata']['HTTPStatusCode']\n  if status==404:break\n  if status<500 or index==29:raise\n  time.sleep(2)\n except Exception:\n  if index==29:raise\n  time.sleep(2)\nif not exists:client.create_bucket(Bucket='r33-assets')\nclient.head_bucket(Bucket='r33-assets')\nclient.close()\nprint('R51_PRIVATE_BUCKET_READY')\n"
@@ -154,9 +165,10 @@ def start():
    if 'Started PlatformApplication' in call(['docker','logs','--since',row['State']['StartedAt'],'--tail','35',identity]):break
    time.sleep(2)
   else:raise RuntimeError('Runner did not become ready')
-  call(BASE+['up','-d','--wait','--wait-timeout','150','api','worker','gateway'],timeout=180)
+  call(BASE+['up','-d','--wait','--wait-timeout','150',*(['fixture'] if STAGE=='r54' else []),'api','worker','gateway'],timeout=180)
   client=urllib.request.build_opener(urllib.request.ProxyHandler({}))
-  with client.open('http://127.0.0.1:'+str(PLAN.get('port',18151))+'/api/v1/readiness',timeout=10) as response:assert json.load(response)=={'status':'READY'}
+  request=urllib.request.Request('http://127.0.0.1:'+str(PLAN.get('port',18151))+'/api/v1/readiness',headers={'Host':'124.222.55.140'} if STAGE=='r54' else {})
+  with client.open(request,timeout=10) as response:assert json.load(response)=={'status':'READY'}
   gateway=json.loads(call(['docker','inspect',cid('gateway')]))[0];image=json.loads(call(['docker','image','inspect',gateway['Image']]))[0]
   save('ready',{'status':'READY','root':str(ROOT),'project':PLAN['project'],'time':time.time(),'initialStagingSource':PLAN['source'],'gatewaySource':image['Config']['Labels']['org.opencontainers.image.revision'],'gatewayConfigId':gateway['Image'],'supplierCalls':0});sample()
   deadline=time.monotonic()+900

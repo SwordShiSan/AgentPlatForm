@@ -24,6 +24,14 @@ public interface ChatProvider {
         if (!definitions.isEmpty()) throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");
         return open(model,key,input,onText);
     }
+    default Exchange openTyped(String model, String key, List<Message> input, List<ToolDefinition> definitions, int maxOutput, Consumer<String> onText) {
+        if (maxOutput < 1 || maxOutput > ContextPolicy.MAX_OUTPUT) throw new IllegalArgumentException("Invalid maximum output");
+        return openTyped(model, key, input, definitions, onText);
+    }
+    default Exchange open(String model, String key, List<Message> input, int maxOutput, Consumer<String> onText) {
+        if (maxOutput < 1 || maxOutput > ContextPolicy.MAX_OUTPUT) throw new IllegalArgumentException("Invalid maximum output");
+        return open(model, key, input, onText);
+    }
     /** Legacy scripted probes can complete normally but cannot certify cancelled transport. */
     default Exchange open(String model, String key, List<Message> input, Consumer<String> onText) {
         var future = stream(model, key, input, onText).toCompletableFuture();

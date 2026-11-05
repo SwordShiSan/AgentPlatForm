@@ -12,8 +12,8 @@ function event(seq = 4, offset = 2): PlatformEvent {
 describe('committed chat cursor reducer', () => {
   it('applies codepoint offset immutably and deduplicates replay', () => {
     const before = snapshot(); const next = applyChatEvent(before, event());
-    expect(next.messages[0]?.blocks[0]?.text).toBe('a😀好');
-    expect(before.messages[0]?.blocks[0]?.text).toBe('a😀');
+    expect(next.messages[0]?.blocks.find(block => block.type === 'TEXT')?.text).toBe('a😀好');
+    expect(before.messages[0]?.blocks.find(block => block.type === 'TEXT')?.text).toBe('a😀');
     expect(next.tasks).toBe(before.tasks);
     expect(next.pending).toBe(before.pending);
     expect(next.messages[0]).not.toBe(before.messages[0]);
@@ -25,6 +25,12 @@ describe('committed chat cursor reducer', () => {
   });
   it('does not accept text for an unknown message', () => {
     const before = snapshot(); before.messages = [];
+    expect(() => applyChatEvent(before, event())).toThrow(SnapshotRequired);
+  });
+  it('never treats a fixed source card as a mutable text block', () => {
+    const before = snapshot(); before.messages[0]!.blocks = [{ type: 'FILE_REFERENCE', blockId: id,
+      sourceKind: 'CHAT_ATTACHMENT', attachmentId: id, extractionId: id, name: 'report.docx',
+      sourceSha256: 'a'.repeat(64), textSha256: 'b'.repeat(64) }];
     expect(() => applyChatEvent(before, event())).toThrow(SnapshotRequired);
   });
 });

@@ -1,6 +1,7 @@
 """Pinned R4.4 frontend gates with an explicit working directory and rename preflight."""
 from pathlib import Path
 import hashlib
+import argparse
 import json
 import os
 import subprocess
@@ -18,9 +19,12 @@ def inputs():
 
 
 def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--stage',choices=['r44','r54'],default='r44')
+    args=parser.parse_args()
     if not NODE.is_file() or not (FRONT/'node_modules/vue-tsc/bin/vue-tsc.js').is_file():
         raise SystemExit('R44_PINNED_FRONTEND_MISSING: reuse stage setup, do not install global tools')
-    folder=ROOT/'.cache/r44-local'/f'frontend-verify-{time.time_ns()}'
+    folder=ROOT/('.cache/'+args.stage+'-local')/f'frontend-verify-{time.time_ns()}'
     temporary=folder/'tmp';temporary.mkdir(parents=True)
     env=os.environ.copy();env.update(TEMP=str(temporary),TMP=str(temporary),TMPDIR=str(temporary))
     before=inputs();gates=[]

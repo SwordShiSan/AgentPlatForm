@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface ConfigurationMapper {
+    Long latestInputEstimate(@org.apache.ibatis.annotations.Param("task")java.util.UUID task);
     List<UserModelCredentialRow7> selectUserModelCredential7(@Param("spaceId") UUID spaceId, @Param("userId") UUID userId);
     List<Integer> selectModelBinding8(@Param("spaceId") UUID spaceId, @Param("userId") UUID userId);
     List<UserModelCredentialRow9> selectUserModelCredential9(@Param("spaceId") UUID spaceId, @Param("userId") UUID userId);

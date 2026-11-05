@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Agent PlatForm API
   version: 0.1.0
-  description: "Contracts for released R4 and opt-in R5 file workbench and version-pinned previews. Deployment flags control available capabilities."
+  description: "R5 workbench, pinned chat attachments and versioned context policy. Capabilities require validated deployment flags."
 servers:
   - url: /
 paths:
@@ -1800,6 +1800,205 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FilePreview" }
         default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/attachment-uploads:
+    post:
+      operationId: createAttachmentUpload
+      tags: [Attachments]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/SpaceSelector" }
+        - { $ref: "#/components/parameters/CsrfToken" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateAttachmentUpload" }
+      responses:
+        "201":
+          description: Authorized persistent attachment processing result
+          headers: { Cache-Control: { schema: { type: string } } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttachmentUpload" }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/attachment-uploads/{id}:
+    get:
+      operationId: getAttachmentUpload
+      tags: [Attachments]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PreviewId" }
+        - { $ref: "#/components/parameters/SpaceSelector" }
+      responses:
+        "200":
+          description: Authorized persistent attachment processing result
+          headers: { Cache-Control: { schema: { type: string } } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttachmentUpload" }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/attachment-uploads/requests/{id}:
+    get:
+      operationId: getAttachmentUploadRequest
+      tags: [Attachments]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PreviewId" }
+        - { $ref: "#/components/parameters/SpaceSelector" }
+      responses:
+        "200":
+          description: Authorized persistent attachment processing result
+          headers: { Cache-Control: { schema: { type: string } } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttachmentUpload" }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/attachment-uploads/{id}/content:
+    put:
+      operationId: transferAttachmentContent
+      tags: [Attachments]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PreviewId" }
+        - { $ref: "#/components/parameters/SpaceSelector" }
+        - { $ref: "#/components/parameters/CsrfToken" }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "200":
+          description: Authorized persistent attachment processing result
+          headers: { Cache-Control: { schema: { type: string } } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttachmentUpload" }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/attachment-uploads/{id}/complete:
+    post:
+      operationId: completeAttachmentUpload
+      tags: [Attachments]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PreviewId" }
+        - { $ref: "#/components/parameters/SpaceSelector" }
+        - { $ref: "#/components/parameters/CsrfToken" }
+      responses:
+        "202":
+          description: Authorized persistent attachment processing result
+          headers: { Cache-Control: { schema: { type: string } } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatAttachment" }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/attachments/{id}:
+    get:
+      operationId: getChatAttachment
+      tags: [Attachments]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PreviewId" }
+        - { $ref: "#/components/parameters/SpaceSelector" }
+      responses:
+        "200":
+          description: Authorized persistent attachment processing result
+          headers: { Cache-Control: { schema: { type: string } } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatAttachment" }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/attachments/{id}/content:
+    get:
+      operationId: downloadChatAttachment
+      tags: [Attachments]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PreviewId" }
+        - { $ref: "#/components/parameters/SpaceSelector" }
+      responses:
+        "200":
+          description: Authorized persistent attachment processing result
+          headers: { Cache-Control: { schema: { type: string } } }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/attachments/{id}/previews:
+    post:
+      operationId: createAttachmentPreview
+      tags: [Attachments]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PreviewId" }
+        - { $ref: "#/components/parameters/SpaceSelector" }
+        - { $ref: "#/components/parameters/CsrfToken" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateAttachmentPreview" }
+      responses:
+        "202":
+          description: Authorized persistent attachment processing result
+          headers: { Cache-Control: { schema: { type: string } } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FilePreview" }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/file-extractions:
+    post:
+      operationId: createDocumentExtraction
+      tags: [Attachments]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/SpaceSelector" }
+        - { $ref: "#/components/parameters/CsrfToken" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateDocumentExtraction" }
+      responses:
+        "202":
+          description: Authorized persistent attachment processing result
+          headers: { Cache-Control: { schema: { type: string } } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DocumentExtraction" }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/file-extractions/{id}:
+    get:
+      operationId: getDocumentExtraction
+      tags: [Attachments]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PreviewId" }
+        - { $ref: "#/components/parameters/SpaceSelector" }
+      responses:
+        "200":
+          description: Authorized persistent attachment processing result
+          headers: { Cache-Control: { schema: { type: string } } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DocumentExtraction" }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/me/storage-usage:
+    get:
+      operationId: getPersonalStorageUsage
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/SpaceSelector" }
+      responses:
+        "200":
+          description: One coherent quota and immutable object classification snapshot
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PersonalStorageUsage" }
+        default: { $ref: "#/components/responses/IdentityProblem" }
 components:
   securitySchemes:
     session:
@@ -1861,8 +2060,10 @@ components:
       required: [id, fileId, versionId, state, format, mediaType, bytes, sha256, pages, errorCode, retryable, revision, allowedActions]
       properties:
         id: { type: string, format: uuid }
-        fileId: { type: string, format: uuid }
-        versionId: { type: string, format: uuid }
+        sourceKind: { type: string, enum: [FILE_VERSION, CHAT_ATTACHMENT] }
+        attachmentId: { type: [string, "null"], format: uuid }
+        fileId: { type: [string, "null"], format: uuid }
+        versionId: { type: [string, "null"], format: uuid }
         state: { type: string, enum: [QUEUED, RUNNING, READY, FAILED, BLOCKED] }
         format: { type: string, enum: [AUTO, PDF, IMAGE, TEXT, HTML_STATIC] }
         mediaType: { type: [string, "null"], enum: [application/pdf, image/png, text/plain, null] }
@@ -2640,8 +2841,8 @@ components:
               maxLength: 8192
             attachments:
               type: array
-              maxItems: 0
-              items: {}
+              maxItems: 10
+              items: { $ref: "#/components/schemas/AttachmentReference" }
         options:
           type: object
           additionalProperties: false
@@ -2696,7 +2897,9 @@ components:
         blocks:
           type: array
           items:
-            $ref: "#/components/schemas/ChatTextBlock"
+            oneOf:
+              - { $ref: "#/components/schemas/ChatTextBlock" }
+              - { $ref: "#/components/schemas/ChatFileReferenceBlock" }
         status:
           type: string
           enum:
@@ -2805,6 +3008,12 @@ components:
             - "null"
           format: uuid
         defaultCredentialSource: *a11
+        workbenchLayout: { $ref: "#/components/schemas/WorkbenchLayout" }
+        recentFiles:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/RecentWorkbenchFile" }
       required:
         - version
         - defaultModelId
@@ -2819,6 +3028,12 @@ components:
             - "null"
           format: uuid
         defaultCredentialSource: *a11
+        workbenchLayout: { $ref: "#/components/schemas/WorkbenchLayout" }
+        recentFiles:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/RecentWorkbenchFile" }
       required: []
     ModelCredentials:
       type: object
@@ -2850,6 +3065,7 @@ components:
       type: object
       additionalProperties: false
       properties:
+        context: { $ref: "#/components/schemas/ContextCapacity" }
         values:
           type: object
           additionalProperties: false
@@ -2881,6 +3097,13 @@ components:
       type: object
       additionalProperties: false
       properties:
+        contextUsage:
+          type: object
+          additionalProperties: false
+          required: [estimatedInputTokens, estimated]
+          properties:
+            estimatedInputTokens: { type: [integer, "null"], minimum: 0 }
+            estimated: { const: true }
         configSnapshotId: *a12
         configHash: *a3
         bundleId: *a12
@@ -3526,3 +3749,154 @@ components:
         combined are at most64KiB; a large result is fetched from private storage
         without exposing its key. Model summary is at most8KiB UTF-8. No host paths,
         credentials, SDK state or private parameter maps.
+
+    CreateAttachmentUpload:
+      type: object
+      additionalProperties: false
+      required: [draftId, filename, bytes, sha256]
+      properties:
+        draftId: { type: string, format: uuid }
+        filename: { type: string, minLength: 1, maxLength: 1024 }
+        bytes: { type: integer, minimum: 0, maximum: 104857600 }
+        sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+    AttachmentUpload:
+      type: object
+      additionalProperties: false
+      required: [id, attachmentId, status, bytes, sha256, revision, expiresAt, allowedActions]
+      properties:
+        id: { type: string, format: uuid }
+        attachmentId: { type: string, format: uuid }
+        status: { type: string, enum: [CREATED, UPLOADING, VERIFYING, VERIFIED, COMMITTED, ABORTED, EXPIRED, UNKNOWN] }
+        bytes: { type: integer, minimum: 0, maximum: 104857600 }
+        sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+        revision: { type: integer, minimum: 1 }
+        expiresAt: { type: string, format: date-time }
+        allowedActions: { type: array, items: { type: string } }
+    ChatAttachment:
+      type: object
+      additionalProperties: false
+      required: [id, filename, bytes, sha256, status, conversationId, revision, allowedActions]
+      properties:
+        id: { type: string, format: uuid }
+        filename: { type: string }
+        bytes: { type: integer, minimum: 0, maximum: 104857600 }
+        sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+        status: { type: string, enum: [STAGING, AVAILABLE, FAILED, EXPIRED, BLOCKED] }
+        conversationId: { type: [string, "null"], format: uuid }
+        revision: { type: integer, minimum: 1 }
+        allowedActions: { type: array, items: { type: string } }
+    CreateAttachmentPreview:
+      type: object
+      additionalProperties: false
+      properties:
+        format: { type: string, enum: [AUTO, PDF, IMAGE, HTML_STATIC] }
+    CreateDocumentExtraction:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [fileId, versionId]
+          properties:
+            fileId: { type: string, format: uuid }
+            versionId: { type: string, format: uuid }
+        - type: object
+          additionalProperties: false
+          required: [attachmentId]
+          properties:
+            attachmentId: { type: string, format: uuid }
+    DocumentExtraction:
+      type: object
+      additionalProperties: false
+      required: [id, sourceKind, fileId, versionId, attachmentId, name, status, bytes, sha256, errorCode, retryable, revision, allowedActions]
+      properties:
+        id: { type: string, format: uuid }
+        sourceKind: { type: string, enum: [FILE_VERSION, CHAT_ATTACHMENT] }
+        fileId: { type: [string, "null"], format: uuid }
+        versionId: { type: [string, "null"], format: uuid }
+        attachmentId: { type: [string, "null"], format: uuid }
+        name: { type: string }
+        status: { type: string, enum: [QUEUED, RUNNING, READY, FAILED, BLOCKED] }
+        bytes: { type: [integer, "null"], minimum: 0, maximum: 2097152 }
+        sha256: { type: [string, "null"], pattern: '^[a-f0-9]{64}$' }
+        errorCode: { type: [string, "null"] }
+        retryable: { type: boolean }
+        revision: { type: integer, minimum: 1 }
+        allowedActions: { type: array, items: { type: string } }
+    AttachmentReference:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [kind, fileId, versionId, extractionId]
+          properties:
+            kind: { const: FILE_VERSION }
+            fileId: { type: string, format: uuid }
+            versionId: { type: string, format: uuid }
+            extractionId: { type: string, format: uuid }
+        - type: object
+          additionalProperties: false
+          required: [kind, attachmentId, extractionId]
+          properties:
+            kind: { const: CHAT_ATTACHMENT }
+            attachmentId: { type: string, format: uuid }
+            extractionId: { type: string, format: uuid }
+    ChatFileReferenceBlock:
+      type: object
+      additionalProperties: false
+      required: [type, blockId, sourceKind, extractionId, name, sourceSha256, textSha256]
+      properties:
+        type: { const: FILE_REFERENCE }
+        blockId: { type: string, format: uuid }
+        sourceKind: { type: string, enum: [FILE_VERSION, CHAT_ATTACHMENT] }
+        extractionId: { type: string, format: uuid }
+        name: { type: string }
+        sourceSha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+        textSha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+        fileId: { type: string, format: uuid }
+        versionId: { type: string, format: uuid }
+        attachmentId: { type: string, format: uuid }
+
+    WorkbenchLayout:
+      type: object
+      additionalProperties: false
+      required: [view, sidebarWidth]
+      properties:
+        view: { type: string, enum: [SPLIT, CHAT, FILES] }
+        sidebarWidth: { type: integer, minimum: 240, maximum: 640 }
+    RecentWorkbenchFile:
+      type: object
+      additionalProperties: false
+      required: [workspaceId, fileId, versionId]
+      properties:
+        workspaceId: { type: string, format: uuid }
+        fileId: { type: string, format: uuid }
+        versionId: { type: string, format: uuid }
+    ContextCapacity:
+      type: object
+      additionalProperties: false
+      required: [modelWindow, window, maxOutput, safetyTokens, inputLimit, estimation]
+      properties:
+        modelWindow: { type: integer, minimum: 8192, maximum: 1000000 }
+        window: { type: integer, minimum: 8192, maximum: 524288 }
+        maxOutput: { type: integer, minimum: 1, maximum: 8192 }
+        safetyTokens: { type: integer, minimum: 0 }
+        inputLimit: { type: integer, minimum: 1 }
+        estimation: { const: SDK_MULTILINGUAL_ESTIMATE }
+    PersonalStorageUsage:
+      type: object
+      additionalProperties: false
+      required: [objectLimitBytes, usedBytes, reservedBytes, retainedBytes, categories]
+      properties:
+        objectLimitBytes: { type: integer, minimum: 0 }
+        usedBytes: { type: integer, minimum: 0 }
+        reservedBytes: { type: integer, minimum: 0 }
+        retainedBytes: { type: integer, minimum: 0, description: Subset of usedBytes retained for deleted working copies; not added a second time }
+        categories:
+          type: array
+          maxItems: 4
+          items:
+            type: object
+            additionalProperties: false
+            required: [category, bytes, objects]
+            properties:
+              category: { type: string, enum: [file-version, chat-attachment, preview, text-extraction] }
+              bytes: { type: integer, minimum: 0 }
+              objects: { type: integer, minimum: 0 }

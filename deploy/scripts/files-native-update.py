@@ -3,7 +3,7 @@ from pathlib import Path
 import argparse,importlib.util,json
 ROOT=Path(__file__).resolve().parents[2]
 def main():
- p=argparse.ArgumentParser();p.add_argument('--stage',choices=['r52','r53'],default='r52');args=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('--stage',choices=['r52','r53','r54'],default='r52');args=p.parse_args()
  s=importlib.util.spec_from_file_location('fixture',ROOT/'deploy/scripts/files-native-fixture.py');m=importlib.util.module_from_spec(s);s.loader.exec_module(m);m.configure(args.stage);data=m.DATA
  pointer=json.loads((data/'candidate-pointer.json').read_text());candidate=json.loads((Path(pointer['folder'])/'result.json').read_text());assert m.sha(Path(candidate['archive']))==candidate['archiveSha256']
  plan=json.loads((data/'native-plan.json').read_text());cloud=plan['root'];assert cloud.startswith('/srv/agentplatform/acceptance/r44-'+args.stage+'-')

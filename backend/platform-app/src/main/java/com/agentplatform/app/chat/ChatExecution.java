@@ -35,6 +35,8 @@ public final class ChatExecution implements AutoCloseable {
     private boolean executionStarted;
     private boolean toolApprovalsEnabled;
     private WorkspaceToolRuntime workspaceTools;
+    private com.agentplatform.domain.files.AssetStore attachmentAssets;
+    public synchronized void configureAttachments(com.agentplatform.domain.files.AssetStore assets){if(executionStarted||attachmentAssets!=null)throw new IllegalStateException("Attachment composition already fixed");attachmentAssets=Objects.requireNonNull(assets);}
     public synchronized void configureWorkspaceTools(WorkspaceToolRuntime runtime) {
         if(executionStarted||fixtureTools!=null||workspaceTools!=null)throw new IllegalStateException("WORKSPACE_TOOL_COMPOSITION_CONFLICT");
         workspaceTools=Objects.requireNonNull(runtime);
@@ -68,7 +70,8 @@ public final class ChatExecution implements AutoCloseable {
         var batch=new Batch(lease);String terminal="FAILED",reason="MODEL_EXECUTION_FAILED";boolean completed=false,waiting=false;
         try{
             var startup=repository.executionStartup(lease);deadline=startup.deadline();
-            List<Message> history=startup.history();
+            var attachmentContext=new com.agentplatform.app.attachment.ContextAssembler(repository,attachmentAssets,lease);
+            List<Message> history=attachmentContext.resolve(startup.history());
             Scope scope=new Scope(lease.spaceId().toString(),lease.userId().toString(),lease.conversationId().toString(),lease.taskId().toString(),lease.attemptId().toString(),lease.fence(),repository.planMode(lease));
             List<Approval> controlApprovals=repository.controlApprovals(lease);
             List<Approval> approvals=new ArrayList<>(controlApprovals);approvals.addAll(repository.toolApprovals(lease));
@@ -109,10 +112,11 @@ public final class ChatExecution implements AutoCloseable {
                 public boolean atomicCheckpoints(Scope s){return true;}
                 public void seal(Scope s,Bundle b){throw new ChatFailure(409,"ATOMIC_CHECKPOINT_REQUIRED");}
                 public List<Message> recoveryHistory(Scope s){return control.during(()->repository.checkpointHistory(lease));}
-                public List<Message> checkpointHistory(Scope s){return control.during(()->repository.checkpointHistory(lease));}
+                public List<Message> checkpointHistory(Scope s){return control.during(()->attachmentContext.resolve(repository.checkpointHistory(lease)));}
                 public void commitCheckpoint(Scope s,Bundle b,CheckpointDraft draft){control.during(()->{
                     if(draft.phase()!=CheckpointPhase.INPUT_READY)FixtureFaults.pause("checkpoint-before-seal");
-                    repository.commitCheckpoint(lease,b,draft);
+                    if(draft.phase()==CheckpointPhase.INPUT_READY&&!attachmentContext.proof().isEmpty())repository.commitAttachmentCheckpoint(lease,b,draft,attachmentContext.proof());
+                    else repository.commitCheckpoint(lease,b,draft);
                     FixtureFaults.pause(switch(draft.phase()) {
                         case INPUT_READY -> "input-checkpoint-after-seal";
                         case MODEL_COMMITTED -> "model-checkpoint-after-seal";
@@ -142,13 +146,13 @@ public final class ChatExecution implements AutoCloseable {
             LoopBoundary boundary=new LoopBoundary(){
                 public CompletionStage<List<Message>> beforeModel(Scope s,List<Message> ignored){return control.during(()->{
                     if(controls||workspaceCapable)repository.consumeOptional(lease);
-                    var context=repository.checkpointHistory(lease);
+                    var context=attachmentContext.resolve(repository.checkpointHistory(lease));
                     com.agentplatform.infrastructure.harness.agentscope.AgentScopeContextAdmission.requireFits(context,
                             modelDefinitions.stream().filter(d->scope.planMode()||!workspaceCapable
-                                    ||!("platform_plan_write".equals(d.name())||"platform_plan_review".equals(d.name()))).toList());
+                                    ||!("platform_plan_write".equals(d.name())||"platform_plan_review".equals(d.name()))).toList(),repository.contextPolicy(lease));
                     turnId.set(repository.beginTurn(lease));return CompletableFuture.completedFuture(context);
                 });}
-                public CompletionStage<Void> afterModelCommitted(Scope s,Turn t){return control.during(()->{var call=accepted.get();if(call==null)throw new ChatFailure(409,"ACCEPTED_CALL_MISSING");repository.commitRound(lease,turnId.get(),t,call);FixtureFaults.pause("round-before-checkpoint");return CompletableFuture.completedFuture(null);});}
+                public CompletionStage<Void> afterModelCommitted(Scope s,Turn t){return control.during(()->{var call=accepted.get();if(call==null)throw new ChatFailure(409,"ACCEPTED_CALL_MISSING");if(!repository.commitRoundOutcome(lease,turnId.get(),t,call)){accepted.set(null);acceptedRound.set(null);throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION");}FixtureFaults.pause("round-before-checkpoint");return CompletableFuture.completedFuture(null);});}
                 public CompletionStage<Void> beforeControlBatch(Scope s,List<com.agentplatform.types.harness.HarnessData.Call> calls){
                     return control.during(()->{if(calls.stream().anyMatch(c->PlanControls.NAMES.contains(c.name())))repository.stageControls(lease,calls);else {if(workspaceCapable&&calls.stream().anyMatch(c->WorkspaceTools.NAMES.contains(c.name())))workspaceTools.prepare(lease,calls);repository.stageToolApprovals(lease,calls);}return CompletableFuture.completedFuture(null);});
                 }
@@ -191,7 +195,7 @@ public final class ChatExecution implements AutoCloseable {
             if(asynchronousFailure.get()!=null)error=asynchronousFailure.get();
             reason=error instanceof ChatFailure f?f.code():error instanceof TimeoutException?"PROVIDER_TIMEOUT":"MODEL_EXECUTION_FAILED";
             System.getLogger(getClass().getName()).log(System.Logger.Level.WARNING,"Task="+lease.taskId()+" attempt="+lease.attemptId()+" failed; code="+reason+" category="+error.getClass().getSimpleName());
-            terminal="TASK_CANCEL_REQUESTED".equals(reason)?"CANCELLED":"CONTEXT_REQUIRED_TOO_LARGE".equals(reason)?"BLOCKED":"FAILED";
+            terminal="TASK_CANCEL_REQUESTED".equals(reason)?"CANCELLED":Set.of("CONTEXT_REQUIRED_TOO_LARGE","PROVIDER_USAGE_EXCEEDS_RESERVATION").contains(reason)?"BLOCKED":"FAILED";
         }finally{
             boolean quiet=control.quiesce(!completed);
             try{
@@ -209,11 +213,13 @@ public final class ChatExecution implements AutoCloseable {
         if(result.isDone())return;
         try(var ticket=control.enter()){
             if(Instant.now().isAfter(deadline)){result.completeExceptionally(new ChatFailure(504,"PROVIDER_TIMEOUT"));return;}
-            ChatData.Call call=repository.beginCall(l,provider.real());String key;
+            var policy=repository.contextPolicy(l);
+            long estimatedInput=com.agentplatform.infrastructure.harness.agentscope.AgentScopeContextAdmission.requireFits(messages,definitions,policy);
+            ChatData.Call call=repository.beginCall(l,provider.real(),estimatedInput);String key;
             try{key=cipher.decrypt(repository.credential(l,call.id()));if(provider.real()&&acceptanceRun!=null)repository.permitAcceptanceCall(l,call,acceptanceRun);repository.startCall(l,call,provider.real());}
             catch(Throwable error){try{repository.settle(l,call,null,null,"CALL_NOT_SENT",false);}catch(Exception ignored){}result.completeExceptionally(error);return;}
             AtomicBoolean emitted=new AtomicBoolean();CompletableFuture<ChatProvider.Result> future;
-            try{var exchange=(definitions.isEmpty()?provider.open(repository.modelName(l),key,messages,value->{emitted.set(true);text.accept(value);}):provider.openTyped(repository.modelName(l),key,messages,definitions,value->{emitted.set(true);text.accept(value);}));control.exchange(exchange);future=exchange.result().toCompletableFuture();}
+            try{var exchange=(definitions.isEmpty()?provider.open(repository.modelName(l),key,messages,policy.maxOutput(),value->{emitted.set(true);text.accept(value);}):provider.openTyped(repository.modelName(l),key,messages,definitions,policy.maxOutput(),value->{emitted.set(true);text.accept(value);}));control.exchange(exchange);future=exchange.result().toCompletableFuture();}
             catch(Throwable error){future=CompletableFuture.failedFuture(error);}
             pending.set(future);if(result.isCancelled())future.cancel(true);
             var callback=control.enter();
@@ -233,14 +239,14 @@ public final class ChatExecution implements AutoCloseable {
                     }
                     if(value.rejectionCode()!=null){
                         String code=Set.of("MODEL_TOOL_ARGUMENTS_INVALID","CONTROL_BATCH_LIMIT").contains(value.rejectionCode())?value.rejectionCode():"MODEL_TOOL_ARGUMENTS_INVALID";
-                        repository.settle(l,call,value.usageKnown()?value.round():null,value.requestId(),value.usageKnown()?code:"PROVIDER_USAGE_MISSING",provider.real());
+                        if(!repository.settleOutcome(l,call,value.usageKnown()?value.round():null,value.requestId(),value.usageKnown()?code:"PROVIDER_USAGE_MISSING",provider.real()))throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION");
                         result.completeExceptionally(new ChatFailure(422,code));return;
                     }
                     boolean incompleteTransport="unknown".equals(value.round().finishReason());
                     boolean empty=value.round().text().isBlank()&&value.round().calls().isEmpty()&&!emitted.get();
                     boolean supported="stop".equals(value.round().finishReason())||((fixtureTools!=null||!definitions.isEmpty())&&"tool_calls".equals(value.round().finishReason()));
                     if(!supported||empty){
-                        repository.settle(l,call,value.usageKnown()?value.round():null,value.requestId(),value.usageKnown()?null:incompleteTransport?"PROVIDER_REQUEST_FAILED":"PROVIDER_USAGE_MISSING",provider.real());
+                        if(!repository.settleOutcome(l,call,value.usageKnown()?value.round():null,value.requestId(),value.usageKnown()?null:incompleteTransport?"PROVIDER_REQUEST_FAILED":"PROVIDER_USAGE_MISSING",provider.real()))throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION");
                         if(!"stop".equals(value.round().finishReason())){result.completeExceptionally(new ChatFailure(503,"PROVIDER_TRUNCATED"));return;}
                         if(!repaired){physical(l,messages,definitions,text,result,pending,deadline,retries,true,accepted,acceptedRound,control);return;}
                         result.completeExceptionally(new ChatFailure(503,"PROVIDER_EMPTY_RESPONSE"));return;

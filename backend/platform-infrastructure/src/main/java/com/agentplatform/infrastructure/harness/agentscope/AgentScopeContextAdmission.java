@@ -1,6 +1,7 @@
 package com.agentplatform.infrastructure.harness.agentscope;
 
 import com.agentplatform.domain.chat.ChatFailure;
+import com.agentplatform.domain.chat.ContextPolicy;
 import com.agentplatform.types.harness.HarnessData.Message;
 import com.agentplatform.types.harness.HarnessData.ToolDefinition;
 import io.agentscope.core.message.Msg;
@@ -31,6 +32,12 @@ public final class AgentScopeContextAdmission {
     }
 
     public static void requireFits(List<Message> history, List<ToolDefinition> definitions) {
-        if (estimate(history, definitions) > 7168) throw new ChatFailure(422, "CONTEXT_REQUIRED_TOO_LARGE");
+        requireFits(history, definitions, ContextPolicy.legacy());
+    }
+
+    public static long requireFits(List<Message> history, List<ToolDefinition> definitions, ContextPolicy policy) {
+        long estimated = estimate(history, definitions);
+        if (estimated > policy.inputLimit()) throw new ChatFailure(422, "CONTEXT_REQUIRED_TOO_LARGE");
+        return estimated;
     }
 }

@@ -33,9 +33,10 @@ export async function previewHeaders(space: string, signal: AbortSignal) {
   if (!csrf) throw new Error('安全验证暂不可用'); setCsrf(csrf);
   return { 'X-Space-Id': space, 'X-CSRF-Token': csrf };
 }
-export async function submitPreview(file: string, pending: PendingPreview, space: string, signal: AbortSignal) {
+export async function submitPreview(file: string, pending: PendingPreview, space: string, signal: AbortSignal, attachment?: string) {
   const headers = await previewHeaders(space, signal);
-  const result = await api.POST('/api/v1/files/{id}/previews', { signal, body: pending.body,
+  const result = attachment ? await api.POST('/api/v1/attachments/{id}/previews', { signal, body: { format: pending.body.format },
+    params: { path: { id: attachment }, header: { ...headers, 'Idempotency-Key': pending.key } } }) : await api.POST('/api/v1/files/{id}/previews', { signal, body: pending.body,
     params: { path: { id: file }, header: { ...headers, 'Idempotency-Key': pending.key } } });
   if (!result.data) throw new Error('预览受理结果未确认'); return result.data;
 }

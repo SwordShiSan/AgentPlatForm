@@ -31,12 +31,14 @@ public final class RunnerSignatures {
                         || path.equals("/internal/workspace-shell/v1") || path.equals("/internal/workspace-shell/v1/" + operationId)
                         || path.equals("/internal/file-operations/v1") || path.equals("/internal/file-operations/v1/"+operationId)
                         || path.equals("/internal/file-captures/v1") || path.equals("/internal/file-captures/v1/"+operationId)
-                        || path.equals("/internal/previews/v1") || path.equals("/internal/previews/v1/"+operationId)) || path.contains("?")
+                        || path.equals("/internal/previews/v1") || path.equals("/internal/previews/v1/"+operationId)
+                        || path.equals("/internal/extractions/v1") || path.equals("/internal/extractions/v1/"+operationId)) || path.contains("?")
                     || path.contains("#") || path.contains("..") || generation < 1 || fence < 1) {
                 throw new IllegalArgumentException("Invalid runner binding");
             }
             Objects.requireNonNull(commandId); Objects.requireNonNull(operationId);
-            Objects.requireNonNull(spaceId); Objects.requireNonNull(workspaceId);
+            Objects.requireNonNull(spaceId);
+            if(!path.startsWith("/internal/previews/v1")&&!path.startsWith("/internal/extractions/v1"))Objects.requireNonNull(workspaceId);
         }
     }
     private final JwtEncoder encoder;
@@ -76,7 +78,7 @@ public final class RunnerSignatures {
                 .issuedAt(now).notBefore(now).expiresAt(now.plusSeconds(60)).id(binding.commandId().toString())
                 .claim("method", binding.method()).claim("path", binding.path())
                 .claim("operation", binding.operationId().toString()).claim("space", binding.spaceId().toString())
-                .claim("workspace", binding.workspaceId().toString()).claim("generation", binding.generation())
+                .claim("workspace", workspaceClaim(binding)).claim("generation", binding.generation())
                 .claim("fence", binding.fence()).claim("body_sha256", sha256(body)).build();
         return encoder.encode(JwtEncoderParameters.from(JwsHeader.with(SignatureAlgorithm.RS256)
                 .keyId(localKid).type("JWT").build(), claims)).getTokenValue();
@@ -110,7 +112,7 @@ public final class RunnerSignatures {
                     && binding.path().equals(jwt.getClaimAsString("path"))
                     && binding.operationId().toString().equals(jwt.getClaimAsString("operation"))
                     && binding.spaceId().toString().equals(jwt.getClaimAsString("space"))
-                    && binding.workspaceId().toString().equals(jwt.getClaimAsString("workspace"))
+                    && workspaceClaim(binding).equals(jwt.getClaimAsString("workspace"))
                     && binding.generation() == integerClaim(jwt, "generation")
                     && binding.fence() == integerClaim(jwt, "fence")
                     && MessageDigest.isEqual(sha256(body).getBytes(StandardCharsets.US_ASCII),
@@ -123,7 +125,7 @@ public final class RunnerSignatures {
         Jwt jwt=authenticate(token);
         try {
             var binding=new Binding("GET",path,UUID.fromString(jwt.getId()),UUID.fromString(jwt.getClaimAsString("operation")),
-                    UUID.fromString(jwt.getClaimAsString("space")),UUID.fromString(jwt.getClaimAsString("workspace")),
+                    UUID.fromString(jwt.getClaimAsString("space")),"NONE".equals(jwt.getClaimAsString("workspace"))?null:UUID.fromString(jwt.getClaimAsString("workspace")),
                     integerClaim(jwt,"generation"),integerClaim(jwt,"fence"));
             verify(token,binding,new byte[0]);return binding;
         } catch(RuntimeException invalid) {throw new WorkspaceFailure(401,"RUNNER_COMMAND_BINDING_REJECTED");}
@@ -132,6 +134,7 @@ public final class RunnerSignatures {
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(body)); }
         catch (java.security.NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
     }
+    private static String workspaceClaim(Binding binding){return binding.workspaceId()==null?"NONE":binding.workspaceId().toString();}
     private static long integerClaim(Jwt jwt, String name) {
         Object value = jwt.getClaim(name);
         if (value instanceof Long number) return number;

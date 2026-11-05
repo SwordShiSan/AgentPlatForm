@@ -26,7 +26,7 @@ public class PreviewRunnerConfiguration {
         if(!policy.hash().equals(properties.policyHash()))throw new IllegalArgumentException("Frozen preview policy mismatch");
         return new DockerPreviewRuntime(policy,runnerInstanceNonce);
     }
-    @Bean(destroyMethod="close") @Profile("workspace-runner")
+    @Bean(destroyMethod="close") @Profile("workspace-runner") @Primary
     PreviewRunnerApi previewRunnerApi(PreviewRepository repository,PreviewRuntime runtime,AssetStore assets,RunnerSignatures signatures,Properties properties){
         return new PreviewRunnerService(repository,runtime,assets,signatures,properties.stagingRoot());
     }

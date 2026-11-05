@@ -11,8 +11,8 @@ import FileHistoryPanel from './FileHistoryPanel.vue';
 
 type Item = components['schemas']['FileItem'];
 type Deleted = components['schemas']['DeletedFileItem'];
-const props = defineProps<{ file: Item; userId: string; spaceId: string; workspaceId: string; initial: 'MOVE' | 'DELETE' | 'HISTORY' | 'RESTORE'; deleted?: Deleted }>();
-const emit = defineEmits<{ close: []; changed: [] }>();
+const props = defineProps<{ file: Item; userId: string; spaceId: string; workspaceId: string; initial: 'MOVE' | 'DELETE' | 'HISTORY' | 'RESTORE'; deleted?: Deleted; referenceEnabled?: boolean }>();
+const emit = defineEmits<{ close: []; changed: []; reference: [string] }>();
 const mode = ref(props.initial); const name = ref(props.file.name); const directory = ref(props.file.parent);
 const selectedVersion = ref(props.file.versionId); const pending = ref<PendingMutation>();
 const posting = ref(false); const notice = ref(''); const memoryOnly = ref(false); const rejected = ref(false); let controller = new AbortController(); let completed = '';
@@ -113,7 +113,7 @@ onBeforeUnmount(() => controller.abort());
         {{ posting ? '正在受理…' : mode === 'MOVE' ? '确认移动／重命名' : mode === 'DELETE' ? '确认删除工作副本' : '确认恢复为新版本' }}
       </NButton>
     </form>
-    <FileHistoryPanel v-if="file.kind === 'FILE'" :file-id="file.id" :name="file.name" :user-id="userId" :space-id="spaceId" :disabled="Boolean(pending) || posting" @restore="chooseVersion" />
+    <FileHistoryPanel v-if="file.kind === 'FILE'" :file-id="file.id" :name="file.name" :user-id="userId" :space-id="spaceId" :disabled="Boolean(pending) || posting" :reference-enabled="referenceEnabled" @restore="chooseVersion" @reference="emit('reference', $event)" />
   </section>
 </template>
 <style scoped>

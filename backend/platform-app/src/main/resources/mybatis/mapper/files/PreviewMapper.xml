@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.agentplatform.infrastructure.dao.files.PreviewMapper">
- <sql id="jobColumns">id,space_id,workspace_id,actor_id,file_id,version_id,name,requested_format,source_format,source_object_key,source_bytes,source_sha256,image_id,bundle,policy_hash,state,revision,generation,command_id,owner_id,fence,lease_until,deadline_at,attempts,format,output_object_key,bytes,sha256,media_type,pages,error_code,retryable,asset_id</sql>
+ <sql id="jobColumns">id,space_id,workspace_id,actor_id,file_id,version_id,name,requested_format,source_format,source_object_key,source_bytes,source_sha256,image_id,bundle,policy_hash,state,revision,generation,command_id,owner_id,fence,lease_until,deadline_at,attempts,format,output_object_key,bytes,sha256,media_type,pages,error_code,retryable,asset_id,source_kind,attachment_id</sql>
  <select id="authorized" resultType="boolean">SELECT pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId})</select>
  <select id="source" resultType="com.agentplatform.infrastructure.dao.po.PreviewRows$Source">
   SELECT v.space_id,v.workspace_id,v.file_id,v.id AS version_id,a.id AS asset_id,f.name,a.object_key,v.size_bytes AS bytes,v.sha256
@@ -10,12 +10,17 @@
   JOIN pf.workspace w ON w.id=v.workspace_id AND w.space_id=v.space_id AND w.state='READY'
   WHERE v.space_id=#{actor.spaceId} AND v.file_id=#{file} AND v.id=#{version} AND pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId})
  </select>
+ <select id="attachmentSource" resultType="com.agentplatform.infrastructure.dao.po.PreviewRows$Source">
+  SELECT a.space_id,NULL::uuid AS workspace_id,NULL::uuid AS file_id,NULL::uuid AS version_id,a.asset_id,a.filename AS name,o.object_key,a.size_bytes AS bytes,a.sha256
+  FROM pf.chat_attachment a JOIN pf.asset_object o ON o.id=a.asset_id AND o.space_id=a.space_id AND o.status='AVAILABLE' AND o.sha256=a.sha256 AND o.size_bytes=a.size_bytes
+  WHERE a.id=#{attachment} AND a.space_id=#{actor.spaceId} AND a.actor_id=#{actor.userId} AND a.status='AVAILABLE' AND pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId})
+ </select>
  <select id="request" resultType="com.agentplatform.infrastructure.dao.po.PreviewRows$Request">SELECT request_hash,preview_id,kind FROM pf.preview_request WHERE space_id=#{actor.spaceId} AND actor_id=#{actor.userId} AND request_id=#{request}</select>
- <select id="cached" resultType="com.agentplatform.domain.preview.PreviewData$Job">SELECT <include refid="jobColumns"/> FROM pf.preview_job WHERE space_id=#{space} AND version_id=#{version} AND bundle=#{bundle} AND policy_hash=#{policy} AND <choose><when test="format == 'AUTO'">requested_format&lt;&gt;'HTML_STATIC'</when><otherwise>requested_format=#{format}</otherwise></choose> ORDER BY created_at LIMIT 1</select>
+ <select id="cached" resultType="com.agentplatform.domain.preview.PreviewData$Job">SELECT <include refid="jobColumns"/> FROM pf.preview_job WHERE space_id=#{space} AND <choose><when test="attachment != null">source_kind='CHAT_ATTACHMENT' AND attachment_id=#{attachment}</when><otherwise>source_kind='FILE_VERSION' AND version_id=#{version}</otherwise></choose> AND bundle=#{bundle} AND policy_hash=#{policy} AND <choose><when test="format == 'AUTO'">requested_format&lt;&gt;'HTML_STATIC'</when><otherwise>requested_format=#{format}</otherwise></choose> ORDER BY created_at LIMIT 1</select>
  <select id="job" resultType="com.agentplatform.domain.preview.PreviewData$Job">SELECT <include refid="jobColumns"/> FROM pf.preview_job WHERE id=#{id}</select>
  <select id="lockJob" resultType="com.agentplatform.domain.preview.PreviewData$Job">SELECT <include refid="jobColumns"/> FROM pf.preview_job WHERE id=#{id} FOR UPDATE</select>
- <insert id="insert">INSERT INTO pf.preview_job(id,space_id,workspace_id,actor_id,file_id,version_id,name,requested_format,source_format,source_object_key,source_bytes,source_sha256,image_id,bundle,policy_hash,state,command_id,output_object_key,asset_id)
-  VALUES(#{row.id},#{row.spaceId},#{row.workspaceId},#{row.actorId},#{row.fileId},#{row.versionId},#{row.name},#{row.requestedFormat},#{row.sourceFormat},#{row.sourceObjectKey},#{row.sourceBytes},#{row.sourceSha256},#{row.imageId},#{row.bundle},#{row.policyHash},'QUEUED',#{row.commandId},#{row.outputObjectKey},#{row.assetId})</insert>
+ <insert id="insert">INSERT INTO pf.preview_job(id,space_id,workspace_id,actor_id,file_id,version_id,name,requested_format,source_format,source_object_key,source_bytes,source_sha256,image_id,bundle,policy_hash,state,command_id,output_object_key,asset_id,source_kind,attachment_id)
+  VALUES(#{row.id},#{row.spaceId},#{row.workspaceId,jdbcType=OTHER},#{row.actorId},#{row.fileId,jdbcType=OTHER},#{row.versionId,jdbcType=OTHER},#{row.name},#{row.requestedFormat},#{row.sourceFormat},#{row.sourceObjectKey},#{row.sourceBytes},#{row.sourceSha256},#{row.imageId},#{row.bundle},#{row.policyHash},'QUEUED',#{row.commandId},#{row.outputObjectKey},#{row.assetId},#{row.sourceKind},#{row.attachmentId,jdbcType=OTHER})</insert>
  <insert id="insertRequest">INSERT INTO pf.preview_request(space_id,actor_id,request_id,request_hash,preview_id,kind) VALUES(#{actor.spaceId},#{actor.userId},#{request},#{hash},#{id},#{kind})</insert>
  <insert id="reserve">INSERT INTO pf.preview_reservation(preview_id,space_id,bytes,status) VALUES(#{id},#{space},#{bytes},'RESERVED')</insert>
  <select id="reservation" resultType="com.agentplatform.infrastructure.dao.po.PreviewRows$Reservation">SELECT bytes,status FROM pf.preview_reservation WHERE preview_id=#{id} FOR UPDATE</select>

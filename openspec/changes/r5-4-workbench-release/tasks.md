@@ -1,5 +1,5 @@
 ## Implementation
-- [ ] 1. Record the approved canonical plan, ADR and contracts; strict validation before code.
+- [x] 1. Record the approved canonical plan, ADR and contracts; strict validation before code.
 - [ ] 2. Prove large SDK context and checkpoint restore, then implement context policy, dynamic reservations and legacy compatibility.
 - [ ] 3. Implement V21 independent attachment identities, quota and reliable typed extraction jobs.
 - [ ] 4. Integrate renderer, API, generated clients and frozen attachment input with existing Harness.

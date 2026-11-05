@@ -35,7 +35,7 @@ export function applyChatEvent(previous: ChatSnapshot, event: PlatformEvent): Ch
       const blockIndex = message.blocks.findIndex(item => item.blockId === payload.blockId);
       const originalBlock = message.blocks[blockIndex];
       const block = originalBlock ? { ...originalBlock } : undefined;
-      if (!block || typeof payload.text !== 'string' || Array.from(block.text).length !== payload.offset) {
+      if (!block || block.type !== 'TEXT' || typeof payload.text !== 'string' || Array.from(block.text).length !== payload.offset) {
         throw new SnapshotRequired('Text offset differs');
       }
       block.text += payload.text;

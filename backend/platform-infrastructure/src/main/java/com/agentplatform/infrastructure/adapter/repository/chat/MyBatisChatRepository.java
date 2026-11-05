@@ -28,11 +28,14 @@ public final class MyBatisChatRepository implements ChatRepository {
         this(mappers,false);
     }
     public MyBatisChatRepository(ChatMappers mappers,boolean workspaceTools) {
+        this(mappers,workspaceTools,ContextPolicy.legacy());
+    }
+    public MyBatisChatRepository(ChatMappers mappers,boolean workspaceTools,ContextPolicy contextPolicy) {
         this.mappers=mappers;plans=new PlanPersistence(mappers);
         controls = new ControlPersistence(mappers);
         recovery = new RecoveryPersistence(mappers);
-        conversations = new ConversationPersistence(mappers,workspaceTools);
-        configurations = new ConfigurationPersistence(mappers);
+        conversations = new ConversationPersistence(mappers,workspaceTools,contextPolicy);
+        configurations = new ConfigurationPersistence(mappers,contextPolicy);
         dispatches = new DispatchPersistence(mappers);
         executions = new ExecutionPersistence(mappers);
         checkpoints = new CheckpointPersistence(mappers);
@@ -73,17 +76,23 @@ public final class MyBatisChatRepository implements ChatRepository {
     @Override public List<HarnessData.Message> history(Lease l) { return executions.history(l); }
     @Override public void delta(Lease l,String text) { executions.delta(l, text); }
     @Override public Call beginCall(Lease l,boolean real) { return executions.beginCall(l, real); }
+    @Override public Call beginCall(Lease l,boolean real,long estimatedInput) { return executions.beginCall(l,real,estimatedInput); }
+    @Override public ContextPolicy contextPolicy(Lease l) {
+        return executions.tx(c->{ChatPersistenceSupport.owned(c,l,false);return ContextPolicy.fromSnapshot(ChatPersistenceSupport.frozen(c,l));});
+    }
     @Override public void startCall(Lease l,Call call,boolean real) { executions.startCall(l, call, real); }
     @Override public void permitAcceptanceCall(Lease l,Call call,UUID run){
         ChatPersistenceSupport.owned(mappers,l,false);mappers.executionPolicy().createAcceptanceRun(run);
         if(mappers.executionPolicy().reserveAcceptance(run)!=1)throw new ChatFailure(429,"ACCEPTANCE_REQUEST_LIMIT");
         mappers.executionPolicy().recordAcceptanceCall(run,call.id());
     }
-    @Override public void settle(Lease l,Call call,HarnessData.Round round,String requestId,String error,boolean real) { executions.settle(l, call, round, requestId, error, real); }
+    @Override public void settle(Lease l,Call call,HarnessData.Round round,String requestId,String error,boolean real) { if(!settleOutcome(l,call,round,requestId,error,real))throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION"); }
+    @Override public boolean settleOutcome(Lease l,Call call,HarnessData.Round round,String requestId,String error,boolean real) { return executions.settleOutcome(l,call,round,requestId,error,real); }
     @Override public Credential credential(Lease l,UUID call) { return executions.credential(l, call); }
     @Override public void finish(Lease l,String status,String reason) { executions.finish(l, status, reason); }
     @Override public UUID beginTurn(Lease l) { return checkpoints.beginTurn(l); }
-    @Override public void commitRound(Lease l,UUID id,HarnessData.Turn turn,ExecutionLedger.CallResult accepted) { checkpoints.commitRound(l, id, turn, accepted); }
+    @Override public void commitRound(Lease l,UUID id,HarnessData.Turn turn,ExecutionLedger.CallResult accepted) { if(!commitRoundOutcome(l,id,turn,accepted))throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION"); }
+    @Override public boolean commitRoundOutcome(Lease l,UUID id,HarnessData.Turn turn,ExecutionLedger.CallResult accepted) { return checkpoints.commitRoundOutcome(l,id,turn,accepted); }
     @Override public void startTool(Lease l,HarnessData.Call call) { checkpoints.startTool(l, call); }
     @Override public void commitTool(Lease l,HarnessData.Call call,HarnessData.Observation result) { checkpoints.commitTool(l, call, result); }
     @Override public HarnessData.StateSlot state(Lease l,String key) { return checkpoints.state(l, key); }
@@ -116,6 +125,8 @@ public final class MyBatisChatRepository implements ChatRepository {
     @Override public void stopUnconfirmed(Lease lease) { controls.stopUnconfirmed(lease); }
     @Override public RecoveryLedger.Startup executionStartup(Lease l) { return recovery.executionStartup(l); }
     @Override public UUID commitCheckpoint(Lease l,HarnessData.Bundle b,HarnessData.CheckpointDraft d) { return recovery.commitCheckpoint(l,b,d); }
+    @Override public UUID commitAttachmentCheckpoint(Lease l,HarnessData.Bundle b,HarnessData.CheckpointDraft d,Map<UUID,String> texts){return recovery.commitCheckpoint(l,b,d,texts);}
+    @Override public List<com.agentplatform.domain.attachment.AttachmentSource> attachmentSources(Lease l){return recovery.attachmentSources(l);}
     @Override public RecoveryLedger.Recovery recovery(Actor a,UUID id) { return recovery.recovery(a,id); }
     @Override public RecoveryLedger.Recovery recoveryForOperator(UUID id) { return recovery.recoveryForOperator(id); }
     @Override public RecoveryLedger.Recovery restore(RecoveryLedger.RestoreCommand command) { return recovery.restore(command); }

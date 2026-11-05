@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ChatRepository extends ExecutionLedger, CancellationLedger, RecoveryLedger, PlanLedger, PermissionLedger, ApprovalLedger, WorkspaceToolLedger {
+    default List<com.agentplatform.domain.attachment.AttachmentSource> attachmentSources(Lease lease){return List.of();}
+    default UUID commitAttachmentCheckpoint(Lease lease,HarnessData.Bundle bundle,HarnessData.CheckpointDraft draft,java.util.Map<UUID,String> texts){if(!texts.isEmpty())throw new ChatFailure(409,"ATTACHMENTS_NOT_CONFIGURED");return commitCheckpoint(lease,bundle,draft);}
     default HarnessData.Bundle executionBundle(Lease lease) { return ChatRuntime.bundle(); }
     List<Model> models(Actor actor);
     Conversation create(Actor actor, UUID key, String title);
@@ -27,9 +29,16 @@ public interface ChatRepository extends ExecutionLedger, CancellationLedger, Rec
     List<HarnessData.Message> history(Lease lease);
     void delta(Lease lease, String text);
     Call beginCall(Lease lease, boolean real);
+    default ContextPolicy contextPolicy(Lease lease) { return ContextPolicy.legacy(); }
+    default Call beginCall(Lease lease, boolean real, long estimatedInput) {
+        if (!"legacy-v1".equals(contextPolicy(lease).version()))
+            throw new ChatFailure(503, "CONTEXT_RESERVATION_NOT_IMPLEMENTED");
+        return beginCall(lease, real);
+    }
     void startCall(Lease lease, Call call, boolean real);
     void permitAcceptanceCall(Lease lease,Call call,UUID run);
     void settle(Lease lease, Call call, HarnessData.Round round, String requestId, String error, boolean real);
+    default boolean settleOutcome(Lease lease, Call call, HarnessData.Round round, String requestId, String error, boolean real) { settle(lease,call,round,requestId,error,real); return true; }
     Credential credential(Lease lease, UUID callId);
     void finish(Lease lease, String status, String reason);
     void recoverStopped(UUID owner);
