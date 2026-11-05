@@ -14,8 +14,10 @@ async function login(page: Page, user: string) {
 test('real chat sources, attachment refresh, responsive workbench, storage and account isolation', async ({ browser }) => {
   test.setTimeout(240000);
   const seed = JSON.parse(readFileSync(resolve(root, 'native-attachment-result.json'), 'utf8'));
-  const context = await browser.newContext({ baseURL: process.env.BASE_URL, viewport: { width: 1440, height: 900 } });
-  const foreign = await browser.newContext({ baseURL: process.env.BASE_URL });
+  // Explicit per-context bypass keeps this SSH-only fixture off the desktop proxy.
+  const proxy = { server: 'http://127.0.0.1:9', bypass: '*' };
+  const context = await browser.newContext({ baseURL: process.env.BASE_URL, viewport: { width: 1440, height: 900 }, proxy });
+  const foreign = await browser.newContext({ baseURL: process.env.BASE_URL, proxy });
   const page = await context.newPage(); const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   page.setDefaultNavigationTimeout(20000); page.setDefaultTimeout(20000);
   console.info('R54_BROWSER_PAGE_READY');
