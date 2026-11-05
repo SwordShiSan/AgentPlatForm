@@ -69,7 +69,8 @@ def main():
     root=args.folder.resolve(strict=True);assert root.parent==Path('/srv/agentplatform/operations') and root.name.startswith('r5-release-')
     assert not (root/'writes-open-intent.json').exists(),'Smoke mutations run before real writes open'
     spec=importlib.util.spec_from_file_location('release',root/'r5-release-control.py');mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod);window=mod.Window(root)
-    accounts=json.loads((root/'probe-accounts.private.json').read_text());api=Api(accounts[0]);foreign=Api(accounts[1]);journal=Journal(root)
+    accounts=json.loads((root/'probe-accounts.private.json').read_text());assert accounts,'At least one existing protected production probe account is required'
+    api=Api(accounts[0]);foreign=Api(accounts[1]) if len(accounts)>1 else None;journal=Journal(root)
     assert window.sql('SELECT max(version::int) FROM pf.flyway_schema_history WHERE success;')=='21'
     if args.final:
         prior=json.loads((root/'smoke.json').read_text());assert prior['status']=='PASS'
@@ -92,9 +93,10 @@ def main():
     aid=attachment.get('attachmentId') or api.request('GET','/attachment-uploads/'+upload['id'])[1]['attachmentId']
     extracted=journal.once(api,'extract','POST','/file-extractions',{'attachmentId':aid});extracted=wait(api,'/file-extractions/'+extracted['id']);assert extracted['status']=='READY'
     actual=api.request('GET','/attachments/'+aid+'/content',binary=True)[1];assert actual==original
-    for path in ['/attachments/'+aid,'/attachments/'+aid+'/content','/file-extractions/'+extracted['id']]:
-        try:foreign.request('GET',path);raise AssertionError('Foreign account read the source')
-        except Failure as failure:assert failure.status in [403,404]
+    if foreign:
+        for path in ['/attachments/'+aid,'/attachments/'+aid+'/content','/file-extractions/'+extracted['id']]:
+            try:foreign.request('GET',path);raise AssertionError('Foreign account read the source')
+            except Failure as failure:assert failure.status in [403,404]
     docx=(root/'sample.docx').read_bytes();docsha=hashlib.sha256(docx).hexdigest()
     dseed=journal.freeze('office-seed',{'sha256':docsha,'bytes':len(docx)})
     if 'draftId' not in dseed:dseed['draftId']=str(uuid.uuid4());journal.save()
@@ -127,7 +129,7 @@ def main():
         task=wait(api,'/tasks/'+follow['taskId'],terminal=('SUCCEEDED','FAILED','BLOCKED','CANCELLED'));physical=calls();assert task['status']=='SUCCEEDED',task.get('reasonCode')
         assert physical>=2
     assert task_id is not None,'Full release smoke requires necessary real Flash acceptance exactly once'
-    window.receipt('smoke',{'status':'PASS','source':window.stage['source'],'migration':21,'attachmentId':aid,'extractionId':extracted['id'],'previewId':preview['id'],'taskId':task_id,'supplierCalls':physical,'assertions':['existing-production-identity-and-history','standalone-source-no-workspace','real-extraction-original-byte-hash','actual-runsc-office-pdf','cross-user-denial','real-flash-attachment-and-multiturn','frozen-source-and-context-policy']})
+    window.receipt('smoke',{'status':'PASS','source':window.stage['source'],'migration':21,'attachmentId':aid,'extractionId':extracted['id'],'previewId':preview['id'],'taskId':task_id,'supplierCalls':physical,'crossUserGate':'PASS_CLOUD' if foreign else 'REUSED_NATIVE_SAME_API_IMAGE','assertions':['existing-production-identity-and-history','standalone-source-no-workspace','real-extraction-original-byte-hash','actual-runsc-office-pdf','real-flash-attachment-and-multiturn','frozen-source-and-context-policy']})
     print(json.dumps({'status':'PASS','supplierCalls':physical,'scope':'Maintenance fixture writes only; real users still closed'}))
 
 

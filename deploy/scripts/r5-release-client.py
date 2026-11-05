@@ -51,6 +51,33 @@ operator['entrypoint']=['java','-XX:+UseSerialGC','-Xms16m','-Xmx128m','-Xss512k
     (DATA/'release-pointer.json').write_text(json.dumps(pointer,indent=2))
 
 
+def repair_smoke(pointer):
+    """Patch only the known pre-mutation account-list assumption, not a running job."""
+    folder=pointer['folder'];source=ROOT/'deploy/scripts/r5-production-smoke.py';digest=hashlib.sha256(source.read_bytes()).hexdigest()
+    promotion=json.loads((DATA/'promotion.json').read_text());assert promotion['status']=='PASS'
+    assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()==promotion['main']
+    prefix='from pathlib import Path\nimport json,hashlib,shutil,time\nr=Path('+repr(folder)+')\n'
+    guard='''assert not (r/'writes-open-intent.json').exists() and not (r/'smoke.json').exists()
+old=json.loads((r/'job-smoke.json').read_text());p=Path('/proc/'+str(old['pid'])+'/stat')
+assert not p.exists() or p.read_text().split()[21]!=old['processStart'] or p.read_text().split()[2]=='Z'
+assert 'IndexError: list index out of range' in (r/'job-smoke.private.log').read_text()
+assert not (r/'smoke-journal.private.json').exists(),'Do not reset a sent mutation or physical-call meter'
+'''
+    native.remote(prefix+guard+'print("PRE_MUTATION_DRIVER_FAILURE_CONFIRMED")\n')
+    native.local(['scp',*native.SSH,source,'root@124.222.55.140:'+folder+'/r5-production-smoke.py.pending'])
+    code=prefix+guard+'digest='+repr(digest)+'''
+pending=r/'r5-production-smoke.py.pending';assert hashlib.sha256(pending.read_bytes()).hexdigest()==digest;compile(pending.read_text(),pending.name,'exec')
+archive=r/'tooling-history'/str(time.time_ns());archive.mkdir(parents=True,mode=0o700)
+for name in ['r5-production-smoke.py','job-smoke.json','job-smoke.private.log','input-hashes.json']:shutil.copy2(r/name,archive/name)
+pending.replace(r/'r5-production-smoke.py')
+for name in ['job-smoke.json','job-smoke.private.log']:(r/name).rename(archive/(name+'.original'))
+hashes=json.loads((r/'input-hashes.json').read_text());hashes['r5-production-smoke.py']=digest;(r/'input-hashes.json').write_text(json.dumps(hashes,indent=2))
+print('SMOKE_DRIVER_REPAIRED_NO_APPLICATION_RESTART_OR_REQUEST_REPLAY')
+'''
+    compile(code,'r5-pre-mutation-smoke-repair','exec');print(native.remote(code));pointer['inputHashes']['r5-production-smoke.py']=digest
+    (DATA/'release-pointer.json').write_text(json.dumps(pointer,indent=2))
+
+
 def stage(new_attempt=False):
     pointer=DATA/'release-pointer.json'
     if new_attempt:
@@ -108,12 +135,13 @@ print((folder/'stage.json').read_text())
 
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('action',choices=['stage','refresh-scripts','status','start','smoke','observe','backup-r5','restore','rollback-drill','redeploy','final-smoke','final-observe','open-writes']);parser.add_argument('--new-attempt',action='store_true',help='Archive only a failed fully restored pre-write release pointer');args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('action',choices=['stage','refresh-scripts','repair-smoke','status','start','smoke','observe','backup-r5','restore','rollback-drill','redeploy','final-smoke','final-observe','open-writes']);parser.add_argument('--new-attempt',action='store_true',help='Archive only a failed fully restored pre-write release pointer');args=parser.parse_args()
     if args.action=='stage':stage(args.new_attempt);return
     assert not args.new_attempt
     pointer=json.loads((DATA/'release-pointer.json').read_text());folder=pointer['folder']
     assert folder.startswith('/srv/agentplatform/operations/r5-release-')
     if args.action=='refresh-scripts':refresh(pointer);return
+    if args.action=='repair-smoke':repair_smoke(pointer);return
     prefix='from pathlib import Path\nimport hashlib,json,subprocess,time\nr=Path('+repr(folder)+')\n'
     if args.action=='status':
         code='''reports={}
