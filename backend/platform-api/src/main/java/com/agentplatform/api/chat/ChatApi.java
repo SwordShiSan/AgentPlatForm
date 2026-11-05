@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 
 public interface ChatApi extends TaskPermissionApi {
+    default ConversationView firstAttached(Caller caller,String key,String title,String model,String source,String text,boolean plan,String workspace,com.agentplatform.types.TaskPermissionData.Mode mode,List<com.agentplatform.types.AttachmentReference> attachments){if(attachments!=null&&!attachments.isEmpty())throw new UnsupportedOperationException("Attachments not configured");return firstAuthorized(caller,key,title,model,source,text,plan,workspace,mode);}
+    default Accepted submitAttached(Caller caller,String conversation,String key,String model,String source,String text,boolean plan,String workspace,com.agentplatform.types.TaskPermissionData.Mode mode,List<com.agentplatform.types.AttachmentReference> attachments){if(attachments!=null&&!attachments.isEmpty())throw new UnsupportedOperationException("Attachments not configured");return submitAuthorized(caller,conversation,key,model,source,text,plan,workspace,mode);}
     ConversationView firstAuthorized(Caller caller,String key,String title,String model,String source,String text,boolean plan,String workspace,com.agentplatform.types.TaskPermissionData.Mode mode);
     Accepted submitAuthorized(Caller caller,String conversation,String key,String model,String source,String text,boolean plan,String workspace,com.agentplatform.types.TaskPermissionData.Mode mode);
     record Caller(String userId,String spaceId) {}

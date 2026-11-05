@@ -41,8 +41,22 @@ final class ControlPersistence extends ChatPersistenceSupport implements Cancell
             if(known!=null) {
                 var row=c.control().lockedCall(known.call().id());
                 if(row==null||!lease.attemptId().equals(row.attemptId())||!lease.spaceId().equals(row.spaceId()))throw new ChatFailure(409,"CALL_SCOPE_MISMATCH");
-                if("RESERVED".equals(row.reservationState())||"RECONCILING".equals(row.reservationState()))
-                    settleKnown(row,known.round().inputTokens(),known.round().outputTokens(),known.requestId());
+                if("RESERVED".equals(row.reservationState())||"RECONCILING".equals(row.reservationState())) {
+                    long input=known.round().inputTokens(),output=known.round().outputTokens();
+                    var reservation=c.accounting().selectBudgetReservation34(row.id(),row.taskId(),row.attemptId(),row.spaceId()).getFirst();
+                    var config=object(row.configJson());
+                    long cost=Math.addExact(Math.addExact(Math.multiplyExact(input,((Number)config.getOrDefault("inputPrice",2000000L)).longValue()),Math.multiplyExact(output,((Number)config.getOrDefault("outputPrice",8000000L)).longValue())),999999)/1000000;
+                    int maxOutput=reservation.maxOutputTokens()==null?1024:reservation.maxOutputTokens();
+                    long maxInput=reservation.maxOutputTokens()==null?8192:reservation.tokens()-maxOutput;
+                    if(reservation.contextPolicyVersion()!=null&&(input>maxInput||output>maxOutput||input+output>reservation.tokens()||cost>row.allowance())){
+                        c.accounting().insertObservedUsage(row.id(),row.spaceId(),row.taskId(),input,output,cost,known.requestId());
+                        var observed=c.accounting().observedUsage(row.id());
+                        if(observed==null||observed.inputTokens()!=input||observed.outputTokens()!=output||observed.costMicros()!=cost||!Objects.equals(observed.providerRequestId(),known.requestId()))throw new ChatFailure(409,"PROVIDER_USAGE_CONFLICT");
+                        c.accounting().updateModelCall120("UNKNOWN","PROVIDER_USAGE_EXCEEDS_RESERVATION",row.id());
+                        c.accounting().updateBudgetReservation121("RECONCILING",row.id());
+                        if(!c.quota().reservations(row.id()).isEmpty())new MyBatisQuotaLedger(c.quota()).settle(row.userId(),row.id(),null,null,false);
+                    }else settleKnown(row,input,output,known.requestId());
+                }
             }
             boolean cancelled=task(c,new Actor(lease.userId(),lease.spaceId()),lease.taskId(),false).cancelRequested();
             String terminal=cancelled?"CANCELLED":status;
@@ -108,7 +122,10 @@ final class ControlPersistence extends ChatPersistenceSupport implements Cancell
     }
     private void settleKnown(ControlCallRow row,long input,long output,String request) {
         if("LEGACY_UNKNOWN".equals(row.providerKind()))throw new ChatFailure(409,"HISTORICAL_PROVIDER_UNRESOLVED");
-        if(input<0||input>8192||output<0||output>1024)throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION");
+        var reservation=mappers.accounting().selectBudgetReservation34(row.id(),row.taskId(),row.attemptId(),row.spaceId()).getFirst();
+        int maxOutput=reservation.maxOutputTokens()==null?1024:reservation.maxOutputTokens();
+        long maxInput=reservation.maxOutputTokens()==null?8192:reservation.tokens()-maxOutput;
+        if(input<0||input>maxInput||output<0||output>maxOutput||Math.addExact(input,output)>reservation.tokens())throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION");
         var config=object(row.configJson());
         long inputPrice=((Number)config.getOrDefault("inputPrice",2000000L)).longValue();
         long outputPrice=((Number)config.getOrDefault("outputPrice",8000000L)).longValue();

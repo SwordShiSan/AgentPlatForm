@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.agentplatform.infrastructure.dao.chat.ConfigurationMapper">
+    <select id="latestInputEstimate" resultType="java.lang.Long">SELECT r.estimated_input_tokens FROM pf.budget_reservation r JOIN pf.model_call c ON c.id=r.call_id WHERE c.task_id=#{task} ORDER BY c.ordinal DESC LIMIT 1</select>
     <resultMap id="selectUserModelCredential7Result" type="com.agentplatform.infrastructure.dao.po.ConfigurationRows$UserModelCredentialRow7">
         <constructor>
             <arg name="value2" column="__column2" javaType="java.lang.Long"/>

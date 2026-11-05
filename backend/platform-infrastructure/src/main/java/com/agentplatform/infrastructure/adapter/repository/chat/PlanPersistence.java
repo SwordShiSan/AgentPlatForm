@@ -251,8 +251,22 @@ final class PlanPersistence extends ChatPersistenceSupport implements PlanLedger
             var q=JSON.readValue(row.payloadJson(),PlanControls.Question.class);var ids=q.options().stream().map(PlanControls.Option::id).toList();
             if(!ids.containsAll(answer.optionIds()))throw new ChatFailure(422,"QUESTION_OPTION_INVALID");
         }
-        // Conservative byte-count context admission; no persisted answer is silently truncated.
+        // Do not accept an answer which cannot be included in the frozen context.
         var history=mappers.conversation().selectMessage37(row.spaceId(),mappers.recovery().task(row.taskId()).conversationId(),row.taskId());
+        var contextPolicy=ContextPolicy.fromSnapshot(frozen(mappers,row.taskId(),row.spaceId()));
+        if(ContextPolicy.CURRENT_VERSION.equals(contextPolicy.version())){
+            var messages=new ArrayList<com.agentplatform.types.harness.HarnessData.Message>();
+            messages.add(com.agentplatform.types.harness.HarnessData.Message.text(com.agentplatform.types.harness.HarnessData.Role.SYSTEM,"Plan discussion and approved controls"));
+            var checkpoint=mappers.recovery().latest(row.taskId());
+            if(checkpoint!=null)messages.addAll(RecoveryPersistence.projectHistory(mappers,row.taskId(),RecoveryPersistence.decodeMessages(object(checkpoint.canonicalJson()).get("input"))));
+            else for(var message:history)messages.add(com.agentplatform.types.harness.HarnessData.Message.text(com.agentplatform.types.harness.HarnessData.Role.valueOf(message.value1()),String.valueOf(blocks(message.value2()).getFirst().get("text"))));
+            messages.add(com.agentplatform.types.harness.HarnessData.Message.text(com.agentplatform.types.harness.HarnessData.Role.USER,answer.text()));
+            if(row.revisionId()!=null)messages.add(com.agentplatform.types.harness.HarnessData.Message.text(com.agentplatform.types.harness.HarnessData.Role.SYSTEM,mappers.plan().revision(row.revisionId()).markdown()));
+            var definitions=new ArrayList<com.agentplatform.types.harness.HarnessData.ToolDefinition>(PlanControls.workspaceDefinitions());
+            if(WorkspaceToolPersistence.enabled(mappers,row.spaceId(),row.taskId()))definitions.addAll(WorkspaceTools.DEFINITIONS);
+            com.agentplatform.infrastructure.harness.agentscope.AgentScopeContextAdmission.requireFits(messages,definitions,contextPolicy);
+            return;
+        }
         long bytes=answer.text().getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
         for(var message:history)bytes+=message.value2().getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
         if(row.revisionId()!=null)bytes+=mappers.plan().revision(row.revisionId()).markdown().getBytes(java.nio.charset.StandardCharsets.UTF_8).length;

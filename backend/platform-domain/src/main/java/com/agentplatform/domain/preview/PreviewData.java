@@ -12,16 +12,28 @@ public final class PreviewData {
             String requestedFormat,String sourceFormat,String sourceObjectKey,long sourceBytes,String sourceSha256,
             String imageId,String bundle,String policyHash,String state,long revision,long generation,UUID commandId,
             UUID ownerId,Long fence,Instant leaseUntil,Instant deadlineAt,int attempts,String format,String outputObjectKey,
-            Long bytes,String sha256,String mediaType,Integer pages,String errorCode,boolean retryable,UUID assetId) {}
+            Long bytes,String sha256,String mediaType,Integer pages,String errorCode,boolean retryable,UUID assetId,
+            String sourceKind,UUID attachmentId) {}
     public record Publication(UUID id,UUID previewId,UUID spaceId,long generation,UUID relayOwner) {}
     /** Frozen once at durable claim; mutable lease/projection fields are deliberately absent. */
     public record Command(UUID commandId,UUID previewId,UUID spaceId,UUID workspaceId,UUID actorId,UUID fileId,UUID versionId,
             String name,String sourceFormat,String requestedFormat,String sourceObjectKey,long sourceBytes,String sourceSha256,
-            String imageId,String bundle,String policyHash,long generation,UUID ownerId,long fence,Instant deadlineAt,String outputObjectKey) {
+            String imageId,String bundle,String policyHash,long generation,UUID ownerId,long fence,Instant deadlineAt,String outputObjectKey,
+            String sourceKind,UUID attachmentId) {
+        public Command {
+            if(sourceKind==null)sourceKind="FILE_VERSION";
+        }
+        /** Legacy physical envelopes continue to identify a real file version. */
+        public Command(UUID commandId,UUID previewId,UUID spaceId,UUID workspaceId,UUID actorId,UUID fileId,UUID versionId,
+                String name,String sourceFormat,String requestedFormat,String sourceObjectKey,long sourceBytes,String sourceSha256,
+                String imageId,String bundle,String policyHash,long generation,UUID ownerId,long fence,Instant deadlineAt,String outputObjectKey) {
+            this(commandId,previewId,spaceId,workspaceId,actorId,fileId,versionId,name,sourceFormat,requestedFormat,sourceObjectKey,
+                    sourceBytes,sourceSha256,imageId,bundle,policyHash,generation,ownerId,fence,deadlineAt,outputObjectKey,"FILE_VERSION",null);
+        }
         public static Command freeze(Job row) {
             return new Command(row.commandId(),row.id(),row.spaceId(),row.workspaceId(),row.actorId(),row.fileId(),row.versionId(),row.name(),
                     row.sourceFormat(),row.requestedFormat(),row.sourceObjectKey(),row.sourceBytes(),row.sourceSha256(),row.imageId(),
-                    row.bundle(),row.policyHash(),row.generation(),row.ownerId(),row.fence(),row.deadlineAt(),row.outputObjectKey());
+                    row.bundle(),row.policyHash(),row.generation(),row.ownerId(),row.fence(),row.deadlineAt(),row.outputObjectKey(),row.sourceKind(),row.attachmentId());
         }
     }
     public record Stop(String containerId,String execId,String imageId,Instant startedAt,boolean containerStopped,boolean execStopped,boolean callbacksStopped,Instant finishedAt) {

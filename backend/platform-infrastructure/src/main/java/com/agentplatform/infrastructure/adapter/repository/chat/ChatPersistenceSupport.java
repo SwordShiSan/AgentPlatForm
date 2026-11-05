@@ -35,6 +35,7 @@ abstract class ChatPersistenceSupport {
                         auth(c, new Actor(lease.userId(), lease.spaceId()));
                         authorizeCredential(c, lease);
                         activeModel(c, lease);
+                        authorizeAttachments(c,lease);
                     }
                 }
             });
@@ -94,6 +95,9 @@ abstract class ChatPersistenceSupport {
         return submit(c,a,convo,key,selectedModel,selectedSource,text,planMode,workspace,mode,false);
     }
     protected static Task submit(ChatMappers c,Actor a,UUID convo,UUID key,UUID selectedModel,String selectedSource,String text,boolean planMode,UUID workspace,com.agentplatform.types.TaskPermissionData.Mode mode,boolean workspaceTools){
+        return submit(c,a,convo,key,selectedModel,selectedSource,text,planMode,workspace,mode,workspaceTools,ContextPolicy.legacy());
+    }
+    protected static Task submit(ChatMappers c,Actor a,UUID convo,UUID key,UUID selectedModel,String selectedSource,String text,boolean planMode,UUID workspace,com.agentplatform.types.TaskPermissionData.Mode mode,boolean workspaceTools,ContextPolicy contextPolicy){
         auth(c,a);if(text==null||text.isBlank()||text.codePointCount(0,text.length())>8192)throw new ChatFailure(400,"INVALID_CHAT_TEXT");
         String path="/conversations/"+convo+"/tasks",fingerprint=hash(selectedSource==null?selectedModel+"\n"+text:selectedModel+"\n"+selectedSource+"\n"+text);if(planMode)fingerprint=hash(fingerprint+"\nplan=true");if(workspace!=null||mode!=com.agentplatform.types.TaskPermissionData.Mode.RISK_BASED)fingerprint=hash(fingerprint+"\nworkspace="+workspace+"\nmode="+mode);UUID existing=idempotency(c,a,key,path,fingerprint);
         if(existing!=null)return task(c,a,existing,false);
@@ -114,12 +118,13 @@ abstract class ChatPersistenceSupport {
         c.accounting().insertBudgetAccount80(a.spaceId(), a.userId());
         long perCall=(8192L*inputPrice+1024L*outputPrice+999999)/1000000,totalCost=0;
         boolean useWorkspaceTools=workspaceTools&&workspace!=null;
-        var bundle=useWorkspaceTools?ChatRuntime.workspaceBundle():ChatRuntime.bundle();
-        UUID bundleId=useWorkspaceTools?WorkspaceToolPersistence.BUNDLE:BUNDLE;
+        boolean largeContext=ContextPolicy.CURRENT_VERSION.equals(contextPolicy.version());
+        var bundle=largeContext?ChatRuntime.contextBundle(useWorkspaceTools):(useWorkspaceTools?ChatRuntime.workspaceBundle():ChatRuntime.bundle());
+        UUID bundleId=largeContext?(useWorkspaceTools?WorkspaceToolPersistence.CONTEXT_WORKSPACE_BUNDLE:WorkspaceToolPersistence.CONTEXT_BUNDLE):(useWorkspaceTools?WorkspaceToolPersistence.BUNDLE:BUNDLE);
         c.configuration().insertRuntimeBundle82(bundleId, bundle.hash(), json(bundle));
         { var rows54 = c.configuration().selectRuntimeBundle54(bundleId); var row54 = rows54.isEmpty() ? null : rows54.getFirst(); if(row54 == null||!bundle.hash().equals(row54.value1()))throw new ChatFailure(409,"BUNDLE_INCOMPATIBLE"); }
         UUID snapshot=Uuid7.next(),id=Uuid7.next(),userMessage=Uuid7.next(),assistant=Uuid7.next();
-        var values=new TreeMap<String,Object>();values.putAll(resolved);values.put("modelId",model.toString());values.put("modelName",name);values.put("modelVersion",modelVersion);values.put("credentialId",credential.toString());values.put("credentialRevision",revision);values.put("window",8192);values.put("maxOutput",1024);values.put("thinking",false);values.put("pricingVersion",pricing);values.put("inputPrice",inputPrice);values.put("outputPrice",outputPrice);values.put("perCallMicros",perCall);values.put("bundleHash",bundle.hash());values.put("workspaceId",workspace==null?null:workspace.toString());values.put("permissionMode",mode.name());String config=json(values);
+        var values=new TreeMap<String,Object>();values.putAll(resolved);values.put("modelId",model.toString());values.put("modelName",name);values.put("modelVersion",modelVersion);values.put("credentialId",credential.toString());values.put("credentialRevision",revision);values.put("window",contextPolicy.taskWindow());values.put("maxOutput",contextPolicy.maxOutput());if(largeContext){values.put("modelWindow",contextPolicy.modelWindow());values.put("contextSafety",contextPolicy.safetyTokens());values.put("stateBytes",contextPolicy.stateBytes());values.put("checkpointBytes",contextPolicy.checkpointBytes());values.put("contextPolicyVersion",contextPolicy.version());}values.put("thinking",false);values.put("pricingVersion",pricing);values.put("inputPrice",inputPrice);values.put("outputPrice",outputPrice);values.put("perCallMicros",perCall);values.put("bundleHash",bundle.hash());values.put("workspaceId",workspace==null?null:workspace.toString());values.put("permissionMode",mode.name());String config=json(values);
 
         c.configuration().insertChatConfigSnapshot83(snapshot, a.spaceId(), model, credential, revision, config, hash(config));
         c.conversation().insertTask84(id, a.spaceId(), convo, a.userId(), snapshot, bundleId, totalCost, com.agentplatform.types.RequestTrace.current());
@@ -140,29 +145,44 @@ abstract class ChatPersistenceSupport {
         { var rows39 = c.dispatch().selectExecutionDispatch39(l.taskId(), l.ownerId(), l.fence(), l.attemptId(), l.spaceId(), l.ownerId(), l.fence(), l.spaceId(), l.conversationId(), l.ownerId(), l.fence()); if(rows39.isEmpty())throw new ChatFailure(409,"EXECUTION_FENCE_LOST"); }
         { var rows38 = c.conversation().selectTask38(l.taskId(), l.userId(), l.conversationId(), l.modelId(), l.credentialId(), l.credentialRevision(), l.assistantId()); if(rows38.isEmpty())throw new ChatFailure(409,"EXECUTION_FENCE_LOST"); }
         if(!"RUNNING".equals(task.status()))throw new ChatFailure(409,"EXECUTION_FENCE_LOST");
-        if(!cancellationAllowed){auth(c,a);if(task.cancelRequested())throw new ChatFailure(409,"TASK_CANCEL_REQUESTED");}
+        if(!cancellationAllowed){auth(c,a);authorizeAttachments(c,l);if(task.cancelRequested())throw new ChatFailure(409,"TASK_CANCEL_REQUESTED");}
     }
-    static void settleCall(ChatMappers c,Lease l,Call call,HarnessData.Round round,String requestId,String error,boolean real){
-        owned(c,l,true);if(round!=null)MyBatisExecutionLedger.guard(c,l);long allowance=callAllowance(c,l);var prices=frozen(c,l);String state;
-        { var rows34 = c.accounting().selectBudgetReservation34(call.id(), l.taskId(), l.attemptId(), l.spaceId()); var row34 = rows34.isEmpty() ? null : rows34.getFirst(); if(row34 == null)throw new ChatFailure(409,"CALL_NOT_FOUND");state=row34.value1(); }
-        if(!"RESERVED".equals(state))return;
+    static void authorizeAttachments(ChatMappers c,Lease lease){if(c.attachments()!=null&&!c.attachments().inputAuthorized(new com.agentplatform.domain.files.FileData.Actor(lease.userId(),lease.spaceId()),lease.conversationId(),lease.taskId()))throw new ChatFailure(403,"ATTACHMENT_AUTHORIZATION_REVOKED");}
+    static boolean settleCall(ChatMappers c,Lease l,Call call,HarnessData.Round round,String requestId,String error,boolean real){
+        owned(c,l,true);if(round!=null)MyBatisExecutionLedger.guard(c,l);var prices=frozen(c,l);
+        var rows34=c.accounting().selectBudgetReservation34(call.id(),l.taskId(),l.attemptId(),l.spaceId());
+        var row34=rows34.isEmpty()?null:rows34.getFirst();if(row34==null)throw new ChatFailure(409,"CALL_NOT_FOUND");
+        long allowance=row34.amountMicros();String state=row34.value1();
+        if(!"RESERVED".equals(state))return c.accounting().observedUsage(call.id())==null;
         if(round==null){
             boolean unbilled=Set.of("PROVIDER_RATE_LIMITED","PROVIDER_AUTH_REJECTED","PROVIDER_BALANCE_EXHAUSTED","CALL_NOT_SENT").contains(error==null?"":error);
             String outcome=unbilled||"PROVIDER_SERVER_REJECTED".equals(error)?"FAILED":"PROVIDER_USAGE_MISSING".equals(error)?"COMPLETED":"UNKNOWN";
             c.accounting().updateModelCall120(outcome, error, call.id());
             c.accounting().updateBudgetReservation121(unbilled?"RELEASED":"RECONCILING", call.id());
             if(!c.quota().reservations(call.id()).isEmpty())new MyBatisQuotaLedger(c.quota()).settle(l.userId(),call.id(),null,null,unbilled);
-            if(unbilled){if(!daily(c,l.taskId()))c.accounting().updateBudgetAccount122(allowance, l.spaceId(), l.userId());if(real)c.accounting().updateAcceptanceModelMeter123(allowance);}return;
+            if(unbilled){if(!daily(c,l.taskId()))c.accounting().updateBudgetAccount122(allowance, l.spaceId(), l.userId());if(real)c.accounting().updateAcceptanceModelMeter123(allowance);}return true;
         }
-        if(round.inputTokens()<0||round.inputTokens()>8192||round.outputTokens()<0||round.outputTokens()>1024)throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION");
-        long tokens=round.inputTokens()+round.outputTokens(),cost=(round.inputTokens()*((Number)prices.getOrDefault("inputPrice",2000000L)).longValue()+round.outputTokens()*((Number)prices.getOrDefault("outputPrice",8000000L)).longValue()+999999)/1000000;
-        if(tokens>9216||cost>allowance)throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION");
+        int outputLimit=row34.maxOutputTokens()==null?1024:row34.maxOutputTokens();
+        long inputLimit=row34.maxOutputTokens()==null?8192:row34.tokens()-outputLimit;
+        if(round.inputTokens()<0||round.outputTokens()<0)throw new ChatFailure(409,"PROVIDER_USAGE_INVALID");
+        long tokens=Math.addExact(round.inputTokens(),round.outputTokens());
+        long cost=Math.addExact(Math.addExact(Math.multiplyExact(round.inputTokens(),((Number)prices.getOrDefault("inputPrice",2000000L)).longValue()),Math.multiplyExact(round.outputTokens(),((Number)prices.getOrDefault("outputPrice",8000000L)).longValue())),999999)/1000000;
+        if(round.inputTokens()>inputLimit||round.outputTokens()>outputLimit||tokens>row34.tokens()||cost>allowance){
+            if(row34.contextPolicyVersion()==null)throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION");
+            c.accounting().insertObservedUsage(call.id(),l.spaceId(),l.taskId(),round.inputTokens(),round.outputTokens(),cost,requestId);
+            var observed=c.accounting().observedUsage(call.id());
+            if(observed==null||observed.inputTokens()!=round.inputTokens()||observed.outputTokens()!=round.outputTokens()||observed.costMicros()!=cost||!Objects.equals(observed.providerRequestId(),requestId))throw new ChatFailure(409,"PROVIDER_USAGE_CONFLICT");
+            c.accounting().updateModelCall120("UNKNOWN","PROVIDER_USAGE_EXCEEDS_RESERVATION",call.id());
+            c.accounting().updateBudgetReservation121("RECONCILING",call.id());
+            if(!c.quota().reservations(call.id()).isEmpty())new MyBatisQuotaLedger(c.quota()).settle(l.userId(),call.id(),null,null,false);
+            return false;
+        }
         c.accounting().updateModelCall124(round.inputTokens(), round.outputTokens(), cost, requestId, call.id());
         c.accounting().updateBudgetReservation125(call.id());
         if(!c.quota().reservations(call.id()).isEmpty())new MyBatisQuotaLedger(c.quota()).settle(l.userId(),call.id(),tokens,cost,false);
         if(!daily(c,l.taskId()))c.accounting().updateBudgetAccount126(allowance, tokens, cost, l.spaceId(), l.userId());
         if(real)c.accounting().updateAcceptanceModelMeter127(allowance, cost);
-        event(c,new Actor(l.userId(),l.spaceId()),l.conversationId(),l.taskId(),"usage.updated",call.ordinal(),Map.of("callId",call.id().toString(),"inputTokens",round.inputTokens(),"outputTokens",round.outputTokens(),"costMicros",cost,"estimated",true));return;
+        event(c,new Actor(l.userId(),l.spaceId()),l.conversationId(),l.taskId(),"usage.updated",call.ordinal(),Map.of("callId",call.id().toString(),"inputTokens",round.inputTokens(),"outputTokens",round.outputTokens(),"costMicros",cost,"estimated",true));return true;
     }
     static boolean daily(ChatMappers c,UUID task){return "USER_DAILY".equals(c.executionPolicy().policy(task).quotaMode());}
     static void authorizeCredential(ChatMappers c,Lease l){
@@ -291,7 +311,10 @@ abstract class ChatPersistenceSupport {
         return Map.of("version",version,"userConfigured",active,"platformAvailable",platform);
     }
     protected static Map<String,Object> frozen(ChatMappers c,Lease l){
-        { var rows6 = c.conversation().selectTask6(l.taskId(), l.spaceId()); var row6 = rows6.isEmpty() ? null : rows6.getFirst(); if(row6 == null)throw new ChatFailure(404,"RESOURCE_NOT_FOUND");return object(row6.value1()); }
+        return frozen(c,l.taskId(),l.spaceId());
+    }
+    protected static Map<String,Object> frozen(ChatMappers c,UUID task,UUID space){
+        { var rows6 = c.conversation().selectTask6(task, space); var row6 = rows6.isEmpty() ? null : rows6.getFirst(); if(row6 == null)throw new ChatFailure(404,"RESOURCE_NOT_FOUND");return object(row6.value1()); }
     }
     protected static long callAllowance(ChatMappers c,Lease l){return ((Number)frozen(c,l).getOrDefault("perCallMicros",24576L)).longValue();}
     static void activeModel(ChatMappers c,Lease l){validateModel(c,l.modelId());}

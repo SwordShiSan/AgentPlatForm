@@ -11,6 +11,7 @@ export const router = createRouter({
     { path: '/app', redirect: chatEnabled ? '/app/chat' : '/app/settings/account' },
     { path: '/app/settings/account', component: () => import('../features/identity/AccountPage.vue'), meta: { requiresAuth: true } },
     ...(workspaceEnabled ? [{ path: '/app/workspaces/:id?', component: () => import('../features/workspace/WorkspacePage.vue'), meta: { requiresAuth: true } }] : []),
+    ...(workspaceEnabled ? [{ path: '/app/storage', component: () => import('../features/workspace/StoragePage.vue'), meta: { requiresAuth: true } }] : []),
     ...(chatEnabled ? [
       { path: '/app/chat/:id?', component: () => import('../features/chat/ChatPage.vue'), meta: { requiresAuth: true } },
       { path: '/', redirect: '/app/chat' },

@@ -10,7 +10,7 @@ import { textPreview } from './file-transfers';
 import { readPreviewBytes, MAX_PREVIEW_OBJECT_BYTES, staticHtmlDocument } from './preview-content';
 import { clearPreviewRequests, pendingPreview, previewHeaders, previewScope, savePreview, submitPreview, type PendingPreview, type PreviewRequest } from './preview-requests';
 
-const props = defineProps<{ fileId: string; versionId: string; name: string; userId: string; spaceId: string; historical?: boolean }>();
+const props = defineProps<{ fileId?: string; versionId?: string; attachmentId?: string; name: string; userId: string; spaceId: string; historical?: boolean }>();
 const emit = defineEmits<{ close: [] }>();
 type Preview = components['schemas']['FilePreview'];
 const PdfPreview = defineAsyncComponent(() => import('./PdfPreview.vue'));
@@ -19,19 +19,20 @@ const request = shallowRef<PendingPreview>(); const creating = ref(false); const
 const text = ref<string>(); const image = ref<string>(); const html = ref<string>(); const loaded = ref(''); const expired = ref(false);
 let controller = new AbortController(); let contentController = new AbortController();
 let retry: { key: string; revision: number } | undefined;
-const scope = computed(() => previewScope(props.userId, props.spaceId, props.fileId, props.versionId, format.value));
+const scope = computed(() => previewScope(props.userId, props.spaceId, props.attachmentId ? `attachment:${props.attachmentId}` : props.fileId ?? '', props.versionId ?? props.attachmentId ?? '', format.value));
+const sourceMatches = (value: Preview) => props.attachmentId ? value.sourceKind === 'CHAT_ATTACHMENT' && value.attachmentId === props.attachmentId && value.fileId === null && value.versionId === null : value.fileId === props.fileId && value.versionId === props.versionId;
 const queryKey = computed(() => ['file-preview', props.userId, props.spaceId, id.value]);
 const job = useQuery({ queryKey, enabled: computed(() => Boolean(id.value) && !expired.value), retry: false,
   queryFn: async ({ signal }) => (await api.GET('/api/v1/previews/{id}', { signal,
     params: { path: { id: id.value! }, header: { 'X-Space-Id': props.spaceId } } })).data!,
   refetchInterval: value => ['QUEUED', 'RUNNING'].includes(value.state.data?.state ?? '') ? 1500 : false,
 });
-const download = computed(() => `/api/v1/files/${encodeURIComponent(props.fileId)}/content?versionId=${encodeURIComponent(props.versionId)}`);
+const download = computed(() => props.attachmentId ? `/api/v1/attachments/${encodeURIComponent(props.attachmentId)}/content` : `/api/v1/files/${encodeURIComponent(props.fileId ?? '')}/content?versionId=${encodeURIComponent(props.versionId ?? '')}`);
 const contentUrl = computed(() => id.value ? `/api/v1/previews/${encodeURIComponent(id.value)}/content` : '');
 const ready = computed(() => {
   const value = job.data.value;
   return !expired.value && !job.isError.value && value?.state === 'READY' && value.allowedActions.includes('VIEW')
-    && value.fileId === props.fileId && value.versionId === props.versionId && value.bytes !== null
+    && sourceMatches(value) && value.bytes !== null
     && value.bytes <= MAX_PREVIEW_OBJECT_BYTES ? value : undefined;
 });
 const canStaticHtml = computed(() => /\.html?$/i.test(props.name) && format.value !== 'HTML_STATIC');
@@ -47,9 +48,9 @@ async function create() {
   if (creating.value || expired.value) return;
   creating.value = true; notice.value = ''; const signal = controller.signal; const selectedScope = scope.value;
   try {
-    const pending = request.value ?? pendingPreview(selectedScope, { versionId: props.versionId, format: format.value }); request.value = pending;
+    const pending = request.value ?? pendingPreview(selectedScope, { versionId: props.versionId ?? props.attachmentId!, format: format.value }); request.value = pending;
     if (pending.previewId) { id.value = pending.previewId; return; }
-    const result = await submitPreview(props.fileId, pending, props.spaceId, signal); signal.throwIfAborted();
+    const result = await submitPreview(props.fileId ?? '', pending, props.spaceId, signal, props.attachmentId); signal.throwIfAborted();
     if (scope.value !== selectedScope) return;
     pending.previewId = result.id; savePreview(selectedScope, pending); id.value = result.id;
     queryClient.setQueryData(['file-preview', props.userId, props.spaceId, result.id], result);
@@ -60,12 +61,12 @@ async function create() {
 }
 watch(scope, () => {
   controller.abort(); controller = new AbortController(); clearContent(); id.value = undefined; expired.value = false; retry = undefined;
-  request.value = pendingPreview(scope.value, { versionId: props.versionId, format: format.value }); creating.value = false; notice.value = '';
+  request.value = pendingPreview(scope.value, { versionId: props.versionId ?? props.attachmentId!, format: format.value }); creating.value = false; notice.value = '';
   void create();
 }, { immediate: true });
 async function loadContent(value: Preview | undefined) {
   if (!value || value.state !== 'READY' || !value.allowedActions.includes('VIEW') || expired.value) return;
-  if (value.fileId !== props.fileId || value.versionId !== props.versionId || value.bytes === null || value.bytes > MAX_PREVIEW_OBJECT_BYTES) {
+  if (!sourceMatches(value) || value.bytes === null || value.bytes > MAX_PREVIEW_OBJECT_BYTES) {
     clearContent(); notice.value = '预览版本身份不一致，请下载原文件。'; return;
   }
   const marker = `${value.id}:${value.revision}:${value.sha256}`;

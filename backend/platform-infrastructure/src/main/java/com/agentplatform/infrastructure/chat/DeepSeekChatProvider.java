@@ -45,20 +45,31 @@ public final class DeepSeekChatProvider implements ChatProvider, AutoCloseable {
         return open(modelName,key,input,onText).result();
     }
     @Override public Exchange open(String modelName,String key,List<Message> input,Consumer<String> onText){
-        return exchange(modelName,key,input,fixtureTools?RecoveryFixtureTool.DEFINITIONS.stream().map(ToolDefinition::legacy).toList():List.of(),onText);
+        return exchange(modelName,key,input,fixtureTools?RecoveryFixtureTool.DEFINITIONS.stream().map(ToolDefinition::legacy).toList():List.of(),1024,onText);
     }
     @Override public Exchange openTyped(String modelName,String key,List<Message> input,List<ToolDefinition> definitions,Consumer<String> onText){
         if(definitions.stream().anyMatch(d->!(d.category()==ToolCategory.CONTROL&&PlanControls.NAMES.contains(d.name()))
                 && !(fixtureTools&&RecoveryFixtureTool.DEFINITIONS.stream().anyMatch(f->f.name().equals(d.name())))
                 && !(workspaceTools&&WorkspaceTools.registered(d))))
             throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");
-        return exchange(modelName,key,input,definitions,onText);
+        return exchange(modelName,key,input,definitions,1024,onText);
     }
-    private Exchange exchange(String modelName,String key,List<Message> input,List<ToolDefinition> definitions,Consumer<String> onText){
+    @Override public Exchange open(String modelName,String key,List<Message> input,int maxOutput,Consumer<String> onText){
+        if(maxOutput<1||maxOutput>ContextPolicy.MAX_OUTPUT)throw new IllegalArgumentException("Invalid maximum output");
+        return exchange(modelName,key,input,fixtureTools?RecoveryFixtureTool.DEFINITIONS.stream().map(ToolDefinition::legacy).toList():List.of(),maxOutput,onText);
+    }
+    @Override public Exchange openTyped(String modelName,String key,List<Message> input,List<ToolDefinition> definitions,int maxOutput,Consumer<String> onText){
+        if(maxOutput<1||maxOutput>ContextPolicy.MAX_OUTPUT)throw new IllegalArgumentException("Invalid maximum output");
+        if(definitions.stream().anyMatch(d->!(d.category()==ToolCategory.CONTROL&&PlanControls.NAMES.contains(d.name()))
+                && !(fixtureTools&&RecoveryFixtureTool.DEFINITIONS.stream().anyMatch(f->f.name().equals(d.name())))
+                && !(workspaceTools&&WorkspaceTools.registered(d))))throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");
+        return exchange(modelName,key,input,definitions,maxOutput,onText);
+    }
+    private Exchange exchange(String modelName,String key,List<Message> input,List<ToolDefinition> definitions,int maxOutput,Consumer<String> onText){
         if(!List.of("deepseek-flash","deepseek-v4-pro").contains(modelName))throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH");
         var http=HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).connectTimeout(Duration.ofSeconds(10)).build();
         var transport=new JdkHttpTransport(http,HttpTransportConfig.defaults());
-        var options=GenerateOptions.builder().stream(true).maxTokens(1024)
+        var options=GenerateOptions.builder().stream(true).maxTokens(maxOutput)
                 .executionConfig(ExecutionConfig.builder().maxAttempts(1).retryOn(error->false).timeout(Duration.ofSeconds(120)).build())
                 // AgentScope 2.0.4 emits stream_options.include_usage itself for
                 // streaming. Repeating it as an extra body param creates duplicate JSON keys.

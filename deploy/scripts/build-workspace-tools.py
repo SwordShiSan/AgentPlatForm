@@ -10,7 +10,7 @@ def sha(path):
     return h.hexdigest()
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--engineering-receipt',required=True,type=Path);p.add_argument('--resume',type=Path);p.add_argument('--stage',choices=['r44','r52','r53'],default='r44');args=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--engineering-receipt',required=True,type=Path);p.add_argument('--resume',type=Path);p.add_argument('--reuse-unchanged-from',type=Path);p.add_argument('--stage',choices=['r44','r52','r53','r54'],default='r44');args=p.parse_args()
     data=ROOT/('.cache/'+args.stage+'-local')
     receipt=json.loads(args.engineering_receipt.read_text(encoding='utf-8'));assert receipt['status']=='PASS' and receipt['inputUnchanged']
     inputs=args.engineering_receipt.parent/'source.json'
@@ -21,6 +21,21 @@ def main():
     assert not subprocess.check_output(['git','status','--porcelain'],cwd=ROOT),'Commit public source before building'
     configuration_source=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
     source=configuration_source
+    reuse=None;reuse_proofs={}
+    if args.reuse_unchanged_from:
+        assert args.stage=='r54' and not args.resume
+        reuse=json.loads(args.reuse_unchanged_from.read_text());assert reuse['status']=='BUILT_EXPORTED_NOT_ACCEPTED'
+        affected=subprocess.check_output(['git','diff','--name-only',reuse['source'],source],cwd=ROOT,text=True).splitlines()
+        copied_helpers=['deploy/scripts/'+name+'.py' for name in ['file-stream-bridge','file-mutation-bridge','file-scan-bridge','file-capture-bridge','sandbox-file-bridge','file-helper-entrypoint']]
+        fixed={'gateway':['deploy/gateway.Dockerfile','deploy/nginx.production.conf','frontend/package.json','frontend/pnpm-lock.yaml','frontend/vite.config.ts','contracts/openapi.yaml'],
+               'file-helper':['deploy/file-helper.Dockerfile',*copied_helpers],
+               'preview-renderer':['deploy/preview-renderer.Dockerfile','deploy/preview-renderer.lock.json','backend/platform-app/pom.xml','backend/pom.xml'],
+               'provider-fixture':['deploy/provider-fixture.Dockerfile','deploy/probes/chat_provider_fixture.py']}
+        for component,paths in fixed.items():
+            relevant=[name for name in affected if name in paths or component=='gateway' and name.startswith('frontend/src/') or component=='preview-renderer' and (name.startswith('backend/platform-app/src/renderer/') or name.startswith('deploy/preview/'))]
+            assert not relevant,'Reused component input changed: '+str(relevant)
+            reuse_proofs[component]={'priorSource':reuse['images'][component]['source'],'inputDiff':[],'priorRecordSha256':sha(args.reuse_unchanged_from)}
+        assert sha(ROOT/'backend/platform-app/target/platform-app-0.1.0-SNAPSHOT-renderer.jar')==json.loads(args.engineering_receipt.read_text())['checks']['packages']['renderer']['sha256']
     if args.resume:
         out=args.resume.resolve();assert out.is_relative_to(data) and out.is_dir()
         state=json.loads((out/'build-inputs.json').read_text(encoding='utf-8'));source=state['source']
@@ -43,9 +58,13 @@ def main():
         assert r.returncode==0,name+' failed; read protected log before retrying'
         print(name+' PASS',flush=True)
     jar=ROOT/'backend/platform-app/target/platform-app-0.1.0-SNAPSHOT.jar';assert jar.is_file()
-    if not args.resume:run('frontend-build',[node,ROOT/'frontend/node_modules/vite/bin/vite.js','build'],ROOT/'frontend')
+    if not args.resume and not reuse:run('frontend-build',[node,ROOT/'frontend/node_modules/vite/bin/vite.js','build'],ROOT/'frontend')
     images={}
-    for component in (['api','gateway','file-helper','preview-renderer'] if args.stage=='r53' else ['api','gateway','file-helper'] if args.stage=='r52' else ['api','gateway','file-helper','provider-fixture']):
+    for component in (['api','gateway','file-helper','preview-renderer','provider-fixture'] if args.stage=='r54' else ['api','gateway','file-helper','preview-renderer'] if args.stage=='r53' else ['api','gateway','file-helper'] if args.stage=='r52' else ['api','gateway','file-helper','provider-fixture']):
+        if reuse and component!='api':
+            item=json.loads(json.dumps(reuse['images'][component]));actual=json.loads(subprocess.check_output(['docker','--context','desktop-linux','image','inspect',item['tag']]))[0]
+            assert actual['Id']==item['localId'] and actual['Config']['Labels']['org.opencontainers.image.revision']==item['source']
+            item['transportIncluded']=False;item['reuseProof']=reuse_proofs[component];images[component]=item;continue
         tag='agentplatform-'+component+':'+args.stage+'-'+source[:12]
         cmd=['docker','--context','desktop-linux','build','--platform','linux/amd64','--network='+('default' if component=='preview-renderer' else 'none'),'--pull=false','--build-arg','SOURCE_REVISION='+source,'-f','deploy/'+component+'.Dockerfile','-t',tag]
         if component=='gateway':cmd+=['--build-arg','NGINX_CONFIG=deploy/nginx.files-local.conf' if args.stage in ['r52','r53'] else 'NGINX_CONFIG=deploy/nginx.production.conf']
@@ -54,11 +73,12 @@ def main():
         image=json.loads(subprocess.check_output(['docker','image','inspect',tag]))[0]
         assert image['Architecture']=='amd64' and image['Os']=='linux' and image['Config']['Labels']['org.opencontainers.image.revision']==source
         images[component]={'component':component,'tag':tag,'source':source,'inspect':image}
-    archive=out/'artifacts.tar';run('save',['docker','image','save','-o',archive,*[x['tag'] for x in images.values()]])
+    archive=out/'artifacts.tar';run('save',['docker','image','save','-o',archive,*[x['tag'] for x in images.values() if 'inspect' in x]])
     spec=importlib.util.spec_from_file_location('image_export',ROOT/'deploy/scripts/export-project-image.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
     with tarfile.open(archive) as exported:
         for component,item in images.items():
-            item.update(module.exported_identity(exported,item.pop('inspect'),source));item['platform']='linux/amd64'
+            if 'inspect' in item:item.update(module.exported_identity(exported,item.pop('inspect'),source));item['transportIncluded']=True
+            item['platform']='linux/amd64'
     compressed=out/'artifacts.tar.gz'
     with archive.open('rb') as origin,compressed.open('xb') as destination:
         with gzip.GzipFile(filename='',fileobj=destination,mode='wb',compresslevel=1,mtime=0) as z:shutil.copyfileobj(origin,z,1024*1024)

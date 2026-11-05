@@ -18,6 +18,13 @@ public interface AccountingMapper {
     int updateBudgetAccount81(@Param("totalCost") long totalCost, @Param("spaceId") UUID spaceId, @Param("userId") UUID userId, @Param("totalCost2") long totalCost2);
     int insertModelCall116(@Param("id") UUID id, @Param("spaceId") UUID spaceId, @Param("taskId") UUID taskId, @Param("attemptId") UUID attemptId, @Param("ordinal") int ordinal, @Param("price") String price, @Param("turn") UUID turn);
     int insertBudgetReservation117(@Param("id") UUID id, @Param("taskId") UUID taskId, @Param("allowance") long allowance);
+    int insertContextReservation(@Param("id") UUID id, @Param("taskId") UUID taskId,
+            @Param("tokens") long tokens, @Param("allowance") long allowance,
+            @Param("estimatedInput") long estimatedInput, @Param("maxOutput") int maxOutput,
+            @Param("policyVersion") String policyVersion);
+    int insertObservedUsage(@Param("call") UUID call,@Param("space") UUID space,@Param("task") UUID task,
+            @Param("input") long input,@Param("output") long output,@Param("cost") long cost,@Param("request") String request);
+    ObservedUsageRow observedUsage(@Param("call") UUID call);
     int updateAcceptanceModelMeter118(@Param("allowance") long allowance);
     int updateModelCall119(@Param("id") UUID id, @Param("taskId") UUID taskId);
     int updateModelCall120(@Param("outcome") String outcome, @Param("error") String error, @Param("id") UUID id);

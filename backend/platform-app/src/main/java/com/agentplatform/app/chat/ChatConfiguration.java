@@ -30,13 +30,19 @@ public class ChatConfiguration {
             com.agentplatform.infrastructure.dao.chat.PlanMapper plan,
             com.agentplatform.infrastructure.dao.chat.PermissionMapper permissions,
             com.agentplatform.infrastructure.dao.chat.ApprovalMapper approvals,
-            com.agentplatform.infrastructure.dao.chat.WorkspaceToolMapper workspaceTools) {
-        return new com.agentplatform.infrastructure.dao.chat.ChatMappers(ledger, conversation, dispatch, accounting, configuration, event, control, recovery, quota, executionPolicy,plan,permissions,approvals,workspaceTools);
+            com.agentplatform.infrastructure.dao.chat.WorkspaceToolMapper workspaceTools,
+            com.agentplatform.infrastructure.dao.files.TaskAttachmentMapper attachments,
+            @Value("${platform.attachments.enabled:false}")boolean attachmentsEnabled) {
+        return new com.agentplatform.infrastructure.dao.chat.ChatMappers(ledger, conversation, dispatch, accounting, configuration, event, control, recovery, quota, executionPolicy,plan,permissions,approvals,workspaceTools,attachmentsEnabled?attachments:null);
     }
     @Bean ChatRepository chatRepository(com.agentplatform.infrastructure.dao.chat.ChatMappers mappers,
             org.springframework.transaction.support.TransactionTemplate transactions,
-            @Value("${platform.workspace.tools.enabled:false}")boolean workspaceTools) {
-        return new TransactionalChatRepository(new MyBatisChatRepository(mappers,workspaceTools), transactions);
+            @Value("${platform.workspace.tools.enabled:false}")boolean workspaceTools,
+            @Value("${platform.chat.context-v2.enabled:false}")boolean contextEnabled,
+            @Value("${platform.chat.context.window-tokens:262144}")int contextWindow,
+            @Value("${platform.chat.context.max-output-tokens:4096}")int maxOutput) {
+        var context=contextEnabled?com.agentplatform.domain.chat.ContextPolicy.current(contextWindow,maxOutput):com.agentplatform.domain.chat.ContextPolicy.legacy();
+        return new TransactionalChatRepository(new MyBatisChatRepository(mappers,workspaceTools,context), transactions);
     }
     @Configuration(proxyBeanMethods=false)
     @Profile({"chat-local","chat-worker"})
@@ -59,7 +65,10 @@ public class ChatConfiguration {
             return new SpringAmqpDispatchTransport(connections,repository);
         }
     }
-    @Bean @Profile("chat-local") ChatApi chatApi(ChatRepository repository,@Value("${platform.chat.cursor-key-file}")String file,CredentialCipher cipher)throws Exception{return new ChatService(repository,new ChatCursor(Files.readAllBytes(Path.of(file))),cipher);}
+    @Bean @Profile("chat-local") ChatApi chatApi(ChatRepository repository,@Value("${platform.chat.cursor-key-file}")String file,CredentialCipher cipher,
+            org.springframework.beans.factory.ObjectProvider<com.agentplatform.app.attachment.AttachmentSubmission> attachments)throws Exception{
+        var service=new ChatService(repository,new ChatCursor(Files.readAllBytes(Path.of(file))),cipher);attachments.ifAvailable(service::configureAttachments);return service;
+    }
     @Bean @Profile("chat-local") @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="platform.workspace.tools.enabled",havingValue="true")
     com.agentplatform.api.chat.WorkspaceOperationsApi workspaceOperationsApi(ChatRepository repository,com.agentplatform.domain.files.AssetStore assets){return new WorkspaceOperationsService(repository,assets);}
     @Bean @Profile("chat-local") ReadinessProbe chatReadiness(ChatRepository repository,IdentityStore identity,DispatchTransport transport){return ()->identity.ready()&&repository.ready()&&transport.connected();}
@@ -74,10 +83,13 @@ public class ChatConfiguration {
             @Value("${platform.chat.workspace-root:/tmp/chat-runtime}")String root,
             @Value("${platform.chat.fixture-tools:false}")boolean tools,
             @Value("${platform.chat.approvals-enabled:false}")boolean approvals,
-            @Value("${platform.chat.acceptance-run:}")String acceptanceRun,org.springframework.beans.factory.ObjectProvider<WorkspaceToolRuntime> workspaceTools,org.springframework.core.env.Environment environment){
+            @Value("${platform.chat.acceptance-run:}")String acceptanceRun,org.springframework.beans.factory.ObjectProvider<WorkspaceToolRuntime> workspaceTools,
+            org.springframework.beans.factory.ObjectProvider<com.agentplatform.domain.files.AssetStore> assets,
+            @Value("${platform.attachments.enabled:false}")boolean attachmentsEnabled,org.springframework.core.env.Environment environment){
         var execution=new ChatExecution(repository,provider,cipher,Path.of(root),timers.getScheduledExecutor(),
                     tools?new com.agentplatform.infrastructure.chat.RecoveryFixtureTool(Path.of(root).resolve("fixture-effects")):null);
         var workspaceRuntime=workspaceTools.getIfAvailable();if(workspaceRuntime!=null)execution.configureWorkspaceTools(workspaceRuntime);
+        if(attachmentsEnabled)execution.configureAttachments(assets.getObject());
         if(approvals){
             if(!environment.acceptsProfiles(org.springframework.core.env.Profiles.of("recovery-fixture")))throw new IllegalArgumentException("FIXTURE_PROFILE_REQUIRED");
             execution.configureToolApprovals();

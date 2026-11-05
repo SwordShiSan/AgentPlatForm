@@ -14,11 +14,11 @@ def digest(path,compressed=False):
  return h.hexdigest()
 
 def main():
- p=argparse.ArgumentParser(description=__doc__);p.add_argument('--root',required=True);p.add_argument('--project',required=True);args=p.parse_args()
+ p=argparse.ArgumentParser(description=__doc__);p.add_argument('--root',required=True);p.add_argument('--project',required=True);p.add_argument('--stage',choices=['r53','r54'],default='r53');args=p.parse_args()
  import re
- assert re.fullmatch('/srv/agentplatform/acceptance/r44-(?:r5[12]-[0-9]{14}|full-[0-9]{8}t[0-9]{6}z)',args.root)
- assert re.fullmatch('agentplatform-(?:r5[12]-local|r44-[0-9]{8}t[0-9]{6}z)',args.project)
- spec=importlib.util.spec_from_file_location('native',ROOT/'deploy/scripts/files-native-fixture.py');native=importlib.util.module_from_spec(spec);spec.loader.exec_module(native);native.configure('r53');native.DATA.mkdir(parents=True,exist_ok=True)
+ assert re.fullmatch('/srv/agentplatform/acceptance/r44-(?:r5[123]-[0-9]{14}|full-[0-9]{8}t[0-9]{6}z)',args.root)
+ assert re.fullmatch('agentplatform-(?:r5[123]-local|r44-[0-9]{8}t[0-9]{6}z)',args.project)
+ spec=importlib.util.spec_from_file_location('native',ROOT/'deploy/scripts/files-native-fixture.py');native=importlib.util.module_from_spec(spec);spec.loader.exec_module(native);native.configure(args.stage);native.DATA.mkdir(parents=True,exist_ok=True)
  common='''from pathlib import Path
 import gzip,hashlib,json,os,shutil,subprocess,stat
 root=Path(ROOT);project=PROJECT;disk=root/'quota/workspaces.xfs';archive=root/'quota/workspaces.xfs.cold.gz'
@@ -54,7 +54,7 @@ receipt={'root':str(root),'project':project,'disk':str(disk),'archive':str(archi
 '''
  record=json.loads(native.remote(code,timeout=240));copies=[]
  for suffix in ['a','b']:
-  folder=ROOT.parent/'.protected-deliveries'/('r53-test-disk-'+suffix);folder.mkdir(parents=True,exist_ok=True)
+  folder=ROOT.parent/'.protected-deliveries'/(args.stage+'-test-disk-'+suffix);folder.mkdir(parents=True,exist_ok=True)
   actor=subprocess.check_output(['whoami'],text=True).strip();subprocess.run(['icacls',str(folder),'/inheritance:r','/grant:r',actor+':(OI)(CI)F','*S-1-5-18:(OI)(CI)F'],check=True,capture_output=True)
   copy=folder/(Path(args.root).name+'.xfs.gz')
   if not copy.exists():native.local(['scp',*native.SSH,'root@124.222.55.140:'+record['archive'],copy],timeout=240)

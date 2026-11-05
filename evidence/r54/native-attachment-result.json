@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "supplierCalls": 0,
+  "source": "b7b89884a352796fdaa45780e4216c3ed440f3d6",
+  "scope": "Actual PG/MQ/S3/runner extraction for DOCX/XLSX/PPTX/text, no workspace allocation, large SDK chat, pinned public source, ACL and preference CAS",
+  "attachmentIds": [
+    "01a1aba0-d85c-728b-aefe-c60bc15fba53",
+    "01a1aba1-08c2-73ca-a060-755bb373af68",
+    "01a1aba1-2899-763a-b36c-a355af0717a4",
+    "01a1aba1-44fd-79f0-8339-30155c6164a4",
+    "01a1aba1-5a5f-736a-a2e5-4789e80a36a9"
+  ],
+  "taskId": "01a1abbc-6bdb-71b4-aa64-71454f1af01f",
+  "conversationId": "01a1abbc-6b1d-7823-91d7-f41f7cc24ba4",
+  "sourceBytes": 342021,
+  "estimatedInputTokens": 171873
+}

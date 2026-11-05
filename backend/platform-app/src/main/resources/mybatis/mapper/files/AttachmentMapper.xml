@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.files.AttachmentMapper">
+ <select id="usage" resultType="com.agentplatform.infrastructure.dao.files.AttachmentMapper$UsageRow">
+  SELECT s.object_limit_bytes,s.committed_bytes AS used_bytes,s.reserved_bytes,
+   (SELECT coalesce(sum(a.size_bytes),0) FROM pf.asset_object a JOIN pf.file_version v ON v.asset_id=a.id AND v.space_id=a.space_id JOIN pf.file_entry f ON f.id=v.file_id AND f.space_id=v.space_id WHERE a.space_id=s.space_id AND a.status='AVAILABLE' AND f.deleted_at IS NOT NULL) AS retained_bytes,
+   c.category,coalesce(o.bytes,0) AS category_bytes,coalesce(o.objects,0) AS objects
+  FROM pf.space_storage s CROSS JOIN(VALUES('file-version'),('chat-attachment'),('preview'),('text-extraction')) c(category)
+  LEFT JOIN(SELECT category,sum(size_bytes) AS bytes,count(*) AS objects FROM pf.asset_object WHERE space_id=#{actor.spaceId} AND status='AVAILABLE' GROUP BY category) o ON o.category=c.category
+  WHERE s.space_id=#{actor.spaceId} AND pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}) ORDER BY c.category
+ </select>
+ <sql id="uploadColumns">u.id,u.space_id,u.actor_id,u.attachment_id,u.request_id,u.request_hash,u.status,u.transfer_owner,u.transfer_until,u.revision,u.expires_at,a.filename,a.size_bytes,a.sha256,o.object_key</sql>
+ <select id="authorized" resultType="boolean">SELECT pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId})</select>
+ <select id="upload" resultType="com.agentplatform.domain.attachment.AttachmentData$Upload">SELECT <include refid="uploadColumns"/> FROM pf.chat_attachment_upload u JOIN pf.chat_attachment a ON a.id=u.attachment_id JOIN pf.asset_object o ON o.id=a.asset_id WHERE u.id=#{id}<if test="lock"> FOR UPDATE OF u</if></select>
+ <select id="request" resultType="com.agentplatform.domain.attachment.AttachmentData$Upload">SELECT <include refid="uploadColumns"/> FROM pf.chat_attachment_upload u JOIN pf.chat_attachment a ON a.id=u.attachment_id JOIN pf.asset_object o ON o.id=a.asset_id WHERE u.space_id=#{actor.spaceId} AND u.actor_id=#{actor.userId} AND u.request_id=#{request}</select>
+ <select id="attachment" resultType="com.agentplatform.domain.attachment.AttachmentData$Attachment">SELECT a.id,a.space_id,a.actor_id,a.asset_id,a.draft_id,a.conversation_id,a.filename,a.size_bytes,a.sha256,a.status,a.revision,o.object_key FROM pf.chat_attachment a JOIN pf.asset_object o ON o.id=a.asset_id WHERE a.id=#{id}<if test="lock"> FOR UPDATE OF a</if></select>
+ <update id="reserve">UPDATE pf.space_storage SET reserved_bytes=reserved_bytes+#{bytes},version=version+1 WHERE space_id=#{space} AND status='ACTIVE' AND object_limit_bytes-reserved_bytes-committed_bytes&gt;=#{bytes}</update>
+ <insert id="insertAsset">INSERT INTO pf.asset_object(id,space_id,category,version_id,object_key,sha256,size_bytes,mime,status,created_by) VALUES(#{row.assetId},#{row.spaceId},'chat-attachment',#{row.id},#{row.objectKey},#{row.sha256},#{row.sizeBytes},'application/octet-stream','STAGING',#{row.actorId})</insert>
+ <insert id="insertAttachment">INSERT INTO pf.chat_attachment(id,space_id,actor_id,asset_id,draft_id,filename,size_bytes,sha256,status) VALUES(#{row.id},#{row.spaceId},#{row.actorId},#{row.assetId},#{row.draftId},#{row.filename},#{row.sizeBytes},#{row.sha256},'STAGING')</insert>
+ <insert id="insertUpload">INSERT INTO pf.chat_attachment_upload(id,space_id,actor_id,attachment_id,request_id,request_hash,status) VALUES(#{row.id},#{row.spaceId},#{row.actorId},#{row.attachmentId},#{row.requestId},#{row.requestHash},'CREATED')</insert>
+ <insert id="insertReservation">INSERT INTO pf.chat_attachment_reservation(upload_id,space_id,bytes,status) VALUES(#{row.id},#{row.spaceId},#{row.sizeBytes},'RESERVED')</insert>
+ <update id="begin">UPDATE pf.chat_attachment_upload SET status='UPLOADING',transfer_owner=#{owner},transfer_until=clock_timestamp()+interval '120 seconds',revision=revision+1 WHERE id=#{id} AND status='CREATED' AND expires_at&gt;clock_timestamp()</update>
+ <select id="live" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.chat_attachment_upload WHERE id=#{id} AND status='UPLOADING' AND transfer_owner=#{owner} AND transfer_until&gt;clock_timestamp() AND expires_at&gt;clock_timestamp())</select>
+ <update id="finishTransfer">UPDATE pf.chat_attachment_upload SET status=#{state},transfer_owner=NULL,transfer_until=NULL,revision=revision+1 WHERE id=#{id} AND status='UPLOADING' AND transfer_owner=#{owner}</update>
+ <update id="recoverVerified">UPDATE pf.chat_attachment_upload SET status='VERIFIED',transfer_owner=NULL,transfer_until=NULL,revision=revision+1 WHERE id=#{id} AND revision=#{revision} AND status IN('UNKNOWN','UPLOADING')</update>
+ <update id="settle">UPDATE pf.space_storage s SET reserved_bytes=s.reserved_bytes-r.bytes,committed_bytes=s.committed_bytes+r.bytes,version=s.version+1 FROM pf.chat_attachment_reservation r WHERE r.upload_id=#{id} AND r.space_id=s.space_id AND r.status='RESERVED' AND s.reserved_bytes&gt;=r.bytes</update>
+ <update id="reservationCommitted">UPDATE pf.chat_attachment_reservation SET status='COMMITTED',revision=revision+1 WHERE upload_id=#{id} AND status='RESERVED'</update>
+ <update id="assetAvailable">UPDATE pf.asset_object SET status='AVAILABLE',revision=revision+1 WHERE id=#{id} AND status='STAGING'</update>
+ <update id="attachmentAvailable">UPDATE pf.chat_attachment SET status='AVAILABLE',revision=revision+1 WHERE id=#{id} AND status='STAGING'</update>
+ <update id="uploadCommitted">UPDATE pf.chat_attachment_upload SET status='COMMITTED',revision=revision+1 WHERE id=#{id} AND status='VERIFIED'</update>
+</mapper>

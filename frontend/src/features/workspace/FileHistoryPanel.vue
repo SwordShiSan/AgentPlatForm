@@ -4,8 +4,8 @@ import { useQuery } from '@tanstack/vue-query';
 import { NButton } from 'naive-ui';
 import { api } from '../../shared/api/client';
 import FilePreviewPane from './FilePreviewPane.vue';
-const props = defineProps<{ fileId: string; name?: string; userId: string; spaceId: string; disabled?: boolean }>();
-const emit = defineEmits<{ restore: [string] }>();
+const props = defineProps<{ fileId: string; name?: string; userId: string; spaceId: string; disabled?: boolean; referenceEnabled?: boolean }>();
+const emit = defineEmits<{ restore: [string]; reference: [string] }>();
 const cursor = ref<string>(); const preview = ref<string>();
 watch(() => `${props.userId}:${props.spaceId}:${props.fileId}`, () => { cursor.value = undefined; preview.value = undefined; });
 const history = useQuery({ queryKey: computed(() => ['file-history', props.userId, props.spaceId, props.fileId, cursor.value]),
@@ -23,6 +23,7 @@ const history = useQuery({ queryKey: computed(() => ['file-history', props.userI
       <p>{{ new Date(version.createdAt).toLocaleString() }} · {{ version.bytes }} B <span v-if="version.sourceVersionId">· 来自历史恢复</span></p>
       <small>版本 {{ version.id }} · SHA256 {{ version.sha256 }}</small>
       <NButton @click="preview = version.id">只读查看</NButton>
+      <NButton v-if="referenceEnabled" :disabled="disabled" @click="emit('reference', version.id)">引用此历史版本</NButton>
       <a :href="`/api/v1/files/${encodeURIComponent(fileId)}/content?versionId=${encodeURIComponent(version.id)}`" download>下载此版本</a>
       <NButton :disabled="disabled" @click="emit('restore', version.id)">恢复此版本</NButton>
     </li></ul>

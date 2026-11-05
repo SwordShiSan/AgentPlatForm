@@ -19,9 +19,14 @@
     <resultMap id="selectBudgetReservation34Result" type="com.agentplatform.infrastructure.dao.po.AccountingRows$BudgetReservationRow34">
         <constructor>
             <arg name="value1" column="__column1" javaType="java.lang.String"/>
+            <arg name="tokens" column="tokens" javaType="java.lang.Long"/>
+            <arg name="amountMicros" column="amount_micros" javaType="java.lang.Long"/>
+            <arg name="estimatedInputTokens" column="estimated_input_tokens" javaType="java.lang.Long"/>
+            <arg name="maxOutputTokens" column="max_output_tokens" javaType="java.lang.Integer"/>
+            <arg name="contextPolicyVersion" column="context_policy_version" javaType="java.lang.String"/>
         </constructor>
     </resultMap>
-    <select id="selectBudgetReservation34" resultMap="selectBudgetReservation34Result"><![CDATA[SELECT r.state AS __column1 FROM pf.budget_reservation r JOIN pf.model_call m ON m.id=r.call_id WHERE r.call_id=#{id,jdbcType=OTHER} AND m.task_id=#{taskId,jdbcType=OTHER} AND m.attempt_id=#{attemptId,jdbcType=OTHER} AND m.space_id=#{spaceId,jdbcType=OTHER} FOR UPDATE OF r]]></select>
+    <select id="selectBudgetReservation34" resultMap="selectBudgetReservation34Result"><![CDATA[SELECT r.state AS __column1,r.tokens,r.amount_micros,r.estimated_input_tokens,r.max_output_tokens,r.context_policy_version FROM pf.budget_reservation r JOIN pf.model_call m ON m.id=r.call_id WHERE r.call_id=#{id,jdbcType=OTHER} AND m.task_id=#{taskId,jdbcType=OTHER} AND m.attempt_id=#{attemptId,jdbcType=OTHER} AND m.space_id=#{spaceId,jdbcType=OTHER} FOR UPDATE OF r]]></select>
     <resultMap id="selectModelCall35Result" type="com.agentplatform.infrastructure.dao.po.AccountingRows$ModelCallRow35">
         <constructor>
             <arg name="value1" column="__column1" javaType="java.lang.Integer"/>
@@ -44,6 +49,9 @@
     <update id="updateBudgetAccount81"><![CDATA[UPDATE pf.budget_account SET reserved_tokens=reserved_tokens+36864,reserved_micros=reserved_micros+#{totalCost,jdbcType=OTHER},version=version+1 WHERE space_id=#{spaceId,jdbcType=OTHER} AND user_id=#{userId,jdbcType=OTHER} AND reserved_tokens+consumed_tokens+36864<=token_limit AND reserved_micros+consumed_micros+#{totalCost2,jdbcType=OTHER}<=cost_limit_micros]]></update>
     <insert id="insertModelCall116"><![CDATA[INSERT INTO pf.model_call(id,space_id,task_id,attempt_id,ordinal,price_version,status,turn_id) VALUES(#{id,jdbcType=OTHER},#{spaceId,jdbcType=OTHER},#{taskId,jdbcType=OTHER},#{attemptId,jdbcType=OTHER},#{ordinal,jdbcType=OTHER},#{price,jdbcType=OTHER},'PREPARED',#{turn,jdbcType=OTHER})]]></insert>
     <insert id="insertBudgetReservation117"><![CDATA[INSERT INTO pf.budget_reservation(call_id,task_id,amount_micros) VALUES(#{id,jdbcType=OTHER},#{taskId,jdbcType=OTHER},#{allowance,jdbcType=OTHER})]]></insert>
+    <insert id="insertContextReservation"><![CDATA[INSERT INTO pf.budget_reservation(call_id,task_id,tokens,amount_micros,estimated_input_tokens,max_output_tokens,context_policy_version) VALUES(#{id},#{taskId},#{tokens},#{allowance},#{estimatedInput},#{maxOutput},#{policyVersion})]]></insert>
+    <insert id="insertObservedUsage"><![CDATA[INSERT INTO pf.observed_usage(call_id,space_id,task_id,input_tokens,output_tokens,cost_micros,provider_request_id) VALUES(#{call},#{space},#{task},#{input},#{output},#{cost},#{request}) ON CONFLICT(call_id) DO NOTHING]]></insert>
+    <select id="observedUsage" resultType="com.agentplatform.infrastructure.dao.po.AccountingRows$ObservedUsageRow"><![CDATA[SELECT input_tokens,output_tokens,cost_micros,provider_request_id FROM pf.observed_usage WHERE call_id=#{call}]]></select>
     <update id="updateAcceptanceModelMeter118"><![CDATA[UPDATE pf.acceptance_model_meter SET physical_calls=physical_calls+1,reserved_micros=reserved_micros+#{allowance,jdbcType=OTHER} WHERE id=1]]></update>
     <update id="updateModelCall119"><![CDATA[UPDATE pf.model_call SET status='STARTED' WHERE id=#{id,jdbcType=OTHER} AND task_id=#{taskId,jdbcType=OTHER} AND status='PREPARED']]></update>
     <update id="updateModelCall120"><![CDATA[UPDATE pf.model_call SET status=#{outcome,jdbcType=OTHER},error_code=#{error,jdbcType=OTHER},ended_at=now() WHERE id=#{id,jdbcType=OTHER}]]></update>

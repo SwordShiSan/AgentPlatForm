@@ -24,6 +24,7 @@ const items = computed(() => evidence.data.value?.pages.flatMap(page => page.ite
     <ul><li v-for="item in items" :key="item.id">
       <a :href="`/api/v1/artifacts/${encodeURIComponent(item.id)}/download`" download>{{ item.title }} · 下载固定版本</a>
       <button @click="preview = item">预览固定版本</button>
+      <RouterLink :to="{ path: '/app/chat', query: { sourceFile: item.fileId, sourceVersion: item.versionId, sourceWorkspace: item.workspaceId } }">引用此产物版本</RouterLink>
       <small>版本 {{ item.versionId }} · {{ item.bytes }} B · SHA256 {{ item.sha256 }}</small>
       <p>内容已封存；功能验证：{{ item.testStatus === 'PASS' ? '通过' : item.testStatus === 'FAIL' ? '失败' : '未运行' }}</p>
     </li></ul>

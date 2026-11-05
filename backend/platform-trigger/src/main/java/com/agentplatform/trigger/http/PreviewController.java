@@ -17,12 +17,14 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1")
 public final class PreviewController {
     public record Body(@NotBlank String versionId,@Pattern(regexp="AUTO|PDF|IMAGE|HTML_STATIC") String format) {}
+    public record AttachmentBody(@Pattern(regexp="AUTO|PDF|IMAGE|HTML_STATIC") String format) {}
     private final PreviewApi previews;private final IdentityApi identity;
     public PreviewController(PreviewApi previews,IdentityApi identity){this.previews=previews;this.identity=identity;}
     private static PreviewApi.Caller caller(HttpServletRequest request){var c=RequestIdentity.caller(request);return new PreviewApi.Caller(c.userId(),c.spaceId());}
     private static String requestId(HttpServletRequest request){var id=request.getHeader("Idempotency-Key");if(id==null)throw new FileFailure(428,"IDEMPOTENCY_KEY_REQUIRED");return id;}
     private static ResponseEntity<PreviewApi.View> view(PreviewApi.View view,boolean accepted){return ResponseEntity.status(accepted?202:200).header("Cache-Control","no-store").eTag("\""+view.revision()+"\"").body(view);}
     @PostMapping("/files/{id}/previews") ResponseEntity<PreviewApi.View> create(HttpServletRequest request,@PathVariable("id")String id,@Valid @RequestBody Body body){return view(previews.create(caller(request),id,new PreviewApi.Create(body.versionId(),body.format()),requestId(request)),true);}
+    @PostMapping("/attachments/{id}/previews") ResponseEntity<PreviewApi.View> attachment(HttpServletRequest request,@PathVariable("id")String id,@Valid @RequestBody AttachmentBody body){return view(previews.createAttachment(caller(request),id,body.format(),requestId(request)),true);}
     @GetMapping("/previews/{id}") ResponseEntity<PreviewApi.View> get(HttpServletRequest request,@PathVariable("id")String id){return view(previews.get(caller(request),id),false);}
     @PostMapping("/previews/{id}/retry") ResponseEntity<PreviewApi.View> retry(HttpServletRequest request,@PathVariable("id")String id){if(request.getContentLengthLong()>0||request.getHeader("Transfer-Encoding")!=null)throw new FileFailure(400,"EMPTY_PREVIEW_COMMAND_REQUIRED");return view(previews.retry(caller(request),id,request.getHeader("If-Match"),requestId(request)),true);}
     private void session(HttpServletRequest request,PreviewApi.Caller caller){var current=identity.me(RequestIdentity.token(request),request.getHeader("X-Space-Id"));if(current==null||!caller.userId().equals(current.id())||current.spaces().stream().noneMatch(s->caller.spaceId().equals(s.id())))throw new IdentityFailure(401,"AUTHENTICATION_REQUIRED");}

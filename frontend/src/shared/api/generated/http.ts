@@ -1020,6 +1020,182 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/attachment-uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createAttachmentUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attachment-uploads/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAttachmentUpload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attachment-uploads/requests/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAttachmentUploadRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attachment-uploads/{id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["transferAttachmentContent"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attachment-uploads/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["completeAttachmentUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attachments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getChatAttachment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attachments/{id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["downloadChatAttachment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attachments/{id}/previews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createAttachmentPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/file-extractions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createDocumentExtraction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/file-extractions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getDocumentExtraction"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/storage-usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getPersonalStorageUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1033,10 +1209,14 @@ export interface components {
         FilePreview: {
             /** Format: uuid */
             id: string;
+            /** @enum {string} */
+            sourceKind?: "FILE_VERSION" | "CHAT_ATTACHMENT";
             /** Format: uuid */
-            fileId: string;
+            attachmentId?: string | null;
             /** Format: uuid */
-            versionId: string;
+            fileId: string | null;
+            /** Format: uuid */
+            versionId: string | null;
             /** @enum {string} */
             state: "QUEUED" | "RUNNING" | "READY" | "FAILED" | "BLOCKED";
             /** @enum {string} */
@@ -1353,7 +1533,7 @@ export interface components {
         SubmitChatTask: {
             input: {
                 text: string;
-                attachments?: unknown[];
+                attachments?: components["schemas"]["AttachmentReference"][];
             };
             options: {
                 /** Format: uuid */
@@ -1385,7 +1565,7 @@ export interface components {
             taskId: string;
             /** @enum {string} */
             role: "USER" | "ASSISTANT";
-            blocks: components["schemas"]["ChatTextBlock"][];
+            blocks: (components["schemas"]["ChatTextBlock"] | components["schemas"]["ChatFileReferenceBlock"])[];
             /** @enum {string} */
             status: "COMPLETED" | "STREAMING" | "PARTIAL" | "FAILED";
             version: number;
@@ -1420,12 +1600,16 @@ export interface components {
             defaultModelId: string | null;
             /** @enum {string} */
             defaultCredentialSource: "PLATFORM" | "USER";
+            workbenchLayout?: components["schemas"]["WorkbenchLayout"];
+            recentFiles?: components["schemas"]["RecentWorkbenchFile"][];
         };
         UpdateChatPreferences: {
             /** Format: uuid */
             defaultModelId?: string | null;
             /** @enum {string} */
             defaultCredentialSource?: "PLATFORM" | "USER";
+            workbenchLayout?: components["schemas"]["WorkbenchLayout"];
+            recentFiles?: components["schemas"]["RecentWorkbenchFile"][];
         };
         ModelCredentials: {
             version: number;
@@ -1436,6 +1620,7 @@ export interface components {
             apiKey: string;
         };
         EffectiveChatConfig: {
+            context?: components["schemas"]["ContextCapacity"];
             values: {
                 /** Format: uuid */
                 modelId: string;
@@ -1450,6 +1635,11 @@ export interface components {
             configHash: string;
         };
         TaskConfiguration: {
+            contextUsage?: {
+                estimatedInputTokens: number | null;
+                /** @constant */
+                estimated: true;
+            };
             /** Format: uuid */
             configSnapshotId: string;
             configHash: string;
@@ -1801,6 +1991,145 @@ export interface components {
                 path: string;
                 bytes: number;
                 sha256: string;
+            }[];
+        };
+        CreateAttachmentUpload: {
+            /** Format: uuid */
+            draftId: string;
+            filename: string;
+            bytes: number;
+            sha256: string;
+        };
+        AttachmentUpload: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            attachmentId: string;
+            /** @enum {string} */
+            status: "CREATED" | "UPLOADING" | "VERIFYING" | "VERIFIED" | "COMMITTED" | "ABORTED" | "EXPIRED" | "UNKNOWN";
+            bytes: number;
+            sha256: string;
+            revision: number;
+            /** Format: date-time */
+            expiresAt: string;
+            allowedActions: string[];
+        };
+        ChatAttachment: {
+            /** Format: uuid */
+            id: string;
+            filename: string;
+            bytes: number;
+            sha256: string;
+            /** @enum {string} */
+            status: "STAGING" | "AVAILABLE" | "FAILED" | "EXPIRED" | "BLOCKED";
+            /** Format: uuid */
+            conversationId: string | null;
+            revision: number;
+            allowedActions: string[];
+        };
+        CreateAttachmentPreview: {
+            /** @enum {string} */
+            format?: "AUTO" | "PDF" | "IMAGE" | "HTML_STATIC";
+        };
+        CreateDocumentExtraction: {
+            /** Format: uuid */
+            fileId: string;
+            /** Format: uuid */
+            versionId: string;
+        } | {
+            /** Format: uuid */
+            attachmentId: string;
+        };
+        DocumentExtraction: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            sourceKind: "FILE_VERSION" | "CHAT_ATTACHMENT";
+            /** Format: uuid */
+            fileId: string | null;
+            /** Format: uuid */
+            versionId: string | null;
+            /** Format: uuid */
+            attachmentId: string | null;
+            name: string;
+            /** @enum {string} */
+            status: "QUEUED" | "RUNNING" | "READY" | "FAILED" | "BLOCKED";
+            bytes: number | null;
+            sha256: string | null;
+            errorCode: string | null;
+            retryable: boolean;
+            revision: number;
+            allowedActions: string[];
+        };
+        AttachmentReference: {
+            /** @constant */
+            kind: "FILE_VERSION";
+            /** Format: uuid */
+            fileId: string;
+            /** Format: uuid */
+            versionId: string;
+            /** Format: uuid */
+            extractionId: string;
+        } | {
+            /** @constant */
+            kind: "CHAT_ATTACHMENT";
+            /** Format: uuid */
+            attachmentId: string;
+            /** Format: uuid */
+            extractionId: string;
+        };
+        ChatFileReferenceBlock: {
+            /** @constant */
+            type: "FILE_REFERENCE";
+            /** Format: uuid */
+            blockId: string;
+            /** @enum {string} */
+            sourceKind: "FILE_VERSION" | "CHAT_ATTACHMENT";
+            /** Format: uuid */
+            extractionId: string;
+            name: string;
+            sourceSha256: string;
+            textSha256: string;
+            /** Format: uuid */
+            fileId?: string;
+            /** Format: uuid */
+            versionId?: string;
+            /** Format: uuid */
+            attachmentId?: string;
+        };
+        WorkbenchLayout: {
+            /** @enum {string} */
+            view: "SPLIT" | "CHAT" | "FILES";
+            sidebarWidth: number;
+        };
+        RecentWorkbenchFile: {
+            /** Format: uuid */
+            workspaceId: string;
+            /** Format: uuid */
+            fileId: string;
+            /** Format: uuid */
+            versionId: string;
+        };
+        ContextCapacity: {
+            modelWindow: number;
+            window: number;
+            maxOutput: number;
+            safetyTokens: number;
+            inputLimit: number;
+            /** @constant */
+            estimation: "SDK_MULTILINGUAL_ESTIMATE";
+        };
+        PersonalStorageUsage: {
+            objectLimitBytes: number;
+            usedBytes: number;
+            reservedBytes: number;
+            /** @description Subset of usedBytes retained for deleted working copies; not added a second time */
+            retainedBytes: number;
+            categories: {
+                /** @enum {string} */
+                category: "file-version" | "chat-attachment" | "preview" | "text-extraction";
+                bytes: number;
+                objects: number;
             }[];
         };
     };
@@ -4008,6 +4337,328 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FilePreview"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    createAttachmentUpload: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAttachmentUpload"];
+            };
+        };
+        responses: {
+            /** @description Authorized persistent attachment processing result */
+            201: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentUpload"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getAttachmentUpload: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: components["parameters"]["PreviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized persistent attachment processing result */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentUpload"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getAttachmentUploadRequest: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: components["parameters"]["PreviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized persistent attachment processing result */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentUpload"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    transferAttachmentContent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+            };
+            path: {
+                id: components["parameters"]["PreviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/octet-stream": string;
+            };
+        };
+        responses: {
+            /** @description Authorized persistent attachment processing result */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentUpload"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    completeAttachmentUpload: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+            };
+            path: {
+                id: components["parameters"]["PreviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized persistent attachment processing result */
+            202: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatAttachment"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getChatAttachment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: components["parameters"]["PreviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized persistent attachment processing result */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatAttachment"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    downloadChatAttachment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: components["parameters"]["PreviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized persistent attachment processing result */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    createAttachmentPreview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: components["parameters"]["PreviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAttachmentPreview"];
+            };
+        };
+        responses: {
+            /** @description Authorized persistent attachment processing result */
+            202: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilePreview"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    createDocumentExtraction: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDocumentExtraction"];
+            };
+        };
+        responses: {
+            /** @description Authorized persistent attachment processing result */
+            202: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentExtraction"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getDocumentExtraction: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: components["parameters"]["PreviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized persistent attachment processing result */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentExtraction"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    getPersonalStorageUsage: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One coherent quota and immutable object classification snapshot */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalStorageUsage"];
                 };
             };
             default: components["responses"]["IdentityProblem"];

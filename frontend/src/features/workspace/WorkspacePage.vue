@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NButton, NModal } from 'naive-ui';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
@@ -43,6 +43,12 @@ const workspaces = useQuery({
   refetchInterval: 2000,
 });
 const selectedId = computed(() => typeof route.params.id === 'string' ? route.params.id : undefined);
+watch([() => route.query.file, space], async ([value]) => {
+  if (typeof value !== 'string' || selectedId.value || !space.value) return;
+  try { const file = (await api.GET('/api/v1/files/{id}', { params: { path: { id: value }, header: { 'X-Space-Id': space.value } } })).data;
+    if (file) await router.replace({ path: `/app/workspaces/${file.workspaceId}`, query: { file: file.id, ...(typeof route.query.version === 'string' ? { version: route.query.version } : {}) } });
+  } catch { error.value = '来源文件暂不可用，请核对权限。'; }
+}, { immediate: true });
 const detail = useQuery({
   queryKey: computed(() => ['workspaces', me.data.value?.id, space.value, selectedId.value]),
   enabled: computed(() => Boolean(space.value && selectedId.value)),
@@ -116,7 +122,7 @@ const stateLabel = (state: Workspace['state']) => ({ PROVISIONING: '正在准备
         <p v-if="workspace.errorCode">原因编号：{{ workspace.errorCode }}</p>
         <NButton v-if="workspace.state === 'ERROR'" :disabled="busy" @click="retry(workspace)">重试准备</NButton>
         <WorkspaceEnvironmentPanel v-if="environmentEnabled && selectedId && me.data.value && space" :workspace-id="workspace.id" :user-id="me.data.value.id" :space-id="space" :storage-ready="workspace.state === 'READY'" />
-        <WorkspaceFilesPanel v-if="filesEnabled && selectedId && me.data.value && space" :workspace-id="workspace.id" :user-id="me.data.value.id" :space-id="space" :storage-ready="workspace.state === 'READY'" />
+        <WorkspaceFilesPanel v-if="filesEnabled && selectedId && me.data.value && space" :workspace-id="workspace.id" :user-id="me.data.value.id" :space-id="space" :storage-ready="workspace.state === 'READY'" :initial-file-id="typeof route.query.file === 'string' ? route.query.file : undefined" :initial-version-id="typeof route.query.version === 'string' ? route.query.version : undefined" :initially-deleted="route.query.deleted === '1'" />
       </li>
     </ul>
     <NModal v-model:show="open" preset="card" title="创建工作区" style="width:min(32rem,calc(100vw - 2rem))" :mask-closable="!pending && !busy" :close-on-esc="!pending && !busy" :closable="!pending && !busy">

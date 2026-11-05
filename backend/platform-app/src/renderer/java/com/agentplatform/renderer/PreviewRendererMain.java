@@ -43,7 +43,7 @@ public final class PreviewRendererMain {
         try {
             if(args.length!=3)throw new Rejected("PREVIEW_ARGUMENT_REJECTED");
             String sourceFormat=args[0], requested=args[1], expectedHash=args[2];
-            if(!sourceFormat.matches("[a-z0-9]{1,8}")||!Set.of("AUTO","PDF","IMAGE","HTML_STATIC","TEXT").contains(requested)
+            if(!sourceFormat.matches("[a-z0-9]{1,8}")||!Set.of("AUTO","PDF","IMAGE","HTML_STATIC","TEXT","TEXT_EXTRACT").contains(requested)
                     ||!expectedHash.matches("[a-f0-9]{64}"))throw new Rejected("PREVIEW_ARGUMENT_REJECTED");
             Path source=Path.of("/input/source."+sourceFormat);
             output=Path.of("/tmp/preview");Files.createDirectories(output);
@@ -65,6 +65,11 @@ public final class PreviewRendererMain {
         long bytes=Files.size(source);
         if(bytes>MAX_BYTES)throw new Rejected("PREVIEW_INPUT_TOO_LARGE");
         if(!hash(source).equals(expectedHash))throw new Rejected("PREVIEW_INPUT_HASH_MISMATCH");
+        if("TEXT_EXTRACT".equals(requested)) {
+            Path result=output.resolve("extracted.txt");
+            DocumentTextExtractor.extract(source,result,ext);
+            return success("TEXT","text/plain",result,Files.size(result),hash(result),null,false);
+        }
         if("pdf".equals(ext)) {
             if(!Set.of("AUTO","PDF").contains(requested))throw new Rejected("PREVIEW_FORMAT_UNSUPPORTED");
             int pages=pdf(source);
@@ -110,7 +115,7 @@ public final class PreviewRendererMain {
             int pages=pdf.getNumberOfPages();if(pages<1||pages>MAX_PAGES)throw new Rejected("PREVIEW_PAGE_LIMIT");return pages;
         }catch(org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException encrypted){throw new Rejected("PREVIEW_ENCRYPTED_UNSUPPORTED");}
     }
-    private static void officePackage(Path source,String ext)throws Exception {
+    static void officePackage(Path source,String ext)throws Exception {
         String required=switch(ext){case "docx"->"word/document.xml";case "xlsx"->"xl/workbook.xml";default->"ppt/presentation.xml";};
         long expanded=0;boolean marker=false,types=false;int entries=0;var names=new HashSet<String>();
         try(var zip=new ZipInputStream(Files.newInputStream(source))) {

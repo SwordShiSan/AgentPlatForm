@@ -235,11 +235,31 @@ for (const type of ['interaction.opened', 'interaction.resolved', 'plan.revised'
 }
 
 // R1.3 preference/metadata bodies reject privilege and secret-bearing response fields.
-const preferencePatch = ajv.compile(api.components.schemas.UpdateChatPreferences);
+const preferencePatch = ajv.compile(expanded.components.schemas.UpdateChatPreferences);
 assert(preferencePatch({defaultCredentialSource:'USER'}));
 assert(!preferencePatch({defaultCredentialSource:'AUTO'}));
 assert(!preferencePatch({scope:'PLATFORM'}));
 assert(!preferencePatch({defaultModelId:'invalid'}));
+assert(preferencePatch({ workbenchLayout: { view: 'SPLIT', sidebarWidth: 384 }, recentFiles: [] }));
+assert(!preferencePatch({ workbenchLayout: { view: 'SPLIT', sidebarWidth: 10000 } }));
+assert(!preferencePatch({ recentFiles: [{ fileId: fixture.eventId, versionId: fixture.eventId }] }));
+const attachmentRef = ajv.compile(expanded.components.schemas.AttachmentReference);
+const extractionInput = ajv.compile(expanded.components.schemas.CreateDocumentExtraction);
+const attachmentUpload = ajv.compile(expanded.components.schemas.CreateAttachmentUpload);
+const fixedSource = { kind: 'FILE_VERSION', fileId: fixture.eventId, versionId: fixture.eventId, extractionId: fixture.eventId };
+assert(attachmentRef(fixedSource));
+assert(attachmentRef({ kind: 'CHAT_ATTACHMENT', attachmentId: fixture.eventId, extractionId: fixture.eventId }));
+assert(!attachmentRef({ ...fixedSource, attachmentId: fixture.eventId }));
+assert(!attachmentRef({ ...fixedSource, objectKey: 'private' }));
+assert(!attachmentRef({ kind: 'CHAT_ATTACHMENT', attachmentId: fixture.eventId }));
+assert(extractionInput({ attachmentId: fixture.eventId }));
+assert(extractionInput({ fileId: fixture.eventId, versionId: fixture.eventId }));
+assert(!extractionInput({ attachmentId: fixture.eventId, fileId: fixture.eventId, versionId: fixture.eventId }));
+assert(!extractionInput({ url: 'https://example.invalid/document' }));
+const upload = { draftId: fixture.eventId, filename: '资料.docx', bytes: 104857600, sha256: 'a'.repeat(64) };
+assert(attachmentUpload(upload));
+assert(!attachmentUpload({ ...upload, bytes: 104857601 }));
+assert(!attachmentUpload({ ...upload, apiKey: 'forbidden' }));
 const metadata = ajv.compile(api.components.schemas.ModelCredentials);
 assert(metadata({version:0,userConfigured:false,platformAvailable:true}));
 assert(!metadata({version:0,userConfigured:true,platformAvailable:true,apiKey:'forbidden'}));

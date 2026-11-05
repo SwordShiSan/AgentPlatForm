@@ -57,12 +57,12 @@ public final class DockerPreviewRuntime implements PreviewRuntime {
     private Path jobRoot(Command c){return policy.stagingRoot().resolve(c.commandId().toString());}
     private Map<String,String> labels(Command c) {
         return Map.of("ap.role","preview-renderer","ap.preview",c.previewId().toString(),"ap.command",c.commandId().toString(),"ap.space",c.spaceId().toString(),
-                "ap.version",c.versionId().toString(),"ap.generation",Long.toString(c.generation()),"ap.fence",Long.toString(c.fence()),"ap.policy",policy.hash());
+                "ap.source",c.sourceKind()+":"+("CHAT_ATTACHMENT".equals(c.sourceKind())?c.attachmentId():c.versionId()),"ap.generation",Long.toString(c.generation()),"ap.fence",Long.toString(c.fence()),"ap.policy",policy.hash());
     }
     private String extension(Command c){return FORMATS.get(c.sourceFormat());}
     private String[] args(Command c){return new String[]{extension(c),c.requestedFormat(),c.sourceSha256()};}
     private void command(Command c) {
-        if(c==null||!FORMATS.containsKey(c.sourceFormat())||!Set.of("AUTO","PDF","IMAGE","HTML_STATIC","TEXT").contains(c.requestedFormat())
+        if(c==null||!FORMATS.containsKey(c.sourceFormat())||!Set.of("AUTO","PDF","IMAGE","HTML_STATIC","TEXT","TEXT_EXTRACT").contains(c.requestedFormat())
                 ||!policy.image().equals(c.imageId())||!policy.bundle().equals(c.bundle())||!policy.hash().equals(c.policyHash())||c.sourceBytes()<0||c.sourceBytes()>PreviewData.MAX_BYTES
                 ||c.sourceSha256()==null||!c.sourceSha256().matches("[a-f0-9]{64}")||c.generation()<1||c.fence()<1)throw failure("PREVIEW_POLICY_MISMATCH");
     }
@@ -190,29 +190,30 @@ public final class DockerPreviewRuntime implements PreviewRuntime {
     }
     private Result output(Command c,Path directory,Properties manifest,PreviewData.Stop stop,Guard guard)throws IOException {
         if("FAILED".equals(manifest.getProperty("state"))) {
-            String code=manifest.getProperty("errorCode");if(code==null||!code.matches("PREVIEW_[A-Z_]{1,80}"))code="PREVIEW_CONVERSION_FAILED";
+            String code=manifest.getProperty("errorCode");if(code==null||!code.matches("(?:PREVIEW|EXTRACTION)_[A-Z_]{1,50}"))code="PREVIEW_CONVERSION_FAILED";
             return failed(code,false,stop);
         }
         if(!"READY".equals(manifest.getProperty("state")))return failed("PREVIEW_CONVERSION_FAILED",false,stop);
         try {
             String format=manifest.getProperty("format"),mime=manifest.getProperty("mediaType"),sha=manifest.getProperty("sha256");
             if(!Set.of("PDF","IMAGE","TEXT","HTML_STATIC").contains(format)||sha==null||!sha.matches("[a-f0-9]{64}"))throw new IllegalArgumentException();
-            String expectedFormat=switch(c.sourceFormat()) {
+            String expectedFormat="TEXT_EXTRACT".equals(c.requestedFormat())?"TEXT":switch(c.sourceFormat()) {
                 case "PDF","DOCX","XLSX","PPTX"->"PDF";case "PNG","JPEG","GIF","WEBP"->"IMAGE";
                 case "HTML"->"HTML_STATIC".equals(c.requestedFormat())?"HTML_STATIC":"TEXT";default->"TEXT";
             };
             if(!expectedFormat.equals(format))throw new IllegalArgumentException();
-            long bytes=Long.parseLong(manifest.getProperty("bytes"));if(bytes<0||bytes>PreviewData.MAX_BYTES)throw new IllegalArgumentException();
+            long bytes=Long.parseLong(manifest.getProperty("bytes"));if(bytes<0||bytes>("TEXT_EXTRACT".equals(c.requestedFormat())?2097152:PreviewData.MAX_BYTES))throw new IllegalArgumentException();
             String expectedMime=PreviewRuntimePolicy.mediaType(format);
             if(!expectedMime.equals(mime))throw new IllegalArgumentException();
             Integer pages=manifest.getProperty("pages")==null?null:Integer.valueOf(manifest.getProperty("pages"));
             if("PDF".equals(format)&&(pages==null||pages<1||pages>200))throw new IllegalArgumentException();
             boolean source=Boolean.parseBoolean(manifest.getProperty("sourceReferenced"));
+            if(source&&"TEXT_EXTRACT".equals(c.requestedFormat()))throw new IllegalArgumentException();
             if(source) {
                 if(!Set.of("PDF","TEXT","HTML","SVG").contains(c.sourceFormat())||!Set.of("PDF","TEXT").contains(format)||bytes!=c.sourceBytes()||!sha.equals(c.sourceSha256()))throw new IllegalArgumentException();
                 return new Result("READY",format,mime,bytes,sha,pages,null,true,null,false,stop);
             }
-            String file=switch(format){case "PDF"->"content.pdf";case "IMAGE"->"content.png";case "HTML_STATIC"->"content.html";default->throw new IllegalArgumentException();};
+            String file=switch(format){case "PDF"->"content.pdf";case "IMAGE"->"content.png";case "HTML_STATIC"->"content.html";case "TEXT"->{if(!"TEXT_EXTRACT".equals(c.requestedFormat()))throw new IllegalArgumentException();yield "extracted.txt";}default->throw new IllegalArgumentException();};
             if(!file.equals(manifest.getProperty("file")))throw new IllegalArgumentException();
             if(!directory.toAbsolutePath().normalize().equals(jobRoot(c).resolve("output"))||Files.isSymbolicLink(directory))throw new IllegalArgumentException();
             Files.createDirectories(directory);Path content=directory.resolve(file);
@@ -231,7 +232,7 @@ public final class DockerPreviewRuntime implements PreviewRuntime {
     }
     /** Docker archive/cp cannot expose tmpfs reliably. A fixed non-shell read stays in its mount namespace. */
     private boolean read(Command c,String container,String file,long max,OutputStream destination,Guard guard)throws IOException {
-        if(!Set.of("manifest.properties","content.pdf","content.png","content.html").contains(file)||max<0||max>PreviewData.MAX_BYTES)throw new IOException("Invalid fixed preview output");
+        if(!Set.of("manifest.properties","content.pdf","content.png","content.html","extracted.txt").contains(file)||max<0||max>PreviewData.MAX_BYTES)throw new IOException("Invalid fixed preview output");
         String exec=docker.execCreateCmd(container).withAttachStdout(true).withAttachStderr(true).withTty(false).withCmd("/usr/bin/cat","/tmp/preview/"+file).exec().getId();
         guard.execCreated(exec);
         reads.computeIfAbsent(c.commandId(),ignored->Collections.synchronizedList(new ArrayList<>())).add(exec);

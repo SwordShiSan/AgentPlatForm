@@ -15,6 +15,15 @@ class PlanThenToolApprovalProbeTest {
     @TempDir Path root;
 
     @Test void planConfirmationCanReachANewNestedShellApprovalAndRestoreAgain() throws Exception {
+        verifyPlanThenApproval(false);
+    }
+
+    @Test void largeProductionBundleKeepsPlanAndExactToolApprovalAcrossIndependentAttempts() throws Exception {
+        verifyPlanThenApproval(true);
+    }
+
+    private void verifyPlanThenApproval(boolean large) throws Exception {
+        var bundle=large?com.agentplatform.domain.chat.ChatRuntime.contextBundle(true):Bundle.baseline();
         var base=FileProbeStore.scope();var store=new FileProbeStore(root);
         var review=new Call("review", "platform_plan_review",Map.of(),false);
         var shell=new Call("shell", "workspace_shell",Map.of("command","printf 666","cwd","","timeoutSeconds",30,
@@ -41,15 +50,17 @@ class PlanThenToolApprovalProbeTest {
             var factory=new AgentScopeRuntimeFactory(model,(s,c)->current==0||current==1&&c.name().equals("workspace_shell")?Decision.ASK:Decision.ALLOW,
                     (s,c)->CompletableFuture.completedFuture(new Observation(c.id(),c.name(),"approved",OperationStatus.SUCCEEDED)),store,manifests,catalog,root.resolve("work"));
             var approvals=phase==0?List.<Approval>of():List.of(new Approval(phase==1?review:shell,true));
-            var request=new Request(scope,Bundle.baseline(),phase==0?List.of(Message.text(Role.USER,"Plan then execute")):List.of(),phase>0,approvals,phase+1);
+            var input="Plan then execute"+(large?"x".repeat(1_050_000):"");
+            var request=new Request(scope,bundle,phase==0?List.of(Message.text(Role.USER,input)):List.of(),phase>0,approvals,phase+1);
             try(var run=factory.prepare(request,store)) {
                 assertEquals(phase==0?Completion.WAITING_INPUT:phase==1?Completion.WAITING_APPROVAL:Completion.PASS,
                         run.start().toCompletableFuture().get(15,TimeUnit.SECONDS).completion());
                 run.terminated().toCompletableFuture().get(5,TimeUnit.SECONDS);
             }
             assertFalse(drafts.isEmpty());var snapshot=drafts.getLast();
+            if(large)assertTrue(snapshot.state().length>1_048_576,"Each waiting/resumed checkpoint must retain the large original input");
             assertTrue(store.compareAndSwap(scope,"agent_state",store.load(scope,"agent_state").version(),snapshot.state())>0);
-            store.seal(scope,Bundle.baseline());
+            store.seal(scope,bundle);
         }
     }
 }

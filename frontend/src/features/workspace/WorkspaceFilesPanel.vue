@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
-import { NButton } from 'naive-ui';
+import { NButton, NVirtualList } from 'naive-ui';
 import { api } from '../../shared/api/client';
 import { ApiError } from '../../shared/api/request';
 import { newRequestId } from '../../shared/api/request-id';
@@ -16,8 +16,9 @@ import FileLifecyclePanel from './FileLifecyclePanel.vue';
 import { clearMutationRequests } from './file-mutation-requests';
 import { continueFileUpload, bindUploadWorkspace } from './file-upload-coordinator';
 
-const props = defineProps<{ workspaceId: string; userId: string; spaceId: string; storageReady: boolean }>();
+const props = defineProps<{ workspaceId: string; userId: string; spaceId: string; storageReady: boolean; referenceEnabled?: boolean; initialFileId?: string; initialVersionId?: string; initiallyDeleted?: boolean }>();
 type Item = components['schemas']['FileItem'];
+const emit = defineEmits<{ reference: [Item]; modify: [Item] }>();
 type Deleted = components['schemas']['DeletedFileItem'];
 type LifecycleMode = 'MOVE' | 'DELETE' | 'HISTORY' | 'RESTORE';
 const client = useQueryClient();
@@ -36,7 +37,13 @@ const conflict = ref(false);
 const preview = ref<Item>();
 const editing = ref<Item>();
 const lifecycle = ref<{ file: Item; initial: LifecycleMode; deleted?: Deleted }>();
-const showDeleted = ref(false); const deletedCursor = ref<string>();
+const showDeleted = ref(props.initiallyDeleted ?? false); const deletedCursor = ref<string>();
+watch(() => `${props.userId}:${props.spaceId}:${props.workspaceId}:${props.initialFileId}:${props.initialVersionId}`, async () => {
+  if (!props.initialFileId) return;
+  try { const row = (await api.GET('/api/v1/files/{id}', { params: { path: { id: props.initialFileId }, header: { 'X-Space-Id': props.spaceId } } })).data;
+    if (row && row.workspaceId === props.workspaceId) preview.value = { ...row, versionId: props.initialVersionId ?? row.versionId };
+  } catch { error.value = '来源文件暂不可用，请核对权限和版本。'; }
+}, { immediate: true });
 function manage(file: Item, initial: LifecycleMode, deleted?: Deleted) {
   if (editing.value) { error.value = '请先关闭编辑器，保留或处理未保存内容后再管理文件。'; return; }
   lifecycle.value = { file, initial, deleted };
@@ -199,19 +206,21 @@ function readOriginalState() { if (pending.value?.uploadId) void upload.refetch(
       <p v-if="query.isError.value" role="alert">文件列表暂不可用，请检查连接和权限。<NButton @click="query.refetch()">重新读取</NButton></p>
       <p v-else-if="query.isPending.value" role="status">正在读取文件…</p>
       <p v-else-if="!query.data.value?.items.length" role="status">此目录暂无已确认文件。</p>
-      <ul v-else class="file-list">
-        <li v-for="item in query.data.value?.items ?? []" :key="item.id">
+      <NVirtualList v-else class="file-list" :items="query.data.value?.items ?? []" :item-size="180" item-resizable key-field="id" :visible-items-props="{ role: 'list', 'aria-label': '当前目录文件' }" style="max-height: 38rem">
+        <template #default="{ item }"><div role="listitem" class="file-list-item">
           <div><NButton v-if="item.kind === 'DIRECTORY'" @click="openDirectory(item.path)">{{ item.name }}／</NButton><strong v-else>{{ item.name }}</strong><p>{{ item.kind === 'DIRECTORY' ? '目录' : item.bytes === null ? '尚未封存' : `${item.collectionState !== 'CONFIRMED' ? '上次封存版本 ' : ''}${bytes(item.bytes)}` }} · {{ item.collectionState === 'CONFIRMED' ? '已确认版本' : '存在未采集内容或待核对状态' }}</p></div>
           <div v-if="item.kind === 'FILE' && item.versionId" class="file-actions"><NButton :disabled="item.bytes === null || item.bytes > MAX_PREVIEW_BYTES" @click="edit(item)">编辑文本</NButton><NButton @click="showPreview(item)">{{ item.collectionState === 'CONFIRMED' ? '只读预览' : '预览上次封存版本' }}</NButton><a :href="downloadHref(item)" download>下载已封存版本</a><NButton :disabled="busy || Boolean(pending) || item.collectionState !== 'CONFIRMED'" @click="replace(item)">替换此文件</NButton></div>
           <div class="file-actions">
+            <NButton v-if="referenceEnabled && item.kind === 'FILE' && item.versionId" @click="emit('reference', item)">引用此版本</NButton>
+            <NButton v-if="referenceEnabled && item.kind === 'FILE' && item.versionId" @click="emit('modify', item)">让AI修改（准备草稿）</NButton>
             <NButton v-if="item.kind === 'FILE' && item.versionId" :disabled="Boolean(editing)" @click="manage(item, 'HISTORY')">历史版本</NButton>
             <NButton :disabled="Boolean(editing) || item.collectionState !== 'CONFIRMED'" @click="manage(item, 'MOVE')">移动／重命名</NButton>
             <NButton :disabled="Boolean(editing) || item.collectionState !== 'CONFIRMED'" @click="manage(item, 'DELETE')">删除工作副本</NButton>
           </div>
-        </li>
-      </ul>
+        </div></template>
+      </NVirtualList>
       <FileLifecyclePanel v-if="lifecycle" :key="`${userId}:${spaceId}:${workspaceId}:${lifecycle.file.id}:${lifecycle.initial}`" :file="lifecycle.file" :initial="lifecycle.initial"
-        :deleted="lifecycle.deleted" :workspace-id="workspaceId" :user-id="userId" :space-id="spaceId" @close="lifecycle = undefined" @changed="lifecycleChanged" />
+        :deleted="lifecycle.deleted" :workspace-id="workspaceId" :user-id="userId" :space-id="spaceId" :reference-enabled="referenceEnabled" @reference="emit('reference', { ...lifecycle.file, versionId: $event })" @close="lifecycle = undefined" @changed="lifecycleChanged" />
       <NButton v-if="query.data.value?.nextCursor" @click="cursor = query.data.value.nextCursor ?? undefined">下一页</NButton>
       <NButton v-if="cursor" @click="cursor = undefined">返回第一页</NButton>
       <form class="file-upload" @submit.prevent="submit">

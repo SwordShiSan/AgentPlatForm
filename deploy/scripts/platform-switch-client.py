@@ -5,7 +5,7 @@ REMOTE=r'''
 from pathlib import Path
 import datetime,fcntl,hashlib,json,os,subprocess,time,urllib.request
 OPS=Path('/srv/agentplatform/operations/platform-switch');HELPER=OPS/'platform-switch.py'
-assert hashlib.sha256(HELPER.read_bytes()).hexdigest()=='2d3021778267cd364568398fc44ba8f8d51b8eebc5b09ad3392e7ed2402a1e8b','Host helper changed; review identity before use'
+assert hashlib.sha256(HELPER.read_bytes()).hexdigest() in ['2d3021778267cd364568398fc44ba8f8d51b8eebc5b09ad3392e7ed2402a1e8b','92aeb5fc0ec8f363aad6195e0166f320b6bce2f304d56f61bcea3319cefe56e4'],'Host helper changed; review identity before use'
 def call(args):
  p=subprocess.run(args,text=True,capture_output=True,timeout=60)
  assert p.returncode==0,p.stderr[-1500:]
@@ -25,7 +25,7 @@ with (OPS/'request-launch.lock').open('a') as lock:
    try:cmd=(proc/'cmdline').read_bytes();state=(proc/'stat').read_text().split()[2]
    except (FileNotFoundError,PermissionError,ProcessLookupError):continue
    native=b'/srv/agentplatform/acceptance/' in cmd and (b'/window.py' in cmd or b'/watchdog.py' in cmd)
-   release=b'/srv/agentplatform/operations/r4-release-' in cmd and any(name in cmd for name in [b'r4-release-control.py',b'r4-isolated-restore.py',b'production-observe.py',b'production-watchdog.py'])
+   release=any(prefix in cmd for prefix in [b'/srv/agentplatform/operations/r4-release-',b'/srv/agentplatform/operations/r5-release-']) and any(name in cmd for name in [b'r4-release-control.py',b'r4-isolated-restore.py',b'production-observe.py',b'production-watchdog.py',b'r5-release-control.py',b'r5-isolated-restore.py',b'r5-production-observe.py',b'r5-production-smoke.py',b'r5-open-writes.py'])
    assert state=='Z' or not (native or release),'Acceptance/release controller still active; finish its restoration first'
   # Existing host preflight verifies exact retained identities, topology and active work.
   preview=call(['python3',str(HELPER),ACTION]);assert preview['status']=='DRY_RUN'

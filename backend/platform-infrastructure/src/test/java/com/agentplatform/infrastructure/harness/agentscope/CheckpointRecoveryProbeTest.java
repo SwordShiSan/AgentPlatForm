@@ -23,6 +23,15 @@ class CheckpointRecoveryProbeTest {
     @TempDir Path root;
 
     @Test void frozenInputCanBeCopiedBeforeAnyCallAndRestoredInAnIndependentAttempt() throws Exception {
+        verifyFrozenInput("frozen-user😀", false);
+    }
+
+    @Test void largeSdkStateCanBeCopiedAndRestoredWithoutNetwork() throws Exception {
+        verifyFrozenInput("large:" + "文".repeat(370_000) + "😀", true);
+    }
+
+    private void verifyFrozenInput(String userText, boolean large) throws Exception {
+        var bundle=large?com.agentplatform.domain.chat.ChatRuntime.contextBundle(false):Bundle.baseline();
         Scope source = FileProbeStore.scope();
         Scope target = new Scope(source.spaceId(), source.actorId(), source.conversationId(), source.taskId(), UUID.randomUUID().toString(), 2, false);
         var first = new FileProbeStore(root.resolve("source"));
@@ -35,7 +44,7 @@ class CheckpointRecoveryProbeTest {
             }
         };
         var context = RuntimeContext.builder().userId(source.actorId()).sessionId(source.conversationId()).build();
-        List<Message> frozen = List.of(Message.text(Role.SYSTEM, "frozen-system"), Message.text(Role.USER, "frozen-user😀"));
+        List<Message> frozen = List.of(Message.text(Role.SYSTEM, "frozen-system"), Message.text(Role.USER, userText));
         byte[] encoded;
         try (var agent = HarnessAgent.builder().name("snapshot-experiment").model(never)
                 .stateStore(new ScopeStateStore(first, source)).disableCompaction().disableMemoryHooks()
@@ -51,6 +60,7 @@ class CheckpointRecoveryProbeTest {
             encoded = codec.toJson(clone).getBytes(StandardCharsets.UTF_8);
             assertTrue(live.getContext().isEmpty(), "A checkpoint clone must not mutate the active SDK cache");
         }
+        if (large) assertTrue(encoded.length > 1_048_576, "The SDK snapshot must cross the old platform limit");
         assertEquals(0, calls.get());
         assertEquals(1, second.compareAndSwap(target, "agent_state", 0, encoded));
         assertEquals(0, first.load(source, "agent_state").version());
@@ -60,7 +70,7 @@ class CheckpointRecoveryProbeTest {
             return CompletableFuture.completedFuture(new Round("restored", List.of(), "stop", 4, 1));
         };
         RuntimeStatePort manifests = new RuntimeStatePort() {
-            public void verifyRestore(Scope s, Bundle b) { assertEquals(target, s); assertEquals(Bundle.baseline(), b); }
+            public void verifyRestore(Scope s, Bundle b) { assertEquals(target, s); assertEquals(bundle, b); }
             public List<Message> recoveryHistory(Scope s) { return frozen; }
             public void seal(Scope s, Bundle b) {}
         };
@@ -72,7 +82,7 @@ class CheckpointRecoveryProbeTest {
             public CompletionStage<Completion> beforeStop(Scope s, Message m) { return CompletableFuture.completedFuture(Completion.PASS); }
         };
         var factory = new AgentScopeRuntimeFactory(model, (s,c)->Decision.DENY, (s,c)->CompletableFuture.failedFuture(new AssertionError()), second, manifests, List.of(), root.resolve("work"));
-        try (var run = factory.prepare(new Request(target, Bundle.baseline(), List.of(), true, List.of(), 2), boundary)) {
+        try (var run = factory.prepare(new Request(target, bundle, List.of(), true, List.of(), 2), boundary)) {
             assertEquals(Completion.PASS, run.start().toCompletableFuture().get(12, TimeUnit.SECONDS).completion());
             run.terminated().toCompletableFuture().get(5, TimeUnit.SECONDS);
         }

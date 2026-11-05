@@ -1,13 +1,13 @@
 """One180second functional/resource observation of the final R51 candidate; no model calls."""
 from pathlib import Path
 import argparse,importlib.util,json,subprocess,time,hashlib,sys
-parser=argparse.ArgumentParser();parser.add_argument('--stage',choices=['r51','r52','r53'],default='r51');args=parser.parse_args();STAGE=args.stage
+parser=argparse.ArgumentParser();parser.add_argument('--stage',choices=['r51','r52','r53','r54'],default='r51');args=parser.parse_args();STAGE=args.stage
 ROOT=Path(__file__).resolve().parents[2];DATA=ROOT/('.cache/'+STAGE+'-local')
 def load(name,file):
  s=importlib.util.spec_from_file_location(name,ROOT/'deploy/scripts'/file);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);return m
 api=load('file_api_acceptance','files-native-api.py');native=load('native_fixture','files-native-fixture.py')
 api.configure(STAGE);native.configure(STAGE)
-plan=json.loads((DATA/'native-plan.json').read_text());ids=json.loads((DATA/('native-preview-identities.json' if STAGE=='r53' else 'native-file-identities.json')).read_text())
+plan=json.loads((DATA/'native-plan.json').read_text());ids=json.loads((DATA/('native-attachment-result.json' if STAGE=='r54' else 'native-preview-identities.json' if STAGE=='r53' else 'native-file-identities.json')).read_text())
 def sample():
  code='''from pathlib import Path
 import importlib.util,json
@@ -15,6 +15,7 @@ r=Path(ROOT);s=importlib.util.spec_from_file_location('window',r/'files-native-w
 '''.replace('ROOT',repr(plan['root']))
  return json.loads(native.remote(code))
 def main():
+ if STAGE=='r54':return workbench_observation()
  if STAGE=='r53':return preview_observation()
  assert json.loads((DATA/'native-api-result.json').read_text())['status']=='PASS'
  assert json.loads((DATA/'native-browser-result.json').read_text())['status']=='PASS'
@@ -78,6 +79,39 @@ print(json.dumps({'supplierCalls':0,'pendingPreviewFacts':0,'activeRendererConta
   'scope':'final source/config candidate: repeated real authorized pinned preview/cache/content/hash reads and resource samples; actual conversion/fault/admission receipts are separate, not an absolute peak or throughput claim'}
  (DATA/'native-observation.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
  (DATA/'native-acceptance.json').write_text(json.dumps({'status':'PASS','root':plan['root'],'api':str(DATA/'native-api-result.json'),'browser':str(DATA/'native-preview-browser-result.json'),'observation':str(DATA/'native-observation.json'),'supplierCalls':0},indent=2),encoding='utf-8')
+ subprocess.run([sys.executable,str(ROOT/'deploy/scripts/files-local.py'),'stop','--native','--passed','--stage',STAGE],check=True)
+ print(json.dumps({'status':'PASS','seconds':result['seconds'],'rounds':count,'minMemAvailableMiB':min(x['MemAvailable'] for x in samples)//1024**2,'supplierCalls':0}))
+
+def workbench_observation():
+ assert ids['status']=='PASS' and json.loads((DATA/'native-workbench-browser-result.json').read_text())['status']=='PASS'
+ admission='from pathlib import Path\nimport json,time\nr=Path('+repr(plan['root'])+')\nready=json.loads((r/"reports/ready.json").read_text());assert 900-(time.time()-ready["time"])>=240\nprint("OBSERVATION_WINDOW_AVAILABLE")\n'
+ native.remote(admission)
+ client=api.Client();started=time.monotonic();samples=[sample()];count=0
+ attachment=client.request('GET','/api/v1/attachments/'+ids['attachmentIds'][0])[1]
+ while True:
+  content=client.request('GET','/api/v1/attachments/'+attachment['id']+'/content',binary=True)[1]
+  assert len(content)==attachment['bytes'] and hashlib.sha256(content).hexdigest()==attachment['sha256']
+  usage=client.request('GET','/api/v1/me/storage-usage')[1];assert usage['reservedBytes']==0
+  count+=1;samples.append(sample())
+  if time.monotonic()-started>=180:break
+  time.sleep(3)
+ proof='''from pathlib import Path
+import json,subprocess
+r=Path(ROOT);project=PROJECT
+pg=subprocess.check_output(['docker','compose','-p',project,'-f',str(r/'compose.json'),'ps','-q','postgres'],text=True).strip()
+def sql(q):return subprocess.check_output(['docker','exec',pg,'psql','-XqAt','-U','postgres','-d','file_runtime','-c',q],text=True).strip()
+assert sql("SELECT count(*) FROM pf.document_extraction WHERE status IN('QUEUED','RUNNING','BLOCKED');")=='0'
+assert sql("SELECT count(*) FROM pf.preview_job WHERE state IN('QUEUED','RUNNING','BLOCKED');")=='0'
+assert sql('SELECT count(*) FROM pf.heavy_runtime_slot WHERE kind IS NOT NULL;')=='0'
+assert sql('SELECT count(*) FROM pf.file_transfer_slot WHERE owner_id IS NOT NULL;')=='0'
+assert not subprocess.check_output(['docker','ps','-q','--filter','label=ap.role=preview-renderer'],text=True).strip()
+print(json.dumps({'supplierCalls':0,'pendingAssetJobs':0,'activeRendererContainers':0,'deterministicModelCalls':int(sql('SELECT count(*) FROM pf.model_call;'))}))
+'''.replace('ROOT',repr(plan['root'])).replace('PROJECT',repr(plan['project']))
+ result={'status':'PASS','root':plan['root'],'seconds':round(time.monotonic()-started,3),'serialRounds':count,'samples':samples,'final':json.loads(native.remote(proof)),
+  'scope':'actual attachment original-byte/hash and storage reads, full required graph and sampled resources; not an absolute peak or unrun crash matrix'}
+ (DATA/'native-observation.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
+ (DATA/'native-acceptance.json').write_text(json.dumps({'status':'PASS','root':plan['root'],'source':plan['source'],'scope':'attachment/context/workbench native subset; full stage release gates remain separate',
+  'api':str(DATA/'native-attachment-result.json'),'browser':str(DATA/'native-workbench-browser-result.json'),'observation':str(DATA/'native-observation.json'),'supplierCalls':0},indent=2),encoding='utf-8')
  subprocess.run([sys.executable,str(ROOT/'deploy/scripts/files-local.py'),'stop','--native','--passed','--stage',STAGE],check=True)
  print(json.dumps({'status':'PASS','seconds':result['seconds'],'rounds':count,'minMemAvailableMiB':min(x['MemAvailable'] for x in samples)//1024**2,'supplierCalls':0}))
 
