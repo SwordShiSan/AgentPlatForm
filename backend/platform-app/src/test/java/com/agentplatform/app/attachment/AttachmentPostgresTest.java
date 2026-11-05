@@ -32,7 +32,7 @@ class AttachmentPostgresTest {
     private static Flyway flyway(String target){var config=Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").cleanDisabled(false);if(target!=null)config.target(target);return config.load();}
     @BeforeAll static void migrate()throws Exception {
         url=System.getenv("R54_TEST_JDBC_URL");Assumptions.assumeTrue(url!=null,"R54 independent PostgreSQL NOT_RUN");
-        assertEquals("1",System.getenv("R54_ACCEPTANCE"));assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:15454/workbench_test?"));
+        assertEquals("1",System.getenv("R54_ACCEPTANCE"));assertTrue(url.matches("jdbc:postgresql://127\\.0\\.0\\.1:1545[45]/workbench_test\\?sslmode=disable"));
         password=Files.readString(Path.of(System.getenv("R54_TEST_PASSWORD_FILE"))).strip();
         flyway(null).clean();flyway("20").migrate();assertEquals(20,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
         flyway(null).migrate();assertEquals(21,count("SELECT max(version::int) FROM pf.flyway_schema_history WHERE success"));
@@ -145,6 +145,21 @@ class AttachmentPostgresTest {
         assertEquals(90000,count("SELECT input_tokens FROM pf.model_call WHERE id='"+call.id()+"'"));
         assertEquals(0,count("SELECT count(*) FROM pf.budget_reservation WHERE call_id='"+call.id()+"' AND state='RESERVED'"));
         assertEquals(90100,count("SELECT consumed FROM pf.quota_bucket WHERE user_id='"+alice.userId()+"' AND metric='TOKENS'"));
+    }
+    @Test void largePrivateStateAndImmutableCheckpointUseTheFrozenProductionLimit()throws Exception {
+        var repository=chat();var lease=lease(repository);
+        var input=repository.executionStartup(lease).history();
+        byte[] state=("{\"fixture\":\""+"x".repeat(1_100_000)+"\"}").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        assertEquals(1,repository.stateCas(lease,"large-private-state",0,state));
+        var codec=new com.fasterxml.jackson.databind.ObjectMapper();
+        assertEquals("x".repeat(1_100_000),codec.readTree(repository.state(lease,"large-private-state").body()).path("fixture").asText());
+        var draft=new com.agentplatform.types.harness.HarnessData.CheckpointDraft(0,state,input,com.agentplatform.types.harness.HarnessData.CheckpointPhase.INPUT_READY);
+        var bundle=com.agentplatform.domain.chat.ChatRuntime.contextBundle(false);
+        UUID checkpoint=repository.commitCheckpoint(lease,bundle,draft);
+        repository.validateCheckpoint(lease,checkpoint,bundle);
+        assertEquals(1,count("SELECT count(*) FROM pf.checkpoint WHERE id='"+checkpoint+"' AND octet_length(state_json::text)>1048576"));
+        assertThrows(com.agentplatform.domain.chat.ChatFailure.class,()->repository.stateCas(lease,"large-private-state",0,state));
+        assertEquals("x".repeat(1_100_000),codec.readTree(repository.state(lease,"large-private-state").body()).path("fixture").asText());
     }
     @Test void submissionSharesTheTaskTransactionAndSerializesConcurrentRequestIdentity()throws Exception {
         var repository=chat();var tx=new TransactionTemplate(new JdbcTransactionManager(pool));

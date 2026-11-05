@@ -38,7 +38,7 @@ def file_upload(client, journal, workspace, label, content, base=None):
     path = '/api/v1/uploads/'+upload['id']
     current = common.get(client,path)[1]
     transport = journal.freeze(label+':transport',{'uploadId':upload['id'],'bytes':len(content),'sha256':common.sha(content)})
-    if current['status']=='CREATED':
+    if current['state']=='CREATED':
         assert transport['phase']=='FROZEN','Query the original uncertain transfer'
         transport['phase']='SENT'; journal.write()
         client.request('PUT',path+'/content',content,{'Content-Type':'application/octet-stream'})

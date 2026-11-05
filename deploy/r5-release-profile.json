@@ -1,0 +1,21 @@
+{
+  "version": "r5-schema21-v1",
+  "applicationProject": "agentplatform-r5-app",
+  "previousProject": "agentplatform-r4-app",
+  "previousMigration": 18,
+  "migration": 21,
+  "runtimeBaseline": 1,
+  "environmentServices": ["postgres", "rabbitmq", "redis", "master", "volume", "filer", "s3"],
+  "applicationServices": ["runner", "api", "worker", "gateway"],
+  "applicationMemoryMiB": {"api": 512, "worker": 320, "runner": 320, "gateway": 32},
+  "heapMiB": {"api": 144, "worker": 160, "runner": 96},
+  "totalBudgetMiB": 2880,
+  "maximumBudgetMiB": 2887,
+  "hostReserveMiB": 768,
+  "rootReserveGiB": 5,
+  "context": {"modelWindow": 1000000, "taskWindow": 262144, "maxOutput": 4096},
+  "rendererBundle": "asset-parser-tika3.3.3-v2",
+  "observationSeconds": 180,
+  "rollback": "MATCHED_PRE_UPGRADE_COLD_SNAPSHOT_BEFORE_REAL_WRITES_ONLY",
+  "constantOfficeService": false
+}
