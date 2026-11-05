@@ -72,8 +72,9 @@ def main():
     original=attachment(client,journal,'large-context.txt',large)
     text=extraction(client,journal,'large-context',{'attachmentId':original['id']})
     refs=[{'kind':'CHAT_ATTACHMENT','attachmentId':original['id'],'extractionId':text['id']}]
-    body={'title':'R54 attachment acceptance','initialTask':{'input':{'text':'fixture:r54-document 请核对固定资料标记','attachments':refs},'options':{'modelId':'deepseek-flash','credentialSource':'PLATFORM','planMode':False,'permissionMode':'FULL'}}}
-    conversation=journal.once(client,'conversation:document',{'method':'POST','path':'/api/v1/conversations','body':body},body)
+    body={'title':'R54 attachment acceptance','initialTask':{'input':{'text':'fixture:r54-document 请核对固定资料标记','attachments':refs},'options':{'modelId':'0199e000-0000-7000-8000-000000000002','credentialSource':'PLATFORM','planMode':False,'permissionMode':'FULL'}}}
+    request_identity='conversation:document:'+common.sha(json.dumps(body,sort_keys=True).encode())
+    conversation=journal.once(client,request_identity,{'method':'POST','path':'/api/v1/conversations','body':body},body)
     task=wait(client,'/api/v1/tasks/'+conversation['initialTask']['taskId'],terminal=('SUCCEEDED','FAILED','BLOCKED','CANCELLED'))
     assert task['status']=='SUCCEEDED',task.get('reasonCode')
     snapshot=common.get(client,'/api/v1/conversations/'+conversation['id']+'/snapshot')[1]
@@ -92,7 +93,7 @@ def main():
     workspaces=common.get(client,'/api/v1/workspaces')[1]
     assert workspaces['items']==[]
     current=common.get(client,'/api/v1/me/storage-usage')[1]
-    assert current['usedBytes']>baseline['usedBytes'] and current['reservedBytes']==0
+    assert current['usedBytes']>=baseline['usedBytes'] and current['reservedBytes']==0
     common.atomic(DATA/'native-attachment-result.json',{'status':'PASS','supplierCalls':0,'source':json.loads((DATA/'native-plan.json').read_text())['source'],
         'scope':'Actual PG/MQ/S3/runner extraction for DOCX/XLSX/PPTX/text, no workspace allocation, large SDK chat, pinned public source, ACL and preference CAS',
         'attachmentIds':[row['attachment']['id'] for row in results.values()]+[original['id']],

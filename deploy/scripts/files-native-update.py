@@ -29,6 +29,9 @@ shutil.copy2(r/'operation.json',archive/'operation.json')
 if plan['acceptanceStage']=='r54':
  shutil.copy2(r/'compose.json',archive/'compose.json');config=json.loads((r/'compose.json').read_text())
  config['services']['api']['environment'].update(PLATFORM_IDENTITY_ORIGINS='http://agentplatform.lailihao.cloud,http://124.222.55.140',PLATFORM_IDENTITY_HTTP_DEPLOYMENT='true')
+ for service,limit in [('api',512),('worker',320),('runner',256)]:
+  config['services'][service]['mem_limit']=config['services'][service]['memswap_limit']=limit*1024**2
+ config['services']['worker']['entrypoint']=['-Xmx160m' if value.startswith('-Xmx') else value for value in config['services']['worker']['entrypoint']]
  (r/'compose.json').write_text(json.dumps(config,indent=2))
 (r/'operation.json').write_text(json.dumps(plan,indent=2))
 print('STAGED_CONTROLLERS_UPDATED_NOT_STARTED')
@@ -37,6 +40,8 @@ print('STAGED_CONTROLLERS_UPDATED_NOT_STARTED')
  for name in updates:(data/'native'/name).write_bytes((ROOT/'deploy/scripts'/name).read_bytes())
  if plan['acceptanceStage']=='r54':
   config=json.loads((data/'native/compose.json').read_text());config['services']['api']['environment'].update(PLATFORM_IDENTITY_ORIGINS='http://agentplatform.lailihao.cloud,http://124.222.55.140',PLATFORM_IDENTITY_HTTP_DEPLOYMENT='true')
+  for service,limit in [('api',512),('worker',320),('runner',256)]:config['services'][service]['mem_limit']=config['services'][service]['memswap_limit']=limit*1024**2
+  config['services']['worker']['entrypoint']=['-Xmx160m' if value.startswith('-Xmx') else value for value in config['services']['worker']['entrypoint']]
   (data/'native/compose.json').write_text(json.dumps(config,indent=2))
  for path in [data/'native-plan.json',data/'native/operation.json']:path.write_text(json.dumps(plan,indent=2),encoding='utf-8')
 def main():

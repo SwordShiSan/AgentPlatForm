@@ -71,7 +71,7 @@ def prepare():
  found=json.loads(remote("import json,subprocess\nnames={'api':'agentplatform-r4-app-api-1','postgres':'agentplatform-env-postgres-1','rabbitmq':'agentplatform-env-rabbitmq-1','s3':'agentplatform-env-s3-1','redis':'agentplatform-env-redis-1'}\nprint(json.dumps({k:json.loads(subprocess.check_output(['docker','inspect',n]))[0]['Image'] for k,n in names.items()}))\n"))
  if STAGE in ['r52','r53','r54']:found['api']=image['candidate']['images']['api']['configId']
  caps={'api':480,'worker':336,'runner':336,'operator':256,'gateway':32,'postgres':192,'rabbitmq':256,'master':112,'volume':96,'filer':96,'s3':224,'redis':16}
- if STAGE=='r54':caps.update(api=384,worker=384,runner=320) # 64MiB deterministic provider replaces worker allowance only in acceptance.
+ if STAGE=='r54':caps.update(api=512,worker=320,runner=256) # 64MiB deterministic provider replaces production worker allowance; total unchanged.
  for name,row in config['services'].items():
   if name in ['api','worker','runner','operator']:row['image']=found['api']
   elif name in ['master','volume','filer','s3']:row['image']=found['s3']
@@ -83,7 +83,7 @@ def prepare():
   if name in ['api','worker','runner','operator']:
    entry=row['entrypoint'];entry.insert(1,'-XX:+UseSerialGC')
    for i,value in enumerate(entry):
-    if value.startswith('-Xmx'):entry[i]='-Xmx'+str(({'api':144,'worker':192,'runner':96,'operator':112} if STAGE=='r54' else {'api':144,'worker':128,'runner':96,'operator':112})[name])+'m'
+    if value.startswith('-Xmx'):entry[i]='-Xmx'+str(({'api':144,'worker':160,'runner':96,'operator':112} if STAGE=='r54' else {'api':144,'worker':128,'runner':96,'operator':112})[name])+'m'
   env=row.get('environment',{})
   for k in ['PLATFORM_WORKSPACE_MESSAGING_USER','PLATFORM_CHAT_MQ_USER']:
    if k in env:env[k]=STAGE
