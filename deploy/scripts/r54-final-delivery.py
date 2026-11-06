@@ -31,7 +31,7 @@ def main():
     with zipfile.ZipFile(a/'documentation.zip','x',compression=zipfile.ZIP_DEFLATED,compresslevel=6) as target:
         for path in sorted(docs):target.write(path,'06-AgentScope重构专项/'+path.relative_to(DOCS).as_posix())
     evidence=[p for p in (ROOT/'evidence/r54').rglob('*') if p.is_file() and not p.is_symlink() and p.suffix in {'.json','.md'} and '.private' not in p.name]
-    assert evidence and all(git('ls-files','--',str(p.relative_to(ROOT))) for p in evidence)
+    assert evidence and all(git('ls-files','--',p.relative_to(ROOT).as_posix()) for p in evidence)
     with zipfile.ZipFile(a/'redacted-evidence.zip','x',compression=zipfile.ZIP_DEFLATED,compresslevel=6) as target:
         for path in sorted(evidence):target.write(path,path.relative_to(ROOT).as_posix())
         target.write(ROOT/'deploy/R5-RELEASE.md','deploy/R5-RELEASE.md')
