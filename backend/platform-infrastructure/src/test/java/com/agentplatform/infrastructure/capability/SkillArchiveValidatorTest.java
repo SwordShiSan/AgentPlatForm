@@ -45,6 +45,8 @@ class SkillArchiveValidatorTest {
                 "SKILL.md", bytes(SKILL), "../outside", bytes("x")))));
         assertThrows(IllegalArgumentException.class, () -> validator.validate(archive(Map.of(
                 "SKILL.md", bytes(SKILL), "é.txt", bytes("a"), "e\u0301.txt", bytes("b")))));
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(archive(Map.of(
+                "SKILL.md", bytes(SKILL), "x".repeat(256), bytes("a")))));
     }
 
     @Test void rejectsMissingMetadataAndInvalidUtf8() throws Exception {

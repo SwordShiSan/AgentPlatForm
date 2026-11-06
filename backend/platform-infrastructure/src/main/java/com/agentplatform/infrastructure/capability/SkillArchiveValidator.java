@@ -124,8 +124,10 @@ public final class SkillArchiveValidator {
                 || name.indexOf('\0') >= 0 || name.matches("^[A-Za-z]:.*")) throw invalid("INVALID_PATH");
         if (directory && name.endsWith("/")) name = name.substring(0, name.length() - 1);
         name = Normalizer.normalize(name, Normalizer.Form.NFC);
+        if (name.getBytes(StandardCharsets.UTF_8).length > 4096) throw invalid("INVALID_PATH");
         for (String segment : name.split("/", -1))
-            if (segment.isEmpty() || segment.equals(".") || segment.equals("..")) throw invalid("INVALID_PATH");
+            if (segment.isEmpty() || segment.equals(".") || segment.equals("..")
+                    || segment.getBytes(StandardCharsets.UTF_8).length > 255) throw invalid("INVALID_PATH");
         return name;
     }
 
