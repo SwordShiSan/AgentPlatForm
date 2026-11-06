@@ -1,3 +1,7 @@
+## R6.2 当前实施（2026-11-06）
+
+R6.1 VERIFIED，R6 已完成 1/4、未 RELEASED；云端继续 R5。本分支按 `r6-2-skills-mcp` 实施 Skill 版本管理、能力绑定及受控 MCP；聊天自动装配留 R6.4。实施尚在进行，验证与发行结果以阶段台账为准。
+
 ## R5 当前有效结论（2026-11-06）
 
 **R5.4 VERIFIED、R5四步VERIFIED、R5 RELEASED；云端运行R5，旧平台停机保留。** 生产标签`production-r5-4bc12e3c33de`，发行main`4bc12e3c33de87ec01c993393de2e18e069c188d`；后端实际镜像源码`b7b89884a352796fdaa45780e4216c3ed440f3d6`，gateway/renderer保持各自已验收来源，不把文档提交当重新构建。
