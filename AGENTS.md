@@ -1,3 +1,15 @@
+## R5 当前有效结论（2026-11-06）
+
+**R5.4 VERIFIED、R5四步VERIFIED、R5 RELEASED；云端运行R5，旧平台停机保留。** 生产标签`production-r5-4bc12e3c33de`，发行main`4bc12e3c33de87ec01c993393de2e18e069c188d`；后端实际镜像源码`b7b89884a352796fdaa45780e4216c3ed440f3d6`，gateway/renderer保持各自已验收来源，不把文档提交当重新构建。
+
+已交付文件编辑、并发冲突、生命周期/历史恢复、固定版本产物、隔离预览、独立聊天附件/正文提取及工作台/存储联动。任务默认256K上下文，可配64K–512K；模型目录能力1M，输出默认4096。普通用户默认可配100万token/日，管理员不限额但计量且不越权；上下文与日额度分开管理。继续本地gVisor/XFS/受信helper/SeaweedFS，完整预算2880MiB，云方案DEFERRED。
+
+真实附件/Flash多轮累计4次物理请求；独立恢复验证138个对象、凭据、数据库/工作区hash及readiness；R4匹配快照回退、原身份登录/历史、同一R5重启及180秒最终观察通过。公网HTTP IP/Host、PDF worker/WASM类型及内部端点404通过，未检查/修改DNS。历史失败、自动恢复和NOT_RUN按实际范围保留；未变隔离/配额门禁按同产物范围复用，不宣称重跑或绝对峰值。
+
+证据：`evidence/r54/production-release.json`、`evidence/r54/acceptance-index.json`；固定入口及恢复规则见`deploy/R5-RELEASE.md`。正文与脱敏证据在最终干净main后独立保护封包，副本SHA256/交付目录以manifest及final-delivery-pointer为准，Git推送不是正文交付。**R6未启动，须另行Plan/OpenSpec。** 以下为历史过程，不覆盖本节。
+
+[发行证据](evidence/r54/production-release.json)／[固定运维入口](deploy/R5-RELEASE.md)。
+
 ## R5.3 VERIFIED（2026-10-29）
 
 持久预览流水线和隔离渲染已通过保护[PR137](https://github.com/SwordShiSan/AgentPlatForm/pull/137)／[PR138](https://github.com/SwordShiSan/AgentPlatForm/pull/138)晋级。支持固定版本DOCX／XLSX／PPTX→PDF、PDF／图片／文本／静态HTML，预览与业务环境共享单重型资源槽。185.667秒观察后原R4精确恢复；供应商调用0。见[验收索引](evidence/r53/acceptance-index.json)和[固定入口](deploy/R5.3-LOCAL.md)。**R5完成3/4、未RELEASED；云端继续R4，R5.4尚未启动。** V20新增，V1–V19/runtime baseline1不变。以下为历史结论。

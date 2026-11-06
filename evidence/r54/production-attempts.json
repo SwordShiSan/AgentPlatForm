@@ -1,41 +1,54 @@
 {
-  "status": "R5_PRODUCTION_PENDING_R4_RESTORED",
-  "acceptedMain": "d1a9fa7e748201661c736dc94b89579d910df5e5",
-  "promotionPRs": [
-    141,
-    142,
-    143,
-    144,
-    145,
-    146,
-    147,
-    148
+  "status": "R5_RELEASED",
+  "productionTag": "production-r5-4bc12e3c33de",
+  "productionMain": "4bc12e3c33de87ec01c993393de2e18e069c188d",
+  "priorReport": {
+    "status": "R5_PRODUCTION_PENDING_R4_RESTORED",
+    "acceptedMain": "d1a9fa7e748201661c736dc94b89579d910df5e5",
+    "promotionPRs": [
+      141,
+      142,
+      143,
+      144,
+      145,
+      146,
+      147,
+      148
+    ],
+    "pendingFixPR": 149,
+    "migration": {
+      "production": 18,
+      "candidate": 21,
+      "runtimeBaseline": 1
+    },
+    "production": {
+      "version": "R4",
+      "sameContainersImagesRestartPolicies": true,
+      "readiness": "PASS",
+      "login": "PASS",
+      "historyReadOnly": "PASS"
+    },
+    "r5Attempt": {
+      "writesOpened": false,
+      "supplierCalls": 0,
+      "originalExtraction": "QUEUED_ATTEMPTS_0",
+      "rawFailuresRetained": true,
+      "topologyCorrection": "NOT_RUN_PENDING_EXPLICIT_AUTO_REVIEW_CONFIRMATION"
+    },
+    "recovery": {
+      "status": "PASS",
+      "matchedPreupgradeSnapshot": true,
+      "originalXfsUuidPreserved": true,
+      "recordedAt": 1793892614.4638183
+    },
+    "tagCreated": false
+  },
+  "furtherHistory": [
+    "Bounded restore network collision refused before temporary services; exact R4 recovered",
+    "All cloud gates passed; initial final-observation gap expired watchdog; exact R4 recovered",
+    "Explicit once-only continuation proved only last_scan_epoch/file-runtime differences; no business writes lost; same R5 snapshot reopened"
   ],
-  "pendingFixPR": 149,
-  "migration": {
-    "production": 18,
-    "candidate": 21,
-    "runtimeBaseline": 1
-  },
-  "production": {
-    "version": "R4",
-    "sameContainersImagesRestartPolicies": true,
-    "readiness": "PASS",
-    "login": "PASS",
-    "historyReadOnly": "PASS"
-  },
-  "r5Attempt": {
-    "writesOpened": false,
-    "supplierCalls": 0,
-    "originalExtraction": "QUEUED_ATTEMPTS_0",
-    "rawFailuresRetained": true,
-    "topologyCorrection": "NOT_RUN_PENDING_EXPLICIT_AUTO_REVIEW_CONFIRMATION"
-  },
-  "recovery": {
-    "status": "PASS",
-    "matchedPreupgradeSnapshot": true,
-    "originalXfsUuidPreserved": true,
-    "recordedAt": 1793892614.4638183
-  },
-  "tagCreated": false
+  "supplierCallsCumulative": 4,
+  "currentEvidence": "production-release.json",
+  "rawFailuresRetained": true
 }

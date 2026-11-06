@@ -8,5 +8,5 @@
 ## Verification and closure
 - [x] 7. Pass affected engineering, real dependency, 256K/512K, ownership/UNKNOWN, authorization and browser gates; matching unchanged gates reused explicitly.
 - [x] 8. Pass 180-second candidate observation and protected step→phase→main promotion.
-- [ ] 9. Deploy the same R5 candidate with targeted recovery, R4 rollback drill and final observation.
-- [ ] 10. Archive, update ledgers/Skill, verify protected delivery copies and mark R5 RELEASED only after all gates.
+- [x] 9. Deploy the same R5 candidate with targeted recovery, R4 rollback drill and final observation.
+- [x] 10. Archive, update ledgers/Skill and fixed receipt-bound delivery entry; mark R5 RELEASED after cloud gates. Final clean-main copy verification is certified separately by the mandatory post-checkout manifest/verification receipt.

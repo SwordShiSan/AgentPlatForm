@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "releaseMain": "4bc12e3c33de87ec01c993393de2e18e069c188d",
+  "tag": "production-r5-4bc12e3c33de",
+  "openSpec": "29 passed,0 failed; deferred cloud change retained/unmerged",
+  "links": "110 local references incl26 canonical external verified",
+  "python": "closure/operator sources compile PASS",
+  "publicHttp": "200 via direct IP with canonical Host; no DNS check",
+  "skill": {
+    "reference": "ai-agent-platform/references/reconstruction-operations.md",
+    "sha256": "7abb9308d46db09bb8be69f367f051608987e8059747b40f58600bfe4bb30d80"
+  },
+  "supplierCalls": 4,
+  "actionsEnabled": false,
+  "businessSourceUnchangedDuringClosure": true,
+  "postCleanMainDelivery": "Mandatory final-delivery-pointer/verification after protected closure merge"
+}
