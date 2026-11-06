@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.chat.SubmissionIdentityMapper">
+    <resultMap id="identity" type="com.agentplatform.infrastructure.dao.chat.SubmissionIdentityMapper$Row">
+        <constructor>
+            <arg name="hash" column="body_hash" javaType="java.lang.String"/>
+            <arg name="resourceId" column="resource_id" javaType="java.util.UUID"/>
+            <arg name="version" column="body_hash_version" javaType="_int"/>
+        </constructor>
+    </resultMap>
+    <select id="lock" resultType="java.lang.Integer">SELECT 1 FROM pg_advisory_xact_lock(#{lockKey})</select>
+    <select id="find" resultMap="identity">
+        SELECT body_hash,resource_id,body_hash_version FROM pf.idempotency_record
+        WHERE user_id=#{actor.userId} AND space_id=#{actor.spaceId} AND method='POST' AND canonical_path=#{path} AND key=#{key}
+    </select>
+    <insert id="insert">
+        INSERT INTO pf.idempotency_record(user_id,space_id,method,canonical_path,key,body_hash,resource_id,body_hash_version)
+        VALUES(#{actor.userId},#{actor.spaceId},'POST',#{path},#{key},#{hash},#{resource},2)
+    </insert>
+</mapper>

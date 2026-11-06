@@ -37,12 +37,20 @@ public class ChatConfiguration {
     }
     @Bean ChatRepository chatRepository(com.agentplatform.infrastructure.dao.chat.ChatMappers mappers,
             org.springframework.transaction.support.TransactionTemplate transactions,
+            com.agentplatform.infrastructure.dao.chat.WorkspaceConfigurationMapper workspaceConfiguration,
+            com.agentplatform.infrastructure.dao.chat.SubmissionIdentityMapper submissionIdentity,
+            org.springframework.beans.factory.ObjectProvider<PersonalConfigurationProperties> locksProvider,
+            @Value("${platform.personal-config.enabled:false}") boolean personalConfigEnabled,
+            @Value("${platform.chat.plan-enabled:false}") boolean planCapability,
+            @Value("${platform.chat.permissions-enabled:false}") boolean permissionsCapability,
             @Value("${platform.workspace.tools.enabled:false}")boolean workspaceTools,
             @Value("${platform.chat.context-v2.enabled:false}")boolean contextEnabled,
             @Value("${platform.chat.context.window-tokens:262144}")int contextWindow,
             @Value("${platform.chat.context.max-output-tokens:4096}")int maxOutput) {
         var context=contextEnabled?com.agentplatform.domain.chat.ContextPolicy.current(contextWindow,maxOutput):com.agentplatform.domain.chat.ContextPolicy.legacy();
-        return new TransactionalChatRepository(new MyBatisChatRepository(mappers,workspaceTools,context), transactions);
+        var locks=locksProvider.getIfAvailable();
+        var locked=locks==null?null:new ConfigurationResolver.Layer(locks.modelId(),locks.credentialSource(),locks.planMode(),locks.permissionMode());
+        return new TransactionalChatRepository(new MyBatisChatRepository(mappers,workspaceTools,context,personalConfigEnabled?workspaceConfiguration:null,personalConfigEnabled?submissionIdentity:null,locked,planCapability,permissionsCapability), transactions);
     }
     @Configuration(proxyBeanMethods=false)
     @Profile({"chat-local","chat-worker"})
@@ -66,8 +74,10 @@ public class ChatConfiguration {
         }
     }
     @Bean @Profile("chat-local") ChatApi chatApi(ChatRepository repository,@Value("${platform.chat.cursor-key-file}")String file,CredentialCipher cipher,
-            org.springframework.beans.factory.ObjectProvider<com.agentplatform.app.attachment.AttachmentSubmission> attachments)throws Exception{
-        var service=new ChatService(repository,new ChatCursor(Files.readAllBytes(Path.of(file))),cipher);attachments.ifAvailable(service::configureAttachments);return service;
+            org.springframework.beans.factory.ObjectProvider<com.agentplatform.app.attachment.AttachmentSubmission> attachments,
+            org.springframework.beans.factory.ObjectProvider<PersonalConfigurationProperties> locksProvider)throws Exception{
+        var service=new ChatService(repository,new ChatCursor(Files.readAllBytes(Path.of(file))),cipher);attachments.ifAvailable(service::configureAttachments);
+        locksProvider.ifAvailable(locks->service.configureLocks(new ConfigurationResolver.Layer(locks.modelId(),locks.credentialSource(),locks.planMode(),locks.permissionMode())));return service;
     }
     @Bean @Profile("chat-local") @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="platform.workspace.tools.enabled",havingValue="true")
     com.agentplatform.api.chat.WorkspaceOperationsApi workspaceOperationsApi(ChatRepository repository,com.agentplatform.domain.files.AssetStore assets){return new WorkspaceOperationsService(repository,assets);}

@@ -3,6 +3,7 @@ import { api } from '../shared/api/client';
 
 const chatEnabled = import.meta.env.VITE_CHAT_ENABLED === 'true';
 const workspaceEnabled = import.meta.env.VITE_WORKSPACE_ENABLED === 'true';
+const personalConfigEnabled = import.meta.env.VITE_PERSONAL_CONFIG_ENABLED === 'true';
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -10,6 +11,11 @@ export const router = createRouter({
     { path: '/login', component: () => import('../features/identity/LoginPage.vue') },
     { path: '/app', redirect: chatEnabled ? '/app/chat' : '/app/settings/account' },
     { path: '/app/settings/account', component: () => import('../features/identity/AccountPage.vue'), meta: { requiresAuth: true } },
+    ...(personalConfigEnabled ? [
+      { path: '/app/settings/general', component: () => import('../features/chat/PersonalConfigurationPage.vue'), meta: { requiresAuth: true } },
+      { path: '/app/settings/models', component: () => import('../features/chat/PersonalConfigurationPage.vue'), meta: { requiresAuth: true } },
+      { path: '/app/workspaces/:id/settings', component: () => import('../features/chat/PersonalConfigurationPage.vue'), meta: { requiresAuth: true } },
+    ] : []),
     ...(workspaceEnabled ? [{ path: '/app/workspaces/:id?', component: () => import('../features/workspace/WorkspacePage.vue'), meta: { requiresAuth: true } }] : []),
     ...(workspaceEnabled ? [{ path: '/app/storage', component: () => import('../features/workspace/StoragePage.vue'), meta: { requiresAuth: true } }] : []),
     ...(chatEnabled ? [

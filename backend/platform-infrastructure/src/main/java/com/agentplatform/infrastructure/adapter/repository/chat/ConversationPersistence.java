@@ -17,9 +17,21 @@ import tools.jackson.databind.json.JsonMapper;
 final class ConversationPersistence extends ChatPersistenceSupport {
     private final boolean workspaceTools;
     private final ContextPolicy contextPolicy;
+    private final com.agentplatform.infrastructure.dao.chat.WorkspaceConfigurationMapper workspaceConfiguration;
+    private final com.agentplatform.infrastructure.dao.chat.SubmissionIdentityMapper submissionIdentity;
+    private final ConfigurationResolver.Layer locks;
+    private final boolean planCapability,permissionsCapability;
     ConversationPersistence(ChatMappers mappers) { this(mappers,false,ContextPolicy.legacy()); }
     ConversationPersistence(ChatMappers mappers,boolean workspaceTools) { this(mappers,workspaceTools,ContextPolicy.legacy()); }
-    ConversationPersistence(ChatMappers mappers,boolean workspaceTools,ContextPolicy contextPolicy) { super(mappers);this.workspaceTools=workspaceTools;this.contextPolicy=Objects.requireNonNull(contextPolicy); }
+    ConversationPersistence(ChatMappers mappers,boolean workspaceTools,ContextPolicy contextPolicy) { this(mappers,workspaceTools,contextPolicy,null,null,null,true,true); }
+    ConversationPersistence(ChatMappers mappers,boolean workspaceTools,ContextPolicy contextPolicy,
+            com.agentplatform.infrastructure.dao.chat.WorkspaceConfigurationMapper workspaceConfiguration,
+            com.agentplatform.infrastructure.dao.chat.SubmissionIdentityMapper submissionIdentity,
+            ConfigurationResolver.Layer locks,boolean planCapability,boolean permissionsCapability) {
+        super(mappers);this.workspaceTools=workspaceTools;this.contextPolicy=Objects.requireNonNull(contextPolicy);
+        this.workspaceConfiguration=workspaceConfiguration;this.submissionIdentity=submissionIdentity;this.locks=locks;
+        this.planCapability=planCapability;this.permissionsCapability=permissionsCapability;
+    }
 
     public List<Model> models(Actor a){return tx(c->{auth(c,a);List<Model> result=new ArrayList<>();{ var rows67 = c.configuration().selectModelDefinition67(a.spaceId(), a.userId(), a.spaceId(), a.userId()); for (var row67 : rows67)result.add(new Model(row67.value1(),row67.value2(),row67.value3())); }return List.copyOf(result);});}
     public Conversation create(Actor a,UUID key,String title){return tx(c->{
@@ -79,6 +91,66 @@ final class ConversationPersistence extends ChatPersistenceSupport {
         UUID id=Uuid7.next();c.conversation().insertConversation164(id, a.spaceId(), a.userId(), name);
         Task task=submit(c,a,id,key,model,source,text,plan,workspace,mode,workspaceTools,contextPolicy);remember(c,a,key,"/conversations",fingerprint,id);
         { var rows16 = c.conversation().selectConversation16(id); var row16 = rows16.isEmpty() ? null : rows16.getFirst(); return new First(readConversation(row16),task); }
+    });}
+
+    private void requireV2(){if(workspaceConfiguration==null||submissionIdentity==null)throw new ChatFailure(503,"CONFIGURATION_NOT_AVAILABLE");}
+    private static String legacyTask(TaskSubmissionFingerprint.Request r){
+        String source=r.credentialSource()==null?null:r.credentialSource().name();
+        String value=hash(source==null?r.modelId()+"\n"+r.text():r.modelId()+"\n"+source+"\n"+r.text());
+        if(Boolean.TRUE.equals(r.planMode()))value=hash(value+"\nplan=true");
+        var mode=r.permissionMode()==null?com.agentplatform.types.TaskPermissionData.Mode.RISK_BASED:r.permissionMode();
+        if(r.workspaceId()!=null||mode!=com.agentplatform.types.TaskPermissionData.Mode.RISK_BASED)value=hash(value+"\nworkspace="+r.workspaceId()+"\nmode="+mode);
+        return value;
+    }
+    private static String legacyFirst(TaskSubmissionFingerprint.Request r){
+        String name=r.title()==null?"新对话":r.title();String source=r.credentialSource()==null?null:r.credentialSource().name();
+        String value=hash(json(Arrays.asList(name,r.modelId(),source,r.text())));
+        if(Boolean.TRUE.equals(r.planMode()))value=hash(value+"\nplan=true");
+        var mode=r.permissionMode()==null?com.agentplatform.types.TaskPermissionData.Mode.RISK_BASED:r.permissionMode();
+        if(r.workspaceId()!=null||mode!=com.agentplatform.types.TaskPermissionData.Mode.RISK_BASED)value=hash(value+"\nworkspace="+r.workspaceId()+"\nmode="+mode);
+        return value;
+    }
+    private First loadFirst(ChatMappers c,Actor a,UUID id){
+        var conversations=c.conversation().selectConversation18(a.spaceId(),id);if(conversations.isEmpty())throw new ChatFailure(404,"RESOURCE_NOT_FOUND");
+        var tasks=c.conversation().selectTask17(id);if(tasks.isEmpty())throw new ChatFailure(409,"IDEMPOTENCY_CONFLICT");
+        return new First(readConversation(conversations.getFirst()),readTask(tasks.getFirst()));
+    }
+    public First findFirstV2(Actor a,UUID key,TaskSubmissionFingerprint.Request request){return tx(c->{
+        requireV2();auth(c,a);var existing=new SubmissionIdentityRepository(submissionIdentity).lookup(a,"/conversations",key,legacyFirst(request),TaskSubmissionFingerprint.compute(request));
+        return existing==null?null:loadFirst(c,a,existing);
+    });}
+    public Task findTaskV2(Actor a,UUID conversation,UUID key,TaskSubmissionFingerprint.Request request){return tx(c->{
+        requireV2();auth(c,a);String path="/conversations/"+conversation+"/tasks";
+        var existing=new SubmissionIdentityRepository(submissionIdentity).lookup(a,path,key,legacyTask(request),TaskSubmissionFingerprint.compute(request));
+        return existing==null?null:task(c,a,existing,false);
+    });}
+    private Map<String,Object> resolveV2(ChatMappers c,Actor a,TaskSubmissionFingerprint.Request request,String admissionHash){
+        var query=new ConfigurationQuery(request.workspaceId(),request.modelId(),request.credentialSource(),request.planMode(),request.permissionMode());
+        var preview=new ConfigurationPersistence(c,contextPolicy).effective(a,query,workspaceConfiguration,locks,planCapability,permissionsCapability);
+        if(request.expectedEffectiveConfigHash()!=null&&!request.expectedEffectiveConfigHash().equals(preview.get("configHash")))throw new ChatFailure(412,"EFFECTIVE_CONFIGURATION_CHANGED");
+        if(admissionHash!=null&&!admissionHash.equals(preview.get("configHash")))throw new ChatFailure(412,"EFFECTIVE_CONFIGURATION_CHANGED");
+        if(!Boolean.TRUE.equals(preview.get("canSubmit")))throw new ChatFailure(422,"CONFIGURATION_NOT_AVAILABLE");
+        return preview;
+    }
+    @SuppressWarnings("unchecked") private Task submitResolved(ChatMappers c,Actor a,UUID conversation,UUID key,TaskSubmissionFingerprint.Request request,Map<String,Object> preview){
+        var values=(Map<String,Object>)preview.get("values");
+        var metadata=new LinkedHashMap<String,Object>();metadata.put("resolverVersion",ResolvedTaskConfiguration.RESOLVER_VERSION);metadata.put("effectiveHash",preview.get("configHash"));metadata.put("sources",preview.get("sources"));metadata.put("lockedFields",preview.get("lockedFields"));metadata.put("preferenceRevision",preview.get("preferenceRevision"));metadata.put("workspaceRevision",preview.get("workspaceRevision"));
+        return submit(c,a,conversation,key,UUID.fromString((String)values.get("modelId")),(String)values.get("credentialSource"),request.text(),(Boolean)values.get("planMode"),request.workspaceId(),com.agentplatform.types.TaskPermissionData.Mode.valueOf((String)values.get("permissionMode")),workspaceTools,contextPolicy,TaskSubmissionFingerprint.compute(request),metadata,submissionIdentity);
+    }
+    public First firstV2(Actor a,UUID key,TaskSubmissionFingerprint.Request request){return firstV2(a,key,request,null);}
+    public First firstV2(Actor a,UUID key,TaskSubmissionFingerprint.Request request,String admissionHash){return tx(c->{
+        requireV2();auth(c,a);String name=request.title()==null?"新对话":request.title();if(name.isBlank()||name.codePointCount(0,name.length())>120)throw new ChatFailure(400,"INVALID_TITLE");
+        String requestHash=TaskSubmissionFingerprint.compute(request);var identities=new SubmissionIdentityRepository(submissionIdentity);
+        UUID existing=identities.lookup(a,"/conversations",key,legacyFirst(request),requestHash);if(existing!=null)return loadFirst(c,a,existing);
+        var preview=resolveV2(c,a,request,admissionHash);UUID id=Uuid7.next();c.conversation().insertConversation164(id,a.spaceId(),a.userId(),name);
+        Task task=submitResolved(c,a,id,key,request,preview);identities.remember(a,"/conversations",key,requestHash,id);
+        var row=c.conversation().selectConversation16(id);return new First(readConversation(row.getFirst()),task);
+    });}
+    public Task submitV2(Actor a,UUID conversation,UUID key,TaskSubmissionFingerprint.Request request){return submitV2(a,conversation,key,request,null);}
+    public Task submitV2(Actor a,UUID conversation,UUID key,TaskSubmissionFingerprint.Request request,String admissionHash){return tx(c->{
+        requireV2();auth(c,a);String path="/conversations/"+conversation+"/tasks";String requestHash=TaskSubmissionFingerprint.compute(request);
+        UUID existing=new SubmissionIdentityRepository(submissionIdentity).lookup(a,path,key,legacyTask(request),requestHash);if(existing!=null)return task(c,a,existing,false);
+        return submitResolved(c,a,conversation,key,request,resolveV2(c,a,request,admissionHash));
     });}
 
     public Map<String,Object> diagnostics(Actor a,UUID id){return tx(c->{

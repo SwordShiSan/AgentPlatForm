@@ -12,7 +12,9 @@ public final class ChatService implements ChatApi {
     private static final tools.jackson.databind.json.JsonMapper JSON=tools.jackson.databind.json.JsonMapper.builder().build();
     private final ChatRepository repository;private final ChatCursor cursor;private final com.agentplatform.infrastructure.chat.CredentialCipher encryption;
     private com.agentplatform.app.attachment.AttachmentSubmission attachmentSubmission;
+    private ConfigurationResolver.Layer configurationLocks;
     public void configureAttachments(com.agentplatform.app.attachment.AttachmentSubmission submission){if(attachmentSubmission!=null)throw new IllegalStateException("Attachment composition already fixed");attachmentSubmission=java.util.Objects.requireNonNull(submission);}
+    public void configureLocks(ConfigurationResolver.Layer locks){if(configurationLocks!=null)throw new IllegalStateException("Configuration locks already fixed");configurationLocks=java.util.Objects.requireNonNull(locks);}
     public ChatService(ChatRepository repository,ChatCursor cursor){this(repository,cursor,null);}
     public ChatService(ChatRepository repository,ChatCursor cursor,com.agentplatform.infrastructure.chat.CredentialCipher encryption){this.repository=repository;this.cursor=cursor;this.encryption=encryption;}
     private static UUID id(String value){try{return UUID.fromString(value);}catch(Exception invalid){throw new ChatFailure(400,"INVALID_UUID");}}
@@ -23,8 +25,26 @@ public final class ChatService implements ChatApi {
     public Accepted submitConfigured(Caller c,String conversation,String key,String model,String source,String text){Actor a=actor(c);var task=repository.submitConfigured(a,id(conversation),id(key),model==null?null:id(model),source,text);return new Accepted(task.id().toString(),task.conversationId().toString(),task.status(),repository.snapshot(a,task.conversationId()).cursor());}
     public java.util.Map<String,Object> diagnostics(Caller c,String task){return repository.diagnostics(actor(c),id(task));}
     public java.util.Map<String,Object> preferences(Caller c){return repository.preferences(actor(c));}
-    public java.util.Map<String,Object> preferences(Caller c,long expected,java.util.Map<String,Object> patch){return repository.preferences(actor(c),expected,patch);}
+    public java.util.Map<String,Object> preferences(Caller c,long expected,java.util.Map<String,Object> patch){
+        if(configurationLocks!=null){
+            checkLock(patch,"defaultModelId",configurationLocks.modelId()==null?null:configurationLocks.modelId().toString());
+            checkLock(patch,"defaultCredentialSource",configurationLocks.credentialSource()==null?null:configurationLocks.credentialSource().name());
+            checkLock(patch,"defaultPlanEnabled",configurationLocks.planMode());
+            checkLock(patch,"defaultApprovalMode",configurationLocks.permissionMode()==null?null:configurationLocks.permissionMode().name());
+        }
+        return repository.preferences(actor(c),expected,patch);
+    }
+    private static void checkLock(java.util.Map<String,Object> patch,String field,Object locked){
+        if(locked!=null&&patch.containsKey(field)&&patch.get(field)!=null&&!locked.equals(patch.get(field)))throw new ChatFailure(422,"CONFIG_CONSTRAINT_VIOLATION");
+    }
     public java.util.Map<String,Object> effective(Caller c){return repository.effective(actor(c));}
+    public java.util.Map<String,Object> effective(Caller c,EffectiveQuery query){
+        try {
+            return repository.effective(actor(c),new ConfigurationQuery(query.workspaceId()==null?null:id(query.workspaceId()),
+                    query.modelId()==null?null:id(query.modelId()),query.credentialSource()==null?null:ConfigurationResolver.CredentialSource.valueOf(query.credentialSource()),
+                    query.planMode(),query.permissionMode()==null?null:com.agentplatform.types.TaskPermissionData.Mode.valueOf(query.permissionMode())));
+        } catch(IllegalArgumentException invalid){throw new ChatFailure(400,"INVALID_CONFIGURATION_OPTION");}
+    }
     public java.util.Map<String,Object> configuration(Caller c,String task){return repository.configuration(actor(c),id(task));}
     public java.util.Map<String,Object> credentialMetadata(Caller c){return repository.credentialMetadata(actor(c));}
     public java.util.Map<String,Object> replaceCredential(Caller c,long expected,String secret){
@@ -111,5 +131,48 @@ public final class ChatService implements ChatApi {
         var actor=actor(caller);String body=JSON.writeValueAsString(java.util.Arrays.asList(model,source,text,plan,workspace,mode));
         return attachmentSubmission.submit(new com.agentplatform.domain.files.FileData.Actor(actor.userId(),actor.spaceId()),id(key),"/conversations/"+conversation+"/tasks",body,text,id(conversation),plan,workspace!=null,attachments,
                 ()->submitAuthorized(caller,conversation,key,model,source,text,plan,workspace,mode),result->id(result.taskId()));
+    }
+    private TaskSubmissionFingerprint.Request request(String title,Submission value){
+        if(value==null)throw new ChatFailure(400,"INVALID_REQUEST");
+        try{return new TaskSubmissionFingerprint.Request(title,value.text(),value.workspaceId()==null?null:id(value.workspaceId()),value.modelId()==null?null:id(value.modelId()),
+                value.credentialSource()==null?null:ConfigurationResolver.CredentialSource.valueOf(value.credentialSource()),value.planMode(),
+                value.permissionMode()==null?null:com.agentplatform.types.TaskPermissionData.Mode.valueOf(value.permissionMode()),value.expectedEffectiveConfigHash(),value.attachments());}
+        catch(IllegalArgumentException invalid){throw new ChatFailure(400,"INVALID_CONFIGURATION_OPTION");}
+    }
+    private static ConfigurationQuery query(TaskSubmissionFingerprint.Request r){return new ConfigurationQuery(r.workspaceId(),r.modelId(),r.credentialSource(),r.planMode(),r.permissionMode());}
+    private static String legacyBody(TaskSubmissionFingerprint.Request r,boolean first){
+        String source=r.credentialSource()==null?null:r.credentialSource().name();var mode=r.permissionMode()==null?com.agentplatform.types.TaskPermissionData.Mode.RISK_BASED:r.permissionMode();
+        return first?JSON.writeValueAsString(java.util.Arrays.asList(r.title(),r.modelId()==null?null:r.modelId().toString(),source,r.text(),Boolean.TRUE.equals(r.planMode()),r.workspaceId()==null?null:r.workspaceId().toString(),mode)):
+                JSON.writeValueAsString(java.util.Arrays.asList(r.modelId()==null?null:r.modelId().toString(),source,r.text(),Boolean.TRUE.equals(r.planMode()),r.workspaceId()==null?null:r.workspaceId().toString(),mode));
+    }
+    private java.util.Map<String,Object> admission(Actor actor,TaskSubmissionFingerprint.Request request){
+        var preview=repository.effective(actor,query(request));
+        if(request.expectedEffectiveConfigHash()!=null&&!request.expectedEffectiveConfigHash().equals(preview.get("configHash")))throw new ChatFailure(412,"EFFECTIVE_CONFIGURATION_CHANGED");
+        if(!Boolean.TRUE.equals(preview.get("canSubmit")))throw new ChatFailure(422,"CONFIGURATION_NOT_AVAILABLE");
+        return preview;
+    }
+    private ConversationView firstView(Actor a,ChatRepository.First result){var conversation=result.conversation();var task=result.task();return new ConversationView(conversation.id().toString(),conversation.title(),conversation.version(),conversation.updatedAt().toString(),new Accepted(task.id().toString(),task.conversationId().toString(),task.status(),repository.snapshot(a,task.conversationId()).cursor()));}
+    private Accepted accepted(Actor a,Task task){return new Accepted(task.id().toString(),task.conversationId().toString(),task.status(),repository.snapshot(a,task.conversationId()).cursor());}
+    @Override public ConversationView firstV2(Caller caller,String key,String title,Submission submission){
+        Actor a=actor(caller);UUID requestId=id(key);var request=request(title,submission);String path="/conversations",body=TaskSubmissionFingerprint.compute(request),legacy=legacyBody(request,true);
+        if(attachmentSubmission==null&&!request.attachments().isEmpty())throw new ChatFailure(422,"CAPABILITY_NOT_AVAILABLE");
+        var prior=repository.findFirstV2(a,requestId,request);
+        var fileActor=new com.agentplatform.domain.files.FileData.Actor(a.userId(),a.spaceId());
+        if(prior!=null){if(attachmentSubmission!=null)attachmentSubmission.verifyReplay(fileActor,requestId,path,body,legacy,request.attachments());return firstView(a,prior);}
+        var preview=admission(a,request);@SuppressWarnings("unchecked") var values=(java.util.Map<String,Object>)preview.get("values");String hash=(String)preview.get("configHash");
+        if(attachmentSubmission==null)return firstView(a,repository.firstV2(a,requestId,request,hash));
+        return attachmentSubmission.submit(fileActor,requestId,path,body,legacy,request.text(),null,(Boolean)values.get("planMode"),request.workspaceId()!=null,request.attachments(),
+                ()->firstView(a,repository.firstV2(a,requestId,request,hash)),result->id(result.initialTask().taskId()));
+    }
+    @Override public Accepted submitV2(Caller caller,String conversation,String key,Submission submission){
+        Actor a=actor(caller);UUID requestId=id(key),conversationId=id(conversation);var request=request(null,submission);String path="/conversations/"+conversationId+"/tasks",body=TaskSubmissionFingerprint.compute(request),legacy=legacyBody(request,false);
+        if(attachmentSubmission==null&&!request.attachments().isEmpty())throw new ChatFailure(422,"CAPABILITY_NOT_AVAILABLE");
+        var prior=repository.findTaskV2(a,conversationId,requestId,request);
+        var fileActor=new com.agentplatform.domain.files.FileData.Actor(a.userId(),a.spaceId());
+        if(prior!=null){if(attachmentSubmission!=null)attachmentSubmission.verifyReplay(fileActor,requestId,path,body,legacy,request.attachments());return accepted(a,prior);}
+        var preview=admission(a,request);@SuppressWarnings("unchecked") var values=(java.util.Map<String,Object>)preview.get("values");String hash=(String)preview.get("configHash");
+        if(attachmentSubmission==null)return accepted(a,repository.submitV2(a,conversationId,requestId,request,hash));
+        return attachmentSubmission.submit(fileActor,requestId,path,body,legacy,request.text(),conversationId,(Boolean)values.get("planMode"),request.workspaceId()!=null,request.attachments(),
+                ()->accepted(a,repository.submitV2(a,conversationId,requestId,request,hash)),result->id(result.taskId()));
     }
 }

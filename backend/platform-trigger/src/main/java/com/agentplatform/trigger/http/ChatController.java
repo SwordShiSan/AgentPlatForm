@@ -14,6 +14,7 @@ public final class ChatController {
     @org.springframework.beans.factory.annotation.Value("${platform.chat.plan-enabled:false}") private boolean planEnabled;
     @org.springframework.beans.factory.annotation.Value("${platform.chat.permissions-enabled:false}") private boolean permissionsEnabled;
     @org.springframework.beans.factory.annotation.Value("${platform.attachments.enabled:false}") private boolean attachmentsEnabled;
+    @org.springframework.beans.factory.annotation.Value("${platform.personal-config.enabled:false}") private boolean personalConfigEnabled;
     private final ChatApi chat;private final IdentityApi identity;private final com.agentplatform.api.chat.ChatEventStream streams;
     public ChatController(ChatApi chat,IdentityApi identity,com.agentplatform.api.chat.ChatEventStream streams){this.chat=chat;this.identity=identity;this.streams=streams;}
     private ChatApi.Caller caller(HttpServletRequest request,boolean write) { return RequestIdentity.caller(request); }
@@ -24,30 +25,45 @@ public final class ChatController {
     @PostMapping("/conversations") ResponseEntity<ChatApi.ConversationView> create(HttpServletRequest request,@jakarta.validation.Valid @RequestBody ChatRequests.Conversation body) {
         var who=caller(request,true);
         if(body.workspaceId()!=null)throw new ChatFailure(422,"WORKSPACE_NOT_AVAILABLE");
-        if(body.initialTask()!=null){var input=parseTask(body.initialTask());return ResponseEntity.status(201).body(chat.firstAttached(who,key(request),body.title(),input.model(),input.source(),input.text(),input.plan(),input.workspace(),input.mode(),body.initialTask().input().attachments()));}
+        if(body.initialTask()!=null){if(personalConfigEnabled)return ResponseEntity.status(201).body(chat.firstV2(who,key(request),body.title(),submission(body.initialTask())));var input=parseTask(body.initialTask());return ResponseEntity.status(201).body(chat.firstAttached(who,key(request),body.title(),input.model(),input.source(),input.text(),input.plan(),input.workspace(),input.mode(),body.initialTask().input().attachments()));}
         return ResponseEntity.status(201).body(chat.create(who,key(request),body.title()));
     }
     private record Input(String model,String source,String text,boolean plan,String workspace,com.agentplatform.types.TaskPermissionData.Mode mode) {}
     private Input parseTask(ChatRequests.Task body) {
         var input=body.input();var options=body.options();
+        if(options.expectedEffectiveConfigHash()!=null)throw new ChatFailure(422,"CAPABILITY_NOT_AVAILABLE");
         if((!attachmentsEnabled&&input.attachments()!=null&&!input.attachments().isEmpty())||(Boolean.TRUE.equals(options.planMode())&&!planEnabled)||(!permissionsEnabled&&(options.workspaceId()!=null||"FULL".equals(options.permissionMode()))))throw new ChatFailure(422,"CAPABILITY_NOT_AVAILABLE");
         com.agentplatform.types.TaskPermissionData.Mode mode;
         try{mode=options.permissionMode()==null?com.agentplatform.types.TaskPermissionData.Mode.RISK_BASED:com.agentplatform.types.TaskPermissionData.Mode.valueOf(options.permissionMode());}
         catch(IllegalArgumentException invalid){throw new ChatFailure(400,"INVALID_PERMISSION_MODE");}
         return new Input(options.modelId(),options.credentialSource(),input.text(),Boolean.TRUE.equals(options.planMode()),options.workspaceId(),mode);
     }
+    private ChatApi.Submission submission(ChatRequests.Task body){
+        var options=body.options();var input=body.input();String expected=options.expectedEffectiveConfigHash();
+        if(expected!=null&&!expected.matches("[0-9a-f]{64}"))throw new ChatFailure(400,"INVALID_CONFIGURATION_HASH");
+        if(!attachmentsEnabled&&input.attachments()!=null&&!input.attachments().isEmpty())throw new ChatFailure(422,"CAPABILITY_NOT_AVAILABLE");
+        return new ChatApi.Submission(input.text(),options.modelId(),options.credentialSource(),options.planMode(),options.workspaceId(),options.permissionMode(),expected,input.attachments());
+    }
     private static long version(HttpServletRequest request){String value=request.getHeader("If-Match");if(value==null)throw new ChatFailure(428,"VERSION_REQUIRED");try{if(value.length()<3||value.charAt(0)!=34||value.charAt(value.length()-1)!=34)throw new NumberFormatException();String number=value.substring(1,value.length()-1);if(!number.chars().allMatch(Character::isDigit))throw new NumberFormatException();return Long.parseLong(number);}catch(Exception invalid){throw new ChatFailure(400,"INVALID_VERSION");}}
     private static ResponseEntity<Map<String,Object>> versioned(Map<String,Object> body){return ResponseEntity.ok().eTag("\""+body.get("version")+"\"").header("Cache-Control","no-store").body(body);}
     @GetMapping("/me/preferences") Object preferences(HttpServletRequest request){return versioned(chat.preferences(caller(request,false)));}
     @PatchMapping("/me/preferences") Object preferences(HttpServletRequest request,@RequestBody ChatRequests.PreferencePatch body){return versioned(chat.preferences(caller(request,true),version(request),body.values()));}
-    @GetMapping("/effective-config") Object effective(HttpServletRequest request){return chat.effective(caller(request,false));}
+    @GetMapping("/effective-config") Object effective(HttpServletRequest request,
+            @RequestParam(name="workspaceId",required=false)String workspace,@RequestParam(name="modelId",required=false)String model,
+            @RequestParam(name="credentialSource",required=false)String credential,@RequestParam(name="planMode",required=false)Boolean plan,
+            @RequestParam(name="permissionMode",required=false)String permission){
+        var actor=caller(request,false);
+        if(personalConfigEnabled)return chat.effective(actor,new ChatApi.EffectiveQuery(workspace,model,credential,plan,permission));
+        if(workspace!=null||model!=null||credential!=null||plan!=null||permission!=null)throw new ChatFailure(422,"CAPABILITY_NOT_AVAILABLE");
+        return chat.effective(actor);
+    }
     @GetMapping("/tasks/{id}/configuration") Object configuration(HttpServletRequest request,@PathVariable("id")String id){return chat.configuration(caller(request,false),id);}
     @GetMapping("/me/model-credentials") Object credentials(HttpServletRequest request){return versioned(chat.credentialMetadata(caller(request,false)));}
     @PutMapping("/me/model-credentials/deepseek") Object credentials(HttpServletRequest request,@jakarta.validation.Valid @RequestBody ChatRequests.Credential body){return versioned(chat.replaceCredential(caller(request,true),version(request),body.apiKey()));}
     @DeleteMapping("/me/model-credentials/deepseek") Object revokeCredential(HttpServletRequest request){return versioned(chat.replaceCredential(caller(request,true),version(request),null));}
     @GetMapping("/conversations/{id}") Object conversation(HttpServletRequest request,@PathVariable("id")String id){return chat.conversation(caller(request,false),id);}
     @GetMapping("/conversations/{id}/snapshot") Object snapshot(HttpServletRequest request,@PathVariable("id")String id){return chat.snapshot(caller(request,false),id);}
-    @PostMapping("/conversations/{id}/tasks") ResponseEntity<ChatApi.Accepted> submit(HttpServletRequest request,@PathVariable("id")String id,@jakarta.validation.Valid @RequestBody ChatRequests.Task body){var who=caller(request,true);var input=parseTask(body);return ResponseEntity.accepted().body(chat.submitAttached(who,id,key(request),input.model(),input.source(),input.text(),input.plan(),input.workspace(),input.mode(),body.input().attachments()));}
+    @PostMapping("/conversations/{id}/tasks") ResponseEntity<ChatApi.Accepted> submit(HttpServletRequest request,@PathVariable("id")String id,@jakarta.validation.Valid @RequestBody ChatRequests.Task body){var who=caller(request,true);if(personalConfigEnabled)return ResponseEntity.accepted().body(chat.submitV2(who,id,key(request),submission(body)));var input=parseTask(body);return ResponseEntity.accepted().body(chat.submitAttached(who,id,key(request),input.model(),input.source(),input.text(),input.plan(),input.workspace(),input.mode(),body.input().attachments()));}
     @GetMapping("/tasks/{id}") Object task(HttpServletRequest request,@PathVariable("id")String id){return chat.task(caller(request,false),id);}
     @GetMapping("/tasks/{id}/diagnostics") Object diagnostics(HttpServletRequest request,@PathVariable("id")String id){return chat.diagnostics(caller(request,false),id);}
     @GetMapping("/tasks/{id}/reconciliation") ChatApi.ReconciliationView reconciliation(HttpServletRequest request,@PathVariable("id")String id){return chat.reconciliation(caller(request,false),id);}

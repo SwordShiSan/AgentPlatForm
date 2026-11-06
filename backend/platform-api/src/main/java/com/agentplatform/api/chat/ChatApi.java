@@ -9,6 +9,11 @@ public interface ChatApi extends TaskPermissionApi {
     ConversationView firstAuthorized(Caller caller,String key,String title,String model,String source,String text,boolean plan,String workspace,com.agentplatform.types.TaskPermissionData.Mode mode);
     Accepted submitAuthorized(Caller caller,String conversation,String key,String model,String source,String text,boolean plan,String workspace,com.agentplatform.types.TaskPermissionData.Mode mode);
     record Caller(String userId,String spaceId) {}
+    record EffectiveQuery(String workspaceId,String modelId,String credentialSource,Boolean planMode,String permissionMode) {}
+    record Submission(String text,String modelId,String credentialSource,Boolean planMode,String workspaceId,String permissionMode,
+                      String expectedEffectiveConfigHash,List<com.agentplatform.types.AttachmentReference> attachments) {}
+    default ConversationView firstV2(Caller caller,String key,String title,Submission submission){throw new UnsupportedOperationException("Configuration not enabled");}
+    default Accepted submitV2(Caller caller,String conversation,String key,Submission submission){throw new UnsupportedOperationException("Configuration not enabled");}
     record ModelView(String id,String name,List<String> capabilities,boolean available) {}
     record Models(List<ModelView> items) {}
     record ConversationView(String id,String title,long version,String updatedAt,Accepted initialTask) {
@@ -39,6 +44,7 @@ public interface ChatApi extends TaskPermissionApi {
     Map<String,Object> preferences(Caller caller);
     Map<String,Object> preferences(Caller caller,long expected,Map<String,Object> patch);
     Map<String,Object> effective(Caller caller);
+    default Map<String,Object> effective(Caller caller,EffectiveQuery query) { throw new UnsupportedOperationException("Configuration not enabled"); }
     Map<String,Object> configuration(Caller caller,String task);
     Map<String,Object> credentialMetadata(Caller caller);
     Map<String,Object> replaceCredential(Caller caller,long expected,String secret);

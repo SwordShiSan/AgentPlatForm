@@ -3,8 +3,9 @@ import { reactive, ref } from 'vue';
 import type { AttachmentDraft, AttachmentReference } from './attachment-drafts';
 import { storeSessionDraft } from '../../shared/draft-storage';
 
-export interface PendingSubmission { key: string; text: string; model: string; source: 'PLATFORM' | 'USER'; conversation: string; workspaceId?: string | null; permissionMode?: 'RISK_BASED' | 'FULL'; planMode?: boolean; attachments?: AttachmentReference[] }
-export interface ChatDraft { text: string; model: string; source: 'PLATFORM' | 'USER'; workspaceId?: string | null; permissionMode?: 'RISK_BASED' | 'FULL'; planMode?: boolean; pending?: PendingSubmission; attachments?: AttachmentDraft[] }
+export interface ConfigurationChoices { model: string; source: '' | 'PLATFORM' | 'USER'; plan: '' | 'ON' | 'OFF'; permission: '' | 'RISK_BASED' | 'FULL' }
+export interface PendingSubmission { key: string; text: string; model: string; source: 'PLATFORM' | 'USER'; conversation: string; workspaceId?: string | null; permissionMode?: 'RISK_BASED' | 'FULL'; planMode?: boolean; attachments?: AttachmentReference[]; configurationOptions?: { modelId?: string; credentialSource?: 'PLATFORM' | 'USER'; planMode?: boolean; permissionMode?: 'RISK_BASED' | 'FULL'; workspaceId?: string; expectedEffectiveConfigHash: string } }
+export interface ChatDraft { text: string; model: string; source: 'PLATFORM' | 'USER'; workspaceId?: string | null; permissionMode?: 'RISK_BASED' | 'FULL'; planMode?: boolean; pending?: PendingSubmission; attachments?: AttachmentDraft[]; configurationChoices?: ConfigurationChoices }
 export interface PlanEditorDraft { title: string; markdown: string; baseRevision: number }
 const prefix = 'agentplatform:chat-draft:';
 export function clearChatDrafts() {

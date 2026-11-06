@@ -18,8 +18,9 @@ public final class ChatRequests {
     public record Options(String modelId,
                           String credentialSource,
                           Boolean planMode,
-                          String permissionMode, String workspaceId) {
-        public Options(String modelId,String credentialSource,Boolean planMode,String permissionMode){this(modelId,credentialSource,planMode,permissionMode,null);}
+                          String permissionMode, String workspaceId, String expectedEffectiveConfigHash) {
+        public Options(String modelId,String credentialSource,Boolean planMode,String permissionMode){this(modelId,credentialSource,planMode,permissionMode,null,null);}
+        public Options(String modelId,String credentialSource,Boolean planMode,String permissionMode,String workspaceId){this(modelId,credentialSource,planMode,permissionMode,workspaceId,null);}
     }
     public record Task(@NotNull @Valid Input input, @NotNull @Valid Options options) {}
     public static final class Conversation {
@@ -48,6 +49,9 @@ public final class ChatRequests {
         private String source;
         private boolean modelPresent;
         private boolean sourcePresent;
+        private Boolean planEnabled;
+        private String approvalMode;
+        private boolean planPresent, approvalPresent;
         private com.agentplatform.types.WorkbenchPreferences.Layout layout;
         private List<com.agentplatform.types.WorkbenchPreferences.RecentFile> recent;
         private boolean layoutPresent,recentPresent;
@@ -55,12 +59,18 @@ public final class ChatRequests {
         public void setDefaultModelId(String value) { modelId = value; modelPresent = true; }
         @JsonSetter("defaultCredentialSource")
         public void setDefaultCredentialSource(String value) { source = value; sourcePresent = true; }
+        @JsonSetter("defaultPlanEnabled")
+        public void setDefaultPlanEnabled(Boolean value) { planEnabled = value; planPresent = true; }
+        @JsonSetter("defaultApprovalMode")
+        public void setDefaultApprovalMode(String value) { approvalMode = value; approvalPresent = true; }
         @JsonSetter("workbenchLayout") public void setWorkbenchLayout(com.agentplatform.types.WorkbenchPreferences.Layout value){layout=value;layoutPresent=true;}
         @JsonSetter("recentFiles") public void setRecentFiles(List<com.agentplatform.types.WorkbenchPreferences.RecentFile> value){recent=value;recentPresent=true;}
         public Map<String, Object> values() {
             var result = new LinkedHashMap<String, Object>();
             if (modelPresent) result.put("defaultModelId", modelId);
             if (sourcePresent) result.put("defaultCredentialSource", source);
+            if (planPresent) result.put("defaultPlanEnabled", planEnabled);
+            if (approvalPresent) result.put("defaultApprovalMode", approvalMode);
             if (layoutPresent) result.put("workbenchLayout",layout);
             if (recentPresent) result.put("recentFiles",recent);
             return result;

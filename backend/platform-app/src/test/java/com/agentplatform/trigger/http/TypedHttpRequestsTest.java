@@ -46,10 +46,29 @@ class TypedHttpRequestsTest {
         assertTrue(patch.containsKey("defaultModelId"));
         assertNull(patch.get("defaultModelId"));
         assertEquals(Map.of("defaultCredentialSource", "USER"), mapper.readValue("{\"defaultCredentialSource\":\"USER\"}", ChatRequests.PreferencePatch.class).values());
+        assertEquals(Map.of("defaultPlanEnabled", false, "defaultApprovalMode", "RISK_BASED"),
+                mapper.readValue("{\"defaultPlanEnabled\":false,\"defaultApprovalMode\":\"RISK_BASED\"}", ChatRequests.PreferencePatch.class).values());
+        var clear = mapper.readValue("{\"defaultPlanEnabled\":null,\"defaultApprovalMode\":null}", ChatRequests.PreferencePatch.class).values();
+        assertTrue(clear.containsKey("defaultPlanEnabled"));
+        assertTrue(clear.containsKey("defaultApprovalMode"));
+        assertNull(clear.get("defaultPlanEnabled"));
+        assertNull(clear.get("defaultApprovalMode"));
     }
 
     @Test void secretsAreNotExposedByRequestObjectRendering() {
         assertFalse(new ChatRequests.Credential("sentinel-secret").toString().contains("sentinel-secret"));
         assertFalse(new ChatRequests.Login("alice", "sentinel-password").toString().contains("sentinel-password"));
+    }
+
+    @Test void workspaceSettingsPatchRetainsFieldPresence() {
+        var empty = mapper.readValue("{}", WorkspaceSettingsController.PatchBody.class).patch();
+        assertFalse(empty.planPresent());
+        var changed = mapper.readValue("{\"defaultPlanEnabled\":false,\"defaultApprovalMode\":null}",
+                WorkspaceSettingsController.PatchBody.class).patch();
+        assertTrue(changed.planPresent());
+        assertFalse(changed.planMode());
+        assertTrue(changed.permissionPresent());
+        assertNull(changed.permissionMode());
+        assertThrows(RuntimeException.class, () -> mapper.readValue("{\"unknown\":1}", WorkspaceSettingsController.PatchBody.class));
     }
 }

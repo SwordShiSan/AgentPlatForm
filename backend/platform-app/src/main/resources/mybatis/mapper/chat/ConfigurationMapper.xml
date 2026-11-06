@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.agentplatform.infrastructure.dao.chat.ConfigurationMapper">
+    <select id="lockPersonalConfiguration" resultType="java.lang.Integer">SELECT 1 FROM pg_advisory_xact_lock(hashtextextended('r61:user:' || CAST(#{userId} AS text),0))</select>
     <select id="latestInputEstimate" resultType="java.lang.Long">SELECT r.estimated_input_tokens FROM pf.budget_reservation r JOIN pf.model_call c ON c.id=r.call_id WHERE c.task_id=#{task} ORDER BY c.ordinal DESC LIMIT 1</select>
     <resultMap id="selectUserModelCredential7Result" type="com.agentplatform.infrastructure.dao.po.ConfigurationRows$UserModelCredentialRow7">
         <constructor>
@@ -25,6 +26,7 @@
     </resultMap>
     <select id="selectModelDefinition12" resultMap="selectModelDefinition12Result"><![CDATA[SELECT id AS __column1 FROM pf.model_definition WHERE model_name='deepseek-flash' AND status='ACTIVE' ORDER BY id LIMIT 1]]></select>
     <select id="selectModelDefinition13" resultType="java.lang.Integer"><![CDATA[SELECT 1 FROM pf.model_definition WHERE id=#{model,jdbcType=OTHER} AND status='ACTIVE' AND model_name IN ('deepseek-flash','deepseek-v4-pro')]]></select>
+    <select id="modelVersion" resultType="java.lang.Long"><![CDATA[SELECT pf.lock_r61_model(#{model,jdbcType=OTHER})]]></select>
     <resultMap id="selectUserPreference14Result" type="com.agentplatform.infrastructure.dao.po.ConfigurationRows$UserPreferenceRow14">
         <constructor>
             <arg name="value1" column="__column1" javaType="java.lang.String"/>
@@ -114,6 +116,7 @@
     <insert id="insertUserPreferenceRevision165"><![CDATA[INSERT INTO pf.user_preference_revision(user_id) VALUES(#{userId,jdbcType=OTHER}) ON CONFLICT DO NOTHING]]></insert>
     <update id="updateUserPreferenceRevision166"><![CDATA[UPDATE pf.user_preference_revision SET version=version+1 WHERE user_id=#{userId,jdbcType=OTHER} AND version=#{expected,jdbcType=OTHER}]]></update>
     <insert id="insertUserPreference167"><![CDATA[INSERT INTO pf.user_preference(user_id,key,value_json,version) VALUES(#{userId,jdbcType=OTHER},#{getKey,jdbcType=OTHER},#{payloadJson,jdbcType=OTHER}::jsonb,#{version,jdbcType=OTHER}) ON CONFLICT(user_id,key) DO UPDATE SET value_json=excluded.value_json,version=excluded.version]]></insert>
+    <delete id="deleteUserPreference"><![CDATA[DELETE FROM pf.user_preference WHERE user_id=#{userId,jdbcType=OTHER} AND key=#{key,jdbcType=VARCHAR}]]></delete>
     <insert id="insertUserModelCredential168"><![CDATA[INSERT INTO pf.user_model_credential(space_id,user_id,provider) VALUES(#{spaceId,jdbcType=OTHER},#{userId,jdbcType=OTHER},'DEEPSEEK') ON CONFLICT DO NOTHING]]></insert>
     <update id="updateCredential169"><![CDATA[UPDATE pf.credential SET status='REVOKED',revision=revision+1 WHERE id=#{prior,jdbcType=OTHER} AND scope_type='USER' AND space_id=#{spaceId,jdbcType=OTHER} AND owner_user_id=#{userId,jdbcType=OTHER}]]></update>
     <insert id="insertCredential170"><![CDATA[INSERT INTO pf.credential(id,scope_type,space_id,owner_user_id,ciphertext,nonce,key_version,revision) VALUES(#{id,jdbcType=OTHER},'USER',#{spaceId,jdbcType=OTHER},#{userId,jdbcType=OTHER},#{ciphertext,jdbcType=OTHER},#{nonce,jdbcType=OTHER},#{keyVersion,jdbcType=OTHER},#{revision,jdbcType=OTHER})]]></insert>
