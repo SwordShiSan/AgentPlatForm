@@ -111,10 +111,11 @@ def main():
     content=api.request('GET','/previews/'+preview['id']+'/content',binary=True)[1];assert content.startswith(b'%PDF-') and hashlib.sha256(content).hexdigest()==preview['sha256']
     task_id=None;physical=0
     if args.real_model:
-        meter=journal.freeze('real-model-meter',{'maximum':20,'scope':'R54 local and cloud real supplier calls; deterministic calls excluded'})
+        prior=json.loads((root/'prior-supplier-calls.json').read_text())['physicalCalls'] if (root/'prior-supplier-calls.json').exists() else 0
+        meter=journal.freeze('real-model-meter',{'maximum':20,'priorPhysicalCalls':prior,'scope':'R54 local and cloud real supplier calls; deterministic calls excluded'})
         if 'baseline' not in meter:meter['baseline']=int(window.sql("SELECT count(*) FROM pf.model_call WHERE provider_kind='REAL';"));journal.save()
         def calls():
-            observed=int(window.sql("SELECT count(*) FROM pf.model_call WHERE provider_kind='REAL';"))-meter['baseline'];assert 0<=observed<=20;meter['physicalCalls']=max(meter.get('physicalCalls',0),observed);journal.save();return observed
+            observed=prior+int(window.sql("SELECT count(*) FROM pf.model_call WHERE provider_kind='REAL';"))-meter['baseline'];assert prior<=observed<=20;meter['physicalCalls']=max(meter.get('physicalCalls',0),observed);journal.save();return observed
         assert calls()<=16
         body={'title':'R5 release attachment','initialTask':{'input':{'text':'请阅读附件，只回答其中的标记 R5_FIXED_SOURCE_666，不调用工具。','attachments':[{'kind':'CHAT_ATTACHMENT','attachmentId':aid,'extractionId':extracted['id']}]},'options':{'modelId':'0199e000-0000-7000-8000-000000000002','credentialSource':'PLATFORM','planMode':False,'permissionMode':'FULL'}}}
         conversation=journal.once(api,'real-conversation','POST','/conversations',body);task_id=conversation['initialTask']['taskId']

@@ -21,6 +21,8 @@ def main():
 def restore(folder,w):
  assert (folder/'backup-r5.json').exists() and not (folder/'restore.json').exists() and not (folder/'restore-intent.json').exists()
  backup=folder/'backup-r5'
+ networkSpec=importlib.util.spec_from_file_location('restoreNetwork',folder/'r5-restore-network.py');network=importlib.util.module_from_spec(networkSpec);networkSpec.loader.exec_module(network)
+ subnets=json.loads((folder/'restore-network-plan.json').read_text())['subnets'];network.validate(subnets,network.used_networks())
  for name,digest in json.loads((backup/'checksums.json').read_text()).items():assert w.hash(backup/name)==digest
  for project in ['agentplatform-env','agentplatform-app','agentplatform-r3-app','agentplatform-r4-app','agentplatform-r5-app','agentplatform-r5-restore-env','agentplatform-r5-restore-app']:
   assert not w.run(['docker','ps','-q','--filter','label=com.docker.compose.project='+project]),'Serial restore only'
@@ -68,13 +70,7 @@ def restore(folder,w):
   for name in ['compose.env.yaml','compose.production.env.yaml','compose.r1-http.env.yaml']:env_base+=['-f',str(root/'deploy'/name)]
   resolved=subprocess.run(env_base+['config','--format','json'],env=process_env,capture_output=True,text=True,timeout=30);assert resolved.returncode==0
   env_config=json.loads(resolved.stdout)
-  used=[]
-  for identity in w.run(['docker','network','ls','-q']).split():
-   network=json.loads(w.run(['docker','network','inspect',identity]))[0]
-   used.extend(ipaddress.ip_network(x['Subnet']) for x in (network.get('IPAM',{}).get('Config') or []) if x.get('Subnet') and ':' not in x['Subnet'])
-  used.extend(ipaddress.ip_network(x['dst'],strict=False) for x in json.loads(w.run(['ip','-j','route'])) if x.get('dst') not in [None,'default'] and ':' not in x['dst'])
-  subnets=['10.234.74.0/24','10.234.75.0/24']
-  for subnet in subnets:assert all(not ipaddress.ip_network(subnet).overlaps(x) for x in used)
+  network.validate(subnets,network.used_networks())
   env_config['name']='agentplatform-r5-restore-env';env_config['networks']={'backplane':{'name':'agentplatform-r5-restore-control','internal':True,'ipam':{'config':[{'subnet':subnets[0]}]}}}
   (root/'compose.env.json').write_text(json.dumps(env_config,indent=2));env_base=['docker','compose','-p','agentplatform-r5-restore-env','-f',str(root/'compose.env.json')]
   original=json.loads((backup/'compose.json').read_text());app_config={'name':'agentplatform-r5-restore-app','services':{},'secrets':{},'networks':{'control':{'name':'agentplatform-r5-restore-control','external':True},'local-access':{'name':'agentplatform-r5-restore-access','ipam':{'config':[{'subnet':subnets[1]}]}}}}

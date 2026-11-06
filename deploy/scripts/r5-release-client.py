@@ -112,13 +112,14 @@ print('ORIGINAL_JOURNAL_AND_PHYSICAL_METER_PRESERVED')
 
 def stage(new_attempt=False):
     pointer=DATA/'release-pointer.json'
+    prior_calls=0
     if new_attempt:
         previous=json.loads(pointer.read_text());folder=previous['folder']
         assert folder.startswith('/srv/agentplatform/operations/r5-release-')
         code='''from pathlib import Path
 import json,subprocess
 r=Path(FOLDER);assert not (r/'writes-open-intent.json').exists()
-restorations=[p for p in r.glob('failure-*-restoration.json') if json.loads(p.read_text()).get('status')=='PASS']
+restorations=[p for p in [*r.glob('failure-*-restoration.json'),r/'restore-failure-r4-recovery.json'] if p.exists() and json.loads(p.read_text()).get('status')=='PASS']
 assert restorations,'A verified matched R4 restoration is required before another window'
 for path in r.glob('job-*.json'):
  row=json.loads(path.read_text());p=Path('/proc/'+str(row['pid'])+'/stat')
@@ -126,9 +127,13 @@ for path in r.glob('job-*.json'):
 for old in json.loads((r/'source-containers.private.json').read_text()):
  now=json.loads(subprocess.check_output(['docker','inspect',old['Id']]))[0]
  assert now['State']['Running'] and now['Image']==old['Image'] and now['HostConfig']['RestartPolicy']==old['HostConfig']['RestartPolicy']
-print('FAILED_RELEASE_RECOVERED_EXACT_R4_RETAINED')
+assert not (r/'restoration-required').exists()
+j=json.loads((r/'smoke-journal.private.json').read_text()) if (r/'smoke-journal.private.json').exists() else {}
+calls=j.get('real-model-meter',{}).get('physicalCalls',0)
+assert all(v['phase'] not in ['SENT','UNKNOWN'] for v in j.values()),'Uncertain smoke writes cannot be discarded'
+print(json.dumps({'status':'FAILED_RELEASE_RECOVERED_EXACT_R4_RETAINED','priorSupplierCalls':calls}))
 '''.replace('FOLDER',repr(folder))
-        print(native.remote(code));archive=DATA/'release-attempts'/Path(folder).name;archive.mkdir(parents=True,exist_ok=False)
+        recovered=json.loads(native.remote(code));prior_calls=max(previous.get('priorSupplierCalls',0),recovered['priorSupplierCalls']);print(json.dumps(recovered));archive=DATA/'release-attempts'/Path(folder).name;archive.mkdir(parents=True,exist_ok=False)
         (archive/'release-pointer.json').write_bytes(pointer.read_bytes());pointer.unlink()
     assert not pointer.exists(),'Query the retained release, do not prepare a second one'
     candidate=json.loads((Path(json.loads((DATA/'candidate-pointer.json').read_text())['folder'])/'result.json').read_text())
@@ -140,7 +145,8 @@ print('FAILED_RELEASE_RECOVERED_EXACT_R4_RETAINED')
     incoming=folder.replace('/r5-release-','/r5-inputs-')
     code='from pathlib import Path\nimport json\nr=Path('+repr(incoming)+');assert not r.exists();r.mkdir(mode=0o700)\nprint("PRIVATE_RELEASE_INPUTS_CREATED")\n'
     print(native.remote(code))
-    files={name:ROOT/'deploy/scripts'/name for name in ['r5-release-stage.py','r5-release-control.py','r5-asset-topology.py','r5-isolated-restore.py','r5-database-evidence.py','r5-workspace-restore.py','r5-restore-objects.py','workspace-manifest.py']}
+    files={name:ROOT/'deploy/scripts'/name for name in ['r5-release-stage.py','r5-release-control.py','r5-asset-topology.py','r5-restore-network.py','r5-isolated-restore.py','r5-database-evidence.py','r5-workspace-restore.py','r5-restore-objects.py','workspace-manifest.py']}
+    prior_path=DATA/'prior-supplier-calls.json';prior_path.write_text(json.dumps({'physicalCalls':prior_calls}));files['prior-supplier-calls.json']=prior_path
     files['r5-release-profile.json']=ROOT/'deploy/r5-release-profile.json'
     files['candidate.json']=Path(json.loads((DATA/'candidate-pointer.json').read_text())['folder'])/'result.json'
     files['native-result.json']=DATA/'native-acceptance.json';files['native-operation.json']=DATA/'native-plan.json'
@@ -163,7 +169,7 @@ for name in hashes:
 print((folder/'stage.json').read_text())
 '''.replace('INCOMING',repr(incoming)).replace('FOLDER',repr(folder)).replace('HASHES',repr(hashes))
     compile(code,'r5-private-stage','exec');record=json.loads(native.remote(code,timeout=120))
-    pointer.write_text(json.dumps({'folder':folder,'incoming':incoming,'configurationSource':source,'candidateSource':candidate['source'],'stage':record,'inputHashes':hashes},indent=2),encoding='utf-8')
+    pointer.write_text(json.dumps({'folder':folder,'incoming':incoming,'configurationSource':source,'candidateSource':candidate['source'],'stage':record,'inputHashes':hashes,'priorSupplierCalls':prior_calls},indent=2),encoding='utf-8')
     print(json.dumps({'status':record['status'],'folder':folder,'resourceBudgetMiB':record['resourceBudgetMiB'],'productionStill':'R4'}))
 
 

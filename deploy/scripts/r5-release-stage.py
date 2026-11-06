@@ -1,6 +1,6 @@
 """Prepare R5 from the actual retained R4 graph. No stop, migration or activation."""
 from pathlib import Path
-import argparse,copy,hashlib,json,os,re,subprocess,time
+import argparse,copy,hashlib,importlib.util,json,os,re,subprocess,time
 ROOT=Path('/srv/agentplatform')
 def read(args):return subprocess.check_output(args,text=True).strip()
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
@@ -25,7 +25,10 @@ def main():
  loop=mount['source'];assert re.fullmatch('/dev/loop[0-9]+',loop)
  startingMigration=int(read(['docker','exec',by['postgres']['Id'],'psql','-XqAt','-U','ap_admin','-d','agentplatform','-c','SELECT max(version::int) FROM pf.flyway_schema_history WHERE success;']))
  assert startingMigration==18,'R5 upgrades released R4 schema18; rollback requires the matching cold snapshot'
+ spec=importlib.util.spec_from_file_location('network',Path(__file__).with_name('r5-restore-network.py'));network=importlib.util.module_from_spec(spec);spec.loader.exec_module(network)
+ restoreSubnets=network.choose(network.used_networks())
  folder.mkdir(mode=0o700);config['name']='agentplatform-r5-app'
+ (folder/'restore-network-plan.json').write_text(json.dumps({'subnets':restoreSubnets,'validatedBeforeMaintenance':True},indent=2))
  import shutil
  shutil.copy2(accountSource,folder/'probe-accounts.private.json');(folder/'probe-accounts.private.json').chmod(0o600)
  shutil.copy2(previousSmoke,folder/'previous-smoke.json')
