@@ -1,0 +1,41 @@
+{
+  "status": "R5_PRODUCTION_PENDING_R4_RESTORED",
+  "acceptedMain": "d1a9fa7e748201661c736dc94b89579d910df5e5",
+  "promotionPRs": [
+    141,
+    142,
+    143,
+    144,
+    145,
+    146,
+    147,
+    148
+  ],
+  "pendingFixPR": 149,
+  "migration": {
+    "production": 18,
+    "candidate": 21,
+    "runtimeBaseline": 1
+  },
+  "production": {
+    "version": "R4",
+    "sameContainersImagesRestartPolicies": true,
+    "readiness": "PASS",
+    "login": "PASS",
+    "historyReadOnly": "PASS"
+  },
+  "r5Attempt": {
+    "writesOpened": false,
+    "supplierCalls": 0,
+    "originalExtraction": "QUEUED_ATTEMPTS_0",
+    "rawFailuresRetained": true,
+    "topologyCorrection": "NOT_RUN_PENDING_EXPLICIT_AUTO_REVIEW_CONFIRMATION"
+  },
+  "recovery": {
+    "status": "PASS",
+    "matchedPreupgradeSnapshot": true,
+    "originalXfsUuidPreserved": true,
+    "recordedAt": 1793892614.4638183
+  },
+  "tagCreated": false
+}
