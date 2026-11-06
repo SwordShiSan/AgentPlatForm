@@ -83,7 +83,8 @@ public final class CapabilityMaterialization {
                     out.writeInt(versions.size());
                     for (var version : versions) {
                         field(out, version.capabilityId().toString()); field(out, version.versionId().toString());
-                        field(out, version.archiveSha256()); field(out, version.mountTarget()); out.writeInt(version.files().size());
+                        field(out, version.archiveSha256()); field(out, version.mountTarget());
+                        field(out, "read-only"); out.writeInt(version.files().size());
                         for (var file : version.files()) { field(out, file.path()); out.writeLong(file.bytes()); field(out, file.sha256()); }
                     }
                 }

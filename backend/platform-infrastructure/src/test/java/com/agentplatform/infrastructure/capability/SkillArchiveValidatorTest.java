@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
+import org.apache.commons.compress.archivers.zip.AsiExtraField;
 
 class SkillArchiveValidatorTest {
     @TempDir Path temp;
@@ -79,5 +80,23 @@ class SkillArchiveValidatorTest {
         entries.put("SKILL.md", bytes(SKILL));
         for (int i = 0; i < 1000; i++) entries.put("f" + i, new byte[0]);
         assertThrows(IllegalArgumentException.class, () -> validator.validate(archive(entries)));
+    }
+
+    @Test void rejectsLinkMetadataInUnixExtraField() throws Exception {
+        Path file = temp.resolve("extra-link.zip");
+        try (var zip = new ZipArchiveOutputStream(file)) {
+            var skill = new ZipArchiveEntry("SKILL.md");
+            zip.putArchiveEntry(skill);
+            zip.write(bytes(SKILL));
+            zip.closeArchiveEntry();
+            var entry = new ZipArchiveEntry("shortcut");
+            var unix = new AsiExtraField();
+            unix.setLinkedFile("SKILL.md");
+            entry.addExtraField(unix);
+            zip.putArchiveEntry(entry);
+            zip.write(bytes("SKILL.md"));
+            zip.closeArchiveEntry();
+        }
+        assertThrows(IllegalArgumentException.class, () -> new SkillArchiveValidator().validate(file));
     }
 }

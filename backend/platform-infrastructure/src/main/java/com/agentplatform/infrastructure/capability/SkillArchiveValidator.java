@@ -23,6 +23,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.zip.CRC32;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.AsiExtraField;
 import org.apache.commons.compress.archivers.zip.ZipFile;
 
 /** Validates a staged archive without extracting it or executing package content. */
@@ -52,7 +53,7 @@ public final class SkillArchiveValidator {
                 ZipArchiveEntry e = all.nextElement();
                 String name = path(e.getName(), e.isDirectory());
                 if (!names.add(name) || !zip.canReadEntryData(e) || e.getGeneralPurposeBit().usesEncryption()
-                        || e.isUnixSymlink() || invalidUnixType(e)) throw invalid("INVALID_ENTRY");
+                        || e.isUnixSymlink() || invalidUnixType(e) || containsUnixLink(e)) throw invalid("INVALID_ENTRY");
                 entries.add(e);
                 if (entries.size() > MAX_FILES * 2) throw invalid("ENTRY_LIMIT");
             }
@@ -117,6 +118,14 @@ public final class SkillArchiveValidator {
     private static boolean invalidUnixType(ZipArchiveEntry entry) {
         int type = entry.getUnixMode() & 0170000;
         return type != 0 && type != (entry.isDirectory() ? 0040000 : 0100000);
+    }
+
+    private static boolean containsUnixLink(ZipArchiveEntry entry) {
+        for (var field : entry.getExtraFields()) {
+            if (field instanceof AsiExtraField unix && (unix.isLink()
+                    || unix.getLinkedFile() != null && !unix.getLinkedFile().isEmpty())) return true;
+        }
+        return false;
     }
 
     private static String path(String name, boolean directory) {
