@@ -42,4 +42,3 @@ The platform SHALL provide responsive version-pinned workbench and storage proje
 #### Scenario: R5 release fails before writes reopen
 - **WHEN** the candidate fails in maintenance
 - **THEN** restore the matching R4 snapshot and original runtime without discarding any real user writes.
-
