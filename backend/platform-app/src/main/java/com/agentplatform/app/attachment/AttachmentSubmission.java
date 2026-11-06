@@ -18,6 +18,9 @@ public final class AttachmentSubmission {
     private final TaskAttachmentMapper mapper;private final TransactionTemplate transactions;private final AttachmentAdmission admission;
     public AttachmentSubmission(TaskAttachmentMapper mapper,TransactionTemplate transactions,AttachmentAdmission admission){this.mapper=mapper;this.transactions=transactions;this.admission=admission;}
     public <T>T submit(Actor actor,UUID request,String path,String requestBody,String text,UUID conversation,boolean plan,boolean workspace,List<AttachmentReference> refs,Supplier<T> create,Function<T,UUID> taskId){
+        return submit(actor,request,path,requestBody,null,text,conversation,plan,workspace,refs,create,taskId);
+    }
+    public <T>T submit(Actor actor,UUID request,String path,String requestBody,String legacyBody,String text,UUID conversation,boolean plan,boolean workspace,List<AttachmentReference> refs,Supplier<T> create,Function<T,UUID> taskId){
         var references=refs==null?List.<AttachmentReference>of():List.copyOf(refs);
         if(references.size()>10)throw new ChatFailure(422,"ATTACHMENT_LIMIT_EXCEEDED");
         if(references.stream().map(AttachmentReference::extractionId).distinct().count()!=references.size())throw new ChatFailure(400,"DUPLICATE_ATTACHMENT");
@@ -26,7 +29,7 @@ public final class AttachmentSubmission {
         return transactions.execute(status->{
             mapper.requestLock(actor.spaceId()+":"+actor.userId()+":"+path+":"+request);
             String prior=mapper.requestHash(actor,path,request);
-            if(prior!=null&&!prior.equals(hash))throw new ChatFailure(409,"IDEMPOTENCY_CONFLICT");
+            if(prior!=null&&!prior.equals(hash)&&(legacyBody==null||!prior.equals(hash(legacyBody,references))))throw new ChatFailure(409,"IDEMPOTENCY_CONFLICT");
             if(prior==null&&!references.isEmpty()&&mapper.legacyRequest(actor,path,request))throw new ChatFailure(409,"IDEMPOTENCY_CONFLICT");
             var sources=references.stream().map(ref->{var source=mapper.source(actor,ref);if(source==null)throw new ChatFailure(422,"ATTACHMENT_NOT_READY_OR_UNAUTHORIZED");return source;}).toList();
             T result=create.get();UUID task=taskId.apply(result);
@@ -45,4 +48,17 @@ public final class AttachmentSubmission {
             return result;
         });
     }
+    /** Verify the previously frozen attachment identity before returning a replay. */
+    public void verifyReplay(Actor actor,UUID request,String path,String requestBody,String legacyBody,List<AttachmentReference> refs){
+        var references=refs==null?List.<AttachmentReference>of():List.copyOf(refs);
+        if(references.size()>10||references.stream().map(AttachmentReference::extractionId).distinct().count()!=references.size())throw new ChatFailure(400,"INVALID_ATTACHMENT_REFERENCE");
+        transactions.executeWithoutResult(status->{
+            mapper.requestLock(actor.spaceId()+":"+actor.userId()+":"+path+":"+request);
+            String prior=mapper.requestHash(actor,path,request);
+            if(prior==null){if(!references.isEmpty())throw new ChatFailure(409,"IDEMPOTENCY_CONFLICT");}
+            else if(!prior.equals(hash(requestBody,references))&&(legacyBody==null||!prior.equals(hash(legacyBody,references))))throw new ChatFailure(409,"IDEMPOTENCY_CONFLICT");
+            for(var ref:references)if(mapper.source(actor,ref)==null)throw new ChatFailure(403,"ATTACHMENT_AUTHORIZATION_REVOKED");
+        });
+    }
+    private static String hash(String body,List<AttachmentReference> refs){return RunnerSignatures.sha256((body+"\n"+JSON.writeValueAsString(refs)).getBytes(StandardCharsets.UTF_8));}
 }

@@ -10,7 +10,7 @@ import AttachmentComposer from './AttachmentComposer.vue';
 import WorkspaceFilesPanel from '../workspace/WorkspaceFilesPanel.vue';
 import FilePreviewPane from '../workspace/FilePreviewPane.vue';
 import type { AttachmentDraft, AttachmentReference } from './attachment-drafts';
-import { useChatDrafts, type PendingSubmission } from './drafts';
+import { useChatDrafts, type PendingSubmission, type ConfigurationChoices } from './drafts';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
@@ -24,6 +24,8 @@ import { subscribeReplay, type StreamStatus } from './event-stream';
 
 const route = useRoute(); const router = useRouter(); const cache = useQueryClient();
 const planEnabled = import.meta.env.VITE_PLAN_ENABLED === 'true';
+const personalConfigEnabled = import.meta.env.VITE_PERSONAL_CONFIG_ENABLED === 'true';
+const configurationChoices = ref<ConfigurationChoices>({ model: '', source: '', plan: '', permission: '' });
 const planMode = ref(false);
 const permissionsEnabled = import.meta.env.VITE_PERMISSIONS_ENABLED === 'true';
 const workspaceToolsEnabled = import.meta.env.VITE_WORKSPACE_TOOLS_ENABLED === 'true';
@@ -42,7 +44,15 @@ const me = useQuery({ queryKey: ['identity', 'me'], queryFn: async () => (await 
 const actor = computed(() => me.data.value?.id ?? '');
 const space = computed(() => me.data.value?.spaces.find(item => item.type === 'PERSONAL')?.id ?? '');
 const workspaces = useQuery({ queryKey: computed(() => ['chat', actor.value, space.value, 'workspace-choices']), enabled: computed(() => permissionsEnabled && !!actor.value && !!space.value), queryFn: async () => (await api.GET('/api/v1/workspaces', { params: { query: { limit: 100 } } })).data! });
-const effective = useQuery({ queryKey: computed(() => ['chat', actor.value, 'effective-config']), enabled: computed(() => !!actor.value), queryFn: async () => (await api.GET('/api/v1/effective-config')).data! });
+const effective = useQuery({ queryKey: computed(() => ['chat', actor.value, 'effective-config', personalConfigEnabled ? workspaceId.value : '', personalConfigEnabled ? { ...configurationChoices.value } : null] as const), enabled: computed(() => !!actor.value), queryFn: async ({ queryKey }) => {
+  if (!personalConfigEnabled) return (await api.GET('/api/v1/effective-config')).data!;
+  const selected=queryKey[4]!;const selectedWorkspace=queryKey[3];
+  return (await api.GET('/api/v1/effective-config', { params: { query: {
+    ...(selectedWorkspace ? { workspaceId: selectedWorkspace } : {}), ...(selected.model ? { modelId: selected.model } : {}),
+    ...(selected.source ? { credentialSource: selected.source } : {}), ...(selected.plan ? { planMode: selected.plan === 'ON' } : {}),
+    ...(selected.permission ? { permissionMode: selected.permission } : {}),
+  } } })).data!;
+} });
 const preferences = useQuery({ queryKey: computed(() => ['chat', actor.value, 'preferences']), enabled: computed(() => !!actor.value), queryFn: async () => (await api.GET('/api/v1/me/preferences')).data! });
 watch(() => preferences.data.value?.workbenchLayout, value => { if (value) workbenchView.value = value.view; }, { immediate: true });
 async function selectWorkbench(view: 'SPLIT' | 'CHAT' | 'FILES') {
@@ -54,7 +64,7 @@ async function selectWorkbench(view: 'SPLIT' | 'CHAT' | 'FILES') {
 async function referenceFile(file: components['schemas']['FileItem'], modify = false) {
   if (!file.versionId || busy.value || pending.value) return;
   if (modify) {
-    workspaceId.value = file.workspaceId; planMode.value = true;
+    workspaceId.value = file.workspaceId; planMode.value = true;if(personalConfigEnabled)configurationChoices.value.plan='ON';
     const request = `请修改工作区文件「${file.path}」，先说明方案；等待我的确认，不自动批准工具。`;
     draft.value = draft.value ? `${draft.value}\n\n${request}` : request;
   }
@@ -84,7 +94,7 @@ async function addLinkedSource() {
 const listKey = computed(() => ['chat', actor.value, 'conversations']);
 const snapshotKey = computed(() => ['chat', actor.value, space.value, 'snapshot', selected.value]);
 const models = useQuery({ queryKey: computed(() => ['chat', actor.value, 'models']), enabled: computed(() => !!actor.value), queryFn: async () => (await api.GET('/api/v1/models')).data! });
-const modelAvailable = computed(() => models.data.value?.items.some(item => item.id === selectedModel.value) ?? false);
+const modelAvailable = computed(() => personalConfigEnabled ? !!effective.data.value?.canSubmit && !effective.isFetching.value : (models.data.value?.items.some(item => item.id === selectedModel.value) ?? false));
 const conversations = useQuery({ queryKey: listKey, enabled: computed(() => !!actor.value), queryFn: async () => (await api.GET('/api/v1/conversations', { params: { query: { limit: 100 } } })).data! });
 const snapshot = useQuery({ queryKey: snapshotKey, enabled: computed(() => !!actor.value && !!space.value && !!selected.value), queryFn: async ({ queryKey, signal }) => (await api.GET('/api/v1/conversations/{id}/snapshot', { signal, params: { path: { id: String(queryKey[4]) }, header: { 'X-Space-Id': String(queryKey[2]) } } })).data! });
 const quota = useQuery({ queryKey: computed(() => ['chat', actor.value, 'quota']), enabled: computed(() => !!actor.value), queryFn: async () => (await api.GET('/api/v1/me/usage-quota')).data! });
@@ -114,6 +124,7 @@ const stopLabel = computed(() => {
   return '';
 });
 const config = useQuery({ queryKey: computed(() => ['chat', actor.value, 'configuration', lastTask.value?.taskId, lastTask.value?.version]), enabled: computed(() => !!lastTask.value), queryFn: async () => (await api.GET('/api/v1/tasks/{id}/configuration', { params: { path: { id: lastTask.value!.taskId } } })).data! });
+const snapshotResolution = computed(() => config.data.value?.values.resolution as { resolverVersion?: string; sources?: Record<string,string>; effectiveHash?: string } | undefined);
 const running = computed(() => snapshot.data.value?.tasks.some(item => ['QUEUED', 'RUNNING', 'WAITING_INPUT'].includes(item.status)) ?? false);
 const diagnostics = useQuery({ queryKey: computed(() => ['chat', actor.value, space.value, 'diagnostics', lastTask.value?.taskId, lastTask.value?.version]), enabled: computed(() => !!lastTask.value && !running.value), queryFn: async () => (await api.GET('/api/v1/tasks/{id}/diagnostics', { params: { path: { id: lastTask.value!.taskId } } })).data! });
 const diagnosticCopy = ref('');
@@ -194,12 +205,12 @@ function restoreDraft() {
   restoring = true;
   const value = drafts.load(actor.value, space.value, selected.value);
   attachmentDrafts.value = value.attachments ?? [];
-  planMode.value = value.planMode ?? false; workspaceId.value = value.workspaceId ?? ''; permissionMode.value = value.permissionMode ?? 'RISK_BASED'; draft.value = value.text; pending.value = value.pending; selectedModel.value = value.model || effective.data.value?.values.modelId || ''; source.value = value.model ? value.source : effective.data.value?.values.credentialSource || 'PLATFORM';
+  planMode.value = value.planMode ?? false; workspaceId.value = value.workspaceId ?? ''; permissionMode.value = value.permissionMode ?? 'RISK_BASED'; draft.value = value.text; pending.value = value.pending; selectedModel.value = value.model || effective.data.value?.values.modelId || ''; source.value = value.model ? value.source : effective.data.value?.values.credentialSource || 'PLATFORM';configurationChoices.value = value.configurationChoices ?? { model: '', source: '', plan: '', permission: '' };
   restoring = false;
 }
 watch([actor, space, selected], () => { stopStream(); sourcePreview.value = undefined; error.value = ''; restoreDraft(); connect(); }, { immediate: true, flush: 'sync' });
-watch(() => effective.data.value, () => { if (!selectedModel.value) restoreDraft(); });
-watch([draft, selectedModel, source, pending, planMode, workspaceId, permissionMode, attachmentDrafts], () => { if (mounted && !restoring) drafts.save(actor.value, space.value, selected.value, { text: draft.value, model: selectedModel.value, source: source.value, planMode: planMode.value, workspaceId: workspaceId.value, permissionMode: permissionMode.value, attachments: attachmentDrafts.value, ...(pending.value ? { pending: pending.value } : {}) }); }, { deep: true, flush: 'sync' });
+watch(() => effective.data.value, () => { if (!personalConfigEnabled && !selectedModel.value) restoreDraft(); });
+watch([draft, selectedModel, source, pending, planMode, workspaceId, permissionMode, attachmentDrafts, configurationChoices], () => { if (mounted && !restoring) drafts.save(actor.value, space.value, selected.value, { text: draft.value, model: selectedModel.value, source: source.value, planMode: planMode.value, workspaceId: workspaceId.value, permissionMode: permissionMode.value, attachments: attachmentDrafts.value, configurationChoices: { ...configurationChoices.value }, ...(pending.value ? { pending: pending.value } : {}) }); }, { deep: true, flush: 'sync' });
 onBeforeUnmount(() => { mounted = false; stopStream(); });
 
 async function create() {
@@ -225,24 +236,38 @@ async function moreConversations() {
 }
 async function submit() {
   if (busy.value || (!pending.value && (!draft.value.trim() || running.value || attachmentsProcessing.value))) return;
-  const model = models.data.value?.items.find(item => item.id === selectedModel.value); if (!model) { error.value = '所选模型或凭据不可用，请检查配置。'; return; }
-  pending.value ??= { key: newRequestId(), text: draft.value, model: model.id, source: source.value, conversation: selected.value, planMode: planEnabled && planMode.value, workspaceId: permissionsEnabled ? workspaceId.value || null : null, permissionMode: permissionsEnabled ? permissionMode.value : 'RISK_BASED', attachments: attachmentRefs.value.map(value => ({ ...value })) };
+  if (!pending.value) {
+    if (personalConfigEnabled) {
+      const preview=effective.data.value;if(!preview?.canSubmit || effective.isFetching.value){error.value='生效配置不可用或正在更新，请检查后再发送。';return;}
+      const choices=configurationChoices.value;
+      pending.value = { key:newRequestId(),text:draft.value,model:preview.values.modelId,source:preview.values.credentialSource,conversation:selected.value,
+        attachments:attachmentRefs.value.map(value=>({...value})), configurationOptions: {
+          ...(workspaceId.value?{workspaceId:workspaceId.value}:{}),...(choices.model?{modelId:choices.model}:{}),...(choices.source?{credentialSource:choices.source}:{}),
+          ...(choices.plan?{planMode:choices.plan==='ON'}:{}),...(choices.permission?{permissionMode:choices.permission}:{}),expectedEffectiveConfigHash:preview.configHash,
+        } };
+    } else {
+      const model=models.data.value?.items.find(item=>item.id===selectedModel.value);if(!model){error.value='所选模型或凭据不可用，请检查配置。';return;}
+      pending.value={ key:newRequestId(),text:draft.value,model:model.id,source:source.value,conversation:selected.value,planMode:planEnabled&&planMode.value,workspaceId:permissionsEnabled?workspaceId.value||null:null,permissionMode:permissionsEnabled?permissionMode.value:'RISK_BASED',attachments:attachmentRefs.value.map(value=>({...value})) };
+    }
+  }
   const value = pending.value; busy.value = true; error.value = '';
   try {
     const token = await csrf();
-    const body = { input: { text: value.text, attachments: value.attachments ?? [] }, options: { modelId: value.model, credentialSource: value.source, planMode: value.planMode ?? false, permissionMode: value.permissionMode ?? 'RISK_BASED', ...(value.workspaceId ? { workspaceId: value.workspaceId } : {}) } };
+    const body = { input: { text: value.text, attachments: value.attachments ?? [] }, options: value.configurationOptions ?? { modelId: value.model, credentialSource: value.source, planMode: value.planMode ?? false, permissionMode: value.permissionMode ?? 'RISK_BASED', ...(value.workspaceId ? { workspaceId: value.workspaceId } : {}) } };
     let conversation = value.conversation;
     if (conversation) await api.POST('/api/v1/conversations/{id}/tasks', { params: { path: { id: conversation }, header: { 'Idempotency-Key': value.key, 'X-CSRF-Token': token } }, body });
     else { const accepted = (await api.POST('/api/v1/conversations', { params: { header: { 'Idempotency-Key': value.key, 'X-CSRF-Token': token } }, body: { title: '新对话', initialTask: body } })).data!; conversation = accepted.id; }
     pending.value = undefined; draft.value = ''; attachmentDrafts.value = []; attachmentRefs.value = []; stopStream(); await cache.invalidateQueries({ queryKey: listKey.value });
     if (!value.conversation) {
       drafts.save(actor.value, space.value, '', { text: '', model: '', source: 'PLATFORM' });
-      drafts.save(actor.value, space.value, conversation, { text: '', model: value.model, source: value.source });
+      drafts.save(actor.value, space.value, conversation, { text: '', model: value.model, source: value.source, configurationChoices: { ...configurationChoices.value } });
       await router.push(`/app/chat/${conversation}`);
     }
     await snapshot.refetch(); await config.refetch(); connect();
   } catch (failure) {
-    if (failure instanceof ApiError && [400, 403, 404, 422, 429].includes(failure.problem.status)) {
+    if (failure instanceof ApiError && failure.problem.status === 412 && failure.problem.code === 'EFFECTIVE_CONFIGURATION_CHANGED') {
+      pending.value=undefined;await effective.refetch();error.value='生效配置已变化，输入和附件已保留；请核对后重新发送。';
+    } else if (failure instanceof ApiError && [400, 403, 404, 422, 429].includes(failure.problem.status)) {
       pending.value = undefined;
       error.value = failure.problem.code === 'CREDENTIAL_SOURCE_UNAVAILABLE'
         ? '所选凭据未配置或已撤销，请检查模型密钥与来源。输入已保留。'
@@ -326,27 +351,36 @@ async function cancel() {
       <p v-if="error" role="alert" class="identity-error">{{ error }}</p>
       <p v-if="tokenQuota" role="status" data-testid="daily-quota">{{ tokenQuota.unlimited ? '管理员额度不限，用量持续记录' : `今日剩余 ${tokenQuota.remaining?.toLocaleString()} tokens / ${tokenQuota.limit?.toLocaleString()}` }}<span v-if="!tokenQuota.unlimited"> · {{ new Date(tokenQuota.resetAt).toLocaleString() }} 重置</span></p>
       <form class="chat-composer" @submit.prevent="submit">
-        <div class="chat-options">
+        <div v-if="personalConfigEnabled" class="chat-options">
+          <label for="chat-model">本次模型</label><select id="chat-model" v-model="configurationChoices.model" :disabled="busy || !!pending"><option value="">继承默认</option><option v-if="configurationChoices.model && !models.data.value?.items.some(item => item.id === configurationChoices.model)" :value="configurationChoices.model" disabled>已选模型不可用</option><option v-for="item in models.data.value?.items" :key="item.id" :value="item.id">{{ item.name }}</option></select>
+          <label for="chat-source">本次凭据来源</label><select id="chat-source" v-model="configurationChoices.source" :disabled="busy || !!pending"><option value="">继承默认</option><option value="PLATFORM">平台密钥</option><option value="USER">个人密钥</option></select>
+          <RouterLink to="/app/settings/general">管理默认设置</RouterLink>
+        </div>
+        <div v-else class="chat-options">
           <label for="chat-model">模型</label><select id="chat-model" v-model="selectedModel" :disabled="busy || !!pending"><option v-for="item in models.data.value?.items" :key="item.id" :value="item.id">{{ item.name }}</option></select>
           <label for="chat-source">凭据来源</label><select id="chat-source" v-model="source" :disabled="busy || !!pending"><option value="PLATFORM">平台密钥</option><option value="USER">个人密钥</option></select>
           <button type="button" :disabled="busy || !!pending || !selectedModel" @click="saveDefaults">设为我的默认</button>
         </div>
-        <p class="intro">选择仅影响下次发送。{{ effective.data.value?.sources.modelId === 'USER' ? '默认模型来自个人偏好。' : '默认模型来自平台。' }}</p>
+        <p v-if="personalConfigEnabled && effective.data.value" class="intro">本次生效模型：{{ models.data.value?.items.find(item => item.id === effective.data.value?.values.modelId)?.name ?? effective.data.value.values.modelId }}（{{ effective.data.value.sources.modelId }}）；凭据：{{ effective.data.value.values.credentialSource }}（{{ effective.data.value.sources.credentialSource }}）。</p>
+        <p v-else-if="!personalConfigEnabled" class="intro">选择仅影响下次发送。{{ effective.data.value?.sources.modelId === 'USER' ? '默认模型来自个人偏好。' : '默认模型来自平台。' }}</p>
+        <p v-if="personalConfigEnabled && effective.isError.value" role="alert">无法读取生效配置，请检查设置与权限。</p>
+        <p v-if="personalConfigEnabled && effective.data.value?.canSubmit === false" role="alert">当前配置不可提交：{{ effective.data.value.blockers?.join('、') }}</p>
         <div v-if="permissionsEnabled" class="chat-options">
           <label for="chat-workspace">本次工作区</label><select id="chat-workspace" v-model="workspaceId" :disabled="busy || !!pending"><option value="">不绑定（普通文本）</option><option v-for="item in workspaces.data.value?.items.filter(w => w.state === 'READY')" :key="item.id" :value="item.id">{{ item.name }}</option></select>
-          <label for="chat-permission">本次权限</label><select id="chat-permission" v-model="permissionMode" :disabled="busy || !!pending"><option value="RISK_BASED">按风险确认</option><option value="FULL">任务内完全权限</option></select>
-          <p v-if="workspaceToolsEnabled && workspaceId">{{ permissionMode === 'FULL' ? '完全权限可自动执行工作区命令，命令能创建、修改和删除整个绑定工作区内的文件；仍受实时权限和环境隔离限制。' : '每个执行命令均需单独批准。文件授权不会自动授予命令执行许可。' }}</p>
+          <label for="chat-permission">本次权限</label><select v-if="personalConfigEnabled" id="chat-permission" v-model="configurationChoices.permission" :disabled="busy || !!pending"><option value="">继承默认</option><option value="RISK_BASED">按风险确认</option><option value="FULL">任务内完全权限</option></select><select v-else id="chat-permission" v-model="permissionMode" :disabled="busy || !!pending"><option value="RISK_BASED">按风险确认</option><option value="FULL">任务内完全权限</option></select>
+          <p v-if="workspaceToolsEnabled && workspaceId">{{ (personalConfigEnabled ? effective.data.value?.values.permissionMode : permissionMode) === 'FULL' ? '完全权限可自动执行工作区命令，命令能创建、修改和删除整个绑定工作区内的文件；仍受实时权限和环境隔离限制。' : '每个执行命令均需单独批准。文件授权不会自动授予命令执行许可。' }}</p>
           <p v-if="workspaces.isError.value" role="alert">暂时无法读取工作区，可继续不绑定的文本聊天。</p>
         </div>
-        <label v-if="planEnabled" class="plan-toggle"><input v-model="planMode" type="checkbox" :disabled="busy || !!pending || running" /> {{ workspaceToolsEnabled ? '先制定计划，再确认执行' : '先制定计划，再确认文本执行' }}</label>
+        <label v-if="planEnabled && personalConfigEnabled" for="chat-plan">本次计划模式</label><select v-if="planEnabled && personalConfigEnabled" id="chat-plan" v-model="configurationChoices.plan" :disabled="busy || !!pending || running"><option value="">继承默认</option><option value="ON">开启</option><option value="OFF">关闭</option></select>
+        <label v-else-if="planEnabled" class="plan-toggle"><input v-model="planMode" type="checkbox" :disabled="busy || !!pending || running" /> {{ workspaceToolsEnabled ? '先制定计划，再确认执行' : '先制定计划，再确认文本执行' }}</label>
         <label for="chat-input">消息</label>
         <p v-if="attachmentsEnabled && linkedSource" role="status">已选择固定产物版本，尚未添加到消息。<button type="button" :disabled="busy || !!pending" @click="addLinkedSource">添加此来源</button></p>
         <AttachmentComposer v-if="attachmentsEnabled" ref="attachmentComposer" :key="`${actor}:${space}:${selected}`" v-model="attachmentDrafts" :actor="actor" :space="space" :disabled="busy || !!pending" @references="attachmentRefs = $event" @processing="attachmentsProcessing = $event" />
         <p v-if="drafts.storageWarning" role="alert">浏览器草稿空间不足，内容仅当前页面保留；请先保存或发送。</p>
         <textarea id="chat-input" v-model="draft" rows="3" :disabled="busy || !!pending" placeholder="输入文字，按 Ctrl + Enter 发送" @keydown.ctrl.enter.prevent="submit" @keydown.meta.enter.prevent="submit" />
-        <div class="chat-actions"><button type="submit" :disabled="busy || (!pending && (running || !draft.trim() || attachmentsProcessing)) || !modelAvailable">{{ pending ? '重试同一条消息' : '发送' }}</button><button v-if="running" type="button" :disabled="busy || lastTask?.cancelRequested" @click="cancel">取消回复</button></div>
+        <div class="chat-actions"><button type="submit" :disabled="busy || (!pending && (running || !draft.trim() || attachmentsProcessing || !modelAvailable))">{{ pending ? '重试同一条消息' : '发送' }}</button><button v-if="running" type="button" :disabled="busy || lastTask?.cancelRequested" @click="cancel">取消回复</button></div>
       </form>
-      <details v-if="config.data.value"><summary>当前任务配置</summary><p>模型：{{ config.data.value.values.modelName }}；来源：{{ config.data.value.values.credentialSource }}</p><p>冻结上下文 {{ config.data.value.values.window }} tokens，输出上限 {{ config.data.value.values.maxOutput }}。</p><p v-if="config.data.value.contextUsage">最近请求输入估算：{{ config.data.value.contextUsage.estimatedInputTokens?.toLocaleString() ?? '调用前计算' }} tokens；估算不等于计费值。</p><p class="chat-text">快照 {{ config.data.value.configSnapshotId }} · {{ config.data.value.configHash }}</p><p v-if="!config.data.value.restrictions.credentialActive">此任务凭据已撤销。</p></details>
+      <details v-if="config.data.value"><summary>当前任务配置</summary><p>模型：{{ config.data.value.values.modelName }}；来源：{{ config.data.value.values.credentialSource }}</p><p v-if="snapshotResolution?.resolverVersion === 'LEGACY'">历史任务：没有配置来源记录。</p><p v-else-if="snapshotResolution?.sources">冻结来源：模型 {{ snapshotResolution.sources.modelId }}、凭据 {{ snapshotResolution.sources.credentialSource }}、计划 {{ snapshotResolution.sources.planMode }}、权限 {{ snapshotResolution.sources.permissionMode }}。</p><p>冻结上下文 {{ config.data.value.values.window }} tokens，输出上限 {{ config.data.value.values.maxOutput }}。</p><p v-if="config.data.value.contextUsage">最近请求输入估算：{{ config.data.value.contextUsage.estimatedInputTokens?.toLocaleString() ?? '调用前计算' }} tokens；估算不等于计费值。</p><p class="chat-text">快照 {{ config.data.value.configSnapshotId }} · {{ config.data.value.configHash }}</p><p v-if="!config.data.value.restrictions.credentialActive">此任务凭据已撤销。</p></details>
       <ModelSettings v-if="actor" :actor="actor" />
     </section>
     <aside v-if="attachmentsEnabled" class="workbench-files" aria-label="文件工作台">

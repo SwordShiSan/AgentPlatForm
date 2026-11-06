@@ -339,6 +339,38 @@ paths:
               schema:
                 type: string
         default: *a1
+  /api/v1/workspaces/{id}/settings:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+    get:
+      operationId: workspaceConfiguration
+      security: [{cookieAuth: []}]
+      responses:
+        "200":
+          description: Versioned workspace overrides
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/WorkspaceConfiguration'}
+        default: *a1
+    patch:
+      operationId: updateWorkspaceConfiguration
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ConfigurationOverrides'}
+      responses:
+        "200":
+          description: Updated workspace overrides
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/WorkspaceConfiguration'}
+        default: *a1
   /api/v1/me/preferences:
     get:
       operationId: chatPreferences
@@ -434,6 +466,11 @@ paths:
           schema:
             type: string
             format: uuid
+        - {name: workspaceId, in: query, required: false, schema: {type: string, format: uuid}}
+        - {name: modelId, in: query, required: false, schema: {type: string, format: uuid}}
+        - {name: credentialSource, in: query, required: false, schema: {type: string, enum: [PLATFORM, USER]}}
+        - {name: planMode, in: query, required: false, schema: {type: boolean}}
+        - {name: permissionMode, in: query, required: false, schema: {type: string, enum: [RISK_BASED, FULL]}}
   /api/v1/me/model-credentials:
     get:
       operationId: modelCredentials
@@ -2851,14 +2888,15 @@ components:
             modelId: *a4
             planMode:
               type: boolean
-              default: false
             workspaceId:
               type: [string, "null"]
               format: uuid
             permissionMode:
               type: string
               enum: [RISK_BASED, FULL]
-              default: RISK_BASED
+            expectedEffectiveConfigHash:
+              type: string
+              pattern: '^[a-f0-9]{64}$'
             credentialSource: &a11
               type: string
               enum:
@@ -2995,6 +3033,21 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ChatUsage"
+    ConfigurationOverrides:
+      type: object
+      additionalProperties: false
+      properties:
+        defaultModelId: {type: [string, 'null'], format: uuid}
+        defaultCredentialSource: {type: [string, 'null'], enum: [PLATFORM, USER, null]}
+        defaultPlanEnabled: {type: [boolean, 'null']}
+        defaultApprovalMode: {type: [string, 'null'], enum: [RISK_BASED, FULL, null]}
+    WorkspaceConfiguration:
+      type: object
+      additionalProperties: false
+      required: [version, overrides]
+      properties:
+        version: {type: integer, minimum: 0}
+        overrides: {$ref: '#/components/schemas/ConfigurationOverrides'}
     ChatPreferences:
       type: object
       additionalProperties: false
@@ -3008,6 +3061,9 @@ components:
             - "null"
           format: uuid
         defaultCredentialSource: *a11
+        defaultPlanEnabled: {type: boolean}
+        defaultApprovalMode: {type: string, enum: [RISK_BASED, FULL]}
+        overrides: {$ref: '#/components/schemas/ConfigurationOverrides'}
         workbenchLayout: { $ref: "#/components/schemas/WorkbenchLayout" }
         recentFiles:
           type: array
@@ -3027,7 +3083,9 @@ components:
             - string
             - "null"
           format: uuid
-        defaultCredentialSource: *a11
+        defaultCredentialSource: {type: [string, 'null'], enum: [PLATFORM, USER, null]}
+        defaultPlanEnabled: {type: [boolean, 'null']}
+        defaultApprovalMode: {type: [string, 'null'], enum: [RISK_BASED, FULL, null]}
         workbenchLayout: { $ref: "#/components/schemas/WorkbenchLayout" }
         recentFiles:
           type: array
@@ -3072,6 +3130,8 @@ components:
           properties:
             modelId: *a12
             credentialSource: *a11
+            planMode: {type: boolean}
+            permissionMode: {type: string, enum: [RISK_BASED, FULL]}
           required:
             - modelId
             - credentialSource
@@ -3081,6 +3141,8 @@ components:
           properties:
             modelId: *a3
             credentialSource: *a3
+            planMode: *a3
+            permissionMode: *a3
           required:
             - modelId
             - credentialSource
@@ -3088,11 +3150,36 @@ components:
           type: array
           items: *a3
         configHash: *a3
+        canSubmit: {type: boolean}
+        blockers:
+          type: array
+          items: {type: string}
+        preferenceRevision: {type: integer, minimum: 0}
+        workspaceRevision: {type: [integer, 'null'], minimum: 0}
       required:
         - values
         - sources
         - lockedFields
         - configHash
+    TaskConfigurationResolution:
+      type: object
+      additionalProperties: false
+      required: [resolverVersion]
+      properties:
+        resolverVersion: {type: string}
+        effectiveHash: {type: string, pattern: '^[0-9a-f]{64}$'}
+        sources:
+          type: object
+          additionalProperties: false
+          required: [modelId, credentialSource, planMode, permissionMode]
+          properties:
+            modelId: {type: string, enum: [PLATFORM, USER, WORKSPACE, REQUEST]}
+            credentialSource: {type: string, enum: [PLATFORM, USER, WORKSPACE, REQUEST]}
+            planMode: {type: string, enum: [PLATFORM, USER, WORKSPACE, REQUEST]}
+            permissionMode: {type: string, enum: [PLATFORM, USER, WORKSPACE, REQUEST]}
+        lockedFields: {type: array, items: {type: string}}
+        preferenceRevision: {type: integer, minimum: 0}
+        workspaceRevision: {type: [integer, 'null'], minimum: 0}
     TaskConfiguration:
       type: object
       additionalProperties: false
@@ -3110,6 +3197,9 @@ components:
         values:
           type: object
           additionalProperties: true
+          properties:
+            planMode: {type: boolean}
+            resolution: {$ref: '#/components/schemas/TaskConfigurationResolution'}
         restrictions:
           type: object
           additionalProperties: false

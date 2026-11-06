@@ -20,6 +20,15 @@ public final class ChatPersistenceFixture {
         return create(source,workspaceTools,com.agentplatform.domain.chat.ContextPolicy.legacy());
     }
     public static ChatRepository create(DataSource source,boolean workspaceTools,com.agentplatform.domain.chat.ContextPolicy context) {
+        return create(source,workspaceTools,context,false);
+    }
+    public static ChatRepository create(DataSource source,boolean workspaceTools,com.agentplatform.domain.chat.ContextPolicy context,boolean personalConfiguration) {
+        return create(source,workspaceTools,context,personalConfiguration,true,true);
+    }
+    public static ChatRepository create(DataSource source,boolean workspaceTools,com.agentplatform.domain.chat.ContextPolicy context,boolean personalConfiguration,boolean planCapability,boolean permissionsCapability) {
+        return create(source,workspaceTools,context,personalConfiguration,planCapability,permissionsCapability,null);
+    }
+    public static ChatRepository create(DataSource source,boolean workspaceTools,com.agentplatform.domain.chat.ContextPolicy context,boolean personalConfiguration,boolean planCapability,boolean permissionsCapability,com.agentplatform.domain.chat.ConfigurationResolver.Layer locks) {
         try {
             var factory = new SqlSessionFactoryBean();
             factory.setDataSource(source);
@@ -35,7 +44,9 @@ public final class ChatPersistenceFixture {
             var mappers = new ChatMappers(session.getMapper(LedgerMapper.class), session.getMapper(ConversationMapper.class),
                     session.getMapper(DispatchMapper.class), session.getMapper(AccountingMapper.class), session.getMapper(ConfigurationMapper.class), session.getMapper(EventMapper.class), session.getMapper(ControlMapper.class), session.getMapper(RecoveryMapper.class), session.getMapper(QuotaMapper.class), session.getMapper(ExecutionPolicyMapper.class),session.getMapper(PlanMapper.class),session.getMapper(PermissionMapper.class),session.getMapper(ApprovalMapper.class),session.getMapper(WorkspaceToolMapper.class),
                     com.agentplatform.domain.chat.ContextPolicy.CURRENT_VERSION.equals(context.version())?session.getMapper(com.agentplatform.infrastructure.dao.files.TaskAttachmentMapper.class):null);
-            return new TransactionalChatRepository(new MyBatisChatRepository(mappers,workspaceTools,context), new TransactionTemplate(new JdbcTransactionManager(source)));
+            return new TransactionalChatRepository(new MyBatisChatRepository(mappers,workspaceTools,context,
+                    personalConfiguration?session.getMapper(WorkspaceConfigurationMapper.class):null,
+                    personalConfiguration?session.getMapper(SubmissionIdentityMapper.class):null,locks,planCapability,permissionsCapability), new TransactionTemplate(new JdbcTransactionManager(source)));
         } catch (Exception invalidConfiguration) { throw new IllegalStateException(invalidConfiguration); }
     }
 }

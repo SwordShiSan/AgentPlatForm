@@ -98,8 +98,13 @@ abstract class ChatPersistenceSupport {
         return submit(c,a,convo,key,selectedModel,selectedSource,text,planMode,workspace,mode,workspaceTools,ContextPolicy.legacy());
     }
     protected static Task submit(ChatMappers c,Actor a,UUID convo,UUID key,UUID selectedModel,String selectedSource,String text,boolean planMode,UUID workspace,com.agentplatform.types.TaskPermissionData.Mode mode,boolean workspaceTools,ContextPolicy contextPolicy){
+        return submit(c,a,convo,key,selectedModel,selectedSource,text,planMode,workspace,mode,workspaceTools,contextPolicy,null,null,null);
+    }
+    protected static Task submit(ChatMappers c,Actor a,UUID convo,UUID key,UUID selectedModel,String selectedSource,String text,boolean planMode,UUID workspace,com.agentplatform.types.TaskPermissionData.Mode mode,boolean workspaceTools,ContextPolicy contextPolicy,
+            String requestHash,Map<String,Object> configurationResolution,com.agentplatform.infrastructure.dao.chat.SubmissionIdentityMapper identityMapper){
         auth(c,a);if(text==null||text.isBlank()||text.codePointCount(0,text.length())>8192)throw new ChatFailure(400,"INVALID_CHAT_TEXT");
-        String path="/conversations/"+convo+"/tasks",fingerprint=hash(selectedSource==null?selectedModel+"\n"+text:selectedModel+"\n"+selectedSource+"\n"+text);if(planMode)fingerprint=hash(fingerprint+"\nplan=true");if(workspace!=null||mode!=com.agentplatform.types.TaskPermissionData.Mode.RISK_BASED)fingerprint=hash(fingerprint+"\nworkspace="+workspace+"\nmode="+mode);UUID existing=idempotency(c,a,key,path,fingerprint);
+        String path="/conversations/"+convo+"/tasks",fingerprint=hash(selectedSource==null?selectedModel+"\n"+text:selectedModel+"\n"+selectedSource+"\n"+text);if(planMode)fingerprint=hash(fingerprint+"\nplan=true");if(workspace!=null||mode!=com.agentplatform.types.TaskPermissionData.Mode.RISK_BASED)fingerprint=hash(fingerprint+"\nworkspace="+workspace+"\nmode="+mode);
+        UUID existing=requestHash==null?idempotency(c,a,key,path,fingerprint):new SubmissionIdentityRepository(identityMapper).lookup(a,path,key,fingerprint,requestHash);
         if(existing!=null)return task(c,a,existing,false);
         new MyBatisQuotaLedger(c.quota()).lock(a.userId());
         { c.conversation().selectGuard59(); }
@@ -124,7 +129,7 @@ abstract class ChatPersistenceSupport {
         c.configuration().insertRuntimeBundle82(bundleId, bundle.hash(), json(bundle));
         { var rows54 = c.configuration().selectRuntimeBundle54(bundleId); var row54 = rows54.isEmpty() ? null : rows54.getFirst(); if(row54 == null||!bundle.hash().equals(row54.value1()))throw new ChatFailure(409,"BUNDLE_INCOMPATIBLE"); }
         UUID snapshot=Uuid7.next(),id=Uuid7.next(),userMessage=Uuid7.next(),assistant=Uuid7.next();
-        var values=new TreeMap<String,Object>();values.putAll(resolved);values.put("modelId",model.toString());values.put("modelName",name);values.put("modelVersion",modelVersion);values.put("credentialId",credential.toString());values.put("credentialRevision",revision);values.put("window",contextPolicy.taskWindow());values.put("maxOutput",contextPolicy.maxOutput());if(largeContext){values.put("modelWindow",contextPolicy.modelWindow());values.put("contextSafety",contextPolicy.safetyTokens());values.put("stateBytes",contextPolicy.stateBytes());values.put("checkpointBytes",contextPolicy.checkpointBytes());values.put("contextPolicyVersion",contextPolicy.version());}values.put("thinking",false);values.put("pricingVersion",pricing);values.put("inputPrice",inputPrice);values.put("outputPrice",outputPrice);values.put("perCallMicros",perCall);values.put("bundleHash",bundle.hash());values.put("workspaceId",workspace==null?null:workspace.toString());values.put("permissionMode",mode.name());String config=json(values);
+        var values=new TreeMap<String,Object>();values.putAll(resolved);values.put("modelId",model.toString());values.put("modelName",name);values.put("modelVersion",modelVersion);values.put("credentialId",credential.toString());values.put("credentialRevision",revision);values.put("window",contextPolicy.taskWindow());values.put("maxOutput",contextPolicy.maxOutput());if(largeContext){values.put("modelWindow",contextPolicy.modelWindow());values.put("contextSafety",contextPolicy.safetyTokens());values.put("stateBytes",contextPolicy.stateBytes());values.put("checkpointBytes",contextPolicy.checkpointBytes());values.put("contextPolicyVersion",contextPolicy.version());}values.put("thinking",false);values.put("pricingVersion",pricing);values.put("inputPrice",inputPrice);values.put("outputPrice",outputPrice);values.put("perCallMicros",perCall);values.put("bundleHash",bundle.hash());values.put("workspaceId",workspace==null?null:workspace.toString());values.put("permissionMode",mode.name());if(configurationResolution!=null){values.put("planMode",planMode);values.put("resolution",configurationResolution);}String config=json(values);
 
         c.configuration().insertChatConfigSnapshot83(snapshot, a.spaceId(), model, credential, revision, config, hash(config));
         c.conversation().insertTask84(id, a.spaceId(), convo, a.userId(), snapshot, bundleId, totalCost, com.agentplatform.types.RequestTrace.current());
@@ -134,7 +139,7 @@ abstract class ChatPersistenceSupport {
             throw new ChatFailure(409,"WORKSPACE_TOOL_CATALOG_NOT_BOUND");
         c.conversation().insertMessage85(userMessage, a.spaceId(), convo, id, json(textBlocks(userMessage,text)), assistant, a.spaceId(), convo, id, json(textBlocks(assistant,"")));
         c.dispatch().insertExecutionDispatch86(id);outbox(c,a,id,1);
-        event(c,a,convo,id,"task.accepted",1,Map.of("taskId",id.toString(),"status","QUEUED"));remember(c,a,key,path,fingerprint,id);audit(c,a,"TASK_SUBMITTED",id,com.agentplatform.types.RequestTrace.current());return task(c,a,id,false);
+        event(c,a,convo,id,"task.accepted",1,Map.of("taskId",id.toString(),"status","QUEUED"));if(requestHash==null)remember(c,a,key,path,fingerprint,id);else new SubmissionIdentityRepository(identityMapper).remember(a,path,key,requestHash,id);audit(c,a,"TASK_SUBMITTED",id,com.agentplatform.types.RequestTrace.current());return task(c,a,id,false);
     }
     protected static void inbox(ChatMappers c,Envelope e,String disposition){c.dispatch().insertConsumerInbox109(e.eventId(), e.spaceId(), e.aggregateId(), e.generation(), disposition);}
     static void owned(ChatMappers c,Lease l,boolean cancellationAllowed){
@@ -290,7 +295,15 @@ abstract class ChatPersistenceSupport {
     protected static Map<String,Object> preferences(ChatMappers c,Actor a){
         long version=0;{ var rows15 = c.configuration().selectUserPreferenceRevision15(a.userId()); var row15 = rows15.isEmpty() ? null : rows15.getFirst(); if(row15 != null)version=row15.value1(); }
         Map<String,Object> result=new LinkedHashMap<>();result.put("version",version);result.put("defaultModelId",null);result.put("defaultCredentialSource","PLATFORM");
-        { var rows14 = c.configuration().selectUserPreference14(a.userId()); for (var row14 : rows14)result.put(row14.value1(),JSON.readValue(row14.value2(),Object.class)); }return result;
+        result.put("defaultPlanEnabled",false);result.put("defaultApprovalMode","RISK_BASED");
+        Map<String,Object> overrides=new LinkedHashMap<>();
+        { var rows14 = c.configuration().selectUserPreference14(a.userId()); for (var row14 : rows14) {
+            Object value=JSON.readValue(row14.value2(),Object.class);
+            if(value==null&&Set.of("defaultModelId","defaultCredentialSource","defaultPlanEnabled","defaultApprovalMode").contains(row14.value1()))continue;
+            result.put(row14.value1(),value);
+            if(Set.of("defaultModelId","defaultCredentialSource","defaultPlanEnabled","defaultApprovalMode").contains(row14.value1()))overrides.put(row14.value1(),value);
+        }}
+        result.put("overrides",overrides);return result;
     }
     protected static void validateModel(ChatMappers c,UUID model){
         { var rows13 = c.configuration().selectModelDefinition13(model); if(rows13.isEmpty())throw new ChatFailure(422,"MODEL_CAPABILITY_MISMATCH"); }

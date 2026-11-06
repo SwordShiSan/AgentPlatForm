@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface ConfigurationMapper {
+    void lockPersonalConfiguration(@Param("userId") UUID userId);
     Long latestInputEstimate(@org.apache.ibatis.annotations.Param("task")java.util.UUID task);
     List<UserModelCredentialRow7> selectUserModelCredential7(@Param("spaceId") UUID spaceId, @Param("userId") UUID userId);
     List<Integer> selectModelBinding8(@Param("spaceId") UUID spaceId, @Param("userId") UUID userId);
@@ -14,6 +15,7 @@ public interface ConfigurationMapper {
     List<Integer> selectUserPreference11(@Param("userId") UUID userId, @Param("key") String key);
     List<ModelDefinitionRow12> selectModelDefinition12();
     List<Integer> selectModelDefinition13(@Param("model") UUID model);
+    Long modelVersion(@Param("model") UUID model);
     List<UserPreferenceRow14> selectUserPreference14(@Param("userId") UUID userId);
     List<UserPreferenceRevisionRow15> selectUserPreferenceRevision15(@Param("userId") UUID userId);
     List<CredentialRow19> selectCredential19(@Param("credential") UUID credential);
@@ -34,6 +36,7 @@ public interface ConfigurationMapper {
     int insertUserPreferenceRevision165(@Param("userId") UUID userId);
     int updateUserPreferenceRevision166(@Param("userId") UUID userId, @Param("expected") long expected);
     int insertUserPreference167(@Param("userId") UUID userId, @Param("getKey") String getKey, @Param("payloadJson") String payloadJson, @Param("version") long version);
+    int deleteUserPreference(@Param("userId") UUID userId, @Param("key") String key);
     int insertUserModelCredential168(@Param("spaceId") UUID spaceId, @Param("userId") UUID userId);
     int updateCredential169(@Param("prior") UUID prior, @Param("spaceId") UUID spaceId, @Param("userId") UUID userId);
     int insertCredential170(@Param("id") UUID id, @Param("spaceId") UUID spaceId, @Param("userId") UUID userId, @Param("ciphertext") byte[] ciphertext, @Param("nonce") byte[] nonce, @Param("keyVersion") int keyVersion, @Param("revision") long revision);

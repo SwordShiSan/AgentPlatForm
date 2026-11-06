@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.chat.WorkspaceConfigurationMapper">
+    <select id="lockUser" resultType="java.lang.Integer">SELECT 1 FROM pg_advisory_xact_lock(hashtextextended('r61:user:' || CAST(#{actor.userId} AS text),0))</select>
+    <select id="lockWorkspace" resultType="java.lang.Integer">SELECT 1 FROM pg_advisory_xact_lock(hashtextextended('r61:workspace:' || CAST(#{actor.spaceId} AS text) || ':' || CAST(#{workspaceId} AS text),0))</select>
+    <resultMap id="configuration" type="com.agentplatform.infrastructure.dao.po.WorkspaceConfigurationRow">
+        <constructor>
+            <arg name="version" column="version" javaType="_long"/>
+            <arg name="defaultModelId" column="default_model_id" javaType="java.util.UUID"/>
+            <arg name="defaultCredentialSource" column="default_credential_source" javaType="java.lang.String"/>
+            <arg name="defaultPlanEnabled" column="default_plan_enabled" javaType="java.lang.Boolean"/>
+            <arg name="defaultApprovalMode" column="default_approval_mode" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="authorized" resultType="boolean">
+        SELECT CASE WHEN pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}) THEN
+          EXISTS(SELECT 1 FROM pf.workspace w JOIN pf.space s ON s.id=w.space_id
+          WHERE w.id=#{workspaceId} AND w.space_id=#{actor.spaceId} AND w.state='READY'
+            AND s.type='PERSONAL' AND s.owner_user_id=#{actor.userId} FOR SHARE OF w)
+        ELSE false END
+    </select>
+    <select id="find" resultMap="configuration">
+        SELECT version, default_model_id, default_credential_source, default_plan_enabled, default_approval_mode
+        FROM pf.workspace_configuration WHERE space_id=#{actor.spaceId} AND workspace_id=#{workspaceId}
+    </select>
+    <select id="modelEnabled" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM pf.model_definition WHERE id=#{modelId} AND status='ACTIVE'
+            AND model_name IN ('deepseek-flash','deepseek-v4-pro'))
+    </select>
+    <insert id="initialize">
+        INSERT INTO pf.workspace_configuration(space_id, workspace_id) VALUES(#{actor.spaceId}, #{workspaceId})
+        ON CONFLICT(space_id, workspace_id) DO NOTHING
+    </insert>
+    <update id="update">
+        UPDATE pf.workspace_configuration
+        <set>
+            <if test="patch.modelPresent">default_model_id=#{patch.modelId,jdbcType=OTHER},</if>
+            <if test="patch.credentialPresent">default_credential_source=#{patch.credentialSource,jdbcType=VARCHAR},</if>
+            <if test="patch.planPresent">default_plan_enabled=#{patch.planMode,jdbcType=BOOLEAN},</if>
+            <if test="patch.permissionPresent">default_approval_mode=#{patch.permissionMode,jdbcType=VARCHAR},</if>
+            version=version+1
+        </set>
+        WHERE space_id=#{actor.spaceId} AND workspace_id=#{workspaceId} AND version=#{expected}
+    </update>
+    <insert id="audit">
+        INSERT INTO pf.chat_audit(id,space_id,user_id,kind,resource_id,trace_id)
+        VALUES(#{id},#{actor.spaceId},#{actor.userId},'WORKSPACE_CONFIGURATION_UPDATED',#{workspaceId},#{traceId})
+    </insert>
+</mapper>
