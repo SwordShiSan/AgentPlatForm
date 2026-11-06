@@ -1,5 +1,5 @@
 {
-  "status": "LOCAL_FUNCTIONAL_PASS_PRODUCTION_PENDING",
+  "status": "R5_RELEASED",
   "sourceAtCollection": "0b050c8b23364438442cfc654c8c46b211d7d667",
   "applicationSource": "b7b89884a352796fdaa45780e4216c3ed440f3d6",
   "sourceContinuity": {
@@ -26,8 +26,8 @@
     "pagination": "10k logical nodes/virtualization PASS; browser fixture only",
     "native": "Actual PG/MQ/S3/XFS/runsc attachment/extraction/pinned-source/chat/browser subset PASS",
     "observation": "182seconds PASS; exact R4 restored",
-    "productionRelease": "NOT_RUN",
-    "realSupplier": "NOT_RUN; stage counter0"
+    "productionRelease": "PASS; production-release.json",
+    "realSupplier": "PASS; cumulative4/20 including2 from restored prior window"
   },
   "receipts": [
     {
@@ -108,6 +108,10 @@
   },
   "migration": 21,
   "runtimeBaseline": 1,
-  "supplierCalls": 0,
-  "scope": "Unchanged legacy/permission/isolation gates are reused only within matching artifact scope. No new throughput, minimum physical host or production claim; unresolved failures and unrun cloud gates remain separate."
+  "supplierCalls": 4,
+  "scope": "Local functional gates plus matching reused evidence; actual cloud gates are bound in production-release.json. Raw historical failures retained.",
+  "previousStatus": "LOCAL_FUNCTIONAL_PASS_PRODUCTION_PENDING",
+  "historicalScope": "Unchanged legacy/permission/isolation gates are reused only within matching artifact scope. No new throughput, minimum physical host or production claim; unresolved failures and unrun cloud gates remain separate.",
+  "releaseMain": "4bc12e3c33de87ec01c993393de2e18e069c188d",
+  "productionTag": "production-r5-4bc12e3c33de"
 }

@@ -7,7 +7,8 @@ assert root.parent==Path('/srv/agentplatform/operations') and root.name.startswi
 deadline=time.time()+2700
 while time.time()<deadline:
     if (root/'writes-open-intent.json').exists() or (root/'writes-open.json').exists():raise SystemExit(0)
-    if any(path.name.startswith('failure-') and json.loads(path.read_text()).get('status')=='PASS' for path in root.glob('failure-*-restoration.json')):raise SystemExit(0)
+    restored=[*root.glob('failure-*-restoration.json'),root/'restore-failure-r4-recovery.json']
+    if any(path.exists() and json.loads(path.read_text()).get('status')=='PASS' for path in restored):raise SystemExit(0)
     time.sleep(5)
 for path in root.glob('job-*.json'):
     row=json.loads(path.read_text());process=Path('/proc/'+str(row['pid']))
