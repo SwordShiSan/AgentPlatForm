@@ -104,7 +104,10 @@ class Window:
    time.sleep(2)
   else:raise RuntimeError('Runner startup failed')
   self.run(self.base+['--profile','application','up','-d','--wait','--wait-timeout','240','api','worker','gateway'],timeout=300)
-  self.health();self.receipt(name,{'status':'PASS','migration':21,'runtimeBaseline':1,'supplierCalls':0})
+  self.health()
+  queues=json.loads(self.run(['docker','exec',self.by['rabbitmq']['Id'],'rabbitmqctl','list_queues','-p','/agentplatform','name','consumers','--formatter','json']))
+  assert all(any(q['name']==n and q['consumers']==1 for q in queues) for n in ['ap.asset.v1','ap.asset-extract.v1']),'Both fixed asset consumers must be ready'
+  self.receipt(name,{'status':'PASS','migration':21,'runtimeBaseline':1,'assetConsumers':2,'supplierCalls':0})
  def restore_snapshot(self,generation):
   """Restore only a verified maintenance snapshot, with all source writers stopped.
 
