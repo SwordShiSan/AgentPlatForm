@@ -52,13 +52,14 @@ def main():
             'acl https_port port 443', 'acl forbidden_dest dst ' + ' '.join(CIDRS),
             'http_access deny !connect_method', 'http_access deny !https_port',
             'http_access deny forbidden_dest', 'http_access allow fixture_clients', 'http_access deny all',
-            'cache deny all', 'cache_mem 8 MB', 'memory_pools off', 'access_log none', 'cache_log /dev/stderr',
+            'cache deny all', 'cache_mem 8 MB', 'memory_pools off', 'access_log stdio:/dev/stderr squid', 'cache_log /dev/stderr',
             'pid_filename /tmp/squid.pid', 'coredump_dir /tmp', ''
         ]), encoding='utf-8', newline='\n')
         result = call('docker', 'run', '-d', '--name', container, '--network', network,
                       '-p', '127.0.0.1::3128', '--memory', '128m', '--memory-swap', '128m',
                       '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges:true', '--read-only',
                       '--ulimit', 'nofile=1024:1024',
+                      '--add-host', 'example.com:172.66.147.243',
                       '--tmpfs', '/tmp:rw,noexec,nosuid,size=8m,mode=1777', '--tmpfs', '/var/log/squid:rw,nosuid,size=8m',
                       '--tmpfs', '/var/spool/squid:rw,nosuid,size=8m',
                       '--mount', f'type=bind,src={config},dst=/etc/squid/squid.conf,readonly',
@@ -80,9 +81,16 @@ def main():
                 logs = call('docker', 'logs', identity, check=False)
                 (evidence / 'failure.log').write_text(logs.stdout + logs.stderr, encoding='utf-8')
                 raise RuntimeError('Proxy did not reject loopback; inspect protected failure evidence')
-        record = {'status': 'PASS', 'scope': 'Loopback destination rejected by isolated proxy only',
-                  'image': IMAGE, 'sourceNetwork': subnet, 'connectStatus': 403,
-                  'notRun': ['public TLS', 'DNS rebinding', 'MCP SDK', 'private ranges', 'resource observation']}
+        public = call('curl.exe', '--silent', '--show-error', '--max-time', '12', '--noproxy', '',
+                      '--proxy', proxy, '--output', 'NUL', '--write-out', '%{http_connect}:%{http_code}',
+                      'https://example.com/', check=False)
+        if public.returncode != 0 or public.stdout != '200:200':
+            raise RuntimeError('Public HTTPS probe failed: exit=' + str(public.returncode) + ' status=' + public.stdout
+                               + ' diagnostic=' + public.stderr)
+        record = {'status': 'PASS', 'scope': 'Loopback rejection and one public TLS request through isolated proxy',
+                  'image': IMAGE, 'sourceNetwork': subnet, 'connectStatus': 403, 'publicStatus': public.stdout,
+                  'notRun': ['normal external DNS', 'DNS rebinding', 'MCP SDK', 'other private ranges', 'resource observation'],
+                  'note': 'Example domain uses a fixed public test address; TLS hostname verification remains enabled.'}
         (evidence / 'result.json').write_text(json.dumps(record, indent=2) + '\n', encoding='utf-8')
         print(json.dumps({'status': 'PASS', 'evidence': str(evidence.relative_to(ROOT)), 'scope': record['scope']}))
     except Exception as error:
