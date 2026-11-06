@@ -49,9 +49,9 @@ def main():
         (DATA / 'maven.log').write_bytes(result.stdout + result.stderr)
         unchanged = before == inputs()
         receipt = {'status': 'PASS' if result.returncode == 0 and unchanged else 'FAIL', 'exitCode': result.returncode,
-                   'scope': 'V21 to V22, typed workspace configuration and scoped database role',
+                   'scope': 'Fresh and V21-to-V22 migration, scoped configuration, idempotency and fixed-stream attachment admission',
                    'source': run(['git', 'rev-parse', 'HEAD'], cwd=ROOT).stdout.decode().strip(),
-                   'workingTree': 'DIRTY_IMPLEMENTATION', 'inputUnchanged': unchanged}
+                   'workingTreeClean': not bool(run(['git', 'status', '--porcelain'], cwd=ROOT).stdout.strip()), 'inputUnchanged': unchanged}
         (DATA / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
         (DATA / 'inputs.json').write_text(json.dumps(before, indent=2) + '\n', encoding='utf-8')
         print(json.dumps(receipt))
