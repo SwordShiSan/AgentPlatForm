@@ -1,0 +1,363 @@
+{
+  "reports": {
+    "backup-r4": {
+      "receiptSha256": "3a91ff5aa65a09233687884356426d3e59f041350b02a66b9fb9ba5749243ce0",
+      "result": {
+        "status": "PASS",
+        "migration": 18,
+        "recordedAt": 1793926935.9269662,
+        "supplierCalls": 0
+      }
+    },
+    "activate": {
+      "receiptSha256": "30e10af47d5e6d7cc713cf26554827f80990920648fefacb517d21df33510d85",
+      "result": {
+        "status": "PASS",
+        "migration": 21,
+        "runtimeBaseline": 1,
+        "recordedAt": 1793927071.752136,
+        "supplierCalls": 0
+      }
+    },
+    "start": {
+      "receiptSha256": "ba84738a0fc4eec78485aa83180bbbfe672a36732913d5d11415a7858578f920",
+      "result": {
+        "status": "PASS",
+        "recordedAt": 1793927071.7523506
+      }
+    },
+    "smoke": {
+      "receiptSha256": "bb3235fa81c59b7c9ad52757ad3bbb930466e1e3a4718380f96117be713359de",
+      "result": {
+        "status": "PASS",
+        "migration": 21,
+        "recordedAt": 1793927129.9747527,
+        "source": "b7b89884a352796fdaa45780e4216c3ed440f3d6",
+        "supplierCalls": 4,
+        "crossUserGate": "REUSED_NATIVE_SAME_API_IMAGE",
+        "assertions": [
+          "existing-production-identity-and-history",
+          "standalone-source-no-workspace",
+          "real-extraction-original-byte-hash",
+          "actual-runsc-office-pdf",
+          "real-flash-attachment-and-multiturn",
+          "frozen-source-and-context-policy"
+        ]
+      }
+    },
+    "observation": {
+      "receiptSha256": "8726925d9fb3baa1c832f8e2222d5aba26c25cd3b840e58c8e7a62a029b9802f",
+      "result": {
+        "status": "PASS",
+        "supplierCalls": 0,
+        "elapsedSeconds": 180.043,
+        "samples": 33,
+        "brokerRestart": true,
+        "minAvailableBytes": 1503739904,
+        "minRootFreeBytes": 9208303616,
+        "swapUsedFirstBytes": 350773248,
+        "swapUsedLastBytes": 349880320,
+        "samplesNotAbsolutePeaks": true,
+        "requiredContainers": 11
+      }
+    },
+    "backup-r5": {
+      "receiptSha256": "da4e1a124c73c7a47cfdec4f0142a69ea16c0334c237857efe2d520d070f7c84",
+      "result": {
+        "status": "PASS",
+        "migration": 21,
+        "recordedAt": 1793927424.0589905,
+        "supplierCalls": 0
+      }
+    },
+    "restore": {
+      "receiptSha256": "71646ca0f9513feb9cc08db08c1b138317b1c27acf5d7a97dda6303304b96269",
+      "result": {
+        "status": "PASS",
+        "migration": 21,
+        "runtimeBaseline": 1,
+        "recordedAt": 1793927611.7746208,
+        "supplierCalls": 0,
+        "sourceUuidUnchanged": true,
+        "databaseFingerprints": "MATCH",
+        "credentialDecryption": "PASS",
+        "immutableObjects": 138,
+        "workspaceHashes": "MATCH",
+        "quotaGuard": "MATCHED_XFS_COPY; unchanged refusal evidence reused",
+        "missingMountRejected": true,
+        "readiness": "READY",
+        "workerStarted": false,
+        "temporaryResourcesStopped": true
+      }
+    },
+    "rollback-drill": {
+      "receiptSha256": "8d5572c241a3400ae6a318693b6f80221274b2134d0c32030907a59ace750b03",
+      "result": {
+        "status": "PASS",
+        "recordedAt": 1793927766.1140347,
+        "supplierCalls": 0,
+        "sameR4Containers": true,
+        "matchedSnapshotSchema": 18
+      }
+    },
+    "r4-drill-login": {
+      "receiptSha256": "75ace73f8eda2a0a2b4ce10b04ccf38605dfa0f7ab4a4b8c16d19cd0a5864a86",
+      "result": {
+        "status": "PASS",
+        "recordedAt": 1793927886.8712845,
+        "supplierCalls": 0,
+        "login": "PASS",
+        "historyReadOnly": "PASS",
+        "noNewBusinessWrites": true,
+        "changedTables": [
+          "pf.auth_rate",
+          "pf.auth_session",
+          "pf.file_inbox",
+          "pf.file_operation",
+          "pf.file_outbox",
+          "pf.file_runner_command",
+          "pf.file_runner_receipt",
+          "pf.file_scan_directory",
+          "pf.workspace_file_lease",
+          "pf.workspace_runner_instance"
+        ]
+      }
+    },
+    "r4-business-guard": {
+      "receiptSha256": "fb1397c04582cce564aaa71629d96840de1979fafe2a664f078e67759b6b5145",
+      "result": {
+        "status": "PASS",
+        "recordedAt": 1793928005.18667,
+        "supplierCalls": 0,
+        "noNewBusinessWrites": true,
+        "changedTables": [
+          "pf.auth_rate",
+          "pf.auth_session",
+          "pf.file_inbox",
+          "pf.file_operation",
+          "pf.file_outbox",
+          "pf.file_runner_command",
+          "pf.file_runner_receipt",
+          "pf.file_scan_directory",
+          "pf.workspace_file_lease",
+          "pf.workspace_runner_instance"
+        ],
+        "scope": "All non-auth/non-scan tables match upgrade-before snapshot; new operations only SCAN; workspace bytes match"
+      }
+    },
+    "redeploy": {
+      "receiptSha256": "097edcf4f305f57714172e2d07b506ce0f21c9818f5b292be6f56584681e492d",
+      "result": {
+        "status": "PASS",
+        "migration": 21,
+        "runtimeBaseline": 1,
+        "recordedAt": 1793928210.9926481,
+        "supplierCalls": 0
+      }
+    },
+    "completion-business-guard": {
+      "receiptSha256": "e930e77b2e3bf42382ceb5ab4e9239cf7cab7f3bb5d7a92ddc886b708a04777d",
+      "result": {
+        "status": "PASS",
+        "recordedAt": 1793930474.282837,
+        "supplierCalls": 0,
+        "noNewBusinessWrites": true,
+        "changedTables": [
+          "pf.file_entry",
+          "pf.file_inbox",
+          "pf.file_operation",
+          "pf.file_outbox",
+          "pf.file_runner_command",
+          "pf.file_runner_receipt",
+          "pf.file_scan_directory",
+          "pf.workspace_file_lease",
+          "pf.workspace_runner_instance"
+        ]
+      }
+    },
+    "completion-redeploy": {
+      "receiptSha256": "b9716982aabf15c97ce0d582982af626e9ed889eae427dda8446ed9f0712b344",
+      "result": {
+        "status": "PASS",
+        "migration": 21,
+        "runtimeBaseline": 1,
+        "recordedAt": 1793930684.468026,
+        "supplierCalls": 0
+      }
+    },
+    "final-smoke": {
+      "receiptSha256": "5ff4a5960ae5bfe36726635be86285bd1de38a3e7bbe7e5b29eaa30bc2af779a",
+      "result": {
+        "status": "PASS",
+        "recordedAt": 1793930686.77629,
+        "supplierCalls": 0,
+        "scope": "Same restored R5 identity, pinned attachment/task/preview hashes; no new model request"
+      }
+    },
+    "final-observation": {
+      "receiptSha256": "310fbbf07fc88c10d00b584db75c7e37e02c5efdf3231f1f0218328ca9423d3b",
+      "result": {
+        "status": "PASS",
+        "supplierCalls": 0,
+        "elapsedSeconds": 182.751,
+        "samples": 37,
+        "brokerRestart": false,
+        "minAvailableBytes": 1615011840,
+        "minRootFreeBytes": 7733936128,
+        "swapUsedFirstBytes": 388136960,
+        "swapUsedLastBytes": 381276160,
+        "samplesNotAbsolutePeaks": true,
+        "requiredContainers": 11
+      }
+    },
+    "writes-open": {
+      "receiptSha256": "e26edbfb0098ab7ff0adedcf9b8b859e298857d578eae1ba99da97e4a2e35cc1",
+      "result": {
+        "status": "PASS",
+        "migration": 21,
+        "runtimeBaseline": 1,
+        "source": "b7b89884a352796fdaa45780e4216c3ed440f3d6",
+        "main": "4bc12e3c33de87ec01c993393de2e18e069c188d",
+        "supplierCalls": 0,
+        "realWritesOpened": true,
+        "productionTag": "production-r5-4bc12e3c33de",
+        "configurationSha256": "4d9d010e76aacbe314d3dcfff07d785628e54630e4812830b00e161ae106f034",
+        "helperSha256": "92aeb5fc0ec8f363aad6195e0166f320b6bce2f304d56f61bcea3319cefe56e4",
+        "containers": [
+          {
+            "id": "ad06dc9c5ad043ad70dda1446379efa24e08f745da79ee2e0f75b08bc8aa3d45",
+            "image": "sha256:7b5ca1f11aa4c91593612d2d4a9e253ec9152a4bd13a19e551290a042a4c52f5",
+            "service": "s3"
+          },
+          {
+            "id": "7407f880d25f40b5e80c9064ba6d85e3df13266f0340d7bb6cdeaea827bb4ff7",
+            "image": "sha256:7b5ca1f11aa4c91593612d2d4a9e253ec9152a4bd13a19e551290a042a4c52f5",
+            "service": "filer"
+          },
+          {
+            "id": "90b4aaba1150e9a357fa75206966d2ea1eccf755516f241f03da6b2f96c8c97e",
+            "image": "sha256:7b5ca1f11aa4c91593612d2d4a9e253ec9152a4bd13a19e551290a042a4c52f5",
+            "service": "volume"
+          },
+          {
+            "id": "4561fc2dadd1d5a545ca2c15f184d57866dbd2d29acd004838e2bd43c6fa8551",
+            "image": "sha256:514d02824b061f651960912cf3f7a58b3dbebda9755fe5b70579fda90c0ad566",
+            "service": "postgres"
+          },
+          {
+            "id": "f4cfa5ff492330a7c0c50a24a5ac3f943607b810b8b2c1eb792b2a14becf8fd8",
+            "image": "sha256:30fb3e92f938ed166ba72c2bb9fe5b71c80a3b2d75e0f335f81c113eb8cee90e",
+            "service": "rabbitmq"
+          },
+          {
+            "id": "8cf6666ef1b89ead296eac2e818a5fd5814754713d816447ed2ff56707d5eba2",
+            "image": "sha256:f84b0c4678011602b9b98c227a4dcd5468bf8b088b02fdd4165cb7758bad8058",
+            "service": "redis"
+          },
+          {
+            "id": "5e0b11055a3b214e2b949e314941ea113171cc847e827e86f07f9770edd3975a",
+            "image": "sha256:7b5ca1f11aa4c91593612d2d4a9e253ec9152a4bd13a19e551290a042a4c52f5",
+            "service": "master"
+          },
+          {
+            "id": "2c13a3b30ea372c2694686ae00077515af62df33954ec2af39f3160ed0488c27",
+            "image": "sha256:4c990cba1976b7b1352dd5477ff1c960b8149fa48eaf3a6ae9d980cf14e33b53",
+            "service": "gateway"
+          },
+          {
+            "id": "761e3c048ee0fb85591e8b63094466b6c85536ac23034ecd6e22d5881d80e10f",
+            "image": "sha256:8ed9d45ed8dface1cca74479806358a6ba15e3ca6fc2041cb243842a7ccf7a15",
+            "service": "runner"
+          },
+          {
+            "id": "10b6d7a35691d2eea0c3f3316b9d5d6baf27fc2b814d44b6a79260c54e3d7054",
+            "image": "sha256:8ed9d45ed8dface1cca74479806358a6ba15e3ca6fc2041cb243842a7ccf7a15",
+            "service": "worker"
+          },
+          {
+            "id": "12723516b93121f83fe23ea331a5c60f6298b6810df4a45330cd4fe63ab103a1",
+            "image": "sha256:8ed9d45ed8dface1cca74479806358a6ba15e3ca6fc2041cb243842a7ccf7a15",
+            "service": "api"
+          }
+        ]
+      }
+    },
+    "completion": {
+      "receiptSha256": "6b5129ae733a38a8815269a3e3037fb601f36b970509a79d8d72dfc9e2ce3b96",
+      "result": {
+        "status": "PASS",
+        "recordedAt": 1793930872.2330372,
+        "supplierCalls": 0,
+        "realWritesOpened": true
+      }
+    },
+    "gateway-smoke": {
+      "receiptSha256": "141793ecca9eeef2fa7af2d6179e93a990036105efbfa1b4085b16fb392834f5",
+      "result": {
+        "status": "PASS",
+        "recordedAt": 1793930957.2548952,
+        "supplierCalls": 0,
+        "httpHosts": [
+          "agentplatform.lailihao.cloud",
+          "124.222.55.140"
+        ],
+        "internalEndpoints": "404",
+        "assets": {
+          ".mjs": {
+            "path": "/assets/pdf.worker.min-CjEcRF4W.mjs",
+            "contentType": "application/javascript"
+          },
+          ".wasm": {
+            "path": "/pdfjs/wasm/jbig2.wasm",
+            "contentType": "application/wasm"
+          }
+        },
+        "dnsChecked": false
+      }
+    }
+  },
+  "images": {
+    "api": {
+      "source": "b7b89884a352796fdaa45780e4216c3ed440f3d6",
+      "configId": "sha256:8ed9d45ed8dface1cca74479806358a6ba15e3ca6fc2041cb243842a7ccf7a15",
+      "platform": "linux/amd64"
+    },
+    "gateway": {
+      "source": "e4c1cda2e5c20ac3d07bc4e3bc2be3cbb7873200",
+      "configId": "sha256:4c990cba1976b7b1352dd5477ff1c960b8149fa48eaf3a6ae9d980cf14e33b53",
+      "platform": "linux/amd64"
+    },
+    "file-helper": {
+      "source": "e4c1cda2e5c20ac3d07bc4e3bc2be3cbb7873200",
+      "configId": "sha256:2ca37bd871c3b646161dded4c6623e62f31c6f5305e7d34489d0311889d5ebeb",
+      "platform": "linux/amd64"
+    },
+    "preview-renderer": {
+      "source": "e4c1cda2e5c20ac3d07bc4e3bc2be3cbb7873200",
+      "configId": "sha256:502ba213ee70a1ed10e6a01aec519fb64c757a0c8201c774553c49d58f646545",
+      "platform": "linux/amd64"
+    },
+    "provider-fixture": {
+      "source": "e4c1cda2e5c20ac3d07bc4e3bc2be3cbb7873200",
+      "configId": "sha256:ed50d1eda501687d8975be15a4e718ea1527c67aff3b2fd86a714fa870974843",
+      "platform": "linux/amd64"
+    }
+  },
+  "resourceBudgetMiB": 2880,
+  "completionControl": {
+    "inputSha256": {
+      "r5-finalize-window.py": "676bc61af18374abb16b4247ef5da14f97c06c0b69582f657ffce19bb576b779",
+      "r5-file-projection-check.py": "043c3e320a4c0832efcbe4a988bc22041ef06a348ab45f973fe5cd4fc1291b82"
+    },
+    "explicitUserApproval": true,
+    "boundedSeconds": 2700
+  },
+  "status": "R5_RELEASED",
+  "migration": 21,
+  "runtimeBaseline": 1,
+  "sourceAtCollection": "4bc12e3c33de87ec01c993393de2e18e069c188d",
+  "applicationSource": "b7b89884a352796fdaa45780e4216c3ed440f3d6",
+  "localAcceptanceIndexSha256": "38f7727726470550794f94872afa16eebb4cbfebff0dd5d3d1f8c43577f45d65",
+  "supplierCalls": 4,
+  "scope": "Fresh cloud gates; matching unchanged local gates reused. Sampled resources are not absolute peaks. Private backups and raw logs remain on the protected host."
+}
