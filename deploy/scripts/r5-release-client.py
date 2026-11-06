@@ -118,7 +118,8 @@ def stage(new_attempt=False):
         code='''from pathlib import Path
 import json,subprocess
 r=Path(FOLDER);assert not (r/'writes-open-intent.json').exists()
-assert json.loads((r/'failure-start-restoration.json').read_text())['status']=='PASS'
+restorations=[p for p in r.glob('failure-*-restoration.json') if json.loads(p.read_text()).get('status')=='PASS']
+assert restorations,'A verified matched R4 restoration is required before another window'
 for path in r.glob('job-*.json'):
  row=json.loads(path.read_text());p=Path('/proc/'+str(row['pid'])+'/stat')
  assert not p.exists() or p.read_text().split()[21]!=row['processStart'] or p.read_text().split()[2]=='Z'
@@ -139,7 +140,7 @@ print('FAILED_RELEASE_RECOVERED_EXACT_R4_RETAINED')
     incoming=folder.replace('/r5-release-','/r5-inputs-')
     code='from pathlib import Path\nimport json\nr=Path('+repr(incoming)+');assert not r.exists();r.mkdir(mode=0o700)\nprint("PRIVATE_RELEASE_INPUTS_CREATED")\n'
     print(native.remote(code))
-    files={name:ROOT/'deploy/scripts'/name for name in ['r5-release-stage.py','r5-release-control.py','r5-isolated-restore.py','r5-database-evidence.py','r5-workspace-restore.py','r5-restore-objects.py','workspace-manifest.py']}
+    files={name:ROOT/'deploy/scripts'/name for name in ['r5-release-stage.py','r5-release-control.py','r5-asset-topology.py','r5-isolated-restore.py','r5-database-evidence.py','r5-workspace-restore.py','r5-restore-objects.py','workspace-manifest.py']}
     files['r5-release-profile.json']=ROOT/'deploy/r5-release-profile.json'
     files['candidate.json']=Path(json.loads((DATA/'candidate-pointer.json').read_text())['folder'])/'result.json'
     files['native-result.json']=DATA/'native-acceptance.json';files['native-operation.json']=DATA/'native-plan.json'
