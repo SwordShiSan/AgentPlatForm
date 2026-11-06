@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import com.agentplatform.infrastructure.dao.chat.ChatMappers;
 import com.agentplatform.infrastructure.dao.po.ChatProjections.*;
+import com.agentplatform.infrastructure.dao.po.ConfigurationRows.UserModelCredentialRow55;
 import java.time.Instant;
 import java.util.*;
 import tools.jackson.databind.json.JsonMapper;
@@ -41,12 +42,14 @@ final class ConfigurationPersistence extends ChatPersistenceSupport {
     });}
     public Map<String,Object> preferences(Actor a){return tx(c->{auth(c,a);return preferences(c,a);});}
     public Map<String,Object> preferences(Actor a,long expected,Map<String,Object> patch){return tx(c->{
-        auth(c,a);if(!Set.of("defaultModelId","defaultCredentialSource","workbenchLayout","recentFiles").containsAll(patch.keySet()))throw new ChatFailure(422,"UNSUPPORTED_PREFERENCE");
+        auth(c,a);c.configuration().lockPersonalConfiguration(a.userId());if(!Set.of("defaultModelId","defaultCredentialSource","defaultPlanEnabled","defaultApprovalMode","workbenchLayout","recentFiles").containsAll(patch.keySet()))throw new ChatFailure(422,"UNSUPPORTED_PREFERENCE");
         c.configuration().insertUserPreferenceRevision165(a.userId());
         if(c.configuration().updateUserPreferenceRevision166(a.userId(), expected)!=1)throw new ChatFailure(412,"PREFERENCE_VERSION_CONFLICT");
         for(var entry:patch.entrySet()){
             Object value=entry.getValue();if("defaultModelId".equals(entry.getKey())){if(value!=null){UUID model;try{model=UUID.fromString((String)value);}catch(Exception invalid){throw new ChatFailure(422,"INVALID_MODEL");}validateModel(c,model);}}
-            else if("defaultCredentialSource".equals(entry.getKey())){if(!Set.of("PLATFORM","USER").contains(value==null?"":value))throw new ChatFailure(422,"INVALID_CREDENTIAL_SOURCE");}
+            else if("defaultCredentialSource".equals(entry.getKey())){if(value!=null&&!Set.of("PLATFORM","USER").contains(value))throw new ChatFailure(422,"INVALID_CREDENTIAL_SOURCE");}
+            else if("defaultPlanEnabled".equals(entry.getKey())){if(value!=null&&!(value instanceof Boolean))throw new ChatFailure(422,"INVALID_PLAN_MODE");}
+            else if("defaultApprovalMode".equals(entry.getKey())){if(value!=null&&!Set.of("RISK_BASED","FULL").contains(value))throw new ChatFailure(422,"INVALID_PERMISSION_MODE");}
             else if("workbenchLayout".equals(entry.getKey())){try{value=JSON.convertValue(value,com.agentplatform.types.WorkbenchPreferences.Layout.class);if(value==null)throw new IllegalArgumentException();}catch(RuntimeException invalid){throw new ChatFailure(422,"INVALID_WORKBENCH_PREFERENCE");}}
             else {
                 if(!(value instanceof List<?> list)||list.size()>20||c.attachments()==null)throw new ChatFailure(422,"INVALID_WORKBENCH_PREFERENCE");
@@ -55,17 +58,64 @@ final class ConfigurationPersistence extends ChatPersistenceSupport {
                     if(file==null||!c.attachments().recentFile(new com.agentplatform.domain.files.FileData.Actor(a.userId(),a.spaceId()),file))throw new ChatFailure(404,"RESOURCE_NOT_FOUND");recent.add(file);}
                 if(recent.stream().distinct().count()!=recent.size())throw new ChatFailure(422,"INVALID_WORKBENCH_PREFERENCE");value=List.copyOf(recent);
             }
-            c.configuration().insertUserPreference167(a.userId(), entry.getKey(), json(value), expected+1);
+            if(value==null&&Set.of("defaultModelId","defaultCredentialSource","defaultPlanEnabled","defaultApprovalMode").contains(entry.getKey()))
+                c.configuration().deleteUserPreference(a.userId(),entry.getKey());
+            else c.configuration().insertUserPreference167(a.userId(), entry.getKey(), json(value), expected+1);
         }audit(c,a,"PREFERENCES_UPDATED",a.userId(),Uuid7.next());return preferences(c,a);
     });}
     public Map<String,Object> effective(Actor a){return tx(true,c->{auth(c,a);var p=preferences(c,a);var resolved=resolve(c,a,null,null);var values=Map.of("modelId",resolved.get("modelId").toString(),"credentialSource",resolved.get("credentialSource"));
         var result=new LinkedHashMap<String,Object>();result.put("values",values);result.put("sources",Map.of("modelId",p.get("defaultModelId")==null?"PLATFORM":"USER","credentialSource",preferenceDefined(c,a,"defaultCredentialSource")?"USER":"PLATFORM"));result.put("lockedFields",List.of());result.put("configHash",hash(json(new TreeMap<>(values))));
         result.put("context",Map.of("modelWindow",contextPolicy.modelWindow(),"window",contextPolicy.taskWindow(),"maxOutput",contextPolicy.maxOutput(),"safetyTokens",contextPolicy.safetyTokens(),"inputLimit",contextPolicy.inputLimit(),"estimation","SDK_MULTILINGUAL_ESTIMATE"));return result;
     });}
+    public Map<String,Object> effective(Actor a,ConfigurationQuery query,
+            com.agentplatform.infrastructure.dao.chat.WorkspaceConfigurationMapper workspaceMapper,ConfigurationResolver.Layer locked,
+            boolean planEnabled,boolean permissionsEnabled){
+        return tx(c->{
+            auth(c,a);if(query==null||workspaceMapper==null)throw new ChatFailure(503,"CONFIGURATION_NOT_AVAILABLE");
+            var defaults=c.configuration().selectModelDefinition12();
+            if(defaults.isEmpty())throw new ChatFailure(503,"MODEL_UNAVAILABLE");
+            var platform=new ConfigurationResolver.Layer(defaults.getFirst().value1(),ConfigurationResolver.CredentialSource.PLATFORM,false,com.agentplatform.types.TaskPermissionData.Mode.RISK_BASED);
+            var scoped=new WorkspaceConfigurationRepository.Actor(a.userId(),a.spaceId());
+            var workspaceRepository=new MyBatisWorkspaceConfigurationRepository(workspaceMapper);
+            if(query.workspaceId()!=null){
+                if(!workspaceRepository.authorized(scoped,query.workspaceId()))throw new ChatFailure(404,"RESOURCE_NOT_FOUND");
+                workspaceRepository.lockConfiguration(scoped,query.workspaceId());
+            } else c.configuration().lockPersonalConfiguration(a.userId());
+            var preferences=preferences(c,a);
+            @SuppressWarnings("unchecked") var overrides=(Map<String,Object>)preferences.get("overrides");
+            var user=new ConfigurationResolver.Layer(overrides.get("defaultModelId")==null?null:UUID.fromString((String)overrides.get("defaultModelId")),
+                    overrides.get("defaultCredentialSource")==null?null:ConfigurationResolver.CredentialSource.valueOf((String)overrides.get("defaultCredentialSource")),
+                    (Boolean)overrides.get("defaultPlanEnabled"),overrides.get("defaultApprovalMode")==null?null:com.agentplatform.types.TaskPermissionData.Mode.valueOf((String)overrides.get("defaultApprovalMode")));
+            ConfigurationResolver.Layer workspace=null;Long workspaceVersion=null;
+            if(query.workspaceId()!=null){
+                var state=workspaceRepository.find(scoped,query.workspaceId());workspaceVersion=state.version();var v=state.overrides();
+                workspace=new ConfigurationResolver.Layer(v.modelId(),v.credentialSource(),v.planMode(),v.permissionMode());
+            }
+            var request=new ConfigurationResolver.Layer(query.modelId(),query.credentialSource(),query.planMode(),query.permissionMode());
+            var resolved=ConfigurationResolver.resolve(platform,user,workspace,request,locked);
+            Long modelVersion=c.configuration().modelVersion(resolved.modelId().value());
+            var rows=modelVersion==null?List.<UserModelCredentialRow55>of():c.configuration().selectUserModelCredential55(a.spaceId(),a.userId(),resolved.modelId().value(),resolved.credentialSource().value()==ConfigurationResolver.CredentialSource.USER);
+            var credential=rows.isEmpty()?null:rows.getFirst();
+            var identity=new ResolvedTaskConfiguration(query.workspaceId(),resolved,modelVersion==null?0:modelVersion,
+                    credential==null?null:credential.id(),credential==null?0:credential.revision(),
+                    credential==null?"":credential.pricingVersion(),credential==null?0:credential.inputMicrosPerMillion(),credential==null?0:credential.outputMicrosPerMillion(),
+                    "r61-policy-v1:plan="+planEnabled+":permissions="+permissionsEnabled);
+            var blockers=new ArrayList<String>();if(modelVersion==null)blockers.add("MODEL_UNAVAILABLE");else if(credential==null)blockers.add("CREDENTIAL_SOURCE_UNAVAILABLE");
+            if((resolved.planMode().value()&&!planEnabled)||((query.workspaceId()!=null||resolved.permissionMode().value()==com.agentplatform.types.TaskPermissionData.Mode.FULL)&&!permissionsEnabled))blockers.add("CAPABILITY_NOT_AVAILABLE");
+            var result=new LinkedHashMap<String,Object>();
+            result.put("values",Map.of("modelId",resolved.modelId().value().toString(),"credentialSource",resolved.credentialSource().value().name(),"planMode",resolved.planMode().value(),"permissionMode",resolved.permissionMode().value().name()));
+            result.put("sources",Map.of("modelId",resolved.modelId().source().name(),"credentialSource",resolved.credentialSource().source().name(),"planMode",resolved.planMode().source().name(),"permissionMode",resolved.permissionMode().source().name()));
+            result.put("lockedFields",resolved.lockedFields().stream().sorted().map(Enum::name).toList());result.put("configHash",identity.effectiveHash());
+            result.put("canSubmit",blockers.isEmpty());result.put("blockers",blockers);result.put("preferenceRevision",preferences.get("version"));result.put("workspaceRevision",workspaceVersion);
+            result.put("context",Map.of("modelWindow",contextPolicy.modelWindow(),"window",contextPolicy.taskWindow(),"maxOutput",contextPolicy.maxOutput(),"safetyTokens",contextPolicy.safetyTokens(),"inputLimit",contextPolicy.inputLimit(),"estimation","SDK_MULTILINGUAL_ESTIMATE"));
+            return result;
+        });
+    }
     public Map<String,Object> configuration(Actor a,UUID id){return tx(true,c->{auth(c,a);task(c,a,id,false);
         { var rows10 = c.conversation().selectTask10(id, a.spaceId()); var row10 = rows10.isEmpty() ? null : rows10.getFirst();
             if(row10 == null)throw new ChatFailure(404,"RESOURCE_NOT_FOUND");var values=new TreeMap<>(object(row10.configJson()));
-            values.keySet().retainAll(Set.of("modelId","modelName","modelVersion","credentialId","credentialRevision","credentialSource","window","maxOutput","modelWindow","contextSafety","contextPolicyVersion","stateBytes","checkpointBytes","thinking","pricingVersion","inputPrice","outputPrice","perCallMicros","bundleHash","workspaceId","permissionMode"));
+            values.keySet().retainAll(Set.of("modelId","modelName","modelVersion","credentialId","credentialRevision","credentialSource","window","maxOutput","modelWindow","contextSafety","contextPolicyVersion","stateBytes","checkpointBytes","thinking","pricingVersion","inputPrice","outputPrice","perCallMicros","bundleHash","workspaceId","permissionMode","planMode","resolution"));
+            values.putIfAbsent("resolution",Map.of("resolverVersion","LEGACY"));
             var result=new LinkedHashMap<String,Object>();result.put("configSnapshotId",row10.id().toString());result.put("configHash",row10.configHash());result.put("bundleId",row10.bundleId().toString());result.put("values",values);result.put("restrictions",Map.of("credentialActive",row10.credentialActive(),"modelActive",row10.modelActive()));
             if(ContextPolicy.CURRENT_VERSION.equals(values.get("contextPolicyVersion"))){var usage=new LinkedHashMap<String,Object>();usage.put("estimatedInputTokens",c.configuration().latestInputEstimate(id));usage.put("estimated",true);result.put("contextUsage",usage);}return result;
          }

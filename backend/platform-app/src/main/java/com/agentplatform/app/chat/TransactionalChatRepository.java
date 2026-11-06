@@ -24,6 +24,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /** Application atomic boundaries; network and provider calls never run inside these transactions. */
 public final class TransactionalChatRepository implements ChatRepository {
+    @Override public First findFirstV2(Actor a,UUID key,com.agentplatform.domain.chat.TaskSubmissionFingerprint.Request request){return tx(transactions,()->delegate.findFirstV2(a,key,request));}
+    @Override public Task findTaskV2(Actor a,UUID conversation,UUID key,com.agentplatform.domain.chat.TaskSubmissionFingerprint.Request request){return tx(transactions,()->delegate.findTaskV2(a,conversation,key,request));}
+    @Override public First firstV2(Actor a,UUID key,com.agentplatform.domain.chat.TaskSubmissionFingerprint.Request request){return tx(transactions,()->delegate.firstV2(a,key,request));}
+    @Override public Task submitV2(Actor a,UUID conversation,UUID key,com.agentplatform.domain.chat.TaskSubmissionFingerprint.Request request){return tx(transactions,()->delegate.submitV2(a,conversation,key,request));}
+    @Override public First firstV2(Actor a,UUID key,com.agentplatform.domain.chat.TaskSubmissionFingerprint.Request request,String hash){return tx(transactions,()->delegate.firstV2(a,key,request,hash));}
+    @Override public Task submitV2(Actor a,UUID conversation,UUID key,com.agentplatform.domain.chat.TaskSubmissionFingerprint.Request request,String hash){return tx(transactions,()->delegate.submitV2(a,conversation,key,request,hash));}
     @Override public List<com.agentplatform.domain.attachment.AttachmentSource> attachmentSources(Lease lease){return tx(transactions,()->delegate.attachmentSources(lease));}
     @Override public UUID commitAttachmentCheckpoint(Lease lease,Bundle bundle,HarnessData.CheckpointDraft draft,Map<UUID,String> texts){return tx(transactions,()->delegate.commitAttachmentCheckpoint(lease,bundle,draft,texts));}
     @Override public java.util.List<com.agentplatform.types.WorkspaceOperationData.Artifact> workspaceOperationArtifacts(Actor actor,UUID operation){return tx(snapshots,()->delegate.workspaceOperationArtifacts(actor,operation));}
@@ -109,6 +115,7 @@ public final class TransactionalChatRepository implements ChatRepository {
     @Override public java.util.Map<String,Object> preferences(Actor actor) { return tx(transactions, () -> delegate.preferences(actor)); }
     @Override public java.util.Map<String,Object> preferences(Actor actor, long expected, Map<String, Object> patch) { return tx(transactions, () -> delegate.preferences(actor, expected, patch)); }
     @Override public java.util.Map<String,Object> effective(Actor actor) { return tx(snapshots, () -> delegate.effective(actor)); }
+    @Override public java.util.Map<String,Object> effective(Actor actor, com.agentplatform.domain.chat.ConfigurationQuery query) { return tx(transactions, () -> delegate.effective(actor,query)); }
     @Override public java.util.Map<String,Object> configuration(Actor actor, UUID task) { return tx(snapshots, () -> delegate.configuration(actor, task)); }
     @Override public java.util.Map<String,Object> credentialMetadata(Actor actor) { return tx(transactions, () -> delegate.credentialMetadata(actor)); }
     @Override public java.util.Map<String,Object> replaceUserCredential(Actor actor, long expected, Credential encrypted) { return tx(transactions, () -> delegate.replaceUserCredential(actor, expected, encrypted)); }

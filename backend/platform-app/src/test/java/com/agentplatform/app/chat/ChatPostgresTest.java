@@ -523,7 +523,7 @@ class ChatPostgresTest {
         assertEquals(0L,repository.preferences(alice).get("version"));
         repository.preferences(alice,0,java.util.Map.of("defaultCredentialSource","USER"));
         denied("PREFERENCE_VERSION_CONFLICT",()->repository.preferences(alice,0,java.util.Map.of("defaultCredentialSource","PLATFORM")));
-        denied("UNSUPPORTED_PREFERENCE",()->repository.preferences(alice,1,java.util.Map.of("defaultPlanEnabled",true)));
+        denied("UNSUPPORTED_PREFERENCE",()->repository.preferences(alice,1,java.util.Map.of("unsupportedPreference",true)));
         denied("INVALID_CREDENTIAL_SOURCE",()->repository.preferences(alice,1,java.util.Map.of("defaultCredentialSource","ANY")));
         assertEquals("USER",repository.preferences(alice).get("defaultCredentialSource"));assertEquals("PLATFORM",repository.preferences(bob).get("defaultCredentialSource"));
     }

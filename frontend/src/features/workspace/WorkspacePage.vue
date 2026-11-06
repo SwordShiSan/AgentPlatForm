@@ -14,6 +14,7 @@ import WorkspaceFilesPanel from './WorkspaceFilesPanel.vue';
 type Workspace = components['schemas']['Workspace'];
 const environmentEnabled = import.meta.env.VITE_WORKSPACE_ENVIRONMENT_ENABLED === 'true';
 const filesEnabled = import.meta.env.VITE_WORKSPACE_FILES_ENABLED === 'true';
+const personalConfigEnabled = import.meta.env.VITE_PERSONAL_CONFIG_ENABLED === 'true';
 const queryClient = useQueryClient();
 const router = useRouter();
 const route = useRoute();
@@ -118,6 +119,7 @@ const stateLabel = (state: Workspace['state']) => ({ PROVISIONING: '正在准备
         <h2><RouterLink :to="`/app/workspaces/${workspace.id}`">{{ workspace.name }}</RouterLink></h2><p role="status">{{ stateLabel(workspace.state) }}</p>
         <dl><dt>磁盘额度</dt><dd>2 GiB</dd><dt>文件数额度</dt><dd>{{ workspace.quotaInodes.toLocaleString() }}</dd><dt>工作区编号</dt><dd class="workspace-id">{{ workspace.id }}</dd></dl>
         <p v-if="workspace.state === 'READY'">{{ environmentEnabled ? '存储已就绪。环境状态请在工作区详情中查看。' : '存储已就绪；执行环境尚未开放。' }}</p>
+        <RouterLink v-if="personalConfigEnabled && workspace.state === 'READY'" :to="`/app/workspaces/${workspace.id}/settings`">工作区设置</RouterLink>
         <p v-if="workspace.state === 'BLOCKED'">结果尚未确认，资源预留仍保留。请等待核对，不要重新创建。</p>
         <p v-if="workspace.errorCode">原因编号：{{ workspace.errorCode }}</p>
         <NButton v-if="workspace.state === 'ERROR'" :disabled="busy" @click="retry(workspace)">重试准备</NButton>

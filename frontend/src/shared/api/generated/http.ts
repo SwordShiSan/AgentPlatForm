@@ -243,6 +243,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{id}/settings": {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["workspaceConfiguration"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateWorkspaceConfiguration"];
+        trace?: never;
+    };
     "/api/v1/me/preferences": {
         parameters: {
             query?: never;
@@ -1538,15 +1558,12 @@ export interface components {
             options: {
                 /** Format: uuid */
                 modelId?: string;
-                /** @default false */
-                planMode: boolean;
+                planMode?: boolean;
                 /** Format: uuid */
                 workspaceId?: string | null;
-                /**
-                 * @default RISK_BASED
-                 * @enum {string}
-                 */
-                permissionMode: "RISK_BASED" | "FULL";
+                /** @enum {string} */
+                permissionMode?: "RISK_BASED" | "FULL";
+                expectedEffectiveConfigHash?: string;
                 /** @enum {string} */
                 credentialSource?: "PLATFORM" | "USER";
             };
@@ -1594,20 +1611,40 @@ export interface components {
         ChatUsages: {
             items: components["schemas"]["ChatUsage"][];
         };
+        ConfigurationOverrides: {
+            /** Format: uuid */
+            defaultModelId?: string | null;
+            /** @enum {string|null} */
+            defaultCredentialSource?: "PLATFORM" | "USER" | null;
+            defaultPlanEnabled?: boolean | null;
+            /** @enum {string|null} */
+            defaultApprovalMode?: "RISK_BASED" | "FULL" | null;
+        };
+        WorkspaceConfiguration: {
+            version: number;
+            overrides: components["schemas"]["ConfigurationOverrides"];
+        };
         ChatPreferences: {
             version: number;
             /** Format: uuid */
             defaultModelId: string | null;
             /** @enum {string} */
             defaultCredentialSource: "PLATFORM" | "USER";
+            defaultPlanEnabled?: boolean;
+            /** @enum {string} */
+            defaultApprovalMode?: "RISK_BASED" | "FULL";
+            overrides?: components["schemas"]["ConfigurationOverrides"];
             workbenchLayout?: components["schemas"]["WorkbenchLayout"];
             recentFiles?: components["schemas"]["RecentWorkbenchFile"][];
         };
         UpdateChatPreferences: {
             /** Format: uuid */
             defaultModelId?: string | null;
-            /** @enum {string} */
-            defaultCredentialSource?: "PLATFORM" | "USER";
+            /** @enum {string|null} */
+            defaultCredentialSource?: "PLATFORM" | "USER" | null;
+            defaultPlanEnabled?: boolean | null;
+            /** @enum {string|null} */
+            defaultApprovalMode?: "RISK_BASED" | "FULL" | null;
             workbenchLayout?: components["schemas"]["WorkbenchLayout"];
             recentFiles?: components["schemas"]["RecentWorkbenchFile"][];
         };
@@ -1626,13 +1663,39 @@ export interface components {
                 modelId: string;
                 /** @enum {string} */
                 credentialSource: "PLATFORM" | "USER";
+                planMode?: boolean;
+                /** @enum {string} */
+                permissionMode?: "RISK_BASED" | "FULL";
             };
             sources: {
                 modelId: string;
                 credentialSource: string;
+                planMode?: string;
+                permissionMode?: string;
             };
             lockedFields: string[];
             configHash: string;
+            canSubmit?: boolean;
+            blockers?: string[];
+            preferenceRevision?: number;
+            workspaceRevision?: number | null;
+        };
+        TaskConfigurationResolution: {
+            resolverVersion: string;
+            effectiveHash?: string;
+            sources?: {
+                /** @enum {string} */
+                modelId: "PLATFORM" | "USER" | "WORKSPACE" | "REQUEST";
+                /** @enum {string} */
+                credentialSource: "PLATFORM" | "USER" | "WORKSPACE" | "REQUEST";
+                /** @enum {string} */
+                planMode: "PLATFORM" | "USER" | "WORKSPACE" | "REQUEST";
+                /** @enum {string} */
+                permissionMode: "PLATFORM" | "USER" | "WORKSPACE" | "REQUEST";
+            };
+            lockedFields?: string[];
+            preferenceRevision?: number;
+            workspaceRevision?: number | null;
         };
         TaskConfiguration: {
             contextUsage?: {
@@ -1646,6 +1709,9 @@ export interface components {
             /** Format: uuid */
             bundleId: string;
             values: {
+                planMode?: boolean;
+                resolution?: components["schemas"]["TaskConfigurationResolution"];
+            } & {
                 [key: string]: unknown;
             };
             restrictions: {
@@ -2598,6 +2664,62 @@ export interface operations {
             default: components["responses"]["IdentityProblem"];
         };
     };
+    workspaceConfiguration: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Versioned workspace overrides */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceConfiguration"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    updateWorkspaceConfiguration: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Space-Id"?: string;
+                "If-Match": string;
+                "X-CSRF-Token": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigurationOverrides"];
+            };
+        };
+        responses: {
+            /** @description Updated workspace overrides */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceConfiguration"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
     chatPreferences: {
         parameters: {
             query?: never;
@@ -2668,7 +2790,13 @@ export interface operations {
     };
     effectiveChatConfig: {
         parameters: {
-            query?: never;
+            query?: {
+                workspaceId?: string;
+                modelId?: string;
+                credentialSource?: "PLATFORM" | "USER";
+                planMode?: boolean;
+                permissionMode?: "RISK_BASED" | "FULL";
+            };
             header?: {
                 "X-Space-Id"?: string;
             };

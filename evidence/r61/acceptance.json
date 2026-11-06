@@ -1,0 +1,42 @@
+{
+  "status": "FUNCTIONAL_GATES_PASS_PENDING_PROMOTION",
+  "candidate": "cd285d7668a0da15e087e7cb69a8e0b88e9cd1cc",
+  "mavenSource": "bfce20461e7a756aaa54e2829ed01e6c59ac53e2",
+  "postgresSource": "8123341353c5d8a149f2b3877220d456f9d315d8",
+  "candidateInputs": "7b62fd653f853267b16e42cdedecb39c341f9e78c67899b221b026509948dd43",
+  "imageConfigIds": {
+    "api": "sha256:a89d4167643ef69aa190849baad2e0233953bf07638993790746824ec05786fc",
+    "gateway": "sha256:96ef33dba88a23169b59c565bb1122e413a28c37b43c987a31c93f46ab946a9e",
+    "provider-fixture": "sha256:03a20af0523854f6c99b52be5617274f37faa0b6a28e956b74bcbf9b00d0b4c6"
+  },
+  "browserTests": 3,
+  "postgresTests": 14,
+  "observationSeconds": 184.42,
+  "observationSamples": 11,
+  "supplierCalls": 0,
+  "sourcesDifferOnlyInAcceptanceScriptsOrCompose": true,
+  "priorFailuresRetained": true,
+  "scope": "Local deterministic provider; no R6 production deployment or new physical XFS/S3 validation. Evidence paths remain protected and are not Git artifacts.",
+  "records": {
+    "maven": {
+      "sha256": "c87cf6fac60760688e72429d18a1003290a9bfe767dfd6805ff24d2e8eed0757",
+      "protectedPath": ".cache/r61-local/full-verify-bfce204/result.json",
+      "status": "PASS"
+    },
+    "postgres": {
+      "sha256": "dfe9d379d17b7e71472f476d6175727d3c0bff00644b3f626e8df30c47803afe",
+      "protectedPath": ".cache/r61-local/postgres/run-1793958966547304800/receipt.json",
+      "status": "PASS"
+    },
+    "browser": {
+      "sha256": "b8f16fc02c1dcc4b4f0d93e0c993cc755465c4f12e5baef820c0bf5e99a8be41",
+      "protectedPath": ".cache/r61-local/browser-1793959538105776700/result.json",
+      "status": "PASS"
+    },
+    "observation": {
+      "sha256": "5a8c1a5e76a87b3aa10b1b8a38cea12319ece1cffa76a5d6a087d539e0c27f74",
+      "protectedPath": ".cache/r61-local/observation-1793959590816407100/observation.json",
+      "status": "PASS"
+    }
+  }
+}

@@ -47,6 +47,12 @@ public interface ChatRepository extends ExecutionLedger, CancellationLedger, Rec
     void revokeCredential(UUID credential);
     void bind(UUID model, Actor actor, UUID credential, String sourcePolicy);
     record First(Conversation conversation, Task task) {}
+    default First findFirstV2(Actor actor,UUID key,TaskSubmissionFingerprint.Request request){throw new ChatFailure(503,"CONFIGURATION_NOT_AVAILABLE");}
+    default Task findTaskV2(Actor actor,UUID conversation,UUID key,TaskSubmissionFingerprint.Request request){throw new ChatFailure(503,"CONFIGURATION_NOT_AVAILABLE");}
+    default First firstV2(Actor actor,UUID key,TaskSubmissionFingerprint.Request request){throw new ChatFailure(503,"CONFIGURATION_NOT_AVAILABLE");}
+    default Task submitV2(Actor actor,UUID conversation,UUID key,TaskSubmissionFingerprint.Request request){throw new ChatFailure(503,"CONFIGURATION_NOT_AVAILABLE");}
+    default First firstV2(Actor actor,UUID key,TaskSubmissionFingerprint.Request request,String admissionHash){throw new ChatFailure(503,"CONFIGURATION_NOT_AVAILABLE");}
+    default Task submitV2(Actor actor,UUID conversation,UUID key,TaskSubmissionFingerprint.Request request,String admissionHash){throw new ChatFailure(503,"CONFIGURATION_NOT_AVAILABLE");}
     First first(Actor actor, UUID key, String title, UUID model, String source, String text);
     Task submitConfigured(Actor actor, UUID conversation, UUID key, UUID model, String source, String text);
     First firstPlan(Actor actor, UUID key, String title, UUID model, String source, String text, boolean planMode);
@@ -57,6 +63,7 @@ public interface ChatRepository extends ExecutionLedger, CancellationLedger, Rec
     java.util.Map<String,Object> preferences(Actor actor);
     java.util.Map<String,Object> preferences(Actor actor, long expected, java.util.Map<String,Object> patch);
     java.util.Map<String,Object> effective(Actor actor);
+    default java.util.Map<String,Object> effective(Actor actor, ConfigurationQuery query) { throw new ChatFailure(503,"CONFIGURATION_NOT_AVAILABLE"); }
     java.util.Map<String,Object> configuration(Actor actor, UUID task);
     java.util.Map<String,Object> credentialMetadata(Actor actor);
     java.util.Map<String,Object> replaceUserCredential(Actor actor, long expected, Credential encrypted);

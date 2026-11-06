@@ -24,6 +24,9 @@ public final class MyBatisChatRepository implements ChatRepository {
     private final DispatchPersistence dispatches;
     private final ExecutionPersistence executions;
     private final CheckpointPersistence checkpoints;
+    private final com.agentplatform.infrastructure.dao.chat.WorkspaceConfigurationMapper workspaceConfiguration;
+    private final ConfigurationResolver.Layer configurationLocks;
+    private final boolean planCapability,permissionsCapability;
     public MyBatisChatRepository(ChatMappers mappers) {
         this(mappers,false);
     }
@@ -31,10 +34,27 @@ public final class MyBatisChatRepository implements ChatRepository {
         this(mappers,workspaceTools,ContextPolicy.legacy());
     }
     public MyBatisChatRepository(ChatMappers mappers,boolean workspaceTools,ContextPolicy contextPolicy) {
+        this(mappers,workspaceTools,contextPolicy,null,null);
+    }
+    public MyBatisChatRepository(ChatMappers mappers,boolean workspaceTools,ContextPolicy contextPolicy,
+            com.agentplatform.infrastructure.dao.chat.WorkspaceConfigurationMapper workspaceConfiguration,ConfigurationResolver.Layer locks) {
+        this(mappers,workspaceTools,contextPolicy,workspaceConfiguration,locks,true,true);
+    }
+    public MyBatisChatRepository(ChatMappers mappers,boolean workspaceTools,ContextPolicy contextPolicy,
+            com.agentplatform.infrastructure.dao.chat.WorkspaceConfigurationMapper workspaceConfiguration,ConfigurationResolver.Layer locks,
+            boolean planCapability,boolean permissionsCapability) {
+        this(mappers,workspaceTools,contextPolicy,workspaceConfiguration,null,locks,planCapability,permissionsCapability);
+    }
+    public MyBatisChatRepository(ChatMappers mappers,boolean workspaceTools,ContextPolicy contextPolicy,
+            com.agentplatform.infrastructure.dao.chat.WorkspaceConfigurationMapper workspaceConfiguration,
+            com.agentplatform.infrastructure.dao.chat.SubmissionIdentityMapper submissionIdentity,ConfigurationResolver.Layer locks,
+            boolean planCapability,boolean permissionsCapability) {
+        this.workspaceConfiguration=workspaceConfiguration;this.configurationLocks=locks;
+        this.planCapability=planCapability;this.permissionsCapability=permissionsCapability;
         this.mappers=mappers;plans=new PlanPersistence(mappers);
         controls = new ControlPersistence(mappers);
         recovery = new RecoveryPersistence(mappers);
-        conversations = new ConversationPersistence(mappers,workspaceTools,contextPolicy);
+        conversations = new ConversationPersistence(mappers,workspaceTools,contextPolicy,workspaceConfiguration,submissionIdentity,locks,planCapability,permissionsCapability);
         configurations = new ConfigurationPersistence(mappers,contextPolicy);
         dispatches = new DispatchPersistence(mappers);
         executions = new ExecutionPersistence(mappers);
@@ -113,6 +133,7 @@ public final class MyBatisChatRepository implements ChatRepository {
     @Override public Map<String,Object> preferences(Actor a) { return configurations.preferences(a); }
     @Override public Map<String,Object> preferences(Actor a,long expected,Map<String,Object> patch) { return configurations.preferences(a, expected, patch); }
     @Override public Map<String,Object> effective(Actor a) { return configurations.effective(a); }
+    @Override public Map<String,Object> effective(Actor a,ConfigurationQuery query) { return configurations.effective(a,query,workspaceConfiguration,configurationLocks,planCapability,permissionsCapability); }
     @Override public Map<String,Object> configuration(Actor a,UUID id) { return configurations.configuration(a, id); }
     @Override public Map<String,Object> credentialMetadata(Actor a) { return configurations.credentialMetadata(a); }
     @Override public Map<String,Object> replaceUserCredential(Actor a,long expected,Credential encrypted) { return configurations.replaceUserCredential(a, expected, encrypted); }
@@ -159,4 +180,10 @@ public final class MyBatisChatRepository implements ChatRepository {
     @Override public HarnessData.Decision operationDecision(Lease l,HarnessData.Call c){return PermissionPersistence.decision(mappers,l,c,true);}
     @Override public First firstAuthorized(Actor a,UUID k,String title,UUID model,String source,String text,boolean plan,UUID w,com.agentplatform.types.TaskPermissionData.Mode m){return conversations.firstAuthorized(a,k,title,model,source,text,plan,w,m);}
     @Override public Task submitAuthorized(Actor a,UUID conversation,UUID k,UUID model,String source,String text,boolean plan,UUID w,com.agentplatform.types.TaskPermissionData.Mode m){return conversations.submitAuthorized(a,conversation,k,model,source,text,plan,w,m);}
+    @Override public First findFirstV2(Actor a,UUID k,TaskSubmissionFingerprint.Request request){return conversations.findFirstV2(a,k,request);}
+    @Override public Task findTaskV2(Actor a,UUID conversation,UUID k,TaskSubmissionFingerprint.Request request){return conversations.findTaskV2(a,conversation,k,request);}
+    @Override public First firstV2(Actor a,UUID k,TaskSubmissionFingerprint.Request request){return conversations.firstV2(a,k,request);}
+    @Override public Task submitV2(Actor a,UUID conversation,UUID k,TaskSubmissionFingerprint.Request request){return conversations.submitV2(a,conversation,k,request);}
+    @Override public First firstV2(Actor a,UUID k,TaskSubmissionFingerprint.Request request,String hash){return conversations.firstV2(a,k,request,hash);}
+    @Override public Task submitV2(Actor a,UUID conversation,UUID k,TaskSubmissionFingerprint.Request request,String hash){return conversations.submitV2(a,conversation,k,request,hash);}
 }
