@@ -103,11 +103,15 @@ class ApprovalPostgresTest {
                 List.of("text"), false, null, null);
         var definition = io.modelcontextprotocol.spec.McpSchema.Tool.builder().name("approval_probe")
                 .description("isolated deterministic fixture").inputSchema(schema).build();
-        var remoteCalls = new AtomicInteger();
+        var remoteCalls = new AtomicInteger(); var delayResponse = new java.util.concurrent.atomic.AtomicBoolean();
         var server = io.modelcontextprotocol.server.McpServer.sync(transport).serverInfo("r62-approval-fixture", "1")
                 .capabilities(io.modelcontextprotocol.spec.McpSchema.ServerCapabilities.builder().tools(false).build())
                 .tool(definition, (exchange, arguments) -> {
                     remoteCalls.incrementAndGet();
+                    if (delayResponse.get()) {
+                        try { Thread.sleep(7000); }
+                        catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
+                    }
                     return new io.modelcontextprotocol.spec.McpSchema.CallToolResult("fixture: " + arguments.get("text"), false);
                 }).build();
         var tomcat = new org.apache.catalina.startup.Tomcat();
@@ -120,7 +124,7 @@ class ApprovalPostgresTest {
             tomcat.start();
             try (var client = io.agentscope.core.tool.mcp.McpClientBuilder.create("r62-protected-fixture")
                     .streamableHttpTransport("http://127.0.0.1:" + tomcat.getConnector().getLocalPort() + "/mcp")
-                    .timeout(java.time.Duration.ofSeconds(10)).buildAsync().block(java.time.Duration.ofSeconds(15))) {
+                    .timeout(java.time.Duration.ofSeconds(3)).buildAsync().block(java.time.Duration.ofSeconds(15))) {
                 assertNotNull(client); client.initialize().block(java.time.Duration.ofSeconds(15));
                 assertEquals(1, client.listTools().block(java.time.Duration.ofSeconds(15)).size());
                 var task = task(); var calls = new AtomicInteger(); var never = new AtomicInteger();
@@ -134,6 +138,18 @@ class ApprovalPostgresTest {
                 assertEquals(1, remoteCalls.get()); assertEquals("SUCCEEDED", repository.task(user, task.id()).status());
                 assertEquals(1, count("SELECT count(*) FROM pf.tool_approval_consumption WHERE task_id='" + task.id() + "' AND outcome='ALLOW_ONCE'"));
                 assertEquals(1, count("SELECT count(*) FROM pf.tool_operation WHERE task_id='" + task.id() + "' AND status='SUCCEEDED'"));
+                var uncertainTask = task(); var uncertainCalls = new AtomicInteger(); var noEarlyEffect = new AtomicInteger();
+                var uncertainProvider = provider(uncertainCalls, List.of(tool("r62-uncertain-call"), done()));
+                var uncertainPending = waiting(uncertainTask, uncertainProvider, noEarlyEffect);
+                answer(uncertainTask, uncertainPending, UUID.randomUUID(), Decision.ALLOW_ONCE);
+                delayResponse.set(true);
+                run(claim(uncertainTask), uncertainProvider, (scope, call) -> client.callTool("approval_probe", call.arguments()).toFuture()
+                        .thenApply(result -> new HarnessData.Observation(call.id(), call.name(), result.content().toString(),
+                                result.isError() ? HarnessData.OperationStatus.FAILED : HarnessData.OperationStatus.SUCCEEDED)));
+                assertEquals(2, remoteCalls.get(), "the uncertain physical call must not be replayed");
+                assertEquals("BLOCKED", repository.task(user, uncertainTask.id()).status());
+                assertEquals("UNKNOWN", scalar("SELECT status FROM pf.tool_operation WHERE task_id='" + uncertainTask.id() + "'"));
+                assertFalse(repository.recovery(user, uncertainTask.id()).eligible());
             }
         } finally { server.close(); tomcat.stop(); tomcat.destroy(); }
     }
