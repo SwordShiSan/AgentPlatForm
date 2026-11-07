@@ -104,6 +104,7 @@ class CapabilityBindingPostgresTest {
 
     @BeforeEach void setup() throws Exception {
         sql("TRUNCATE pf.app_user CASCADE");
+        sql("INSERT INTO pf.execution_slot(id) VALUES (1) ON CONFLICT (id) DO NOTHING");
         var config = new HikariConfig(); config.setJdbcUrl(url); config.setUsername("postgres");
         config.setPassword(password); config.setMaximumPoolSize(4); config.setMinimumIdle(0);
         pool = new HikariDataSource(config);
@@ -506,6 +507,41 @@ class CapabilityBindingPostgresTest {
                 try (var staged = stage.stage(source.objectKey(), source.archiveBytes(), selected, authorize)) {
                     assertEquals(hash, java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
                             .digest(Files.readAllBytes(staged.archive()))));
+                }
+                // Exercise the staging guard against a real persisted task and ownership lease.
+                // This verifies authorization and object identity only; no runner mount is implied.
+                var selection = new Selection(upload.capabilityId(), upload.versionId());
+                this.service.replace(alice, workspace, 0, false, List.of(selection));
+                var chat = com.agentplatform.app.chat.ChatPersistenceFixture.create(pool, true);
+                var chatActor = new com.agentplatform.domain.chat.ChatData.Actor(alice.userId(), alice.spaceId());
+                var cipher = new com.agentplatform.infrastructure.chat.CredentialCipher(new byte[32]);
+                UUID model = UUID.fromString("0199e000-0000-7000-8000-000000000002");
+                UUID credential = chat.importCredential(cipher.encrypt(UUID.randomUUID(), "PLATFORM", null, null, "fixture-only"));
+                chat.bind(model, chatActor, credential, "PLATFORM");
+                var task = chat.firstAuthorized(chatActor, UUID.randomUUID(), "R62 material fixture", model,
+                        "PLATFORM", "Prepare selected material", false, workspace,
+                        com.agentplatform.types.TaskPermissionData.Mode.RISK_BASED).task();
+                UUID relay = UUID.randomUUID();
+                var taskPublication = chat.publications(relay).stream()
+                        .filter(item -> item.envelope().aggregateId().equals(task.id())).findFirst().orElseThrow();
+                chat.published(relay, taskPublication, true);
+                var lease = chat.claim(taskPublication.envelope(), UUID.randomUUID());
+                assertNotNull(lease);
+                var material = new TaskSkillMaterialService(chat, this.service, versions, stage);
+                try {
+                    try (var prepared = material.prepare(lease, workspace, List.of(selection))) {
+                        assertEquals(task.id(), prepared.manifest().taskId());
+                        assertEquals(1, prepared.archives().size());
+                        assertEquals(hash, java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                                .digest(Files.readAllBytes(prepared.archives().getFirst()))));
+                    }
+                    assertThrows(com.agentplatform.domain.files.FileFailure.class,
+                            () -> material.prepare(lease, UUID.randomUUID(), List.of(selection)));
+                    this.service.replace(alice, workspace, 1, false, List.of());
+                    assertThrows(com.agentplatform.domain.files.FileFailure.class,
+                            () -> material.prepare(lease, workspace, List.of(selection)));
+                } finally {
+                    chat.stopped(lease, "FAILED", "FIXTURE_COMPLETE", null, "b".repeat(64));
                 }
                 assertThrows(com.agentplatform.domain.files.FileFailure.class,
                         () -> versions.get(bob, upload.capabilityId(), upload.versionId()));
