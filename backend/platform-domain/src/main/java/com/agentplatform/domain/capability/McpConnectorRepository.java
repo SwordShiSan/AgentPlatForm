@@ -20,6 +20,7 @@ public interface McpConnectorRepository {
     boolean update(Actor actor, Configuration configuration, long expected);
     void record(Actor actor, UUID requestId, String hash, Configuration snapshot, String action, UUID trace);
     Probe probeRequest(Actor actor, UUID requestId, String requestHash);
+    Probe probeByRequest(Actor actor, UUID requestId);
     Probe probe(Actor actor, UUID id);
     void enqueueProbe(Actor actor, UUID id, UUID requestId, String requestHash, Configuration configuration, String policyHash, UUID event, UUID trace);
 }

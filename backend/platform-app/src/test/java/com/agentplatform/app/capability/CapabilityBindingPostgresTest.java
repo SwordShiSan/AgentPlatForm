@@ -377,8 +377,13 @@ class CapabilityBindingPostgresTest {
 
     @Test void probeCompletionCreatesDraftOnceAndRejectsOldFence() throws Exception {
         UUID trace = UUID.randomUUID();
-        var config = connectors.create(alice, UUID.randomUUID(), new McpConnectorService.Input("https://example.com/mcp", "NONE", null, null, null), trace);
-        var probe = connectors.enqueue(alice, config.id(), config.revision(), UUID.randomUUID(), trace);
+        UUID createRequest = UUID.randomUUID(); UUID probeRequest = UUID.randomUUID();
+        var config = connectors.create(alice, createRequest, new McpConnectorService.Input("https://example.com/mcp", "NONE", null, null, null), trace);
+        var probe = connectors.enqueue(alice, config.id(), config.revision(), probeRequest, trace);
+        assertEquals(config, connectors.byRequest(alice, createRequest));
+        assertEquals(probe.id(), connectors.probeByRequest(alice, probeRequest).id());
+        assertEquals(404, assertThrows(com.agentplatform.domain.files.FileFailure.class, () -> connectors.byRequest(bob, createRequest)).status());
+        assertEquals(404, assertThrows(com.agentplatform.domain.files.FileFailure.class, () -> connectors.probeByRequest(bob, probeRequest)).status());
         var publication = mcpWorker.nextPublication(UUID.randomUUID()); mcpWorker.published(publication);
         var command = mcpWorker.claim(publication, UUID.randomUUID()); assertNotNull(command);
         assertNull(mcpWorker.claim(publication, UUID.randomUUID())); assertNull(mcpWorker.guardAndCredential(command));

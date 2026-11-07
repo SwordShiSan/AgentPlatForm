@@ -29,6 +29,7 @@ public class McpConnectorConfiguration {
                         page.nextCursor() == null ? null : page.nextCursor().toString());
             }
             @Override public Configuration get(ChatApi.Caller caller, String id) { return view(service.get(actor(caller), uuid(id))); }
+            @Override public Configuration byRequest(ChatApi.Caller caller, String id) { return view(service.byRequest(actor(caller), uuid(id))); }
             @Override public Configuration create(ChatApi.Caller caller, String requestId, Input input) {
                 return view(service.create(actor(caller), uuid(requestId), input(input), com.agentplatform.types.RequestTrace.current()));
             }
@@ -39,6 +40,7 @@ public class McpConnectorConfiguration {
                 return view(service.enqueue(actor(caller), uuid(id), expected, uuid(requestId), com.agentplatform.types.RequestTrace.current()));
             }
             @Override public Probe probe(ChatApi.Caller caller, String id) { return view(service.probe(actor(caller), uuid(id))); }
+            @Override public Probe probeByRequest(ChatApi.Caller caller, String id) { return view(service.probeByRequest(actor(caller), uuid(id))); }
             @Override public VersionPage versions(ChatApi.Caller caller, String id, Long cursor, int limit) {
                 var page = versions.list(actor(caller), uuid(id), cursor, limit);
                 return new VersionPage(page.items().stream().map(McpConnectorConfiguration::view).toList(), page.nextCursor());

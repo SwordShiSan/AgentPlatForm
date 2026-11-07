@@ -562,6 +562,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/connectors/requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["connectorByRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/tests/requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["connectorTestByRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/connectors/tests/{id}": {
         parameters: {
             query?: never;
@@ -3883,6 +3915,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["McpActivation"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connectorByRequest: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Original accepted configuration snapshot for this request */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpConnector"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connectorTestByRequest: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Original discovery job for this request */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpProbe"];
                 };
             };
             default: components["responses"]["IdentityProblem"];

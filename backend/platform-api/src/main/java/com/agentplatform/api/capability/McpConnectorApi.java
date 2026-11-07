@@ -16,10 +16,12 @@ public interface McpConnectorApi {
     record VersionDetail(Version version, List<Tool> tools, Activation activation, boolean eligible) {}
     Page list(ChatApi.Caller caller, String cursor, int limit);
     Configuration get(ChatApi.Caller caller, String id);
+    Configuration byRequest(ChatApi.Caller caller, String requestId);
     Configuration create(ChatApi.Caller caller, String requestId, Input input);
     Configuration update(ChatApi.Caller caller, String id, long expected, String requestId, Input input);
     Probe test(ChatApi.Caller caller, String id, long expected, String requestId);
     Probe probe(ChatApi.Caller caller, String id);
+    Probe probeByRequest(ChatApi.Caller caller, String requestId);
     VersionPage versions(ChatApi.Caller caller, String id, Long cursor, int limit);
     VersionDetail version(ChatApi.Caller caller, String id, String versionId);
     Activation activation(ChatApi.Caller caller, String id);

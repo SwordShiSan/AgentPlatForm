@@ -36,6 +36,12 @@ public final class McpConnectorController {
     @GetMapping("/tests/{id}") ResponseEntity<McpConnectorApi.Probe> probe(HttpServletRequest request, @PathVariable("id") String id) {
         return ResponseEntity.ok().header("Cache-Control", "no-store").body(service.probe(RequestIdentity.caller(request), id));
     }
+    @GetMapping("/requests/{requestId}") ResponseEntity<McpConnectorApi.Configuration> request(HttpServletRequest request, @PathVariable("requestId") String requestId) {
+        return configuration(200, service.byRequest(RequestIdentity.caller(request), requestId));
+    }
+    @GetMapping("/tests/requests/{requestId}") ResponseEntity<McpConnectorApi.Probe> probeRequest(HttpServletRequest request, @PathVariable("requestId") String requestId) {
+        return ResponseEntity.ok().header("Cache-Control", "no-store").body(service.probeByRequest(RequestIdentity.caller(request), requestId));
+    }
     @GetMapping("/{id}/versions") ResponseEntity<McpConnectorApi.VersionPage> versions(HttpServletRequest request, @PathVariable("id") String id,
             @RequestParam(value="cursor", required=false) Long cursor, @RequestParam(value="limit", defaultValue="50") int limit) {
         return ResponseEntity.ok().header("Cache-Control", "no-store").body(service.versions(RequestIdentity.caller(request), id, cursor, limit));

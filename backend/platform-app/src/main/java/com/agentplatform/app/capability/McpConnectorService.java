@@ -60,6 +60,10 @@ public final class McpConnectorService {
     public Configuration get(Actor actor, UUID id) {
         return transactions.execute(status -> { access(actor); return required(actor, id, false); });
     }
+    public Configuration byRequest(Actor actor, UUID request) {
+        return transactions.execute(status -> { access(actor); var row = repository.accepted(actor, request);
+            if (row == null) throw new FileFailure(404, "RESOURCE_NOT_FOUND"); return row.snapshot(); });
+    }
     public Page list(Actor actor, UUID after, int limit) {
         if (limit < 1 || limit > 100) throw new FileFailure(400, "INVALID_PAGE_SIZE");
         return transactions.execute(status -> {
@@ -85,6 +89,10 @@ public final class McpConnectorService {
     }
     public Probe probe(Actor actor, UUID id) {
         return transactions.execute(status -> { access(actor); var row = repository.probe(actor, id);
+            if (row == null) throw new FileFailure(404, "RESOURCE_NOT_FOUND"); return row; });
+    }
+    public Probe probeByRequest(Actor actor, UUID request) {
+        return transactions.execute(status -> { access(actor); var row = repository.probeByRequest(actor, request);
             if (row == null) throw new FileFailure(404, "RESOURCE_NOT_FOUND"); return row; });
     }
     private void access(Actor actor) { if (actor == null || !repository.authorized(actor)) throw new FileFailure(404, "RESOURCE_NOT_FOUND"); }

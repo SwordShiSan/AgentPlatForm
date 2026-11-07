@@ -32,6 +32,7 @@ public final class MyBatisMcpConnectorRepository implements McpConnectorReposito
         return probe;
     }
     @Override public Probe probe(Actor actor, UUID id) { return mapper.probe(actor, id); }
+    @Override public Probe probeByRequest(Actor actor, UUID request) { return mapper.probeRequest(actor, request); }
     @Override public void enqueueProbe(Actor actor, UUID id, UUID request, String hash, Configuration config, String policy, UUID event, UUID trace) {
         mapper.insertProbe(actor, id, request, hash, config, policy, trace); mapper.outbox(actor, id, event);
         mapper.audit(actor, UUID.randomUUID(), "CONNECTOR_TEST_REQUESTED", id, trace);

@@ -687,6 +687,34 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/McpActivation'}
         default: *a1
+  /api/v1/connectors/requests/{requestId}:
+    get:
+      operationId: connectorByRequest
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: requestId, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Original accepted configuration snapshot for this request
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpConnector'}
+        default: *a1
+  /api/v1/connectors/tests/requests/{requestId}:
+    get:
+      operationId: connectorTestByRequest
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: requestId, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Original discovery job for this request
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpProbe'}
+        default: *a1
   /api/v1/connectors/tests/{id}:
     get:
       operationId: connectorTest
