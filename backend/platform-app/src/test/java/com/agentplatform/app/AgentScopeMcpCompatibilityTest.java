@@ -8,6 +8,9 @@ import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.nio.file.Path;
+import java.net.InetSocketAddress;
+import java.net.ProxySelector;
+import java.net.ServerSocket;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +46,24 @@ class AgentScopeMcpCompatibilityTest {
         try {
             tomcat.start();
             int port = tomcat.getConnector().getLocalPort();
+            int unavailableProxyPort;
+            try (var socket = new ServerSocket(0)) { unavailableProxyPort = socket.getLocalPort(); }
+            var proxyConfigured = new java.util.concurrent.atomic.AtomicBoolean();
+            assertThrows(RuntimeException.class, () -> {
+                try (var deniedClient = McpClientBuilder.create("r62-no-direct-fallback")
+                        .streamableHttpTransport("http://127.0.0.1:" + port + "/mcp")
+                        .customizeStreamableHttpClient(builder -> {
+                            proxyConfigured.set(true);
+                            builder.proxy(ProxySelector.of(new InetSocketAddress("127.0.0.1", unavailableProxyPort)));
+                        })
+                        .initializationTimeout(Duration.ofSeconds(3)).timeout(Duration.ofSeconds(3))
+                        .buildAsync().block(Duration.ofSeconds(5))) {
+                    assertNotNull(deniedClient);
+                    deniedClient.initialize().block(Duration.ofSeconds(5));
+                }
+            });
+            assertTrue(proxyConfigured.get(), "SDK must apply the configured HTTP client customization");
+            assertEquals(0, calls.get(), "an unavailable proxy must not call the fixture tool");
             try (var client = McpClientBuilder.create("r62-fixture")
                     .streamableHttpTransport("http://127.0.0.1:" + port + "/mcp")
                     .initializationTimeout(Duration.ofSeconds(10)).timeout(Duration.ofSeconds(10))
