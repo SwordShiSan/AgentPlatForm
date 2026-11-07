@@ -1602,6 +1602,7 @@ export interface components {
             resultVersionId: string | null;
             /** Format: int64 */
             revision: number;
+            errorCode: string | null;
         };
         ConnectorCredentialInput: {
             secret: string;

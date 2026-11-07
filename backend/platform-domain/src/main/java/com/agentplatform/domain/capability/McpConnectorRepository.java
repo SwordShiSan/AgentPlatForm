@@ -9,7 +9,7 @@ public interface McpConnectorRepository {
     record Configuration(UUID id, String endpoint, String authKind, String apiKeyHeader,
                          UUID credentialId, Long credentialRevision, long revision) {}
     record Accepted(String hash, Configuration snapshot) {}
-    record Probe(UUID id, UUID connectorId, long configurationRevision, String state, UUID resultVersionId, long revision) {}
+    record Probe(UUID id, UUID connectorId, long configurationRevision, String state, UUID resultVersionId, long revision, String errorCode) {}
     boolean authorized(Actor actor);
     void lock(Actor actor);
     boolean activeCredential(Actor actor, UUID credentialId, long revision);

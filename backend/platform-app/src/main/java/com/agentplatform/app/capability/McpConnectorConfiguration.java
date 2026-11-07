@@ -49,7 +49,7 @@ public class McpConnectorConfiguration {
     }
     private static McpConnectorApi.Probe view(com.agentplatform.domain.capability.McpConnectorRepository.Probe value) {
         return new McpConnectorApi.Probe(value.id().toString(), value.connectorId().toString(), value.configurationRevision(), value.state(),
-                value.resultVersionId() == null ? null : value.resultVersionId().toString(), value.revision());
+                value.resultVersionId() == null ? null : value.resultVersionId().toString(), value.revision(), value.errorCode());
     }
     private static Actor actor(ChatApi.Caller caller) {
         if (caller == null) throw new FileFailure(401, "AUTHENTICATION_REQUIRED");

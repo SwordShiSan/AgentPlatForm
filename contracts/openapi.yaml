@@ -2526,7 +2526,7 @@ components:
     McpProbe:
       type: object
       additionalProperties: false
-      required: [id, connectorId, configurationRevision, state, resultVersionId, revision]
+      required: [id, connectorId, configurationRevision, state, resultVersionId, revision, errorCode]
       properties:
         id: {type: string, format: uuid}
         connectorId: {type: string, format: uuid}
@@ -2534,6 +2534,7 @@ components:
         state: {type: string, enum: [QUEUED, RUNNING, READY, FAILED, BLOCKED]}
         resultVersionId: {type: [string, 'null'], format: uuid}
         revision: {type: integer, format: int64, minimum: 1}
+        errorCode: {type: [string, 'null']}
     ConnectorCredentialInput:
       type: object
       additionalProperties: false

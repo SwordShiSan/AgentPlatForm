@@ -28,6 +28,6 @@ public interface McpConnectorMapper {
     String probeRequestHash(@Param("actor") Actor actor, @Param("request") UUID request);
     Probe probe(@Param("actor") Actor actor, @Param("id") UUID id);
     int insertProbe(@Param("actor") Actor actor, @Param("id") UUID id, @Param("request") UUID request,
-                    @Param("hash") String hash, @Param("config") Configuration config, @Param("policy") String policy);
+                    @Param("hash") String hash, @Param("config") Configuration config, @Param("policy") String policy, @Param("trace") UUID trace);
     int outbox(@Param("actor") Actor actor, @Param("id") UUID id, @Param("event") UUID event);
 }

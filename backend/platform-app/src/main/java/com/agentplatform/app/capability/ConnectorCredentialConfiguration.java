@@ -7,9 +7,6 @@ import com.agentplatform.domain.capability.ConnectorCredentialRepository.Metadat
 import com.agentplatform.domain.files.FileFailure;
 import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisConnectorCredentialRepository;
 import com.agentplatform.infrastructure.dao.capability.ConnectorCredentialMapper;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,12 +21,8 @@ public class ConnectorCredentialConfiguration {
     @Bean ConnectorCredentialApi connectorCredentialApi(ConnectorCredentialMapper mapper, TransactionTemplate transactions,
             @Value("${platform.mcp.master-key-file}") String mcpFile,
             @Value("${platform.chat.master-key-file}") String modelFile) throws java.io.IOException {
-        Path mcpPath = Path.of(mcpFile).toRealPath(), modelPath = Path.of(modelFile).toRealPath();
-        if (Files.isSameFile(mcpPath, modelPath)) throw new IllegalArgumentException("MCP master key must be independent");
-        byte[] mcp = readKey(mcpPath), model = null;
+        byte[] mcp = IndependentMcpKeyLoader.load(mcpFile, modelFile);
         try {
-            model = readKey(modelPath);
-            if (MessageDigest.isEqual(mcp, model)) throw new IllegalArgumentException("MCP master key must be independent");
             var service = new ConnectorCredentialService(new MyBatisConnectorCredentialRepository(mapper), transactions, mcp);
             return new ConnectorCredentialApi() {
                 @Override public Page list(ChatApi.Caller caller, String cursor, int limit) {
@@ -47,14 +40,7 @@ public class ConnectorCredentialConfiguration {
                     return view(service.revoke(actor(caller), uuid(id), expected, uuid(requestId), com.agentplatform.types.RequestTrace.current()));
                 }
             };
-        } finally { Arrays.fill(mcp, (byte) 0); if (model != null) Arrays.fill(model, (byte) 0); }
-    }
-    private static byte[] readKey(Path path) throws java.io.IOException {
-        try (var input = Files.newInputStream(path)) {
-            byte[] bytes = input.readNBytes(33);
-            if (bytes.length != 32) { Arrays.fill(bytes, (byte) 0); throw new IllegalArgumentException("Master key must contain 32 bytes"); }
-            return bytes;
-        }
+        } finally { Arrays.fill(mcp, (byte) 0); }
     }
     private static ConnectorCredentialApi.Metadata view(Metadata value) {
         return new ConnectorCredentialApi.Metadata(value.id().toString(), value.revision(), value.state(), value.createdAt().toString());

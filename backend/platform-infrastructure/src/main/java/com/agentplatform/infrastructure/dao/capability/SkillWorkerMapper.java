@@ -16,6 +16,8 @@ public interface SkillWorkerMapper {
     boolean authorized(@Param("actor") UUID actor, @Param("space") UUID space);
     UUID lockQuota(@Param("space") UUID space);
     int inbox(@Param("publication") Publication publication);
+    int blockQueued(@Param("publication") Publication publication);
+    int reconcileQueued(@Param("publication") Publication publication);
     int claim(@Param("publication") Publication publication, @Param("owner") UUID owner, @Param("fence") long fence);
     int guard(@Param("command") Command command);
     int block(@Param("command") Command command, @Param("state") String state, @Param("reason") String reason);

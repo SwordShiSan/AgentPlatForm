@@ -36,7 +36,9 @@ public final class TransactionalSkillValidationRepository implements SkillValida
             var row = mapper.byPublication(publication);
             if (row == null) throw new FileFailure(409, "SKILL_IMPORT_DELIVERY_UNKNOWN");
             if (mapper.inbox(publication) == 0) return null;
-            requireAccess(row.ownerUserId(), row.spaceId());
+            if (!mapper.authorized(row.ownerUserId(), row.spaceId())) {
+                exactlyOne(mapper.blockQueued(publication)); exactlyOne(mapper.reconcileQueued(publication)); return null;
+            }
             long fence = row.revision() + 1;
             exactlyOne(mapper.claim(publication, owner, fence));
             return new Command(row.spaceId(), row.ownerUserId(), row.id(), owner, row.generation(), fence,

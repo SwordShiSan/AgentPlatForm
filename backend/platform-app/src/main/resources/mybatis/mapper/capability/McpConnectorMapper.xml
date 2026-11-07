@@ -13,7 +13,8 @@
  <resultMap id="probe" type="com.agentplatform.domain.capability.McpConnectorRepository$Probe">
   <constructor><arg name="id" column="id" javaType="java.util.UUID"/><arg name="connectorId" column="capability_id" javaType="java.util.UUID"/>
    <arg name="configurationRevision" column="configuration_revision" javaType="_long"/><arg name="state" column="state" javaType="java.lang.String"/>
-   <arg name="resultVersionId" column="result_version_id" javaType="java.util.UUID"/><arg name="revision" column="revision" javaType="_long"/></constructor>
+   <arg name="resultVersionId" column="result_version_id" javaType="java.util.UUID"/><arg name="revision" column="revision" javaType="_long"/>
+   <arg name="errorCode" column="error_code" javaType="java.lang.String"/></constructor>
  </resultMap>
  <select id="authorized" resultType="boolean">SELECT CASE WHEN pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}) THEN
   EXISTS(SELECT 1 FROM pf.space WHERE id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND type='PERSONAL') ELSE false END</select>
@@ -37,15 +38,15 @@
   VALUES(#{actor.spaceId},#{actor.userId},#{request},#{hash},#{config.id},#{config.revision},CAST(#{snapshot} AS jsonb))</insert>
  <insert id="audit">INSERT INTO pf.capability_audit(id,space_id,owner_user_id,action,resource_id,trace_id)
   VALUES(#{id},#{actor.spaceId},#{actor.userId},#{action},#{resource},#{trace})</insert>
- <select id="probeRequest" resultMap="probe">SELECT id,capability_id,configuration_revision,state,result_version_id,revision FROM pf.mcp_probe
+ <select id="probeRequest" resultMap="probe">SELECT id,capability_id,configuration_revision,state,result_version_id,revision,error_code FROM pf.mcp_probe
   WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND request_id=#{request}</select>
  <select id="probeRequestHash" resultType="string">SELECT request_hash FROM pf.mcp_probe
   WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND request_id=#{request}</select>
- <select id="probe" resultMap="probe">SELECT id,capability_id,configuration_revision,state,result_version_id,revision FROM pf.mcp_probe
+ <select id="probe" resultMap="probe">SELECT id,capability_id,configuration_revision,state,result_version_id,revision,error_code FROM pf.mcp_probe
   WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND id=#{id}</select>
- <insert id="insertProbe">INSERT INTO pf.mcp_probe(id,space_id,owner_user_id,capability_id,request_id,request_hash,configuration_revision,endpoint,auth_kind,api_key_header,credential_id,credential_revision,policy_hash,state)
+ <insert id="insertProbe">INSERT INTO pf.mcp_probe(id,space_id,owner_user_id,capability_id,request_id,request_hash,configuration_revision,endpoint,auth_kind,api_key_header,credential_id,credential_revision,policy_hash,state,trace_id)
   VALUES(#{id},#{actor.spaceId},#{actor.userId},#{config.id},#{request},#{hash},#{config.revision},#{config.endpoint},#{config.authKind},
-   #{config.apiKeyHeader,jdbcType=VARCHAR},#{config.credentialId,jdbcType=OTHER},#{config.credentialRevision,jdbcType=BIGINT},#{policy},'QUEUED')</insert>
+   #{config.apiKeyHeader,jdbcType=VARCHAR},#{config.credentialId,jdbcType=OTHER},#{config.credentialRevision,jdbcType=BIGINT},#{policy},'QUEUED',#{trace})</insert>
  <insert id="outbox">INSERT INTO pf.mcp_probe_outbox(id,space_id,probe_id,generation) SELECT #{event},space_id,id,generation FROM pf.mcp_probe
   WHERE id=#{id} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId}</insert>
 </mapper>

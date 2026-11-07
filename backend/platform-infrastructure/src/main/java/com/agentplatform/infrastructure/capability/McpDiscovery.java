@@ -33,7 +33,9 @@ public final class McpDiscovery {
             return value != null && !value.isBlank() && value.length() <= 8192 && value.indexOf('\r') < 0 && value.indexOf('\n') < 0;
         }
     }
-    public record Tool(String name, String description, String schemaJson, String schemaSha256) {}
+    public record Tool(String name, String description, String schemaJson, String schemaSha256) {
+        @Override public String toString() { return "Tool[name=" + name + ", schemaSha256=" + schemaSha256 + "]"; }
+    }
     private final InetSocketAddress proxy;
     public McpDiscovery(InetSocketAddress proxy) {
         this.proxy = Objects.requireNonNull(proxy, "controlled proxy is required");
@@ -65,6 +67,9 @@ public final class McpDiscovery {
                 String description = tool.description();
                 if (description != null && description.getBytes(StandardCharsets.UTF_8).length > 65536)
                     throw new FileFailure(422, "MCP_TOOL_INVALID");
+                if (authentication.secret != null && (tool.name().contains(authentication.secret)
+                        || description != null && description.contains(authentication.secret) || schema.contains(authentication.secret)))
+                    throw new FileFailure(422, "MCP_SENSITIVE_RESPONSE_REJECTED");
                 result.add(new Tool(tool.name(), description, schema, sha256(bytes)));
             }
             return List.copyOf(result);

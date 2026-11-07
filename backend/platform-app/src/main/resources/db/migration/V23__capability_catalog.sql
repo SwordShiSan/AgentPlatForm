@@ -139,7 +139,9 @@ CREATE TABLE pf.mcp_connector_tool (
  capability_id uuid NOT NULL,
  version_id uuid NOT NULL,
  tool_name text NOT NULL CHECK (octet_length(tool_name) BETWEEN 1 AND 512),
- input_schema jsonb NOT NULL CHECK (jsonb_typeof(input_schema) = 'object' AND octet_length(input_schema::text) <= 65536),
+ description text CHECK (octet_length(description) <= 65536),
+ input_schema jsonb NOT NULL CHECK (jsonb_typeof(input_schema) = 'object'),
+ schema_canonical text NOT NULL CHECK (octet_length(schema_canonical) <= 65536 AND schema_canonical::jsonb = input_schema),
  schema_hash varchar(64) NOT NULL CHECK (schema_hash ~ '^[a-f0-9]{64}$'),
  PRIMARY KEY (space_id,owner_user_id,capability_id,version_id,tool_name),
  FOREIGN KEY (space_id,owner_user_id,capability_id,version_id)
@@ -204,6 +206,7 @@ CREATE TABLE pf.mcp_probe (
  lease_until timestamptz,
  result_version_id uuid,
  error_code varchar(64),
+ trace_id uuid NOT NULL,
  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  UNIQUE (space_id,id), UNIQUE (space_id,owner_user_id,id), UNIQUE (space_id,owner_user_id,request_id),
  FOREIGN KEY (space_id,owner_user_id,capability_id) REFERENCES pf.mcp_connector_configuration(space_id,owner_user_id,capability_id),
@@ -235,6 +238,11 @@ CREATE TABLE pf.mcp_probe_inbox (
  probe_id uuid NOT NULL,
  received_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  FOREIGN KEY (space_id,event_id,probe_id) REFERENCES pf.mcp_probe_outbox(space_id,id,probe_id)
+);
+CREATE TABLE pf.mcp_probe_quarantine (
+ id uuid PRIMARY KEY,
+ body_hash varchar(64) NOT NULL CHECK (body_hash ~ '^[a-f0-9]{64}$'),
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 
 CREATE TABLE pf.skill_import (
@@ -448,6 +456,6 @@ CREATE TRIGGER capability_audit_immutable BEFORE UPDATE OR DELETE ON pf.capabili
 REVOKE ALL ON pf.capability, pf.capability_version, pf.skill_package_version, pf.skill_import,
  pf.skill_import_completion_request, pf.skill_import_reservation, pf.skill_import_outbox, pf.skill_import_inbox, pf.skill_import_quarantine, pf.capability_version_status,
  pf.connector_credential,pf.connector_credential_revocation,pf.mcp_connector_version,pf.mcp_connector_tool,
- pf.mcp_connector_configuration,pf.mcp_connector_request,pf.mcp_probe,pf.mcp_probe_outbox,pf.mcp_probe_inbox,pf.capability_version_command,
+ pf.mcp_connector_configuration,pf.mcp_connector_request,pf.mcp_probe,pf.mcp_probe_outbox,pf.mcp_probe_inbox,pf.mcp_probe_quarantine,pf.capability_version_command,
  pf.capability_binding_set, pf.capability_binding_selection, pf.capability_binding_request,
  pf.capability_binding_request_selection, pf.capability_audit FROM PUBLIC;

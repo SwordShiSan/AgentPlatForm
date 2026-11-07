@@ -49,7 +49,7 @@ def main():
         (DATA / 'maven.log').write_bytes(result.stdout + result.stderr)
         unchanged = before == inputs()
         receipt = {'status': 'PASS' if result.returncode == 0 and unchanged else 'FAIL', 'exitCode': result.returncode,
-                   'scope': 'V22-to-V23 migration; scoped bindings, import admission, worker version and encrypted connector credential transactions; targeted unit tests; no real MQ or S3',
+                   'scope': 'V22-to-V23 migration; binding, import, connector credential and probe transactions; failed local proxy through SDK; targeted unit tests; no real MQ or S3',
                    'source': run(['git', 'rev-parse', 'HEAD'], cwd=ROOT).stdout.decode().strip(),
                    'workingTreeClean': not bool(run(['git', 'status', '--porcelain'], cwd=ROOT).stdout.strip()), 'inputUnchanged': unchanged}
         (DATA / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')

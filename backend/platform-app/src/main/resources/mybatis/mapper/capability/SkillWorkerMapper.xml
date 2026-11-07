@@ -36,6 +36,10 @@
  <select id="authorized" resultType="boolean">SELECT pf.authorize_workspace_actor(#{actor},#{space})</select>
  <select id="lockQuota" resultType="java.util.UUID">SELECT space_id FROM pf.space_storage WHERE space_id=#{space} FOR UPDATE</select>
  <insert id="inbox">INSERT INTO pf.skill_import_inbox(event_id,space_id,import_id) VALUES(#{publication.id},#{publication.spaceId},#{publication.importId}) ON CONFLICT DO NOTHING</insert>
+ <update id="blockQueued">UPDATE pf.skill_import SET state='BLOCKED',error_code='SKILL_IMPORT_AUTHORIZATION_REVOKED',revision=revision+1
+  WHERE id=#{publication.importId} AND space_id=#{publication.spaceId} AND generation=#{publication.generation} AND state='QUEUED'</update>
+ <update id="reconcileQueued">UPDATE pf.skill_import_reservation SET state='RECONCILING',revision=revision+1
+  WHERE import_id=#{publication.importId} AND space_id=#{publication.spaceId} AND state='RESERVED'</update>
  <update id="claim">UPDATE pf.skill_import SET state='RUNNING',owner_id=#{owner},fence=#{fence},lease_until=clock_timestamp()+interval '60 seconds',revision=revision+1
   WHERE id=#{publication.importId} AND space_id=#{publication.spaceId} AND generation=#{publication.generation} AND state='QUEUED'</update>
  <update id="guard">UPDATE pf.skill_import SET lease_until=clock_timestamp()+interval '60 seconds'

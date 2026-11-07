@@ -16,6 +16,7 @@ import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisSki
 import com.agentplatform.infrastructure.dao.capability.ConnectorCredentialMapper;
 import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisConnectorCredentialRepository;
 import com.agentplatform.infrastructure.dao.capability.McpConnectorMapper;
+import com.agentplatform.infrastructure.dao.capability.McpProbeMapper;
 import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisMcpConnectorRepository;
 import com.agentplatform.infrastructure.dao.typehandler.UuidTypeHandler;
 import com.zaxxer.hikari.HikariConfig;
@@ -44,6 +45,7 @@ class CapabilityBindingPostgresTest {
     SkillCatalogService catalog;
     ConnectorCredentialService connectorCredentials;
     McpConnectorService connectors;
+    TransactionalMcpProbeRepository mcpWorker;
     Actor alice, bob;
     UUID capability, version, workspace;
 
@@ -89,6 +91,10 @@ class CapabilityBindingPostgresTest {
                 + "GRANT SELECT ON pf.space_storage TO r62_worker; GRANT UPDATE(reserved_bytes,committed_bytes,version) ON pf.space_storage TO r62_worker; "
                 + "GRANT SELECT,INSERT,UPDATE ON pf.skill_import,pf.skill_import_reservation,pf.skill_import_outbox,pf.skill_import_inbox TO r62_worker; "
                 + "GRANT SELECT,INSERT ON pf.capability TO r62_worker; GRANT UPDATE(kind) ON pf.capability TO r62_worker; GRANT SELECT,INSERT ON pf.capability_version,pf.skill_package_version,pf.capability_version_status,pf.asset_object TO r62_worker; "
+                + "GRANT SELECT,UPDATE ON pf.mcp_probe,pf.mcp_probe_outbox TO r62_worker; GRANT SELECT,INSERT ON pf.mcp_probe_inbox TO r62_worker; "
+                + "GRANT SELECT ON pf.mcp_connector_configuration TO r62_worker; GRANT UPDATE(revision) ON pf.mcp_connector_configuration TO r62_worker; "
+                + "GRANT SELECT(id,space_id,owner_user_id,ciphertext,nonce,key_version,revision,state) ON pf.connector_credential TO r62_worker; GRANT UPDATE(revision) ON pf.connector_credential TO r62_worker; "
+                + "GRANT SELECT,INSERT ON pf.mcp_connector_version,pf.mcp_connector_tool TO r62_worker; GRANT INSERT ON pf.mcp_probe_quarantine TO r62_worker; "
                 + "GRANT INSERT ON pf.capability_audit,pf.skill_import_quarantine TO r62_worker");
     }
 
@@ -149,8 +155,11 @@ class CapabilityBindingPostgresTest {
         workerConfiguration.setLocalCacheScope(org.apache.ibatis.session.LocalCacheScope.STATEMENT); workerConfiguration.setCacheEnabled(false);
         workerConfiguration.getTypeHandlerRegistry().register(new UuidTypeHandler()); workerFactory.setConfiguration(workerConfiguration);
         workerFactory.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:mybatis/mapper/**/*.xml"));
-        worker = new TransactionalSkillValidationRepository(new SqlSessionTemplate(workerFactory.getObject()).getMapper(SkillWorkerMapper.class),
+        var workerSession = new SqlSessionTemplate(workerFactory.getObject());
+        worker = new TransactionalSkillValidationRepository(workerSession.getMapper(SkillWorkerMapper.class),
                 new TransactionTemplate(new JdbcTransactionManager(workerPool)));
+        mcpWorker = new TransactionalMcpProbeRepository(workerSession.getMapper(McpProbeMapper.class),
+                new TransactionTemplate(new JdbcTransactionManager(workerPool)), "a".repeat(64));
     }
 
     @AfterEach void close() { if (workerPool != null) workerPool.close(); if (apiPool != null) apiPool.close(); if (pool != null) pool.close(); }
@@ -237,6 +246,20 @@ class CapabilityBindingPostgresTest {
              var query = connection.createStatement();
              var rows = query.executeQuery("SELECT s.reserved_bytes,r.state FROM pf.space_storage s JOIN pf.skill_import_reservation r ON r.space_id=s.space_id WHERE r.import_id='" + row.id() + "'")) {
             assertTrue(rows.next()); assertEquals(123, rows.getLong(1)); assertEquals("RECONCILING", rows.getString(2));
+        }
+    }
+
+    @Test void revokedMemberStopsQueuedSkillValidationAndRetainsReservation() throws Exception {
+        var actor = new com.agentplatform.domain.capability.SkillImportRepository.Actor(alice.userId(), alice.spaceId());
+        var row = imports.create(actor, UUID.randomUUID(), "a".repeat(64), null, 123, "b".repeat(64));
+        UUID owner = UUID.randomUUID(); imports.beginTransfer(actor, row.id(), owner); imports.verified(actor, row.id(), owner);
+        imports.enqueue(actor, row.id(), UUID.randomUUID());
+        sql("UPDATE pf.membership SET status='REVOKED' WHERE space_id='" + alice.spaceId() + "' AND user_id='" + alice.userId() + "'");
+        var publication = worker.nextPublication(UUID.randomUUID()); worker.published(publication);
+        assertNull(worker.claim(publication, UUID.randomUUID()));
+        try (var connection = DriverManager.getConnection(url, "postgres", password); var query = connection.createStatement();
+             var rows = query.executeQuery("SELECT i.state,r.state FROM pf.skill_import i JOIN pf.skill_import_reservation r ON r.import_id=i.id WHERE i.id='" + row.id() + "'")) {
+            assertTrue(rows.next()); assertEquals("BLOCKED", rows.getString(1)); assertEquals("RECONCILING", rows.getString(2));
         }
     }
 
@@ -344,6 +367,79 @@ class CapabilityBindingPostgresTest {
         var rows = connectorCredentials.list(alice, null, 50).items();
         assertEquals("REVOKED", rows.stream().filter(c -> c.id().equals(old.id())).findFirst().orElseThrow().state());
         assertEquals("ACTIVE", rows.stream().filter(c -> c.id().equals(next.id())).findFirst().orElseThrow().state());
+    }
+
+    @Test void probeCompletionCreatesDraftOnceAndRejectsOldFence() throws Exception {
+        UUID trace = UUID.randomUUID();
+        var config = connectors.create(alice, UUID.randomUUID(), new McpConnectorService.Input("https://example.com/mcp", "NONE", null, null, null), trace);
+        var probe = connectors.enqueue(alice, config.id(), config.revision(), UUID.randomUUID(), trace);
+        var publication = mcpWorker.nextPublication(UUID.randomUUID()); mcpWorker.published(publication);
+        var command = mcpWorker.claim(publication, UUID.randomUUID()); assertNotNull(command);
+        assertNull(mcpWorker.claim(publication, UUID.randomUUID())); assertNull(mcpWorker.guardAndCredential(command));
+        var stale = new com.agentplatform.domain.capability.McpProbeRepository.Command(command.spaceId(), command.actorId(), command.probeId(),
+                command.connectorId(), command.configurationRevision(), command.ownerId(), command.generation(), command.fence()+1,
+                command.endpoint(), command.authKind(), command.apiKeyHeader(), command.credentialId(), command.credentialRevision(), command.policyHash(), command.traceId());
+        assertThrows(com.agentplatform.domain.files.FileFailure.class, () -> mcpWorker.guardAndCredential(stale));
+        String schema = "{\"type\":\"object\"}"; String schemaHash = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(schema.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        mcpWorker.ready(command, List.of(new com.agentplatform.domain.capability.McpProbeRepository.Tool("fixture", "test", schema, schemaHash)));
+        assertEquals("READY", connectors.probe(alice, probe.id()).state());
+        try (var connection = DriverManager.getConnection(url, "postgres", password); var query = connection.createStatement();
+             var rows = query.executeQuery("SELECT schema_canonical,schema_hash FROM pf.mcp_connector_tool WHERE capability_id='" + config.id() + "'")) {
+            assertTrue(rows.next()); assertEquals(schema, rows.getString(1)); assertEquals(schemaHash, rows.getString(2));
+        }
+        assertThrows(com.agentplatform.domain.files.FileFailure.class, () -> mcpWorker.ready(command, List.of()));
+    }
+
+    @Test void revokedCredentialStopsProbeBeforeDiscovery() {
+        UUID trace = UUID.randomUUID(); var credential = connectorCredentials.create(alice, UUID.randomUUID(), "fixture-secret", trace);
+        var config = connectors.create(alice, UUID.randomUUID(), new McpConnectorService.Input("https://example.com/mcp", "BEARER", null,
+                credential.id(), credential.revision()), trace);
+        var probe = connectors.enqueue(alice, config.id(), config.revision(), UUID.randomUUID(), trace);
+        var publication = mcpWorker.nextPublication(UUID.randomUUID()); mcpWorker.published(publication);
+        var command = mcpWorker.claim(publication, UUID.randomUUID());
+        byte[] key = new byte[32]; java.util.Arrays.fill(key, (byte) 7);
+        assertEquals("fixture-secret", new com.agentplatform.infrastructure.chat.CredentialCipher(key).decryptConnector(mcpWorker.guardAndCredential(command)));
+        connectorCredentials.revoke(alice, credential.id(), credential.revision(), UUID.randomUUID(), trace);
+        assertEquals(403, assertThrows(com.agentplatform.domain.files.FileFailure.class, () -> mcpWorker.guardAndCredential(command)).status());
+        mcpWorker.failed(command, "CONNECTOR_CREDENTIAL_UNAVAILABLE");
+        assertEquals("FAILED", connectors.probe(alice, probe.id()).state());
+    }
+
+    @Test void revokedCredentialBeforeClaimEndsWithoutCallingRemote() {
+        UUID trace = UUID.randomUUID(); var credential = connectorCredentials.create(alice, UUID.randomUUID(), "fixture-secret", trace);
+        var config = connectors.create(alice, UUID.randomUUID(), new McpConnectorService.Input("https://example.com/mcp", "BEARER", null,
+                credential.id(), credential.revision()), trace);
+        var probe = connectors.enqueue(alice, config.id(), config.revision(), UUID.randomUUID(), trace);
+        connectorCredentials.revoke(alice, credential.id(), credential.revision(), UUID.randomUUID(), trace);
+        var publication = mcpWorker.nextPublication(UUID.randomUUID()); mcpWorker.published(publication);
+        assertNull(mcpWorker.claim(publication, UUID.randomUUID()));
+        var result = connectors.probe(alice, probe.id());
+        assertEquals("FAILED", result.state()); assertEquals("CONNECTOR_CREDENTIAL_UNAVAILABLE", result.errorCode());
+    }
+
+    @Test void failedProxyDoesNotFallbackAndLeavesProbeBlocked() throws Exception {
+        UUID trace = UUID.randomUUID();
+        var config = connectors.create(alice, UUID.randomUUID(), new McpConnectorService.Input("https://fixture.invalid/mcp", "NONE", null, null, null), trace);
+        var probe = connectors.enqueue(alice, config.id(), config.revision(), UUID.randomUUID(), trace);
+        var publication = mcpWorker.nextPublication(UUID.randomUUID()); mcpWorker.published(publication);
+        var command = mcpWorker.claim(publication, UUID.randomUUID());
+        try (var listener = new java.net.ServerSocket(0, 1, java.net.InetAddress.getByName("127.0.0.1"));
+             var timers = java.util.concurrent.Executors.newScheduledThreadPool(1)) {
+            var observed = java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+                try (var socket = listener.accept()) {
+                    socket.setSoTimeout(5000);
+                    var input = new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream(), java.nio.charset.StandardCharsets.US_ASCII));
+                    String first = input.readLine();
+                    socket.getOutputStream().write("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n".getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+                    socket.getOutputStream().flush(); return first;
+                } catch (Exception failure) { throw new IllegalStateException(failure); }
+            });
+            var discovery = new com.agentplatform.infrastructure.capability.McpDiscovery(new java.net.InetSocketAddress("127.0.0.1", listener.getLocalPort()));
+            new McpProbeExecution(mcpWorker, discovery, new com.agentplatform.infrastructure.chat.CredentialCipher(new byte[32]), timers).run(command);
+            assertTrue(observed.get(10, java.util.concurrent.TimeUnit.SECONDS).startsWith("CONNECT fixture.invalid:443 "));
+            var result = connectors.probe(alice, probe.id());
+            assertEquals("BLOCKED", result.state()); assertEquals("MCP_PROBE_RESULT_UNKNOWN", result.errorCode());
+        }
     }
 
     @Test void connectorProbeFreezesSettingsAndRevokedCredentialsAreRejected() throws Exception {
