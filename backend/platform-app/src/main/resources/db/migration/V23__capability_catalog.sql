@@ -200,6 +200,22 @@ CREATE TABLE pf.capability_version_status (
  FOREIGN KEY (space_id,owner_user_id,capability_id,version_id)
    REFERENCES pf.capability_version(space_id,owner_user_id,capability_id,id)
 );
+CREATE FUNCTION pf.guard_capability_version_transition() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NEW.space_id IS DISTINCT FROM OLD.space_id OR NEW.owner_user_id IS DISTINCT FROM OLD.owner_user_id
+    OR NEW.capability_id IS DISTINCT FROM OLD.capability_id OR NEW.version_id IS DISTINCT FROM OLD.version_id
+    OR NEW.revision <> OLD.revision + 1 OR NOT (
+      (OLD.state='DRAFT' AND NEW.state IN ('PUBLISHED','REVOKED'))
+      OR (OLD.state='PUBLISHED' AND NEW.state='REVOKED')) THEN
+  RAISE EXCEPTION 'CAPABILITY_VERSION_TRANSITION_REJECTED' USING ERRCODE='55000';
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER capability_version_transition BEFORE UPDATE ON pf.capability_version_status
+ FOR EACH ROW EXECUTE FUNCTION pf.guard_capability_version_transition();
+CREATE TRIGGER capability_version_status_no_delete BEFORE DELETE ON pf.capability_version_status
+ FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
+REVOKE ALL ON FUNCTION pf.guard_capability_version_transition() FROM PUBLIC;
 
 -- No workspace row means inheritance; a row with no selections is an explicit empty override.
 -- Cleared overrides retain their revision to prevent stale ETags becoming valid again.

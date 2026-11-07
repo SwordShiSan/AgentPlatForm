@@ -120,6 +120,7 @@ class CapabilityBindingPostgresTest {
         service.replace(alice, null, 0, false, List.of(selected));
         sql("UPDATE pf.capability_version_status SET state='REVOKED',revision=revision+1 WHERE version_id='" + version + "'");
         assertEquals(List.of(selected), service.effective(alice, workspace).unavailable());
+        assertThrows(java.sql.SQLException.class, () -> sql("UPDATE pf.capability_version_status SET state='PUBLISHED',revision=revision+1 WHERE version_id='" + version + "'"));
         assertEquals(422, assertThrows(ChatFailure.class,
                 () -> service.replace(alice, workspace, 0, false, List.of(selected))).status());
     }
