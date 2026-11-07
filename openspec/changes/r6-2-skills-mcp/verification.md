@@ -42,6 +42,7 @@
 - `SkillArchiveValidatorTest` 8 项 PASS，包括对所选版本的压缩包 SHA256 和完整文件路径、大小、哈希清单逐项比对；此校验尚未接入 runner，不能替代材料下载、只读挂载或实时授权验收。
 - `SkillValidationServiceTest` 3 项 PASS，包含独立材料流式暂存、下载期间撤权、哈希不符和临时文件清理；存储使用内存夹具，真实对象存储下载、任务授权与 runner 的集成仍 NOT_RUN。
 - 独立 PG／MQ／S3 测试中，真实任务和执行租约下按有效绑定读取材料，验证工作区不匹配和撤销绑定后拒绝，PASS，证据 `.cache/r62-local/integrated/run-1794055831922409500`。测试中的任务交接由夹具直接标记发布，不代表该任务经历真实 MQ 交接；runner 签名、持久挂载和执行仍 NOT_RUN。此前夹具因同名变量导致编译失败、清理用户时同时清空执行槽导致领取失败，均保留失败记录，修正测试夹具后通过。
+- 新增显式 `Prepared.verifyBeforeMount()`，在材料暂存后再次核验真实 task lease、空间／工作区、实时绑定和已发布版本；真实 PG／MQ／S3 定向测试再通过，并验证撤销绑定后该最终校验拒绝，证据 `.cache/r62-local/integrated/run-1794056376432938100`。本次源 SHA256：`TaskSkillMaterialService.java` `4c22b346e2033ec1225de46a87109640238409d93e5533398f03715dc3d1dad5`；`CapabilityBindingPostgresTest.java` `db4c06cfdb020d340622a9b4f956a1576de7c3b914fcfde89464b5620bdf8a95`。这仍只保护未来的挂载入口；签名 runner、持久挂载回执和真实运行环境尚未实现。
 - 无网络 Linux 容器中 `SkillMaterialExtractorTest` 1 项 PASS、`SkillValidationServiceTest` 3 项 PASS：私有目录逐文件解包、清单校验及撤权清理；定向复验的解包源码 SHA256 `ce73ecfe3843edb985ee3f88dfbeda9e79dfa6a414b66ed2e2a67eb476090e38`、暂存源码 SHA256 `e4cc79f4861dbab4151ca0564e332dff91bbe9d962793109fdc82193c35a187f`。验证仍未覆盖签名 runner、挂载和真实运行任务。首次离线构建的参数及构建工具版本不符分别失败，随后使用项目固定 Maven 3.9.11 通过；后续单类修改采用已编译依赖的定向 Linux 验证。
 - `SandboxPolicyTest` 7 项 PASS，新增仅限 R6.2 验收命名空间的工作区路径，并拒绝越界及近似路径；这只是路径配置测试，不代表实际容器或真实挂载通过。
 - 本机 Docker 运行时清单不含 runsc；云端只读预检确认 runsc 可用，但 `/srv/agentplatform` 可用空间约7.17GiB，尚不足以同时预留独立4GiB测试盘和5GiB安全余量。待测试夹具完成后按已授权冷归档流程核对旧测试产物保护副本及引用，再决定是否回收；未执行生产停机或清理。

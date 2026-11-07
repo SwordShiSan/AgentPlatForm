@@ -59,7 +59,13 @@ public final class TaskSkillMaterialService {
             for (var source : sources)
                 if (!source.equals(versions.material(actor, source.capabilityId(), source.versionId())))
                     throw new FileFailure(409, "SKILL_MATERIAL_CHANGED");
-            return new Prepared(manifest, staged);
+            Runnable beforeMount = () -> {
+                guard(lease, workspace, actor, selected);
+                for (var source : sources)
+                    if (!source.equals(versions.material(actor, source.capabilityId(), source.versionId())))
+                        throw new FileFailure(409, "SKILL_MATERIAL_CHANGED");
+            };
+            return new Prepared(manifest, staged, beforeMount);
         } catch (IOException | RuntimeException failure) {
             try { closeAll(staged); } catch (IOException cleanup) { failure.addSuppressed(cleanup); }
             throw failure;
@@ -86,10 +92,13 @@ public final class TaskSkillMaterialService {
     public static final class Prepared implements AutoCloseable {
         private final CapabilityMaterialization.Manifest manifest;
         private final List<SkillMaterialStaging.Staged> staged;
-        private Prepared(CapabilityMaterialization.Manifest manifest,List<SkillMaterialStaging.Staged> staged) {
-            this.manifest=manifest;this.staged=List.copyOf(staged);
+        private final Runnable beforeMount;
+        private Prepared(CapabilityMaterialization.Manifest manifest,List<SkillMaterialStaging.Staged> staged,Runnable beforeMount) {
+            this.manifest=manifest;this.staged=List.copyOf(staged);this.beforeMount=beforeMount;
         }
         public CapabilityMaterialization.Manifest manifest(){return manifest;}
+        /** Revalidate the owner, live binding and immutable source immediately before runner mount. */
+        public void verifyBeforeMount(){beforeMount.run();}
         public List<java.nio.file.Path> archives(){return staged.stream().map(SkillMaterialStaging.Staged::archive).toList();}
         @Override public void close() throws IOException {closeAll(staged);}
     }

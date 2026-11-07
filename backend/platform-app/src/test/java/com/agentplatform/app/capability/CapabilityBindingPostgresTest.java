@@ -534,10 +534,13 @@ class CapabilityBindingPostgresTest {
                         assertEquals(1, prepared.archives().size());
                         assertEquals(hash, java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
                                 .digest(Files.readAllBytes(prepared.archives().getFirst()))));
+                        prepared.verifyBeforeMount();
+                        this.service.replace(alice, workspace, 1, false, List.of());
+                        assertThrows(com.agentplatform.domain.files.FileFailure.class, prepared::verifyBeforeMount,
+                                "a revoked binding must fail the final pre-mount authorization check");
                     }
                     assertThrows(com.agentplatform.domain.files.FileFailure.class,
                             () -> material.prepare(lease, UUID.randomUUID(), List.of(selection)));
-                    this.service.replace(alice, workspace, 1, false, List.of());
                     assertThrows(com.agentplatform.domain.files.FileFailure.class,
                             () -> material.prepare(lease, workspace, List.of(selection)));
                 } finally {
