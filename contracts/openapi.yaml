@@ -530,6 +530,81 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/SkillImport'}
         default: *a1
+  /api/v1/me/connector-credentials:
+    get:
+      operationId: connectorCredentials
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: cursor, in: query, required: false, schema: {type: string, format: uuid}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Credential metadata only
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ConnectorCredentialPage'}
+        default: *a1
+    post:
+      operationId: createConnectorCredential
+      security: [{cookieAuth: []}]
+      parameters: &connectorCredentialWrite
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ConnectorCredentialInput'}
+      responses:
+        "201":
+          description: Encrypted credential metadata
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ConnectorCredential'}
+        default: *a1
+  /api/v1/me/connector-credentials/{id}/replace:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      operationId: replaceConnectorCredential
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ConnectorCredentialInput'}
+      responses:
+        "201":
+          description: New encrypted credential identity
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ConnectorCredential'}
+        default: *a1
+  /api/v1/me/connector-credentials/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    delete:
+      operationId: revokeConnectorCredential
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Revoked credential metadata
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ConnectorCredential'}
+        default: *a1
   /api/v1/me/capability-bindings:
     parameters:
       - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
@@ -2322,6 +2397,28 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
   schemas:
+    ConnectorCredentialInput:
+      type: object
+      additionalProperties: false
+      required: [secret]
+      properties:
+        secret: {type: string, minLength: 1, maxLength: 8192, writeOnly: true}
+    ConnectorCredential:
+      type: object
+      additionalProperties: false
+      required: [id, revision, state, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        revision: {type: integer, format: int64, minimum: 1}
+        state: {type: string, enum: [ACTIVE, REVOKED]}
+        createdAt: {type: string, format: date-time}
+    ConnectorCredentialPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/ConnectorCredential'}}
+        nextCursor: {type: [string, 'null'], format: uuid}
     SkillCatalogItem:
       type: object
       additionalProperties: false

@@ -64,6 +64,8 @@ CREATE TABLE pf.connector_credential (
  id uuid PRIMARY KEY,
  space_id uuid NOT NULL,
  owner_user_id uuid NOT NULL,
+ request_id uuid NOT NULL,
+ request_fingerprint varchar(64) NOT NULL CHECK (request_fingerprint ~ '^[a-f0-9]{64}$'),
  ciphertext bytea NOT NULL,
  nonce bytea NOT NULL CHECK (octet_length(nonce) = 12),
  key_version integer NOT NULL CHECK (key_version > 0),
@@ -71,12 +73,14 @@ CREATE TABLE pf.connector_credential (
  state text NOT NULL CHECK (state IN ('ACTIVE','REVOKED')),
  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  UNIQUE (space_id,owner_user_id,id),
+ UNIQUE (space_id,owner_user_id,request_id),
  FOREIGN KEY (space_id,owner_user_id) REFERENCES pf.membership(space_id,user_id)
 );
 CREATE FUNCTION pf.guard_connector_credential_update() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF NEW.id IS DISTINCT FROM OLD.id OR NEW.space_id IS DISTINCT FROM OLD.space_id
-    OR NEW.owner_user_id IS DISTINCT FROM OLD.owner_user_id OR NEW.ciphertext IS DISTINCT FROM OLD.ciphertext
+    OR NEW.owner_user_id IS DISTINCT FROM OLD.owner_user_id OR NEW.request_id IS DISTINCT FROM OLD.request_id
+    OR NEW.request_fingerprint IS DISTINCT FROM OLD.request_fingerprint OR NEW.ciphertext IS DISTINCT FROM OLD.ciphertext
     OR NEW.nonce IS DISTINCT FROM OLD.nonce OR NEW.key_version IS DISTINCT FROM OLD.key_version
     OR NEW.created_at IS DISTINCT FROM OLD.created_at OR OLD.state <> 'ACTIVE'
     OR NEW.state <> 'REVOKED' OR NEW.revision <> OLD.revision + 1 THEN
@@ -89,6 +93,19 @@ CREATE TRIGGER connector_credential_revoke_only BEFORE UPDATE ON pf.connector_cr
 CREATE TRIGGER connector_credential_no_delete BEFORE DELETE ON pf.connector_credential
  FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
 REVOKE ALL ON FUNCTION pf.guard_connector_credential_update() FROM PUBLIC;
+CREATE TABLE pf.connector_credential_revocation (
+ space_id uuid NOT NULL,
+ owner_user_id uuid NOT NULL,
+ request_id uuid NOT NULL,
+ credential_id uuid NOT NULL,
+ expected_revision bigint NOT NULL CHECK (expected_revision > 0),
+ result_revision bigint NOT NULL CHECK (result_revision = expected_revision + 1),
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ PRIMARY KEY (space_id,owner_user_id,request_id),
+ FOREIGN KEY (space_id,owner_user_id,credential_id) REFERENCES pf.connector_credential(space_id,owner_user_id,id)
+);
+CREATE TRIGGER connector_credential_revocation_immutable BEFORE UPDATE OR DELETE ON pf.connector_credential_revocation
+ FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
 
 CREATE TABLE pf.mcp_connector_version (
  space_id uuid NOT NULL,
@@ -341,6 +358,6 @@ CREATE TRIGGER capability_audit_immutable BEFORE UPDATE OR DELETE ON pf.capabili
 
 REVOKE ALL ON pf.capability, pf.capability_version, pf.skill_package_version, pf.skill_import,
  pf.skill_import_completion_request, pf.skill_import_reservation, pf.skill_import_outbox, pf.skill_import_inbox, pf.skill_import_quarantine, pf.capability_version_status,
- pf.connector_credential,pf.mcp_connector_version,pf.mcp_connector_tool,pf.capability_version_command,
+ pf.connector_credential,pf.connector_credential_revocation,pf.mcp_connector_version,pf.mcp_connector_tool,pf.capability_version_command,
  pf.capability_binding_set, pf.capability_binding_selection, pf.capability_binding_request,
  pf.capability_binding_request_selection, pf.capability_audit FROM PUBLIC;

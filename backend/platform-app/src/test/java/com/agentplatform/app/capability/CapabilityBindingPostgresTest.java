@@ -13,6 +13,8 @@ import com.agentplatform.infrastructure.dao.capability.SkillVersionMapper;
 import com.agentplatform.infrastructure.dao.capability.SkillCatalogMapper;
 import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisSkillVersionRepository;
 import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisSkillCatalogRepository;
+import com.agentplatform.infrastructure.dao.capability.ConnectorCredentialMapper;
+import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisConnectorCredentialRepository;
 import com.agentplatform.infrastructure.dao.typehandler.UuidTypeHandler;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -38,6 +40,7 @@ class CapabilityBindingPostgresTest {
     TransactionalSkillValidationRepository worker;
     SkillVersionService versions;
     SkillCatalogService catalog;
+    ConnectorCredentialService connectorCredentials;
     Actor alice, bob;
     UUID capability, version, workspace;
 
@@ -72,6 +75,9 @@ class CapabilityBindingPostgresTest {
                 + "GRANT SELECT,INSERT ON pf.skill_import_completion_request TO r62_api; "
                 + "GRANT SELECT ON pf.capability_version,pf.skill_package_version,pf.asset_object TO r62_api; "
                 + "GRANT SELECT,INSERT ON pf.capability_version_command TO r62_api; "
+                + "GRANT SELECT(id,space_id,owner_user_id,request_id,request_fingerprint,revision,state,created_at) ON pf.connector_credential TO r62_api; "
+                + "GRANT INSERT(id,space_id,owner_user_id,request_id,request_fingerprint,ciphertext,nonce,key_version,state) ON pf.connector_credential TO r62_api; "
+                + "GRANT UPDATE(state,revision) ON pf.connector_credential TO r62_api; GRANT SELECT,INSERT ON pf.connector_credential_revocation TO r62_api; "
                 + "GRANT UPDATE(state,updated_at) ON pf.capability_version_status TO r62_api; "
                 + "GRANT SELECT ON pf.capability_version_status TO r62_api; GRANT UPDATE(revision) ON pf.capability_version_status TO r62_api; "
                 + "CREATE ROLE r62_worker NOLOGIN; GRANT USAGE ON SCHEMA pf TO r62_worker; "
@@ -128,6 +134,10 @@ class CapabilityBindingPostgresTest {
                 new TransactionTemplate(new JdbcTransactionManager(apiPool)));
         catalog = new SkillCatalogService(new MyBatisSkillCatalogRepository(session.getMapper(SkillCatalogMapper.class)),
                 new TransactionTemplate(new JdbcTransactionManager(apiPool)));
+        byte[] mcpKey = new byte[32]; java.util.Arrays.fill(mcpKey, (byte) 7);
+        connectorCredentials = new ConnectorCredentialService(new MyBatisConnectorCredentialRepository(session.getMapper(ConnectorCredentialMapper.class)),
+                new TransactionTemplate(new JdbcTransactionManager(apiPool)), mcpKey);
+        java.util.Arrays.fill(mcpKey, (byte) 0);
         var workerFactory = new SqlSessionFactoryBean(); workerFactory.setDataSource(workerPool);
         var workerConfiguration = new org.apache.ibatis.session.Configuration(); workerConfiguration.setMapUnderscoreToCamelCase(true);
         workerConfiguration.setLocalCacheScope(org.apache.ibatis.session.LocalCacheScope.STATEMENT); workerConfiguration.setCacheEnabled(false);
@@ -293,5 +303,40 @@ class CapabilityBindingPostgresTest {
         assertEquals(422, assertThrows(com.agentplatform.domain.files.FileFailure.class,
                 () -> versions.change(alice, row.capabilityId(), row.versionId(), "PUBLISH", 1, UUID.randomUUID(), UUID.randomUUID())).status());
         assertEquals("DRAFT", versions.get(alice, row.capabilityId(), row.versionId()).state());
+    }
+
+    @Test void connectorCredentialsAreEncryptedScopedAndImmediatelyRevoked() throws Exception {
+        UUID request = UUID.randomUUID(), trace = UUID.randomUUID(); String fixture = "mcp-fixture-sentinel-secret";
+        var first = connectorCredentials.create(alice, request, fixture, trace);
+        assertEquals(first.id(), connectorCredentials.create(alice, request, fixture, trace).id());
+        assertEquals(409, assertThrows(com.agentplatform.domain.files.FileFailure.class,
+                () -> connectorCredentials.create(alice, request, "different-fixture", trace)).status());
+        assertTrue(connectorCredentials.list(bob, null, 50).items().isEmpty());
+        assertThrows(java.sql.SQLException.class, () -> {
+            try (var connection = apiPool.getConnection(); var query = connection.createStatement()) {
+                query.executeQuery("SELECT ciphertext FROM pf.connector_credential");
+            }
+        });
+        try (var connection = DriverManager.getConnection(url, "postgres", password); var query = connection.createStatement();
+             var rows = query.executeQuery("SELECT position(convert_to('mcp-fixture-sentinel-secret','UTF8') in ciphertext) FROM pf.connector_credential WHERE id='" + first.id() + "'")) {
+            assertTrue(rows.next()); assertEquals(0, rows.getInt(1));
+        }
+        var revoked = connectorCredentials.revoke(alice, first.id(), first.revision(), UUID.randomUUID(), trace);
+        assertEquals("REVOKED", revoked.state());
+        assertEquals(404, assertThrows(com.agentplatform.domain.files.FileFailure.class,
+                () -> connectorCredentials.revoke(bob, first.id(), first.revision(), UUID.randomUUID(), trace)).status());
+    }
+
+    @Test void connectorCredentialReplacementRevokesOldIdentityAtomically() {
+        UUID trace = UUID.randomUUID(), request = UUID.randomUUID();
+        var old = connectorCredentials.create(alice, UUID.randomUUID(), "fixture-old", trace);
+        var next = connectorCredentials.replace(alice, old.id(), old.revision(), request, "fixture-new", trace);
+        assertNotEquals(old.id(), next.id());
+        assertEquals(next.id(), connectorCredentials.replace(alice, old.id(), old.revision(), request, "fixture-new", trace).id());
+        assertEquals(409, assertThrows(com.agentplatform.domain.files.FileFailure.class,
+                () -> connectorCredentials.replace(alice, old.id(), old.revision(), request, "changed", trace)).status());
+        var rows = connectorCredentials.list(alice, null, 50).items();
+        assertEquals("REVOKED", rows.stream().filter(c -> c.id().equals(old.id())).findFirst().orElseThrow().state());
+        assertEquals("ACTIVE", rows.stream().filter(c -> c.id().equals(next.id())).findFirst().orElseThrow().state());
     }
 }

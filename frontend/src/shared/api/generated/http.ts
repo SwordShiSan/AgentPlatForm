@@ -425,6 +425,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/connector-credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["connectorCredentials"];
+        put?: never;
+        post: operations["createConnectorCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/connector-credentials/{id}/replace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["replaceConnectorCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/connector-credentials/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["revokeConnectorCredential"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/capability-bindings": {
         parameters: {
             query?: never;
@@ -1436,6 +1488,24 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ConnectorCredentialInput: {
+            secret: string;
+        };
+        ConnectorCredential: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            revision: number;
+            /** @enum {string} */
+            state: "ACTIVE" | "REVOKED";
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ConnectorCredentialPage: {
+            items: components["schemas"]["ConnectorCredential"][];
+            /** Format: uuid */
+            nextCursor: string | null;
+        };
         SkillCatalogItem: {
             /** Format: uuid */
             capabilityId: string;
@@ -3289,6 +3359,121 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SkillImport"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connectorCredentials: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Credential metadata only */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorCredentialPage"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    createConnectorCredential: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorCredentialInput"];
+            };
+        };
+        responses: {
+            /** @description Encrypted credential metadata */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorCredential"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    replaceConnectorCredential: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorCredentialInput"];
+            };
+        };
+        responses: {
+            /** @description New encrypted credential identity */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorCredential"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    revokeConnectorCredential: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked credential metadata */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorCredential"];
                 };
             };
             default: components["responses"]["IdentityProblem"];

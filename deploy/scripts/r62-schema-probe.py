@@ -72,8 +72,9 @@ INSERT INTO pf.capability(id,space_id,owner_user_id,kind) VALUES
  ('20000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001','MCP');
 INSERT INTO pf.capability_version(id,space_id,owner_user_id,capability_id,version_number,content_hash) VALUES
  ('30000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001','20000000-0000-0000-0000-000000000002',1,repeat('a',64));
-INSERT INTO pf.connector_credential(id,space_id,owner_user_id,ciphertext,nonce,key_version,state) VALUES
- ('60000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001',decode('abcd','hex'),decode(repeat('00',12),'hex'),1,'ACTIVE');
+INSERT INTO pf.connector_credential(id,space_id,owner_user_id,request_id,request_fingerprint,ciphertext,nonce,key_version,state) VALUES
+ ('60000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001',
+ '70000000-0000-0000-0000-000000000001',repeat('c',64),decode('abcd','hex'),decode(repeat('00',12),'hex'),1,'ACTIVE');
 INSERT INTO pf.mcp_connector_version(space_id,owner_user_id,capability_id,version_id,endpoint,auth_kind,credential_id,credential_revision,protocol,policy_hash,tool_count,schemas_bytes) VALUES
  ('10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001','20000000-0000-0000-0000-000000000002',
  '30000000-0000-0000-0000-000000000002','https://example.com/mcp','BEARER','60000000-0000-0000-0000-000000000001',1,'STREAMABLE_HTTP',repeat('a',64),0,0);
