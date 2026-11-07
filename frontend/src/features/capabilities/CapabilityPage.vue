@@ -9,6 +9,8 @@ import { fileHash } from '../workspace/file-transfers';
 import { continueSkillImport, skillImportStatus, type PendingSkillImport } from './skill-import-coordinator';
 import { clearSkillImports, loadSkillImport, saveSkillImport, skillImportScope } from './skill-import-requests';
 import type { components } from '../../shared/api/generated/http';
+import ConnectorPanel from './ConnectorPanel.vue';
+import BindingPanel from './BindingPanel.vue';
 
 type Skill = components['schemas']['SkillCatalogItem'];
 type Import = components['schemas']['SkillImport'];
@@ -26,13 +28,14 @@ const versions = useQuery({ queryKey: computed(() => ['capabilities', user.value
   enabled: computed(() => !!space.value && !!selected.value), queryFn: async () => (await api.GET('/api/v1/skills/{id}/versions',
     { params: { path: { id: selected.value!.capabilityId }, header: { 'X-Space-Id': space.value }, query: { limit: 100, ...(versionCursor.value ? { cursor: versionCursor.value } : {}) } } })).data! });
 const detail = ref<components['schemas']['SkillVersion']>();
+const candidate = ref<components['schemas']['CapabilitySelection']>();
 const pending = ref<PendingSkillImport>(); const state = ref<Import>(); const file = ref<File>();
 const busy = ref(false); const message = ref(''); const progress = ref(0); const requestNotFound = ref(false);
 let controller = new AbortController();
 watch(scope, value => { pending.value = value ? loadSkillImport(value) : undefined; state.value = undefined; file.value = undefined; requestNotFound.value = false; }, { immediate: true });
 watch(() => selected.value?.capabilityId, () => { versionCursor.value = undefined; });
 function persist() { if (!scope.value || !saveSkillImport(scope.value, pending.value)) throw new Error('无法保存导入身份，请检查浏览器存储'); }
-function expired() { controller.abort(); clearSkillImports(); pending.value = undefined; file.value = undefined; detail.value = undefined; }
+function expired() { controller.abort(); clearSkillImports(); pending.value = undefined; file.value = undefined; detail.value = undefined; candidate.value = undefined; }
 onMounted(() => globalThis.addEventListener('platform:session-expired', expired));
 onBeforeUnmount(() => { controller.abort(); globalThis.removeEventListener('platform:session-expired', expired); });
 function picked(event: Event) { file.value = (event.target as HTMLInputElement).files?.[0]; }
@@ -138,7 +141,11 @@ async function change(action: 'publish' | 'revoke') {
       <details><summary>查看资源</summary><ul><li v-for="resource in detail.resources" :key="resource.path">{{ resource.path }} — {{ resource.bytes }} 字节</li></ul></details>
       <button v-if="detail.state === 'DRAFT'" type="button" :disabled="busy" @click="change('publish')">发布版本</button>
       <button v-if="detail.state === 'PUBLISHED'" type="button" :disabled="busy" @click="change('revoke')">撤销版本</button>
+      <button v-if="detail.state === 'PUBLISHED' && detail.assetAvailable" type="button"
+        @click="candidate = { capabilityId: detail.capabilityId, versionId: detail.versionId }">选择此版本用于绑定</button>
     </section>
+    <ConnectorPanel v-if="user && space" :user-id="user" :space-id="space" @candidate="candidate = $event" />
+    <BindingPanel v-if="user && space" :user-id="user" :space-id="space" :candidate="candidate" />
   </main>
 </template>
 

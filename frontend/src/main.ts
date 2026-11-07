@@ -4,6 +4,8 @@ import { clearEnvironmentRequests } from './features/workspace/environment-reque
 import { clearEditorDrafts } from './features/workspace/editor-session';
 import { clearMutationRequests } from './features/workspace/file-mutation-requests';
 import { clearSkillImports } from './features/capabilities/skill-import-requests';
+import { clearConnectorRequests } from './features/capabilities/connector-requests';
+import { clearBindingRequests } from './features/capabilities/binding-requests';
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
@@ -21,6 +23,8 @@ globalThis.addEventListener('platform:session-expired', () => {
   clearEditorDrafts();
   clearMutationRequests();
   clearSkillImports();
+  clearConnectorRequests();
+  clearBindingRequests();
   setCsrf(undefined);
   queryClient.clear();
   if (router.currentRoute.value.meta.requiresAuth) void router.replace('/login');

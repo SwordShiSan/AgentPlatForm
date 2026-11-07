@@ -4111,7 +4111,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Metadata for the credential created by the original request; no secret is returned */
+            /** @description Credential metadata for the original create, replace or revoke request; no secret is returned */
             200: {
                 headers: {
                     [name: string]: unknown;
