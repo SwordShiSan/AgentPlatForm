@@ -46,8 +46,10 @@ public final class SkillMaterialStaging {
         }
     }
 
-    public record Staged(Path archive) implements AutoCloseable {
-        public Staged { Objects.requireNonNull(archive); }
+    public static final class Staged implements AutoCloseable {
+        private final Path archive;
+        private Staged(Path archive) { this.archive = Objects.requireNonNull(archive); }
+        public Path archive() { return archive; }
         @Override public void close() throws IOException { Files.deleteIfExists(archive); }
     }
 }
