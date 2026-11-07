@@ -32,7 +32,8 @@ public final class SkillMaterialStaging {
         try {
             try (var source = assets.open(key, null, null);
                  var input = new AuthorizedAssetStream(source.stream(), bytes, version.archiveSha256(), authorize);
-                 var output = Files.newOutputStream(archive)) {
+                 var output = Files.newOutputStream(archive, java.nio.file.StandardOpenOption.WRITE,
+                         java.nio.file.StandardOpenOption.TRUNCATE_EXISTING, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
                 if (source.bytes() != bytes || source.totalBytes() != bytes) throw new IOException("ASSET_LENGTH_MISMATCH");
                 input.transferTo(output);
             }
