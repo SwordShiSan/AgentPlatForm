@@ -40,6 +40,29 @@ class SkillArchiveValidatorTest {
         assertEquals("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", manifest.files().get(1).sha256());
     }
 
+    @Test void materializationMustMatchTheEntireFrozenVersion() throws Exception {
+        var source = archive(Map.of("package/SKILL.md", bytes(SKILL), "package/data.txt", bytes("hello")));
+        var validator = new SkillArchiveValidator();
+        var actual = validator.validate(source);
+        var files = actual.files().stream().map(file -> new com.agentplatform.domain.capability.CapabilityMaterialization.File(
+                file.path(), file.bytes(), file.sha256())).toList();
+        var capability = java.util.UUID.randomUUID();
+        var version = java.util.UUID.randomUUID();
+        var verifier = new SkillMaterializationVerifier(validator);
+        var expected = new com.agentplatform.domain.capability.CapabilityMaterialization.Version(
+                capability, version, actual.archiveSha256(), files);
+        assertEquals(actual, verifier.verify(source, expected));
+        assertThrows(IllegalArgumentException.class, () -> verifier.verify(source,
+                new com.agentplatform.domain.capability.CapabilityMaterialization.Version(capability, version, "0".repeat(64), files)));
+        assertThrows(IllegalArgumentException.class, () -> verifier.verify(source,
+                new com.agentplatform.domain.capability.CapabilityMaterialization.Version(capability, version, actual.archiveSha256(), files.subList(0, 1))));
+        var changed = new java.util.ArrayList<>(files);
+        var original = changed.get(0);
+        changed.set(0, new com.agentplatform.domain.capability.CapabilityMaterialization.File(original.path(), original.bytes(), "0".repeat(64)));
+        assertThrows(IllegalArgumentException.class, () -> verifier.verify(source,
+                new com.agentplatform.domain.capability.CapabilityMaterialization.Version(capability, version, actual.archiveSha256(), changed)));
+    }
+
     @Test void rejectsTraversalAndUnicodeCollisions() throws Exception {
         var validator = new SkillArchiveValidator();
         assertThrows(IllegalArgumentException.class, () -> validator.validate(archive(Map.of(
