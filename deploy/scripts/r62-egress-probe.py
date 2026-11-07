@@ -10,9 +10,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 IMAGE = 'ubuntu/squid@sha256:031d51a433928cf7476611f6138af85681ce4eec8568d1d9a4dcd28d16289c78'
 CIDRS = ('0.0.0.0/8', '10.0.0.0/8', '100.64.0.0/10', '127.0.0.0/8', '169.254.0.0/16',
-         '172.16.0.0/12', '192.0.0.0/24', '192.0.2.0/24', '192.168.0.0/16', '198.18.0.0/15',
+         '172.16.0.0/12', '192.0.0.0/24', '192.0.2.0/24', '192.88.99.0/24', '192.168.0.0/16', '198.18.0.0/15',
          '198.51.100.0/24', '203.0.113.0/24', '224.0.0.0/4', '240.0.0.0/4',
-         '::/128', '::1/128', 'fc00::/7', 'fe80::/10', 'ff00::/8', '2001:db8::/32')
+         '::/96', '64:ff9b::/96', '64:ff9b:1::/48', '100::/64', '100:0:0:1::/64',
+         '2001::/23', '2001:db8::/32', '2002::/16', '3fff::/20', 'fc00::/7', 'fe80::/10', 'ff00::/8')
 
 
 def call(*args, check=True):
@@ -87,9 +88,17 @@ def main():
         if public.returncode != 0 or public.stdout != '200:200':
             raise RuntimeError('Public HTTPS probe failed: exit=' + str(public.returncode) + ' status=' + public.stdout
                                + ' diagnostic=' + public.stderr)
-        record = {'status': 'PASS', 'scope': 'Loopback rejection and one public TLS request through isolated proxy',
+        blocked = ['https://10.0.0.1/', 'https://100.64.0.1/', 'https://169.254.169.254/',
+                   'https://192.0.2.1/', 'https://198.18.0.1/', 'https://[::1]/',
+                   'https://[2001:db8::1]/', 'https://[3fff::1]/', 'https://[::ffff:127.0.0.1]/']
+        for target in blocked:
+            response = call('curl.exe', '--silent', '--show-error', '--max-time', '3', '--noproxy', '',
+                            '--proxy', proxy, '--output', 'NUL', '--write-out', '%{http_connect}', target, check=False)
+            if response.stdout != '403': raise RuntimeError('Proxy did not reject fixture destination ' + target)
+        record = {'status': 'PASS', 'scope': 'Selected literal-address rejection and one public TLS request through isolated proxy',
                   'image': IMAGE, 'sourceNetwork': subnet, 'connectStatus': 403, 'publicStatus': public.stdout,
-                  'notRun': ['normal external DNS', 'DNS rebinding', 'MCP SDK', 'other private ranges', 'resource observation'],
+                  'blockedCases': len(blocked),
+                  'notRun': ['normal external DNS', 'DNS rebinding', 'MCP SDK', 'all special ranges', 'resource observation'],
                   'note': 'Example domain uses a fixed public test address; TLS hostname verification remains enabled.'}
         (evidence / 'result.json').write_text(json.dumps(record, indent=2) + '\n', encoding='utf-8')
         print(json.dumps({'status': 'PASS', 'evidence': str(evidence.relative_to(ROOT)), 'scope': record['scope']}))

@@ -49,8 +49,9 @@ public final class McpEndpointPolicy {
         }
         if (address instanceof Inet6Address) {
             int a = raw[0] & 255, b = raw[1] & 255, c = raw[2] & 255, d = raw[3] & 255;
-            return (a & 0xe0) == 0x20 && !(a == 0x20 && b == 0x01 &&
-                    (c == 0 && d == 0 || c == 0x0d && d == 0xb8 || c == 0 && (d & 0xf0) == 0x10));
+            // Conservatively exclude protocol-assignment and transition ranges as well as documentation prefixes.
+            return (a & 0xe0) == 0x20 && !(a == 0x20 && b == 0x01 && (c < 2 || c == 0x0d && d == 0xb8))
+                    && !(a == 0x20 && b == 0x02) && !(a == 0x3f && b == 0xff && (c & 0xf0) == 0);
         }
         return false;
     }

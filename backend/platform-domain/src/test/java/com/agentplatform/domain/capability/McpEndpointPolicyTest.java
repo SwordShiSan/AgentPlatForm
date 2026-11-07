@@ -14,7 +14,8 @@ class McpEndpointPolicyTest {
         for (String input : List.of("http://example.com/mcp", "https://u:p@example.com/mcp", "https://example.com/mcp?token=x",
                 "https://example.com/#fragment", "https://localhost/mcp", "https://127.0.0.1/mcp", "https://127.1/mcp",
                 "https://10.0.0.1/mcp", "https://100.64.0.1/mcp", "https://169.254.169.254/mcp",
-                "https://192.0.2.1/mcp", "https://198.18.0.1/mcp", "https://[::1]/mcp", "https://[2001:db8::1]/mcp"))
+                "https://192.0.2.1/mcp", "https://198.18.0.1/mcp", "https://[::1]/mcp", "https://[2001:2::1]/mcp",
+                "https://[2001:db8::1]/mcp", "https://[2002::1]/mcp", "https://[3fff::1]/mcp"))
             assertThrows(IllegalArgumentException.class, () -> McpEndpointPolicy.external(input), input);
     }
 }
