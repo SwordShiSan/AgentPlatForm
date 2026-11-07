@@ -100,6 +100,49 @@ public final class CapabilityBindingService {
         } catch (NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
     }
 
+    public com.agentplatform.api.capability.CapabilityBindingsApi.Bindings read(
+            com.agentplatform.api.chat.ChatApi.Caller caller, String workspaceId) {
+        var value = read(actor(caller), optionalUuid(workspaceId));
+        return view(value, workspaceId != null);
+    }
+
+    public com.agentplatform.api.capability.CapabilityBindingsApi.Bindings replace(
+            com.agentplatform.api.chat.ChatApi.Caller caller, String workspaceId, long expected,
+            com.agentplatform.api.capability.CapabilityBindingsApi.Update update, String requestId) {
+        if (update == null || update.selections() == null) throw new ChatFailure(400, "INVALID_CAPABILITY_BINDINGS");
+        List<Selection> selections = update.selections().stream().map(s -> {
+            if (s == null) throw new ChatFailure(400, "INVALID_CAPABILITY_BINDINGS");
+            return new Selection(uuid(s.capabilityId()), uuid(s.versionId()));
+        }).toList();
+        var result = replace(actor(caller), optionalUuid(workspaceId), expected, update.inheritPersonal(),
+                selections, uuid(requestId), com.agentplatform.types.RequestTrace.current());
+        return view(result, workspaceId != null);
+    }
+
+    public com.agentplatform.api.capability.CapabilityBindingsApi.Effective effective(
+            com.agentplatform.api.chat.ChatApi.Caller caller, String workspaceId) {
+        var result = effective(actor(caller), optionalUuid(workspaceId));
+        return new com.agentplatform.api.capability.CapabilityBindingsApi.Effective(result.source().name(),
+                project(result.selections()), project(result.unavailable()));
+    }
+
+    private static com.agentplatform.api.capability.CapabilityBindingsApi.Bindings view(BindingSet value, boolean workspace) {
+        return value == null ? new com.agentplatform.api.capability.CapabilityBindingsApi.Bindings(0, workspace, List.of())
+                : new com.agentplatform.api.capability.CapabilityBindingsApi.Bindings(value.revision(), value.inheritPersonal(), project(value.selections()));
+    }
+    private static List<com.agentplatform.api.capability.CapabilityBindingsApi.Selection> project(List<Selection> values) {
+        return values.stream().map(s -> new com.agentplatform.api.capability.CapabilityBindingsApi.Selection(
+                s.capabilityId().toString(), s.versionId().toString())).toList();
+    }
+    private static Actor actor(com.agentplatform.api.chat.ChatApi.Caller caller) {
+        if (caller == null) throw new ChatFailure(401, "AUTHENTICATION_REQUIRED");
+        return new Actor(uuid(caller.userId()), uuid(caller.spaceId()));
+    }
+    private static UUID optionalUuid(String value) { return value == null ? null : uuid(value); }
+    private static UUID uuid(String value) {
+        try { return UUID.fromString(value); } catch (RuntimeException invalid) { throw new ChatFailure(400, "INVALID_UUID"); }
+    }
+
     private void requireAccess(Actor actor, UUID workspaceId) {
         if (actor == null || !repository.authorized(actor, workspaceId)) throw new ChatFailure(404, "RESOURCE_NOT_FOUND");
     }

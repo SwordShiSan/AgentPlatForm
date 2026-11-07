@@ -57,7 +57,7 @@ class CapabilityBindingPostgresTest {
                 + "GRANT SELECT,INSERT,DELETE ON pf.capability_binding_selection TO r62_api; "
                 + "GRANT SELECT,INSERT ON pf.capability_binding_request,pf.capability_binding_request_selection TO r62_api; "
                 + "GRANT INSERT ON pf.capability_audit TO r62_api; "
-                + "GRANT SELECT ON pf.capability_version_status TO r62_api; GRANT UPDATE(state) ON pf.capability_version_status TO r62_api");
+                + "GRANT SELECT ON pf.capability_version_status TO r62_api; GRANT UPDATE(revision) ON pf.capability_version_status TO r62_api");
     }
 
     @BeforeEach void setup() throws Exception {

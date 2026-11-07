@@ -371,6 +371,85 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/WorkspaceConfiguration'}
         default: *a1
+  /api/v1/me/capability-bindings:
+    parameters:
+      - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+    get:
+      operationId: personalCapabilityBindings
+      security: [{cookieAuth: []}]
+      responses:
+        "200":
+          description: Versioned personal selections
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CapabilityBindingSet'}
+        default: *a1
+    put:
+      operationId: replacePersonalCapabilityBindings
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CapabilityBindingUpdate'}
+      responses:
+        "200":
+          description: Accepted binding snapshot
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CapabilityBindingSet'}
+        default: *a1
+  /api/v1/workspaces/{id}/capability-bindings:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+    get:
+      operationId: workspaceCapabilityBindings
+      security: [{cookieAuth: []}]
+      responses:
+        "200":
+          description: Versioned workspace selection or inheritance
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CapabilityBindingSet'}
+        default: *a1
+    put:
+      operationId: replaceWorkspaceCapabilityBindings
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CapabilityBindingUpdate'}
+      responses:
+        "200":
+          description: Accepted binding snapshot
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CapabilityBindingSet'}
+        default: *a1
+  /api/v1/effective-capabilities:
+    get:
+      operationId: effectiveCapabilities
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: workspaceId, in: query, required: false, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Effective selections and currently unavailable versions
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EffectiveCapabilities'}
+        default: *a1
   /api/v1/me/preferences:
     get:
       operationId: chatPreferences
@@ -2084,6 +2163,46 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
   schemas:
+    CapabilitySelection:
+      type: object
+      additionalProperties: false
+      required: [capabilityId, versionId]
+      properties:
+        capabilityId: {type: string, format: uuid}
+        versionId: {type: string, format: uuid}
+    CapabilityBindingUpdate:
+      type: object
+      additionalProperties: false
+      required: [inheritPersonal, selections]
+      properties:
+        inheritPersonal: {type: boolean}
+        selections:
+          type: array
+          maxItems: 100
+          items: {$ref: '#/components/schemas/CapabilitySelection'}
+    CapabilityBindingSet:
+      type: object
+      additionalProperties: false
+      required: [revision, inheritPersonal, selections]
+      properties:
+        revision: {type: integer, format: int64, minimum: 0}
+        inheritPersonal: {type: boolean}
+        selections:
+          type: array
+          maxItems: 100
+          items: {$ref: '#/components/schemas/CapabilitySelection'}
+    EffectiveCapabilities:
+      type: object
+      additionalProperties: false
+      required: [source, selections, unavailable]
+      properties:
+        source: {type: string, enum: [PERSONAL, WORKSPACE]}
+        selections:
+          type: array
+          items: {$ref: '#/components/schemas/CapabilitySelection'}
+        unavailable:
+          type: array
+          items: {$ref: '#/components/schemas/CapabilitySelection'}
     PreviewRequest:
       type: object
       additionalProperties: false
