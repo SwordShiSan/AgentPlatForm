@@ -1,0 +1,218 @@
+name: agentplatform-r62-local
+x-app: &app
+  image: ${R62_API_IMAGE:?Build the local API image first}
+  user: "10001:10001"
+  read_only: true
+  restart: "no"
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  pids_limit: 128
+  tmpfs: ["/tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001,mode=700"]
+  networks: [r62]
+  logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.1-pg17-trixie@sha256:137f044b0efe3d57f39b972b9b53641b1f2045b99d879e298bbf514a25787dcf
+    restart: "no"
+    mem_limit: 320m
+    memswap_limit: 320m
+    cpus: 1
+    environment: {POSTGRES_DB: r62_app, POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password}
+    secrets: [postgres_password]
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    networks: [r62]
+    healthcheck: {test: [CMD, pg_isready, -U, postgres, -d, r62_app], interval: 2s, timeout: 3s, retries: 30}
+  rabbitmq:
+    image: rabbitmq:4.3.6-management@sha256:8dd6e3570ddaa2ef82a6c3a8950e79c1f73893adfbdddbc374fc1f1ac8a0f5dd
+    hostname: agentplatform-r62-mq
+    restart: "no"
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1
+    environment: {RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 1:1 +A 4"}
+    volumes:
+      - "mq-data:/var/lib/rabbitmq"
+      - "${R62_ROOT:?Set fixture directory}/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro"
+      - "${R62_ROOT}/rabbitmq-definitions.json:/etc/rabbitmq/definitions.json:ro"
+    networks: [r62]
+    healthcheck: {test: [CMD, rabbitmq-diagnostics, -q, ping], interval: 5s, timeout: 5s, retries: 24}
+  seaweedfs:
+    image: chrislusf/seaweedfs@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+    restart: "no"
+    mem_limit: 640m
+    memswap_limit: 640m
+    cpus: 1
+    entrypoint: [weed]
+    command: [server, "-dir=/data", "-ip=seaweedfs", "-ip.bind=0.0.0.0", "-filer", "-s3", "-s3.ip.bind=0.0.0.0", "-master.volumeSizeLimitMB=64", "-volume.max=4", "-volume.minFreeSpace=1"]
+    environment: {GOMAXPROCS: "1", GOMEMLIMIT: 480MiB, WEED_MASTER_VOLUME_GROWTH_COPY_1: "1"}
+    volumes: ["s3-data:/data"]
+    networks: [r62]
+  mcp-proxy:
+    image: ubuntu/squid@sha256:031d51a433928cf7476611f6138af85681ce4eec8568d1d9a4dcd28d16289c78
+    restart: "no"
+    mem_limit: 128m
+    memswap_limit: 128m
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    ulimits: {nofile: {soft: 1024, hard: 1024}}
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=8m,mode=1777", "/var/log/squid:rw,nosuid,size=8m", "/var/spool/squid:rw,nosuid,size=8m"]
+    volumes: ["${R62_ROOT}/squid.conf:/etc/squid/squid.conf:ro"]
+    entrypoint: [/usr/sbin/squid-gnutls, -N, -f, /etc/squid/squid.conf]
+    healthcheck: {test: [CMD, /usr/sbin/squid-gnutls, -k, check, -f, /etc/squid/squid.conf], interval: 5s, timeout: 3s, retries: 20}
+    networks:
+      mcp-control: {ipv4_address: "${R62_PROXY_IP}"}
+      mcp-egress: {}
+  api:
+    <<: *app
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1
+    entrypoint: [java, -Xms32m, -Xmx224m, -jar, /app/platform.jar]
+    environment:
+      SPRING_PROFILES_ACTIVE: identity-local,chat-local,workspace-api,workspace-maintenance
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/${R62_DATABASE}?connectTimeout=2&socketTimeout=5
+      PLATFORM_STORAGE_USER: ap_api
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/api_password
+      PLATFORM_IDENTITY_ORIGINS: http://127.0.0.1:${R62_PORT},http://localhost:${R62_PORT}
+      PLATFORM_IDENTITY_SECURE_COOKIE: "false"
+      PLATFORM_CHAT_PLAN_ENABLED: "true"
+      PLATFORM_CHAT_PERMISSIONS_ENABLED: "true"
+      PLATFORM_CHAT_CONTEXT_V2_ENABLED: "true"
+      PLATFORM_CHAT_CONTEXT_WINDOW_TOKENS: "262144"
+      PLATFORM_CHAT_CONTEXT_MAX_OUTPUT_TOKENS: "4096"
+      PLATFORM_PERSONAL_CONFIG_ENABLED: "true"
+      PLATFORM_WORKSPACE_ENABLED: "true"
+      PLATFORM_WORKSPACE_LIFECYCLE_ENABLED: "false"
+      PLATFORM_WORKSPACE_FILES_ENABLED: "true"
+      PLATFORM_WORKSPACE_FILES_MAINTENANCE_SCAN_ADMISSION_ENABLED: "false"
+      PLATFORM_WORKSPACE_FILES_HELPER_IMAGE: "${R62_HELPER_ID}"
+      PLATFORM_WORKSPACE_FILES_POLICY_HASH: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      PLATFORM_FILES_ASSETS_ENDPOINT: http://seaweedfs:8333
+      PLATFORM_FILES_ASSETS_BUCKET: r62-assets
+      PLATFORM_FILES_ASSETS_ACCESS_KEY_FILE: /run/secrets/s3_access
+      PLATFORM_FILES_ASSETS_SECRET_KEY_FILE: /run/secrets/s3_secret
+      PLATFORM_CAPABILITIES_ENABLED: "true"
+      PLATFORM_MCP_ENABLED: "true"
+      PLATFORM_MCP_POLICY_HASH: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      PLATFORM_MCP_MASTER_KEY_FILE: /run/secrets/mcp_master_key
+      PLATFORM_CHAT_MQ_HOST: rabbitmq
+      PLATFORM_CHAT_MQ_USER: ap_api
+      PLATFORM_CHAT_MQ_PASSWORD_FILE: /run/secrets/mq_api_password
+      PLATFORM_CHAT_CURSOR_KEY_FILE: /run/secrets/cursor_key
+      PLATFORM_CHAT_MASTER_KEY_FILE: /run/secrets/master_key
+    secrets: [api_password,mq_api_password,cursor_key,master_key,mcp_master_key,s3_access,s3_secret]
+    healthcheck: {test: [CMD, java, -cp, /app/health, HttpHealthcheck, "http://127.0.0.1:8080/api/v1/readiness"], interval: 5s, timeout: 4s, retries: 24}
+  worker:
+    <<: *app
+    mem_limit: 640m
+    memswap_limit: 640m
+    cpus: 1
+    entrypoint: [java, -Xms32m, -Xmx320m, -XX:MaxDirectMemorySize=64m, -jar, /app/platform.jar]
+    environment:
+      SPRING_PROFILES_ACTIVE: chat-worker,workspace-worker,workspace-maintenance
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/${R62_DATABASE}?connectTimeout=2&socketTimeout=5
+      PLATFORM_STORAGE_USER: ap_worker
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/worker_password
+      PLATFORM_CHAT_MQ_HOST: rabbitmq
+      PLATFORM_CHAT_MQ_USER: ap_worker
+      PLATFORM_CHAT_MQ_PASSWORD_FILE: /run/secrets/mq_worker_password
+      PLATFORM_CHAT_MASTER_KEY_FILE: /run/secrets/master_key
+      PLATFORM_CHAT_PROVIDER_BASE: http://fixture:8080
+      PLATFORM_CHAT_FIXTURE_PROVIDER: "true"
+      PLATFORM_CHAT_CONTEXT_V2_ENABLED: "true"
+      PLATFORM_CHAT_CONTEXT_WINDOW_TOKENS: "262144"
+      PLATFORM_CHAT_CONTEXT_MAX_OUTPUT_TOKENS: "4096"
+      PLATFORM_WORKSPACE_ENABLED: "true"
+      PLATFORM_WORKSPACE_LIFECYCLE_ENABLED: "false"
+      PLATFORM_WORKSPACE_FILES_ENABLED: "true"
+      PLATFORM_WORKSPACE_FILES_MAINTENANCE_SCAN_ADMISSION_ENABLED: "false"
+      PLATFORM_WORKSPACE_FILES_HELPER_IMAGE: "${R62_HELPER_ID}"
+      PLATFORM_WORKSPACE_FILES_POLICY_HASH: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      PLATFORM_FILES_ASSETS_ENDPOINT: http://seaweedfs:8333
+      PLATFORM_FILES_ASSETS_BUCKET: r62-assets
+      PLATFORM_FILES_ASSETS_ACCESS_KEY_FILE: /run/secrets/s3_access
+      PLATFORM_FILES_ASSETS_SECRET_KEY_FILE: /run/secrets/s3_secret
+      PLATFORM_CAPABILITIES_ENABLED: "true"
+      PLATFORM_MCP_ENABLED: "true"
+      PLATFORM_MCP_POLICY_HASH: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      PLATFORM_MCP_MASTER_KEY_FILE: /run/secrets/mcp_master_key
+      PLATFORM_MCP_EGRESS_HOST: mcp-proxy
+      PLATFORM_MCP_EGRESS_PORT: "3128"
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_BASE: http://127.0.0.1:1
+      PLATFORM_WORKSPACE_CONTROL_PRIVATE_KEY_FILE: /run/secrets/control_private
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_PUBLIC_KEY_FILE: /run/secrets/runner_public
+      PLATFORM_WORKSPACE_CONTROL_KEY_ID: r62-control
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_KEY_ID: r62-runner
+    secrets: [worker_password,mq_worker_password,master_key,mcp_master_key,s3_access,s3_secret,control_private,runner_public]
+    networks:
+      r62: {}
+      mcp-control: {ipv4_address: "${R62_WORKER_IP}"}
+    healthcheck: {test: [CMD-SHELL, "test -s /tmp/chat-worker-ready"], interval: 5s, timeout: 3s, retries: 24}
+  operator:
+    <<: *app
+    profiles: [operator]
+    mem_limit: 320m
+    memswap_limit: 320m
+    entrypoint: [java, -Xms16m, -Xmx160m, -jar, /app/platform.jar]
+    environment:
+      SPRING_PROFILES_ACTIVE: chat-ops
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/${R62_DATABASE}?connectTimeout=2&socketTimeout=5
+      PLATFORM_STORAGE_USER: postgres
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/postgres_password
+      PLATFORM_CHAT_MASTER_KEY_FILE: /run/secrets/master_key
+    secrets: [postgres_password,master_key]
+  gateway:
+    image: ${R62_GATEWAY_IMAGE:?Build the local gateway first}
+    user: "101:101"
+    read_only: true
+    restart: "no"
+    mem_limit: 32m
+    memswap_limit: 32m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=8m"]
+    ports: ["127.0.0.1:${R62_PORT}:8080"]
+    networks: [r62, ingress]
+  fixture:
+    image: ${R62_FIXTURE_IMAGE:?Build the deterministic fixture first}
+    user: "10001:10001"
+    read_only: true
+    restart: "no"
+    mem_limit: 64m
+    memswap_limit: 64m
+    environment: {AP_FIXTURE_PROFILE: R54}
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [r62]
+secrets:
+  postgres_password: {file: "${R62_ROOT:?Set fixture directory}/postgres-password"}
+  api_password: {file: "${R62_ROOT}/api-password"}
+  worker_password: {file: "${R62_ROOT}/worker-password"}
+  mq_api_password: {file: "${R62_ROOT}/mq-api-password"}
+  mq_worker_password: {file: "${R62_ROOT}/mq-worker-password"}
+  master_key: {file: "${R62_ROOT}/master-key"}
+  cursor_key: {file: "${R62_ROOT}/cursor-key"}
+  mcp_master_key: {file: "${R62_ROOT}/mcp-master-key"}
+  s3_access: {file: "${R62_ROOT}/s3-access"}
+  s3_secret: {file: "${R62_ROOT}/s3-secret"}
+  control_private: {file: "${R62_ROOT}/control-3072-private.pem"}
+  runner_public: {file: "${R62_ROOT}/runner-3072-public.pem"}
+volumes: {postgres-data: {}, mq-data: {}, s3-data: {}}
+networks:
+  r62:
+    internal: true
+    ipam:
+      config: [{subnet: "${R62_SUBNET:?Set isolated subnet}"}]
+  mcp-control:
+    internal: true
+    ipam:
+      config: [{subnet: "${R62_MCP_SUBNET:?Set isolated MCP subnet}"}]
+  mcp-egress:
+    ipam:
+      config: [{subnet: "${R62_EGRESS_SUBNET:?Set isolated egress subnet}"}]
+  ingress:
+    ipam:
+      config: [{subnet: "${R62_INGRESS_SUBNET:?Set isolated ingress subnet}"}]
