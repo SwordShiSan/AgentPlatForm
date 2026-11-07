@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.capability.SkillCatalogMapper">
+ <resultMap id="item" type="com.agentplatform.domain.capability.SkillCatalogRepository$Item">
+  <constructor><arg name="capabilityId" column="capability_id" javaType="java.util.UUID"/><arg name="versionId" column="version_id" javaType="java.util.UUID"/>
+   <arg name="versionNumber" column="version_number" javaType="_long"/><arg name="name" column="name" javaType="java.lang.String"/>
+   <arg name="description" column="description" javaType="java.lang.String"/><arg name="state" column="state" javaType="java.lang.String"/>
+   <arg name="revision" column="revision" javaType="_long"/></constructor>
+ </resultMap>
+ <select id="authorized" resultType="boolean">SELECT CASE WHEN pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}) THEN
+  EXISTS(SELECT 1 FROM pf.space WHERE id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND type='PERSONAL') ELSE false END</select>
+ <select id="exists" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.capability WHERE id=#{capability} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND kind='SKILL')</select>
+ <select id="skills" resultMap="item">
+  SELECT DISTINCT ON(c.id) c.id AS capability_id,v.id AS version_id,v.version_number,p.name,p.description,s.state,s.revision
+   FROM pf.capability c JOIN pf.capability_version v ON v.space_id=c.space_id AND v.owner_user_id=c.owner_user_id AND v.capability_id=c.id
+   JOIN pf.skill_package_version p ON p.space_id=v.space_id AND p.owner_user_id=v.owner_user_id AND p.capability_id=v.capability_id AND p.version_id=v.id
+   JOIN pf.capability_version_status s ON s.space_id=v.space_id AND s.owner_user_id=v.owner_user_id AND s.capability_id=v.capability_id AND s.version_id=v.id
+  WHERE c.space_id=#{actor.spaceId} AND c.owner_user_id=#{actor.userId} AND c.kind='SKILL'
+   <if test="after != null">AND c.id&gt;#{after}</if>
+  ORDER BY c.id,v.version_number DESC LIMIT #{limit}
+ </select>
+ <select id="versions" resultMap="item">
+  SELECT c.id AS capability_id,v.id AS version_id,v.version_number,p.name,p.description,s.state,s.revision
+   FROM pf.capability c JOIN pf.capability_version v ON v.space_id=c.space_id AND v.owner_user_id=c.owner_user_id AND v.capability_id=c.id
+   JOIN pf.skill_package_version p ON p.space_id=v.space_id AND p.owner_user_id=v.owner_user_id AND p.capability_id=v.capability_id AND p.version_id=v.id
+   JOIN pf.capability_version_status s ON s.space_id=v.space_id AND s.owner_user_id=v.owner_user_id AND s.capability_id=v.capability_id AND s.version_id=v.id
+  WHERE c.space_id=#{actor.spaceId} AND c.owner_user_id=#{actor.userId} AND c.kind='SKILL' AND c.id=#{capability}
+   <if test="before != null">AND v.version_number&lt;#{before}</if>
+  ORDER BY v.version_number DESC LIMIT #{limit}
+ </select>
+</mapper>

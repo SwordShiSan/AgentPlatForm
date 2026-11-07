@@ -371,6 +371,35 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/WorkspaceConfiguration'}
         default: *a1
+  /api/v1/skills:
+    get:
+      operationId: skills
+      security: [{cookieAuth: []}]
+      parameters: &skillCatalogParameters
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Paged personal Skill catalog
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillCatalogPage'}
+        default: *a1
+  /api/v1/skills/{id}/versions:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      operationId: skillVersions
+      security: [{cookieAuth: []}]
+      parameters: *skillCatalogParameters
+      responses:
+        "200":
+          description: Paged immutable Skill versions
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillCatalogPage'}
+        default: *a1
   /api/v1/skills/{id}/versions/{versionId}:
     get:
       operationId: skillVersion
@@ -2279,6 +2308,25 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
   schemas:
+    SkillCatalogItem:
+      type: object
+      additionalProperties: false
+      required: [capabilityId, versionId, versionNumber, name, description, state, revision]
+      properties:
+        capabilityId: {type: string, format: uuid}
+        versionId: {type: string, format: uuid}
+        versionNumber: {type: integer, format: int64, minimum: 1}
+        name: {type: string}
+        description: {type: string}
+        state: {type: string, enum: [DRAFT, PUBLISHED, REVOKED]}
+        revision: {type: integer, format: int64, minimum: 1}
+    SkillCatalogPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/SkillCatalogItem'}}
+        nextCursor: {type: [string, 'null']}
     SkillResource:
       type: object
       additionalProperties: false

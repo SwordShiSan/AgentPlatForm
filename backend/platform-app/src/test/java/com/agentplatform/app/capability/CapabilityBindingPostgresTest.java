@@ -10,7 +10,9 @@ import com.agentplatform.infrastructure.dao.capability.CapabilityBindingMapper;
 import com.agentplatform.infrastructure.dao.capability.SkillImportMapper;
 import com.agentplatform.infrastructure.dao.capability.SkillWorkerMapper;
 import com.agentplatform.infrastructure.dao.capability.SkillVersionMapper;
+import com.agentplatform.infrastructure.dao.capability.SkillCatalogMapper;
 import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisSkillVersionRepository;
+import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisSkillCatalogRepository;
 import com.agentplatform.infrastructure.dao.typehandler.UuidTypeHandler;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -35,6 +37,7 @@ class CapabilityBindingPostgresTest {
     TransactionalSkillImportRepository imports;
     TransactionalSkillValidationRepository worker;
     SkillVersionService versions;
+    SkillCatalogService catalog;
     Actor alice, bob;
     UUID capability, version, workspace;
 
@@ -67,7 +70,7 @@ class CapabilityBindingPostgresTest {
                 + "GRANT SELECT ON pf.space_storage TO r62_api; GRANT UPDATE(reserved_bytes,committed_bytes,version) ON pf.space_storage TO r62_api; GRANT SELECT ON pf.capability TO r62_api; GRANT UPDATE(kind) ON pf.capability TO r62_api; "
                 + "GRANT SELECT,INSERT,UPDATE ON pf.skill_import,pf.skill_import_reservation,pf.skill_import_outbox TO r62_api; "
                 + "GRANT SELECT,INSERT ON pf.skill_import_completion_request TO r62_api; "
-                + "GRANT SELECT ON pf.skill_package_version,pf.asset_object TO r62_api; "
+                + "GRANT SELECT ON pf.capability_version,pf.skill_package_version,pf.asset_object TO r62_api; "
                 + "GRANT SELECT,INSERT ON pf.capability_version_command TO r62_api; "
                 + "GRANT UPDATE(state,updated_at) ON pf.capability_version_status TO r62_api; "
                 + "GRANT SELECT ON pf.capability_version_status TO r62_api; GRANT UPDATE(revision) ON pf.capability_version_status TO r62_api; "
@@ -122,6 +125,8 @@ class CapabilityBindingPostgresTest {
         imports = new TransactionalSkillImportRepository(session.getMapper(SkillImportMapper.class),
                 new TransactionTemplate(new JdbcTransactionManager(apiPool)));
         versions = new SkillVersionService(new MyBatisSkillVersionRepository(session.getMapper(SkillVersionMapper.class)),
+                new TransactionTemplate(new JdbcTransactionManager(apiPool)));
+        catalog = new SkillCatalogService(new MyBatisSkillCatalogRepository(session.getMapper(SkillCatalogMapper.class)),
                 new TransactionTemplate(new JdbcTransactionManager(apiPool)));
         var workerFactory = new SqlSessionFactoryBean(); workerFactory.setDataSource(workerPool);
         var workerConfiguration = new org.apache.ibatis.session.Configuration(); workerConfiguration.setMapUnderscoreToCamelCase(true);
@@ -251,6 +256,13 @@ class CapabilityBindingPostgresTest {
                 List.of(new com.agentplatform.domain.capability.SkillValidationRepository.Resource("SKILL.md", 1, "c".repeat(64))), "[]");
         worker.draft(command, manifest);
         assertEquals("DRAFT", imports.find(actor, row.id()).state());
+        var caller = new com.agentplatform.api.chat.ChatApi.Caller(alice.userId().toString(), alice.spaceId().toString());
+        assertEquals(row.versionId().toString(), catalog.skills(caller, null, 10).items().getFirst().versionId());
+        assertEquals(1, catalog.versions(caller, row.capabilityId().toString(), null, 10).items().size());
+        var foreign = new com.agentplatform.api.chat.ChatApi.Caller(bob.userId().toString(), bob.spaceId().toString());
+        assertTrue(catalog.skills(foreign, null, 10).items().isEmpty());
+        assertEquals(404, assertThrows(com.agentplatform.domain.files.FileFailure.class,
+                () -> catalog.versions(foreign, row.capabilityId().toString(), null, 10)).status());
         assertThrows(com.agentplatform.domain.files.FileFailure.class, () -> worker.draft(command, manifest));
         var request = UUID.randomUUID(); var trace = UUID.randomUUID();
         var published = versions.change(alice, row.capabilityId(), row.versionId(), "PUBLISH", 1, request, trace);

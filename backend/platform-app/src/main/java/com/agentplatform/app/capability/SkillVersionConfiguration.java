@@ -1,10 +1,13 @@
 package com.agentplatform.app.capability;
 
 import com.agentplatform.api.capability.SkillVersionApi;
+import com.agentplatform.api.capability.SkillCatalogApi;
 import com.agentplatform.domain.capability.CapabilityBindingRepository.Actor;
 import com.agentplatform.domain.files.FileFailure;
 import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisSkillVersionRepository;
 import com.agentplatform.infrastructure.dao.capability.SkillVersionMapper;
+import com.agentplatform.infrastructure.dao.capability.SkillCatalogMapper;
+import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisSkillCatalogRepository;
 import java.util.Arrays;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -19,6 +22,9 @@ public class SkillVersionConfiguration {
     private static final JsonMapper JSON = JsonMapper.builder().build();
     @Bean SkillVersionService skillVersionService(SkillVersionMapper mapper, TransactionTemplate transactions) {
         return new SkillVersionService(new MyBatisSkillVersionRepository(mapper), transactions);
+    }
+    @Bean SkillCatalogApi skillCatalogApi(SkillCatalogMapper mapper, TransactionTemplate transactions) {
+        return new SkillCatalogService(new MyBatisSkillCatalogRepository(mapper), transactions);
     }
     @Bean SkillVersionApi skillVersionApi(SkillVersionService service) {
         return new SkillVersionApi() {
