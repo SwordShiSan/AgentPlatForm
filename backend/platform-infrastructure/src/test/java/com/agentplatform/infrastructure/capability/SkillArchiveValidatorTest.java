@@ -56,6 +56,12 @@ class SkillArchiveValidatorTest {
         assertThrows(IllegalArgumentException.class, () -> validator.validate(archive(Map.of("SKILL.md", new byte[]{(byte) 0xff}))));
     }
 
+    @Test void preservesDeclaredDependenciesForPublicationReview() throws Exception {
+        String skill = "---\nname: test-skill\ndescription: A test skill\ndependencies:\n  - python3\n---\nbody\n";
+        var manifest = new SkillArchiveValidator().validate(archive(Map.of("SKILL.md", bytes(skill))));
+        assertTrue(manifest.dependenciesJson().contains("python3"));
+    }
+
     @Test void rejectsFileUsedAsParentDirectory() throws Exception {
         assertThrows(IllegalArgumentException.class, () -> new SkillArchiveValidator().validate(archive(Map.of(
                 "SKILL.md", bytes(SKILL), "resource", bytes("file"), "resource/child", bytes("child")))));

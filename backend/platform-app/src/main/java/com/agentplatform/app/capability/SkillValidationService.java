@@ -24,14 +24,22 @@ public final class SkillValidationService {
     }
 
     public void validate(Command command) {
+        validate(command, () -> true);
+    }
+
+    public void validate(Command command, java.util.function.BooleanSupplier active) {
         Path archive = null;
         try {
-            repository.guard(command);
+            Runnable guard = () -> {
+                if (!active.getAsBoolean()) throw new com.agentplatform.domain.files.FileFailure(409, "SKILL_IMPORT_STALE_OWNER");
+                repository.guard(command);
+            };
+            guard.run();
             if (command.bytes() < 0 || command.bytes() > SkillImportService.MAX_ARCHIVE_BYTES)
                 throw new IllegalArgumentException("ARCHIVE_SIZE_OR_TYPE");
             archive = Files.createTempFile(temporaryDirectory, "skill-import-", ".zip");
             try (var source = assets.open(command.objectKey(), null, null);
-                 var input = new AuthorizedAssetStream(source.stream(), command.bytes(), command.sha256(), () -> repository.guard(command));
+                 var input = new AuthorizedAssetStream(source.stream(), command.bytes(), command.sha256(), guard);
                  var output = Files.newOutputStream(archive)) {
                 if (source.bytes() != command.bytes() || source.totalBytes() != command.bytes())
                     throw new IOException("ASSET_LENGTH_MISMATCH");
@@ -45,10 +53,10 @@ public final class SkillValidationService {
                 return;
             }
             if (!result.archiveSha256().equals(command.sha256())) throw new IOException("ASSET_HASH_MISMATCH");
-            repository.guard(command);
+            guard.run();
             repository.draft(command, new SkillValidationRepository.Manifest(result.archiveSha256(), result.name(),
                     result.description(), result.expandedBytes(), result.files().stream()
-                    .map(f -> new SkillValidationRepository.Resource(f.path(), f.bytes(), f.sha256())).toList()));
+                    .map(f -> new SkillValidationRepository.Resource(f.path(), f.bytes(), f.sha256())).toList(), result.dependenciesJson()));
         } catch (IOException | RuntimeException uncertain) {
             try { repository.unknown(command, "SKILL_IMPORT_RESULT_UNKNOWN"); }
             catch (RuntimeException unavailable) { uncertain.addSuppressed(unavailable); }

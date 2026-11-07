@@ -34,7 +34,8 @@ public final class SkillArchiveValidator {
     private static final int MAX_METADATA = 64 * 1024;
 
     public record FileEntry(String path, long bytes, String sha256) {}
-    public record Manifest(String archiveSha256, String name, String description, List<FileEntry> files, long expandedBytes) {
+    public record Manifest(String archiveSha256, String name, String description, List<FileEntry> files, long expandedBytes,
+                           String dependenciesJson) {
         public Manifest { files = List.copyOf(files); }
     }
 
@@ -110,7 +111,15 @@ public final class SkillArchiveValidator {
                 throw invalid("INVALID_SKILL_METADATA");
             files.sort(java.util.Comparator.comparing(FileEntry::path));
             if (!archiveHash.equals(archiveHash(channel))) throw invalid("ARCHIVE_CHANGED");
-            return new Manifest(archiveHash, name, description, files, expanded);
+            // Preserve declarations; publication must explicitly resolve every required dependency.
+            Object dependencies = meta.get("dependencies");
+            String dependenciesJson;
+            try {
+                dependenciesJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(
+                        dependencies == null ? List.of() : dependencies instanceof List<?> list ? list : List.of(dependencies));
+            } catch (com.fasterxml.jackson.core.JsonProcessingException invalid) { throw invalid("INVALID_DEPENDENCIES"); }
+            if (dependenciesJson.getBytes(StandardCharsets.UTF_8).length > MAX_METADATA) throw invalid("INVALID_DEPENDENCIES");
+            return new Manifest(archiveHash, name, description, files, expanded, dependenciesJson);
           }
         }
     }

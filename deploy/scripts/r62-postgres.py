@@ -43,13 +43,13 @@ def main():
         def inputs():
             return {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in sorted(set(tracked) - {''}) if (ROOT / name).is_file()}
         before = inputs()
-        result = subprocess.run([str(ROOT / 'backend' / 'mvnw.cmd'), '-Dtest=CapabilityBindingPostgresTest,SkillImportControllerTest,SkillImportServiceTest,SkillValidationServiceTest',
+        result = subprocess.run([str(ROOT / 'backend' / 'mvnw.cmd'), '-Dtest=CapabilityBindingPostgresTest,SkillImportControllerTest,SkillImportServiceTest,SkillValidationServiceTest,SkillArchiveValidatorTest',
                                  '-Dsurefire.failIfNoSpecifiedTests=false', 'test'], cwd=ROOT / 'backend',
                                 env=env, capture_output=True, timeout=300)
         (DATA / 'maven.log').write_bytes(result.stdout + result.stderr)
         unchanged = before == inputs()
         receipt = {'status': 'PASS' if result.returncode == 0 and unchanged else 'FAIL', 'exitCode': result.returncode,
-                   'scope': 'V22-to-V23 migration, scoped binding and import transactions, import controller/service unit tests',
+                   'scope': 'V22-to-V23 migration; scoped bindings, import admission and worker version transactions; archive, service and controller unit tests; no real MQ or S3',
                    'source': run(['git', 'rev-parse', 'HEAD'], cwd=ROOT).stdout.decode().strip(),
                    'workingTreeClean': not bool(run(['git', 'status', '--porcelain'], cwd=ROOT).stdout.strip()), 'inputUnchanged': unchanged}
         (DATA / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')

@@ -5,14 +5,20 @@ import java.util.UUID;
 
 /** Fenced validation facts; repository methods execute short transactions only. */
 public interface SkillValidationRepository {
+    record Publication(UUID id, UUID spaceId, UUID importId, long generation, UUID relayOwner) {}
     record Command(UUID spaceId, UUID actorId, UUID importId, UUID ownerId, long generation, long fence,
                    String objectKey, long bytes, String sha256) {}
     record Resource(String path, long bytes, String sha256) {}
-    record Manifest(String archiveSha256, String name, String description, long expandedBytes, List<Resource> files) {
+    record Manifest(String archiveSha256, String name, String description, long expandedBytes, List<Resource> files,
+                    String dependenciesJson) {
         public Manifest { files = List.copyOf(files); }
     }
     void guard(Command command);
     void draft(Command command, Manifest manifest);
     void rejected(Command command, String reasonCode);
     void unknown(Command command, String reasonCode);
+    Publication nextPublication(UUID relayOwner);
+    void published(Publication publication);
+    Command claim(Publication publication, UUID ownerId);
+    void quarantine(UUID id, String bodyHash);
 }

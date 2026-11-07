@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.capability.SkillWorkerMapper">
+ <resultMap id="publication" type="com.agentplatform.domain.capability.SkillValidationRepository$Publication">
+  <constructor><arg name="id" column="id" javaType="java.util.UUID"/><arg name="spaceId" column="space_id" javaType="java.util.UUID"/>
+   <arg name="importId" column="import_id" javaType="java.util.UUID"/><arg name="generation" column="generation" javaType="_long"/>
+   <arg name="relayOwner" column="relay_owner" javaType="java.util.UUID"/></constructor>
+ </resultMap>
+ <resultMap id="row" type="com.agentplatform.infrastructure.dao.po.SkillWorkerRow">
+  <constructor><arg name="id" column="id" javaType="java.util.UUID"/><arg name="spaceId" column="space_id" javaType="java.util.UUID"/>
+   <arg name="ownerUserId" column="owner_user_id" javaType="java.util.UUID"/><arg name="targetCapabilityId" column="target_capability_id" javaType="java.util.UUID"/>
+   <arg name="targetVersionId" column="target_version_id" javaType="java.util.UUID"/><arg name="targetAssetId" column="target_asset_id" javaType="java.util.UUID"/>
+   <arg name="stagingObjectKey" column="staging_object_key" javaType="java.lang.String"/><arg name="declaredBytes" column="declared_bytes" javaType="_long"/>
+   <arg name="declaredSha256" column="declared_sha256" javaType="java.lang.String"/><arg name="generation" column="generation" javaType="_long"/>
+   <arg name="revision" column="revision" javaType="_long"/><arg name="ownerId" column="owner_id" javaType="java.util.UUID"/>
+   <arg name="fence" column="fence" javaType="java.lang.Long"/><arg name="state" column="state" javaType="java.lang.String"/></constructor>
+ </resultMap>
+ <sql id="rowColumns">i.id,i.space_id,i.owner_user_id,i.target_capability_id,i.target_version_id,i.target_asset_id,i.staging_object_key,i.declared_bytes,i.declared_sha256,i.generation,i.revision,i.owner_id,i.fence,i.state</sql>
+ <select id="next" resultMap="publication" affectData="true" flushCache="true">
+  WITH candidate AS (SELECT id FROM pf.skill_import_outbox WHERE state='PENDING' OR (state='PUBLISHING' AND relay_until&lt;clock_timestamp())
+    ORDER BY created_at,id FOR UPDATE SKIP LOCKED LIMIT 1)
+  UPDATE pf.skill_import_outbox o SET state='PUBLISHING',relay_owner=#{owner},relay_until=clock_timestamp()+interval '10 seconds'
+   FROM candidate c WHERE o.id=c.id RETURNING o.id,o.space_id,o.import_id,o.generation,o.relay_owner
+ </select>
+ <update id="published">UPDATE pf.skill_import_outbox SET state='PUBLISHED',relay_owner=NULL,relay_until=NULL
+  WHERE id=#{publication.id} AND space_id=#{publication.spaceId} AND import_id=#{publication.importId}
+   AND generation=#{publication.generation} AND state='PUBLISHING' AND relay_owner=#{publication.relayOwner}</update>
+ <select id="byPublication" resultMap="row">SELECT <include refid="rowColumns"/> FROM pf.skill_import i JOIN pf.skill_import_outbox o
+  ON o.import_id=i.id AND o.space_id=i.space_id AND o.generation=i.generation WHERE o.id=#{publication.id}
+  AND o.space_id=#{publication.spaceId} AND o.import_id=#{publication.importId} AND o.generation=#{publication.generation} FOR UPDATE OF i</select>
+ <select id="byCommand" resultMap="row">SELECT <include refid="rowColumns"/> FROM pf.skill_import i
+  WHERE i.id=#{command.importId} AND i.space_id=#{command.spaceId} AND i.owner_user_id=#{command.actorId}
+   AND i.owner_id=#{command.ownerId} AND i.generation=#{command.generation} AND i.fence=#{command.fence}
+   AND i.staging_object_key=#{command.objectKey} AND i.declared_bytes=#{command.bytes} AND i.declared_sha256=#{command.sha256}
+   AND i.state='RUNNING' AND i.lease_until&gt;clock_timestamp() FOR UPDATE OF i</select>
+ <select id="authorized" resultType="boolean">SELECT pf.authorize_workspace_actor(#{actor},#{space})</select>
+ <select id="lockQuota" resultType="java.util.UUID">SELECT space_id FROM pf.space_storage WHERE space_id=#{space} FOR UPDATE</select>
+ <insert id="inbox">INSERT INTO pf.skill_import_inbox(event_id,space_id,import_id) VALUES(#{publication.id},#{publication.spaceId},#{publication.importId}) ON CONFLICT DO NOTHING</insert>
+ <update id="claim">UPDATE pf.skill_import SET state='RUNNING',owner_id=#{owner},fence=#{fence},lease_until=clock_timestamp()+interval '60 seconds',revision=revision+1
+  WHERE id=#{publication.importId} AND space_id=#{publication.spaceId} AND generation=#{publication.generation} AND state='QUEUED'</update>
+ <update id="guard">UPDATE pf.skill_import SET lease_until=clock_timestamp()+interval '60 seconds'
+  WHERE id=#{command.importId} AND space_id=#{command.spaceId} AND owner_user_id=#{command.actorId} AND state='RUNNING'
+   AND owner_id=#{command.ownerId} AND generation=#{command.generation} AND fence=#{command.fence} AND lease_until&gt;clock_timestamp()
+   AND staging_object_key=#{command.objectKey} AND declared_bytes=#{command.bytes} AND declared_sha256=#{command.sha256}</update>
+ <update id="block">UPDATE pf.skill_import SET state=#{state},error_code=#{reason},owner_id=NULL,fence=NULL,lease_until=NULL,revision=revision+1
+  WHERE id=#{command.importId} AND space_id=#{command.spaceId} AND owner_user_id=#{command.actorId} AND state='RUNNING'
+   AND owner_id=#{command.ownerId} AND generation=#{command.generation} AND fence=#{command.fence} AND lease_until&gt;clock_timestamp()
+   AND staging_object_key=#{command.objectKey} AND declared_bytes=#{command.bytes} AND declared_sha256=#{command.sha256}</update>
+ <update id="reconciling">UPDATE pf.skill_import_reservation SET state='RECONCILING',revision=revision+1
+  WHERE import_id=#{command.importId} AND space_id=#{command.spaceId} AND state='RESERVED'</update>
+ <insert id="insertCapability">INSERT INTO pf.capability(id,space_id,owner_user_id,kind)
+  VALUES(#{row.targetCapabilityId},#{row.spaceId},#{row.ownerUserId},'SKILL') ON CONFLICT(id) DO NOTHING</insert>
+ <select id="lockCapability" resultType="java.lang.Integer">SELECT 1 FROM pf.capability WHERE id=#{id} AND space_id=#{space}
+  AND owner_user_id=#{actor} AND kind='SKILL' FOR UPDATE</select>
+ <select id="nextVersion" resultType="long">SELECT coalesce(max(version_number),0)+1 FROM pf.capability_version
+  WHERE space_id=#{row.spaceId} AND capability_id=#{row.targetCapabilityId}</select>
+ <insert id="insertVersion">INSERT INTO pf.capability_version(id,space_id,owner_user_id,capability_id,version_number,content_hash)
+  VALUES(#{row.targetVersionId},#{row.spaceId},#{row.ownerUserId},#{row.targetCapabilityId},#{number},#{hash})</insert>
+ <insert id="insertAsset">INSERT INTO pf.asset_object(id,space_id,category,version_id,object_key,sha256,size_bytes,mime,status,created_by)
+  VALUES(#{row.targetAssetId},#{row.spaceId},'skill-package',#{row.targetVersionId},#{row.stagingObjectKey},#{row.declaredSha256},#{row.declaredBytes},'application/zip','AVAILABLE',#{row.ownerUserId})</insert>
+ <insert id="insertPackage">INSERT INTO pf.skill_package_version(space_id,owner_user_id,capability_id,version_id,asset_id,archive_bytes,archive_sha256,
+  expanded_bytes,file_count,name,description,manifest,dependency_manifest)
+  VALUES(#{row.spaceId},#{row.ownerUserId},#{row.targetCapabilityId},#{row.targetVersionId},#{row.targetAssetId},#{row.declaredBytes},#{row.declaredSha256},
+  #{expanded},#{fileCount},#{name},#{description},CAST(#{manifest} AS jsonb),CAST(#{dependencies} AS jsonb))</insert>
+ <insert id="insertStatus">INSERT INTO pf.capability_version_status(space_id,owner_user_id,capability_id,version_id,state)
+  VALUES(#{row.spaceId},#{row.ownerUserId},#{row.targetCapabilityId},#{row.targetVersionId},'DRAFT')</insert>
+ <update id="settleQuota">UPDATE pf.space_storage s SET reserved_bytes=s.reserved_bytes-r.bytes,committed_bytes=s.committed_bytes+r.bytes,version=s.version+1
+  FROM pf.skill_import_reservation r WHERE r.import_id=#{command.importId} AND r.space_id=#{command.spaceId} AND r.space_id=s.space_id
+  AND r.state='RESERVED' AND s.reserved_bytes&gt;=r.bytes</update>
+ <update id="settleReservation">UPDATE pf.skill_import_reservation SET state='SETTLED',revision=revision+1
+  WHERE import_id=#{command.importId} AND space_id=#{command.spaceId} AND state='RESERVED'</update>
+ <update id="finish">UPDATE pf.skill_import SET state='DRAFT',capability_id=target_capability_id,version_id=target_version_id,
+  owner_id=NULL,fence=NULL,lease_until=NULL,revision=revision+1 WHERE id=#{command.importId} AND space_id=#{command.spaceId}
+  AND state='RUNNING' AND owner_id=#{command.ownerId} AND generation=#{command.generation} AND fence=#{command.fence} AND lease_until&gt;clock_timestamp()</update>
+ <insert id="audit">INSERT INTO pf.capability_audit(id,space_id,owner_user_id,action,resource_id,trace_id)
+  VALUES(#{id},#{command.spaceId},#{command.actorId},'SKILL_IMPORTED',#{command.importId},#{command.ownerId})</insert>
+ <insert id="quarantine">INSERT INTO pf.skill_import_quarantine(id,body_hash) VALUES(#{id},#{hash})</insert>
+</mapper>

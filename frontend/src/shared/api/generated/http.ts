@@ -263,6 +263,54 @@ export interface paths {
         patch: operations["updateWorkspaceConfiguration"];
         trace?: never;
     };
+    "/api/v1/skills/{id}/versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["skillVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/{id}/versions/{versionId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["publishSkillVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/{id}/versions/{versionId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["revokeSkillVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/skills/imports": {
         parameters: {
             query?: never;
@@ -1338,6 +1386,27 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        SkillResource: {
+            path: string;
+            /** Format: int64 */
+            bytes: number;
+            sha256: string;
+        };
+        SkillVersion: {
+            /** Format: uuid */
+            capabilityId: string;
+            /** Format: uuid */
+            versionId: string;
+            /** @enum {string} */
+            state: "DRAFT" | "PUBLISHED" | "REVOKED";
+            /** Format: int64 */
+            revision: number;
+            name: string;
+            description: string;
+            resources: components["schemas"]["SkillResource"][];
+            dependencies: unknown[];
+            assetAvailable: boolean;
+        };
         SkillImportCreate: {
             /** Format: uuid */
             capabilityId?: string | null;
@@ -2877,6 +2946,90 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkspaceConfiguration"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    skillVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Immutable Skill manifest and publication status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillVersion"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    publishSkillVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Published immutable version */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillVersion"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    revokeSkillVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked immutable version */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillVersion"];
                 };
             };
             default: components["responses"]["IdentityProblem"];

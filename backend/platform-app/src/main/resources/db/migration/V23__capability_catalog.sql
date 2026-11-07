@@ -210,6 +210,11 @@ CREATE TABLE pf.skill_import_inbox (
  received_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  FOREIGN KEY (space_id,event_id,import_id) REFERENCES pf.skill_import_outbox(space_id,id,import_id)
 );
+CREATE TABLE pf.skill_import_quarantine (
+ id uuid PRIMARY KEY,
+ body_hash varchar(64) NOT NULL CHECK (body_hash ~ '^[a-f0-9]{64}$'),
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
 
 CREATE TABLE pf.capability_version_status (
  space_id uuid NOT NULL,
@@ -239,6 +244,23 @@ CREATE TRIGGER capability_version_transition BEFORE UPDATE ON pf.capability_vers
 CREATE TRIGGER capability_version_status_no_delete BEFORE DELETE ON pf.capability_version_status
  FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
 REVOKE ALL ON FUNCTION pf.guard_capability_version_transition() FROM PUBLIC;
+CREATE TABLE pf.capability_version_command (
+ space_id uuid NOT NULL,
+ owner_user_id uuid NOT NULL,
+ request_id uuid NOT NULL,
+ capability_id uuid NOT NULL,
+ version_id uuid NOT NULL,
+ action text NOT NULL CHECK (action IN ('PUBLISH','REVOKE')),
+ expected_revision bigint NOT NULL CHECK (expected_revision > 0),
+ result_revision bigint NOT NULL CHECK (result_revision > expected_revision),
+ result_state text NOT NULL CHECK (result_state IN ('PUBLISHED','REVOKED')),
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ PRIMARY KEY (space_id,owner_user_id,request_id),
+ FOREIGN KEY (space_id,owner_user_id,capability_id,version_id)
+   REFERENCES pf.capability_version(space_id,owner_user_id,capability_id,id)
+);
+CREATE TRIGGER capability_version_command_immutable BEFORE UPDATE OR DELETE ON pf.capability_version_command
+ FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
 
 -- No workspace row means inheritance; a row with no selections is an explicit empty override.
 -- Cleared overrides retain their revision to prevent stale ETags becoming valid again.
@@ -318,7 +340,7 @@ CREATE TRIGGER capability_audit_immutable BEFORE UPDATE OR DELETE ON pf.capabili
  FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
 
 REVOKE ALL ON pf.capability, pf.capability_version, pf.skill_package_version, pf.skill_import,
- pf.skill_import_completion_request, pf.skill_import_reservation, pf.skill_import_outbox, pf.skill_import_inbox, pf.capability_version_status,
- pf.connector_credential,pf.mcp_connector_version,pf.mcp_connector_tool,
+ pf.skill_import_completion_request, pf.skill_import_reservation, pf.skill_import_outbox, pf.skill_import_inbox, pf.skill_import_quarantine, pf.capability_version_status,
+ pf.connector_credential,pf.mcp_connector_version,pf.mcp_connector_tool,pf.capability_version_command,
  pf.capability_binding_set, pf.capability_binding_selection, pf.capability_binding_request,
  pf.capability_binding_request_selection, pf.capability_audit FROM PUBLIC;

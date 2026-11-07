@@ -8,6 +8,9 @@ import com.agentplatform.domain.chat.ChatFailure;
 import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisCapabilityBindingRepository;
 import com.agentplatform.infrastructure.dao.capability.CapabilityBindingMapper;
 import com.agentplatform.infrastructure.dao.capability.SkillImportMapper;
+import com.agentplatform.infrastructure.dao.capability.SkillWorkerMapper;
+import com.agentplatform.infrastructure.dao.capability.SkillVersionMapper;
+import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisSkillVersionRepository;
 import com.agentplatform.infrastructure.dao.typehandler.UuidTypeHandler;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -27,9 +30,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 /** Exercises actual migration, mapper and versioned transactions on an isolated database. */
 class CapabilityBindingPostgresTest {
     static String url, password;
-    HikariDataSource pool, apiPool;
+    HikariDataSource pool, apiPool, workerPool;
     CapabilityBindingService service;
     TransactionalSkillImportRepository imports;
+    TransactionalSkillValidationRepository worker;
+    SkillVersionService versions;
     Actor alice, bob;
     UUID capability, version, workspace;
 
@@ -59,10 +64,19 @@ class CapabilityBindingPostgresTest {
                 + "GRANT SELECT,INSERT,DELETE ON pf.capability_binding_selection TO r62_api; "
                 + "GRANT SELECT,INSERT ON pf.capability_binding_request,pf.capability_binding_request_selection TO r62_api; "
                 + "GRANT INSERT ON pf.capability_audit TO r62_api; "
-                + "GRANT SELECT,UPDATE ON pf.space_storage TO r62_api; GRANT SELECT ON pf.capability TO r62_api; GRANT UPDATE(kind) ON pf.capability TO r62_api; "
+                + "GRANT SELECT ON pf.space_storage TO r62_api; GRANT UPDATE(reserved_bytes,committed_bytes,version) ON pf.space_storage TO r62_api; GRANT SELECT ON pf.capability TO r62_api; GRANT UPDATE(kind) ON pf.capability TO r62_api; "
                 + "GRANT SELECT,INSERT,UPDATE ON pf.skill_import,pf.skill_import_reservation,pf.skill_import_outbox TO r62_api; "
                 + "GRANT SELECT,INSERT ON pf.skill_import_completion_request TO r62_api; "
-                + "GRANT SELECT ON pf.capability_version_status TO r62_api; GRANT UPDATE(revision) ON pf.capability_version_status TO r62_api");
+                + "GRANT SELECT ON pf.skill_package_version,pf.asset_object TO r62_api; "
+                + "GRANT SELECT,INSERT ON pf.capability_version_command TO r62_api; "
+                + "GRANT UPDATE(state,updated_at) ON pf.capability_version_status TO r62_api; "
+                + "GRANT SELECT ON pf.capability_version_status TO r62_api; GRANT UPDATE(revision) ON pf.capability_version_status TO r62_api; "
+                + "CREATE ROLE r62_worker NOLOGIN; GRANT USAGE ON SCHEMA pf TO r62_worker; "
+                + "GRANT EXECUTE ON FUNCTION pf.authorize_workspace_actor(uuid,uuid) TO r62_worker; "
+                + "GRANT SELECT ON pf.space_storage TO r62_worker; GRANT UPDATE(reserved_bytes,committed_bytes,version) ON pf.space_storage TO r62_worker; "
+                + "GRANT SELECT,INSERT,UPDATE ON pf.skill_import,pf.skill_import_reservation,pf.skill_import_outbox,pf.skill_import_inbox TO r62_worker; "
+                + "GRANT SELECT,INSERT ON pf.capability TO r62_worker; GRANT UPDATE(kind) ON pf.capability TO r62_worker; GRANT SELECT,INSERT ON pf.capability_version,pf.skill_package_version,pf.capability_version_status,pf.asset_object TO r62_worker; "
+                + "GRANT INSERT ON pf.capability_audit,pf.skill_import_quarantine TO r62_worker");
     }
 
     @BeforeEach void setup() throws Exception {
@@ -73,6 +87,9 @@ class CapabilityBindingPostgresTest {
         var apiConfig = new HikariConfig(); apiConfig.setJdbcUrl(url); apiConfig.setUsername("postgres");
         apiConfig.setPassword(password); apiConfig.setMaximumPoolSize(4); apiConfig.setMinimumIdle(0);
         apiConfig.setConnectionInitSql("SET ROLE r62_api"); apiPool = new HikariDataSource(apiConfig);
+        var workerConfig = new HikariConfig(); workerConfig.setJdbcUrl(url); workerConfig.setUsername("postgres");
+        workerConfig.setPassword(password); workerConfig.setMaximumPoolSize(4); workerConfig.setMinimumIdle(0);
+        workerConfig.setConnectionInitSql("SET ROLE r62_worker"); workerPool = new HikariDataSource(workerConfig);
         var identity = com.agentplatform.app.identity.IdentityPersistenceFixture.create(pool);
         UUID first = identity.provision(UUID.randomUUID(), "r62-" + UUID.randomUUID(),
                 "r62_" + UUID.randomUUID().toString().replace("-", ""), "fixture-only", true);
@@ -104,9 +121,18 @@ class CapabilityBindingPostgresTest {
                 new TransactionTemplate(new JdbcTransactionManager(apiPool)));
         imports = new TransactionalSkillImportRepository(session.getMapper(SkillImportMapper.class),
                 new TransactionTemplate(new JdbcTransactionManager(apiPool)));
+        versions = new SkillVersionService(new MyBatisSkillVersionRepository(session.getMapper(SkillVersionMapper.class)),
+                new TransactionTemplate(new JdbcTransactionManager(apiPool)));
+        var workerFactory = new SqlSessionFactoryBean(); workerFactory.setDataSource(workerPool);
+        var workerConfiguration = new org.apache.ibatis.session.Configuration(); workerConfiguration.setMapUnderscoreToCamelCase(true);
+        workerConfiguration.setLocalCacheScope(org.apache.ibatis.session.LocalCacheScope.STATEMENT); workerConfiguration.setCacheEnabled(false);
+        workerConfiguration.getTypeHandlerRegistry().register(new UuidTypeHandler()); workerFactory.setConfiguration(workerConfiguration);
+        workerFactory.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:mybatis/mapper/**/*.xml"));
+        worker = new TransactionalSkillValidationRepository(new SqlSessionTemplate(workerFactory.getObject()).getMapper(SkillWorkerMapper.class),
+                new TransactionTemplate(new JdbcTransactionManager(workerPool)));
     }
 
-    @AfterEach void close() { if (apiPool != null) apiPool.close(); if (pool != null) pool.close(); }
+    @AfterEach void close() { if (workerPool != null) workerPool.close(); if (apiPool != null) apiPool.close(); if (pool != null) pool.close(); }
 
     @Test void workspaceInheritsOrExplicitlyClearsAndStaleRevisionIsRejected() {
         var selected = new Selection(capability, version);
@@ -206,5 +232,51 @@ class CapabilityBindingPostgresTest {
             java.util.Collections.sort(results);
             assertEquals(List.of(200, 422), results);
         }
+    }
+
+    @Test void validationCommitsImmutableDraftAndSettlesQuotaOnce() throws Exception {
+        var actor = new com.agentplatform.domain.capability.SkillImportRepository.Actor(alice.userId(), alice.spaceId());
+        String hash = "b".repeat(64); var row = imports.create(actor, UUID.randomUUID(), "a".repeat(64), null, 123, hash);
+        UUID transfer = UUID.randomUUID(); imports.beginTransfer(actor, row.id(), transfer); imports.verified(actor, row.id(), transfer);
+        imports.enqueue(actor, row.id(), UUID.randomUUID());
+        var publication = worker.nextPublication(UUID.randomUUID()); assertNotNull(publication); worker.published(publication);
+        var command = worker.claim(publication, UUID.randomUUID()); assertNotNull(command);
+        assertNull(worker.claim(publication, UUID.randomUUID()));
+        worker.guard(command);
+        var stale = new com.agentplatform.domain.capability.SkillValidationRepository.Command(command.spaceId(), command.actorId(),
+                command.importId(), command.ownerId(), command.generation(), command.fence()+1,
+                command.objectKey(), command.bytes(), command.sha256());
+        assertThrows(com.agentplatform.domain.files.FileFailure.class, () -> worker.guard(stale));
+        var manifest = new com.agentplatform.domain.capability.SkillValidationRepository.Manifest(hash, "sample", "description", 1,
+                List.of(new com.agentplatform.domain.capability.SkillValidationRepository.Resource("SKILL.md", 1, "c".repeat(64))), "[]");
+        worker.draft(command, manifest);
+        assertEquals("DRAFT", imports.find(actor, row.id()).state());
+        assertThrows(com.agentplatform.domain.files.FileFailure.class, () -> worker.draft(command, manifest));
+        var request = UUID.randomUUID(); var trace = UUID.randomUUID();
+        var published = versions.change(alice, row.capabilityId(), row.versionId(), "PUBLISH", 1, request, trace);
+        assertEquals("PUBLISHED", published.state());
+        assertEquals(published.revision(), versions.change(alice, row.capabilityId(), row.versionId(), "PUBLISH", 1, request, trace).revision());
+        assertEquals("REVOKED", versions.change(alice, row.capabilityId(), row.versionId(), "REVOKE", 2, UUID.randomUUID(), trace).state());
+        assertEquals("PUBLISHED", versions.change(alice, row.capabilityId(), row.versionId(), "PUBLISH", 1, request, trace).state());
+        assertEquals("REVOKED", versions.get(alice, row.capabilityId(), row.versionId()).state());
+        try (var connection = DriverManager.getConnection(url, "postgres", password); var query = connection.createStatement();
+             var rows = query.executeQuery("SELECT committed_bytes,reserved_bytes,(SELECT count(*) FROM pf.skill_package_version WHERE version_id='"
+                     + row.versionId() + "') FROM pf.space_storage WHERE space_id='" + alice.spaceId() + "'")) {
+            assertTrue(rows.next()); assertEquals(123, rows.getLong(1)); assertEquals(0, rows.getLong(2)); assertEquals(1, rows.getInt(3));
+        }
+    }
+
+    @Test void unresolvedSkillDependenciesCannotBePublished() {
+        var actor = new com.agentplatform.domain.capability.SkillImportRepository.Actor(alice.userId(), alice.spaceId());
+        String hash = "b".repeat(64); var row = imports.create(actor, UUID.randomUUID(), "a".repeat(64), null, 7, hash);
+        UUID transfer = UUID.randomUUID(); imports.beginTransfer(actor, row.id(), transfer); imports.verified(actor, row.id(), transfer);
+        imports.enqueue(actor, row.id(), UUID.randomUUID());
+        var publication = worker.nextPublication(UUID.randomUUID()); worker.published(publication);
+        var command = worker.claim(publication, UUID.randomUUID());
+        worker.draft(command, new com.agentplatform.domain.capability.SkillValidationRepository.Manifest(hash, "sample", "description", 1,
+                List.of(new com.agentplatform.domain.capability.SkillValidationRepository.Resource("SKILL.md", 1, "c".repeat(64))), "[\"python3\"]"));
+        assertEquals(422, assertThrows(com.agentplatform.domain.files.FileFailure.class,
+                () -> versions.change(alice, row.capabilityId(), row.versionId(), "PUBLISH", 1, UUID.randomUUID(), UUID.randomUUID())).status());
+        assertEquals("DRAFT", versions.get(alice, row.capabilityId(), row.versionId()).state());
     }
 }

@@ -371,6 +371,51 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/WorkspaceConfiguration'}
         default: *a1
+  /api/v1/skills/{id}/versions/{versionId}:
+    get:
+      operationId: skillVersion
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: versionId, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Immutable Skill manifest and publication status
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillVersion'}
+        default: *a1
+  /api/v1/skills/{id}/versions/{versionId}/publish:
+    post:
+      operationId: publishSkillVersion
+      security: [{cookieAuth: []}]
+      parameters: &skillVersionParameters
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: versionId, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Published immutable version
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillVersion'}
+        default: *a1
+  /api/v1/skills/{id}/versions/{versionId}/revoke:
+    post:
+      operationId: revokeSkillVersion
+      security: [{cookieAuth: []}]
+      parameters: *skillVersionParameters
+      responses:
+        "200":
+          description: Revoked immutable version
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillVersion'}
+        default: *a1
   /api/v1/skills/imports:
     post:
       operationId: createSkillImport
@@ -2234,6 +2279,28 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
   schemas:
+    SkillResource:
+      type: object
+      additionalProperties: false
+      required: [path, bytes, sha256]
+      properties:
+        path: {type: string}
+        bytes: {type: integer, format: int64, minimum: 0}
+        sha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+    SkillVersion:
+      type: object
+      additionalProperties: false
+      required: [capabilityId, versionId, state, revision, name, description, resources, dependencies, assetAvailable]
+      properties:
+        capabilityId: {type: string, format: uuid}
+        versionId: {type: string, format: uuid}
+        state: {type: string, enum: [DRAFT, PUBLISHED, REVOKED]}
+        revision: {type: integer, format: int64, minimum: 1}
+        name: {type: string}
+        description: {type: string}
+        resources: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/SkillResource'}}
+        dependencies: {type: array, items: {}}
+        assetAvailable: {type: boolean}
     SkillImportCreate:
       type: object
       additionalProperties: false

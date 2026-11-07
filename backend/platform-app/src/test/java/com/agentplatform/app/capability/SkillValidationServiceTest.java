@@ -25,6 +25,10 @@ class SkillValidationServiceTest {
         @Override public void draft(Command command, Manifest manifest) { this.manifest = manifest; }
         @Override public void rejected(Command command, String reason) { rejected = reason; }
         @Override public void unknown(Command command, String reason) { unknown = reason; }
+        @Override public Publication nextPublication(UUID owner) { throw new UnsupportedOperationException(); }
+        @Override public void published(Publication publication) { throw new UnsupportedOperationException(); }
+        @Override public Command claim(Publication publication, UUID owner) { throw new UnsupportedOperationException(); }
+        @Override public void quarantine(UUID id, String hash) { throw new UnsupportedOperationException(); }
     }
     static final class Store implements AssetStore {
         final byte[] bytes; boolean closed;
