@@ -137,10 +137,17 @@ CREATE TABLE pf.skill_import (
  owner_user_id uuid NOT NULL,
  request_id uuid NOT NULL,
  request_hash varchar(64) NOT NULL CHECK (request_hash ~ '^[a-f0-9]{64}$'),
- state text NOT NULL CHECK (state IN ('CREATED','UPLOADING','QUEUED','RUNNING','DRAFT','REJECTED','BLOCKED')),
+ state text NOT NULL CHECK (state IN ('CREATED','UPLOADING','VERIFIED','QUEUED','RUNNING','DRAFT','REJECTED','BLOCKED')),
  revision bigint NOT NULL DEFAULT 1 CHECK (revision > 0),
  generation bigint NOT NULL DEFAULT 1 CHECK (generation > 0),
  declared_bytes bigint NOT NULL CHECK (declared_bytes BETWEEN 0 AND 20971520),
+ declared_sha256 varchar(64) NOT NULL CHECK (declared_sha256 ~ '^[a-f0-9]{64}$'),
+ staging_object_key text NOT NULL UNIQUE,
+ target_capability_id uuid NOT NULL,
+ target_version_id uuid NOT NULL UNIQUE,
+ target_asset_id uuid NOT NULL UNIQUE,
+ transfer_owner uuid,
+ transfer_until timestamptz,
  archive_sha256 varchar(64) CHECK (archive_sha256 ~ '^[a-f0-9]{64}$'),
  capability_id uuid,
  version_id uuid,
@@ -155,8 +162,11 @@ CREATE TABLE pf.skill_import (
  FOREIGN KEY (space_id,owner_user_id,capability_id,version_id)
    REFERENCES pf.capability_version(space_id,owner_user_id,capability_id,id),
  CHECK ((capability_id IS NULL) = (version_id IS NULL)),
+ CHECK ((state='UPLOADING')=(transfer_owner IS NOT NULL AND transfer_until IS NOT NULL)),
+ CHECK (staging_object_key LIKE 'spaces/'||space_id::text||'/skill-package/'||target_asset_id::text||'/'||target_version_id::text||'/%'),
  CHECK (state <> 'RUNNING' OR (owner_id IS NOT NULL AND fence IS NOT NULL AND lease_until IS NOT NULL)),
- CHECK (state <> 'DRAFT' OR (capability_id IS NOT NULL AND archive_sha256 IS NOT NULL))
+ CHECK (state <> 'DRAFT' OR (capability_id IS NOT NULL AND version_id IS NOT NULL AND archive_sha256 IS NOT NULL
+   AND capability_id=target_capability_id AND version_id=target_version_id AND archive_sha256=declared_sha256))
 );
 CREATE INDEX skill_import_work ON pf.skill_import(state,created_at);
 CREATE TABLE pf.skill_import_reservation (
