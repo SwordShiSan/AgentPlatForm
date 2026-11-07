@@ -29,6 +29,10 @@
 - **WHEN** 地址不满足公共 HTTPS 或连接凭据已撤销
 - **THEN** 探测被拒绝且不直接连接或暴露秘密
 
+#### Scenario: Address includes query parameters
+- **WHEN** 外部连接地址包含查询串
+- **THEN** 本阶段拒绝该地址，认证由独立加密凭据及受控请求头提供
+
 #### Scenario: Discovered schema changes
 - **WHEN** 工具 schema 改变
 - **THEN** 创建待确认新版本而不改变现有绑定
