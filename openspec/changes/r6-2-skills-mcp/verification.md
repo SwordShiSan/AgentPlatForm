@@ -29,6 +29,7 @@
 - 诊断确认访问来源属于夹具网段，Docker 的 DNS 将 `example.com` 解析为 `198.18.0.114`，被既定保留地址规则拒绝。受控出口不放宽该规则；正向实验使用公开 DNS 查询获得的固定公网测试地址并保留 TLS 主机名校验，不把此替代实验当成真实 DNS 验收。
 - 固定公网测试地址后，代理对回环目标拒绝且公共 HTTPS 请求及证书校验通过，证据 `.cache/r62-egress/38aafb361b09`。正常 DNS、重绑定、SDK 联合与持续资源观察仍 NOT_RUN。
 - 扩展的出口夹具对九个选定的 IPv4／IPv6 保留地址拒绝、对固定公网地址完成 TLS 请求，PASS，证据 `.cache/r62-egress/63a44de1be25`。固定地址不代表正常 DNS 或重绑定已通过。
+- 隔离 DNS 夹具先返回测试公网网段地址、再返回回环地址，Squid 首次 CONNECT 成功、地址更新后返回403；DNS 夹具确认两次应答，PASS，证据 `.cache/r62-local/dns-change/run-1794047064995277400`。该实验限固定测试域名及临时代理，生产配置、所有地址范围和 SDK 业务调用仍 NOT_RUN。
 - `CapabilityMaterializationTest` 两项纯领域测试 PASS：顺序无关的材料清单哈希、任务／包身份改变、越界路径、文件目录冲突及容量拒绝。尚未接入 runner 或执行实际挂载，不构成隔离验收。
 - `SkillArchiveValidatorTest` 8 项 PASS，包括对所选版本的压缩包 SHA256 和完整文件路径、大小、哈希清单逐项比对；此校验尚未接入 runner，不能替代材料下载、只读挂载或实时授权验收。
 - `SkillValidationServiceTest` 3 项 PASS，包含独立材料流式暂存、下载期间撤权、哈希不符和临时文件清理；存储使用内存夹具，真实对象存储下载、任务授权与 runner 的集成仍 NOT_RUN。
