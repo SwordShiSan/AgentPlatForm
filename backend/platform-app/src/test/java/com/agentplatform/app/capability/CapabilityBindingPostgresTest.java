@@ -487,6 +487,26 @@ class CapabilityBindingPostgresTest {
                 assertTrue(duplicate.await(20, java.util.concurrent.TimeUnit.SECONDS), "duplicate delivery must reach the durable inbox check");
                 assertEquals(1, calls.get(), "duplicate handoff must not run validation twice");
                 assertEquals(hash, assets.inspect(upload.objectKey()).sha256());
+                var published = versions.change(alice, upload.capabilityId(), upload.versionId(), "PUBLISH", 1, UUID.randomUUID(), UUID.randomUUID());
+                var entries = tools.jackson.databind.json.JsonMapper.builder().build().readValue(published.manifestJson(),
+                        com.agentplatform.api.capability.SkillVersionApi.Resource[].class);
+                var selected = new com.agentplatform.domain.capability.CapabilityMaterialization.Version(upload.capabilityId(), upload.versionId(), hash,
+                        java.util.Arrays.stream(entries).map(entry -> new com.agentplatform.domain.capability.CapabilityMaterialization.File(
+                                entry.path(), entry.bytes(), entry.sha256())).toList());
+                var stage = new SkillMaterialStaging(assets, new com.agentplatform.infrastructure.capability.SkillMaterializationVerifier(
+                        new com.agentplatform.infrastructure.capability.SkillArchiveValidator()), temporary);
+                Runnable authorize = () -> {
+                    if (!"PUBLISHED".equals(versions.get(alice, upload.capabilityId(), upload.versionId()).state()))
+                        throw new SecurityException("VERSION_REVOKED");
+                };
+                try (var staged = stage.stage(upload.objectKey(), archive.length, selected, authorize)) {
+                    assertEquals(hash, java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                            .digest(Files.readAllBytes(staged.archive()))));
+                }
+                assertThrows(com.agentplatform.domain.files.FileFailure.class,
+                        () -> versions.get(bob, upload.capabilityId(), upload.versionId()));
+                versions.change(alice, upload.capabilityId(), upload.versionId(), "REVOKE", published.revision(), UUID.randomUUID(), UUID.randomUUID());
+                assertThrows(SecurityException.class, () -> stage.stage(upload.objectKey(), archive.length, selected, authorize));
             } finally { timers.shutdownNow(); connection.destroy(); }
         }
     }
