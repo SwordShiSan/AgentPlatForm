@@ -530,6 +530,103 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/SkillImport'}
         default: *a1
+  /api/v1/connectors:
+    get:
+      operationId: connectors
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: cursor, in: query, required: false, schema: {type: string, format: uuid}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Personal connector settings
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpConnectorPage'}
+        default: *a1
+    post:
+      operationId: createConnector
+      security: [{cookieAuth: []}]
+      parameters: &mcpCreateHeaders
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/McpConnectorInput'}
+      responses:
+        "201":
+          description: Connector created, not yet probed or enabled
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpConnector'}
+        default: *a1
+  /api/v1/connectors/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      operationId: connector
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Connector configuration
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpConnector'}
+        default: *a1
+    put:
+      operationId: updateConnector
+      security: [{cookieAuth: []}]
+      parameters: &mcpVersionHeaders
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/McpConnectorInput'}
+      responses:
+        "200":
+          description: Updated configuration; existing version bindings remain immutable
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpConnector'}
+        default: *a1
+  /api/v1/connectors/{id}/test:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      operationId: testConnector
+      security: [{cookieAuth: []}]
+      parameters: *mcpVersionHeaders
+      responses:
+        "202":
+          description: Durable discovery job queued; no business tool is invoked
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpProbe'}
+        default: *a1
+  /api/v1/connectors/tests/{id}:
+    get:
+      operationId: connectorTest
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Discovery job state
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpProbe'}
+        default: *a1
   /api/v1/me/connector-credentials:
     get:
       operationId: connectorCredentials
@@ -2397,6 +2494,46 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
   schemas:
+    McpConnectorInput:
+      type: object
+      additionalProperties: false
+      required: [endpoint, authKind]
+      properties:
+        endpoint: {type: string, format: uri, maxLength: 4096}
+        authKind: {type: string, enum: [NONE, BEARER, API_KEY]}
+        apiKeyHeader: {type: [string, 'null'], enum: [X-API-Key, api-key, null]}
+        credentialId: {type: [string, 'null'], format: uuid}
+        credentialRevision: {type: [integer, 'null'], format: int64, minimum: 1}
+    McpConnector:
+      type: object
+      additionalProperties: false
+      required: [id, endpoint, authKind, apiKeyHeader, credentialId, credentialRevision, revision]
+      properties:
+        id: {type: string, format: uuid}
+        endpoint: {type: string, format: uri}
+        authKind: {type: string, enum: [NONE, BEARER, API_KEY]}
+        apiKeyHeader: {type: [string, 'null'], enum: [X-API-Key, api-key, null]}
+        credentialId: {type: [string, 'null'], format: uuid}
+        credentialRevision: {type: [integer, 'null'], format: int64}
+        revision: {type: integer, format: int64, minimum: 1}
+    McpConnectorPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/McpConnector'}}
+        nextCursor: {type: [string, 'null'], format: uuid}
+    McpProbe:
+      type: object
+      additionalProperties: false
+      required: [id, connectorId, configurationRevision, state, resultVersionId, revision]
+      properties:
+        id: {type: string, format: uuid}
+        connectorId: {type: string, format: uuid}
+        configurationRevision: {type: integer, format: int64, minimum: 1}
+        state: {type: string, enum: [QUEUED, RUNNING, READY, FAILED, BLOCKED]}
+        resultVersionId: {type: [string, 'null'], format: uuid}
+        revision: {type: integer, format: int64, minimum: 1}
     ConnectorCredentialInput:
       type: object
       additionalProperties: false

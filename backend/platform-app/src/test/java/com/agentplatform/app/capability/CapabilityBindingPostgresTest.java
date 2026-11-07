@@ -15,6 +15,8 @@ import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisSki
 import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisSkillCatalogRepository;
 import com.agentplatform.infrastructure.dao.capability.ConnectorCredentialMapper;
 import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisConnectorCredentialRepository;
+import com.agentplatform.infrastructure.dao.capability.McpConnectorMapper;
+import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisMcpConnectorRepository;
 import com.agentplatform.infrastructure.dao.typehandler.UuidTypeHandler;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -41,6 +43,7 @@ class CapabilityBindingPostgresTest {
     SkillVersionService versions;
     SkillCatalogService catalog;
     ConnectorCredentialService connectorCredentials;
+    McpConnectorService connectors;
     Actor alice, bob;
     UUID capability, version, workspace;
 
@@ -70,7 +73,7 @@ class CapabilityBindingPostgresTest {
                 + "GRANT SELECT,INSERT,DELETE ON pf.capability_binding_selection TO r62_api; "
                 + "GRANT SELECT,INSERT ON pf.capability_binding_request,pf.capability_binding_request_selection TO r62_api; "
                 + "GRANT INSERT ON pf.capability_audit TO r62_api; "
-                + "GRANT SELECT ON pf.space_storage TO r62_api; GRANT UPDATE(reserved_bytes,committed_bytes,version) ON pf.space_storage TO r62_api; GRANT SELECT ON pf.capability TO r62_api; GRANT UPDATE(kind) ON pf.capability TO r62_api; "
+                + "GRANT SELECT ON pf.space_storage TO r62_api; GRANT UPDATE(reserved_bytes,committed_bytes,version) ON pf.space_storage TO r62_api; GRANT SELECT,INSERT ON pf.capability TO r62_api; GRANT UPDATE(kind) ON pf.capability TO r62_api; "
                 + "GRANT SELECT,INSERT,UPDATE ON pf.skill_import,pf.skill_import_reservation,pf.skill_import_outbox TO r62_api; "
                 + "GRANT SELECT,INSERT ON pf.skill_import_completion_request TO r62_api; "
                 + "GRANT SELECT ON pf.capability_version,pf.skill_package_version,pf.asset_object TO r62_api; "
@@ -78,6 +81,7 @@ class CapabilityBindingPostgresTest {
                 + "GRANT SELECT(id,space_id,owner_user_id,request_id,request_fingerprint,revision,state,created_at) ON pf.connector_credential TO r62_api; "
                 + "GRANT INSERT(id,space_id,owner_user_id,request_id,request_fingerprint,ciphertext,nonce,key_version,state) ON pf.connector_credential TO r62_api; "
                 + "GRANT UPDATE(state,revision) ON pf.connector_credential TO r62_api; GRANT SELECT,INSERT ON pf.connector_credential_revocation TO r62_api; "
+                + "GRANT SELECT,INSERT,UPDATE ON pf.mcp_connector_configuration TO r62_api; GRANT SELECT,INSERT ON pf.mcp_connector_request,pf.mcp_probe,pf.mcp_probe_outbox TO r62_api; "
                 + "GRANT UPDATE(state,updated_at) ON pf.capability_version_status TO r62_api; "
                 + "GRANT SELECT ON pf.capability_version_status TO r62_api; GRANT UPDATE(revision) ON pf.capability_version_status TO r62_api; "
                 + "CREATE ROLE r62_worker NOLOGIN; GRANT USAGE ON SCHEMA pf TO r62_worker; "
@@ -138,6 +142,8 @@ class CapabilityBindingPostgresTest {
         connectorCredentials = new ConnectorCredentialService(new MyBatisConnectorCredentialRepository(session.getMapper(ConnectorCredentialMapper.class)),
                 new TransactionTemplate(new JdbcTransactionManager(apiPool)), mcpKey);
         java.util.Arrays.fill(mcpKey, (byte) 0);
+        connectors = new McpConnectorService(new MyBatisMcpConnectorRepository(session.getMapper(McpConnectorMapper.class)),
+                new TransactionTemplate(new JdbcTransactionManager(apiPool)), "a".repeat(64));
         var workerFactory = new SqlSessionFactoryBean(); workerFactory.setDataSource(workerPool);
         var workerConfiguration = new org.apache.ibatis.session.Configuration(); workerConfiguration.setMapUnderscoreToCamelCase(true);
         workerConfiguration.setLocalCacheScope(org.apache.ibatis.session.LocalCacheScope.STATEMENT); workerConfiguration.setCacheEnabled(false);
@@ -338,5 +344,28 @@ class CapabilityBindingPostgresTest {
         var rows = connectorCredentials.list(alice, null, 50).items();
         assertEquals("REVOKED", rows.stream().filter(c -> c.id().equals(old.id())).findFirst().orElseThrow().state());
         assertEquals("ACTIVE", rows.stream().filter(c -> c.id().equals(next.id())).findFirst().orElseThrow().state());
+    }
+
+    @Test void connectorProbeFreezesSettingsAndRevokedCredentialsAreRejected() throws Exception {
+        UUID trace = UUID.randomUUID(), request = UUID.randomUUID();
+        var credential = connectorCredentials.create(alice, UUID.randomUUID(), "fixture-secret", trace);
+        var input = new McpConnectorService.Input("https://example.com/mcp", "BEARER", null, credential.id(), credential.revision());
+        var config = connectors.create(alice, request, input, trace);
+        assertEquals(config, connectors.create(alice, request, input, trace));
+        assertEquals(409, assertThrows(com.agentplatform.domain.files.FileFailure.class,
+                () -> connectors.create(alice, request, new McpConnectorService.Input("https://example.org/mcp", "NONE", null, null, null), trace)).status());
+        assertEquals(404, assertThrows(com.agentplatform.domain.files.FileFailure.class, () -> connectors.get(bob, config.id())).status());
+        UUID probeKey = UUID.randomUUID();
+        var probe = connectors.enqueue(alice, config.id(), config.revision(), probeKey, trace);
+        assertEquals(probe.id(), connectors.enqueue(alice, config.id(), config.revision(), probeKey, trace).id());
+        try (var connection = DriverManager.getConnection(url, "postgres", password); var query = connection.createStatement();
+             var rows = query.executeQuery("SELECT count(*) FROM pf.mcp_probe_outbox WHERE probe_id='" + probe.id() + "'")) {
+            assertTrue(rows.next()); assertEquals(1, rows.getInt(1));
+        }
+        connectorCredentials.revoke(alice, credential.id(), credential.revision(), UUID.randomUUID(), trace);
+        assertEquals(422, assertThrows(com.agentplatform.domain.files.FileFailure.class,
+                () -> connectors.enqueue(alice, config.id(), config.revision(), UUID.randomUUID(), trace)).status());
+        assertEquals(422, assertThrows(com.agentplatform.domain.files.FileFailure.class,
+                () -> connectors.create(alice, UUID.randomUUID(), new McpConnectorService.Input("https://127.0.0.1/mcp", "NONE", null, null, null), trace)).status());
     }
 }

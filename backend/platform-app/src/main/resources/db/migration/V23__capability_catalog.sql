@@ -148,6 +148,95 @@ CREATE TABLE pf.mcp_connector_tool (
 CREATE TRIGGER mcp_connector_tool_immutable BEFORE UPDATE OR DELETE ON pf.mcp_connector_tool
  FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
 
+-- Mutable connection settings are distinct from immutable discovered versions.
+CREATE TABLE pf.mcp_connector_configuration (
+ space_id uuid NOT NULL,
+ owner_user_id uuid NOT NULL,
+ capability_id uuid NOT NULL,
+ endpoint text NOT NULL CHECK (octet_length(endpoint) BETWEEN 9 AND 4096),
+ auth_kind text NOT NULL CHECK (auth_kind IN ('NONE','BEARER','API_KEY')),
+ api_key_header text CHECK (api_key_header IN ('X-API-Key','api-key')),
+ credential_id uuid,
+ credential_revision bigint,
+ revision bigint NOT NULL DEFAULT 1 CHECK (revision > 0),
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ PRIMARY KEY (space_id,owner_user_id,capability_id),
+ FOREIGN KEY (space_id,owner_user_id,capability_id) REFERENCES pf.capability(space_id,owner_user_id,id),
+ FOREIGN KEY (space_id,owner_user_id,credential_id) REFERENCES pf.connector_credential(space_id,owner_user_id,id),
+ CHECK ((auth_kind='NONE' AND credential_id IS NULL AND credential_revision IS NULL AND api_key_header IS NULL)
+     OR (auth_kind='BEARER' AND credential_id IS NOT NULL AND credential_revision IS NOT NULL AND api_key_header IS NULL)
+     OR (auth_kind='API_KEY' AND credential_id IS NOT NULL AND credential_revision IS NOT NULL AND api_key_header IS NOT NULL))
+);
+CREATE TABLE pf.mcp_connector_request (
+ space_id uuid NOT NULL,
+ owner_user_id uuid NOT NULL,
+ request_id uuid NOT NULL,
+ request_hash varchar(64) NOT NULL CHECK (request_hash ~ '^[a-f0-9]{64}$'),
+ capability_id uuid NOT NULL,
+ result_revision bigint NOT NULL CHECK (result_revision > 0),
+ result_snapshot jsonb NOT NULL CHECK (jsonb_typeof(result_snapshot)='object'),
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ PRIMARY KEY (space_id,owner_user_id,request_id),
+ FOREIGN KEY (space_id,owner_user_id,capability_id) REFERENCES pf.mcp_connector_configuration(space_id,owner_user_id,capability_id)
+);
+CREATE TRIGGER mcp_connector_request_immutable BEFORE UPDATE OR DELETE ON pf.mcp_connector_request
+ FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
+CREATE TABLE pf.mcp_probe (
+ id uuid PRIMARY KEY,
+ space_id uuid NOT NULL,
+ owner_user_id uuid NOT NULL,
+ capability_id uuid NOT NULL,
+ request_id uuid NOT NULL,
+ request_hash varchar(64) NOT NULL CHECK (request_hash ~ '^[a-f0-9]{64}$'),
+ configuration_revision bigint NOT NULL CHECK (configuration_revision > 0),
+ endpoint text NOT NULL,
+ auth_kind text NOT NULL CHECK (auth_kind IN ('NONE','BEARER','API_KEY')),
+ api_key_header text CHECK (api_key_header IN ('X-API-Key','api-key')),
+ credential_id uuid,
+ credential_revision bigint,
+ policy_hash varchar(64) NOT NULL CHECK (policy_hash ~ '^[a-f0-9]{64}$'),
+ state text NOT NULL CHECK (state IN ('QUEUED','RUNNING','READY','FAILED','BLOCKED')),
+ generation bigint NOT NULL DEFAULT 1 CHECK (generation > 0),
+ revision bigint NOT NULL DEFAULT 1 CHECK (revision > 0),
+ owner_id uuid,
+ fence bigint CHECK (fence > 0),
+ lease_until timestamptz,
+ result_version_id uuid,
+ error_code varchar(64),
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ UNIQUE (space_id,id), UNIQUE (space_id,owner_user_id,id), UNIQUE (space_id,owner_user_id,request_id),
+ FOREIGN KEY (space_id,owner_user_id,capability_id) REFERENCES pf.mcp_connector_configuration(space_id,owner_user_id,capability_id),
+ FOREIGN KEY (space_id,owner_user_id,credential_id) REFERENCES pf.connector_credential(space_id,owner_user_id,id),
+ FOREIGN KEY (space_id,owner_user_id,capability_id,result_version_id)
+   REFERENCES pf.capability_version(space_id,owner_user_id,capability_id,id),
+ CHECK ((auth_kind='NONE' AND credential_id IS NULL AND credential_revision IS NULL AND api_key_header IS NULL)
+     OR (auth_kind='BEARER' AND credential_id IS NOT NULL AND credential_revision IS NOT NULL AND api_key_header IS NULL)
+     OR (auth_kind='API_KEY' AND credential_id IS NOT NULL AND credential_revision IS NOT NULL AND api_key_header IS NOT NULL)),
+ CHECK (state <> 'RUNNING' OR (owner_id IS NOT NULL AND fence IS NOT NULL AND lease_until IS NOT NULL)),
+ CHECK (state <> 'READY' OR result_version_id IS NOT NULL)
+);
+CREATE INDEX mcp_probe_work ON pf.mcp_probe(state,created_at);
+CREATE TABLE pf.mcp_probe_outbox (
+ id uuid PRIMARY KEY,
+ space_id uuid NOT NULL,
+ probe_id uuid NOT NULL,
+ generation bigint NOT NULL CHECK (generation > 0),
+ state text NOT NULL DEFAULT 'PENDING' CHECK (state IN ('PENDING','PUBLISHING','PUBLISHED')),
+ relay_owner uuid,
+ relay_until timestamptz,
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ UNIQUE (probe_id,generation), UNIQUE (space_id,id,probe_id),
+ FOREIGN KEY (space_id,probe_id) REFERENCES pf.mcp_probe(space_id,id)
+);
+CREATE TABLE pf.mcp_probe_inbox (
+ event_id uuid PRIMARY KEY,
+ space_id uuid NOT NULL,
+ probe_id uuid NOT NULL,
+ received_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ FOREIGN KEY (space_id,event_id,probe_id) REFERENCES pf.mcp_probe_outbox(space_id,id,probe_id)
+);
+
 CREATE TABLE pf.skill_import (
  id uuid PRIMARY KEY,
  space_id uuid NOT NULL,
@@ -347,7 +436,7 @@ CREATE TABLE pf.capability_audit (
  space_id uuid NOT NULL,
  owner_user_id uuid NOT NULL,
  action text NOT NULL CHECK (action IN ('BINDINGS_REPLACED','SKILL_IMPORTED','SKILL_PUBLISHED','SKILL_REVOKED',
-   'CONNECTOR_CREATED','CONNECTOR_TESTED','CONNECTOR_ENABLED','CONNECTOR_DISABLED','CREDENTIAL_CHANGED')),
+   'CONNECTOR_CREATED','CONNECTOR_UPDATED','CONNECTOR_TEST_REQUESTED','CONNECTOR_TESTED','CONNECTOR_ENABLED','CONNECTOR_DISABLED','CREDENTIAL_CHANGED')),
  resource_id uuid NOT NULL,
  trace_id uuid NOT NULL,
  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -358,6 +447,7 @@ CREATE TRIGGER capability_audit_immutable BEFORE UPDATE OR DELETE ON pf.capabili
 
 REVOKE ALL ON pf.capability, pf.capability_version, pf.skill_package_version, pf.skill_import,
  pf.skill_import_completion_request, pf.skill_import_reservation, pf.skill_import_outbox, pf.skill_import_inbox, pf.skill_import_quarantine, pf.capability_version_status,
- pf.connector_credential,pf.connector_credential_revocation,pf.mcp_connector_version,pf.mcp_connector_tool,pf.capability_version_command,
+ pf.connector_credential,pf.connector_credential_revocation,pf.mcp_connector_version,pf.mcp_connector_tool,
+ pf.mcp_connector_configuration,pf.mcp_connector_request,pf.mcp_probe,pf.mcp_probe_outbox,pf.mcp_probe_inbox,pf.capability_version_command,
  pf.capability_binding_set, pf.capability_binding_selection, pf.capability_binding_request,
  pf.capability_binding_request_selection, pf.capability_audit FROM PUBLIC;

@@ -425,6 +425,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/connectors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["connectors"];
+        put?: never;
+        post: operations["createConnector"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["connector"];
+        put: operations["updateConnector"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["testConnector"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/tests/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["connectorTest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/connector-credentials": {
         parameters: {
             query?: never;
@@ -1488,6 +1556,53 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        McpConnectorInput: {
+            /** Format: uri */
+            endpoint: string;
+            /** @enum {string} */
+            authKind: "NONE" | "BEARER" | "API_KEY";
+            /** @enum {string|null} */
+            apiKeyHeader?: "X-API-Key" | "api-key" | null;
+            /** Format: uuid */
+            credentialId?: string | null;
+            /** Format: int64 */
+            credentialRevision?: number | null;
+        };
+        McpConnector: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uri */
+            endpoint: string;
+            /** @enum {string} */
+            authKind: "NONE" | "BEARER" | "API_KEY";
+            /** @enum {string|null} */
+            apiKeyHeader: "X-API-Key" | "api-key" | null;
+            /** Format: uuid */
+            credentialId: string | null;
+            /** Format: int64 */
+            credentialRevision: number | null;
+            /** Format: int64 */
+            revision: number;
+        };
+        McpConnectorPage: {
+            items: components["schemas"]["McpConnector"][];
+            /** Format: uuid */
+            nextCursor: string | null;
+        };
+        McpProbe: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            connectorId: string;
+            /** Format: int64 */
+            configurationRevision: number;
+            /** @enum {string} */
+            state: "QUEUED" | "RUNNING" | "READY" | "FAILED" | "BLOCKED";
+            /** Format: uuid */
+            resultVersionId: string | null;
+            /** Format: int64 */
+            revision: number;
+        };
         ConnectorCredentialInput: {
             secret: string;
         };
@@ -3359,6 +3474,171 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SkillImport"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connectors: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Personal connector settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpConnectorPage"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    createConnector: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["McpConnectorInput"];
+            };
+        };
+        responses: {
+            /** @description Connector created, not yet probed or enabled */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpConnector"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connector: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Connector configuration */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpConnector"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    updateConnector: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["McpConnectorInput"];
+            };
+        };
+        responses: {
+            /** @description Updated configuration; existing version bindings remain immutable */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpConnector"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    testConnector: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Durable discovery job queued; no business tool is invoked */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpProbe"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connectorTest: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Discovery job state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpProbe"];
                 };
             };
             default: components["responses"]["IdentityProblem"];
