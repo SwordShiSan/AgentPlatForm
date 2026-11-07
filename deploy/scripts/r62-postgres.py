@@ -43,7 +43,7 @@ def main():
         def inputs():
             return {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in sorted(set(tracked) - {''}) if (ROOT / name).is_file()}
         before = inputs()
-        result = subprocess.run([str(ROOT / 'backend' / 'mvnw.cmd'), '-Dtest=CapabilityBindingPostgresTest,SkillImportControllerTest,SkillImportServiceTest',
+        result = subprocess.run([str(ROOT / 'backend' / 'mvnw.cmd'), '-Dtest=CapabilityBindingPostgresTest,SkillImportControllerTest,SkillImportServiceTest,SkillValidationServiceTest',
                                  '-Dsurefire.failIfNoSpecifiedTests=false', 'test'], cwd=ROOT / 'backend',
                                 env=env, capture_output=True, timeout=300)
         (DATA / 'maven.log').write_bytes(result.stdout + result.stderr)
