@@ -62,7 +62,8 @@
           AND state='UPLOADING' AND transfer_owner=#{owner} AND transfer_until&gt;clock_timestamp()
     </update>
     <update id="finish">
-        UPDATE pf.skill_import SET state=#{state},transfer_owner=NULL,transfer_until=NULL,revision=revision+1
+        UPDATE pf.skill_import SET state=#{state},transfer_owner=NULL,transfer_until=NULL,revision=revision+1,
+          archive_sha256=CASE WHEN #{state}='VERIFIED' THEN declared_sha256 ELSE NULL END
         WHERE id=#{id} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId}
           AND state='UPLOADING' AND transfer_owner=#{owner} AND transfer_until&gt;clock_timestamp()
     </update>

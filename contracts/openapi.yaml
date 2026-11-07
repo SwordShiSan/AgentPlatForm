@@ -371,6 +371,76 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/WorkspaceConfiguration'}
         default: *a1
+  /api/v1/skills/imports:
+    post:
+      operationId: createSkillImport
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SkillImportCreate'}
+      responses:
+        "201":
+          description: Stable upload identity and reserved capacity
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillImport'}
+        default: *a1
+  /api/v1/skills/imports/{id}:
+    get:
+      operationId: skillImport
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Durable upload and validation state
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillImport'}
+        default: *a1
+  /api/v1/skills/imports/{id}/content:
+    put:
+      operationId: uploadSkillImport
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: Content-Length, in: header, required: true, schema: {type: integer, minimum: 0, maximum: 20971520}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: {type: string, format: binary}
+      responses:
+        "200":
+          description: Bounded archive transferred or awaiting reconciliation
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillImport'}
+        default: *a1
+  /api/v1/skills/imports/{id}/complete:
+    post:
+      operationId: completeSkillImport
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "202":
+          description: Validation queued under the original import identity
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillImport'}
+        default: *a1
   /api/v1/me/capability-bindings:
     parameters:
       - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
@@ -2163,6 +2233,26 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
   schemas:
+    SkillImportCreate:
+      type: object
+      additionalProperties: false
+      required: [sizeBytes, sha256]
+      properties:
+        capabilityId: {type: [string, 'null'], format: uuid}
+        sizeBytes: {type: integer, format: int64, minimum: 0, maximum: 20971520}
+        sha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+    SkillImport:
+      type: object
+      additionalProperties: false
+      required: [id, capabilityId, versionId, state, sizeBytes, sha256, revision]
+      properties:
+        id: {type: string, format: uuid}
+        capabilityId: {type: string, format: uuid}
+        versionId: {type: string, format: uuid}
+        state: {type: string, enum: [CREATED, UPLOADING, VERIFIED, QUEUED, RUNNING, DRAFT, REJECTED, BLOCKED]}
+        sizeBytes: {type: integer, format: int64}
+        sha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+        revision: {type: integer, format: int64, minimum: 1}
     CapabilitySelection:
       type: object
       additionalProperties: false
