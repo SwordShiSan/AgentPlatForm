@@ -64,9 +64,17 @@
         VALUES(#{actor.spaceId},#{actor.userId},#{setId},#{selection.capabilityId},#{selection.versionId})
     </insert>
     <select id="published" resultType="boolean">
-        SELECT EXISTS(SELECT 1 FROM pf.capability_version_status
-          WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId}
-            AND capability_id=#{selection.capabilityId} AND version_id=#{selection.versionId} AND state='PUBLISHED' FOR SHARE)
+        SELECT EXISTS(SELECT 1 FROM pf.capability_version_status s JOIN pf.capability c
+          ON c.space_id=s.space_id AND c.owner_user_id=s.owner_user_id AND c.id=s.capability_id
+          WHERE s.space_id=#{actor.spaceId} AND s.owner_user_id=#{actor.userId}
+            AND s.capability_id=#{selection.capabilityId} AND s.version_id=#{selection.versionId} AND s.state='PUBLISHED'
+            AND (c.kind='SKILL' OR (c.kind='MCP' AND EXISTS(SELECT 1 FROM pf.mcp_connector_activation a
+              JOIN pf.mcp_connector_version v ON v.space_id=a.space_id AND v.owner_user_id=a.owner_user_id
+               AND v.capability_id=a.capability_id AND v.version_id=a.enabled_version_id
+              WHERE a.space_id=s.space_id AND a.owner_user_id=s.owner_user_id AND a.capability_id=s.capability_id
+               AND a.enabled_version_id=s.version_id AND (v.auth_kind='NONE' OR EXISTS(SELECT 1 FROM pf.connector_credential k
+                 WHERE k.space_id=v.space_id AND k.owner_user_id=v.owner_user_id AND k.id=v.credential_id
+                  AND k.revision=v.credential_revision AND k.state='ACTIVE'))))) FOR SHARE OF s)
     </select>
     <select id="accepted" resultMap="request">
         SELECT request_hash,binding_set_id,result_revision,inherit_personal FROM pf.capability_binding_request

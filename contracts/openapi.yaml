@@ -613,6 +613,80 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/McpProbe'}
         default: *a1
+  /api/v1/connectors/{id}/versions:
+    get:
+      operationId: connectorVersions
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: cursor, in: query, required: false, schema: {type: integer, minimum: 1}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Immutable discovered versions
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpVersionPage'}
+        default: *a1
+  /api/v1/connectors/{id}/versions/{versionId}:
+    get:
+      operationId: connectorVersion
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: versionId, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Frozen version and discovered tool schemas
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpVersionDetail'}
+        default: *a1
+  /api/v1/connectors/{id}/activation:
+    get:
+      operationId: connectorActivation
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Current explicit enablement
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpActivation'}
+        default: *a1
+  /api/v1/connectors/{id}/versions/{versionId}/enable:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      - {name: versionId, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      operationId: enableConnectorVersion
+      security: [{cookieAuth: []}]
+      parameters: *mcpVersionHeaders
+      responses:
+        "200":
+          description: Version explicitly enabled
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpActivation'}
+        default: *a1
+  /api/v1/connectors/{id}/disable:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      operationId: disableConnector
+      security: [{cookieAuth: []}]
+      parameters: *mcpVersionHeaders
+      responses:
+        "200":
+          description: Connector disabled without changing historical bindings
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpActivation'}
+        default: *a1
   /api/v1/connectors/tests/{id}:
     get:
       operationId: connectorTest
@@ -2494,6 +2568,55 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
   schemas:
+    McpVersion:
+      type: object
+      additionalProperties: false
+      required: [connectorId, versionId, versionNumber, state, revision, endpoint, authKind, credentialId, credentialRevision, policyHash, toolCount, sourceConfigurationRevision]
+      properties:
+        connectorId: {type: string, format: uuid}
+        versionId: {type: string, format: uuid}
+        versionNumber: {type: integer, format: int64}
+        state: {type: string, enum: [DRAFT, PUBLISHED, REVOKED]}
+        revision: {type: integer, format: int64}
+        endpoint: {type: string, format: uri}
+        authKind: {type: string, enum: [NONE, BEARER, API_KEY]}
+        credentialId: {type: [string, 'null'], format: uuid}
+        credentialRevision: {type: [integer, 'null'], format: int64}
+        policyHash: {type: string}
+        toolCount: {type: integer}
+        sourceConfigurationRevision: {type: integer, format: int64}
+    McpVersionPage:
+      type: object
+      required: [items, nextCursor]
+      additionalProperties: false
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/McpVersion'}}
+        nextCursor: {type: [integer, 'null'], format: int64}
+    McpTool:
+      type: object
+      required: [name, description, schemaJson, schemaSha256]
+      additionalProperties: false
+      properties:
+        name: {type: string}
+        description: {type: [string, 'null']}
+        schemaJson: {type: string, maxLength: 65536}
+        schemaSha256: {type: string}
+    McpActivation:
+      type: object
+      required: [revision, enabledVersionId]
+      additionalProperties: false
+      properties:
+        revision: {type: integer, format: int64}
+        enabledVersionId: {type: [string, 'null'], format: uuid}
+    McpVersionDetail:
+      type: object
+      required: [version, tools, activation, eligible]
+      additionalProperties: false
+      properties:
+        version: {$ref: '#/components/schemas/McpVersion'}
+        tools: {type: array, items: {$ref: '#/components/schemas/McpTool'}}
+        activation: {$ref: '#/components/schemas/McpActivation'}
+        eligible: {type: boolean}
     McpConnectorInput:
       type: object
       additionalProperties: false

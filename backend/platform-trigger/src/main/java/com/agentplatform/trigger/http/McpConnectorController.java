@@ -36,6 +36,27 @@ public final class McpConnectorController {
     @GetMapping("/tests/{id}") ResponseEntity<McpConnectorApi.Probe> probe(HttpServletRequest request, @PathVariable("id") String id) {
         return ResponseEntity.ok().header("Cache-Control", "no-store").body(service.probe(RequestIdentity.caller(request), id));
     }
+    @GetMapping("/{id}/versions") ResponseEntity<McpConnectorApi.VersionPage> versions(HttpServletRequest request, @PathVariable("id") String id,
+            @RequestParam(value="cursor", required=false) Long cursor, @RequestParam(value="limit", defaultValue="50") int limit) {
+        return ResponseEntity.ok().header("Cache-Control", "no-store").body(service.versions(RequestIdentity.caller(request), id, cursor, limit));
+    }
+    @GetMapping("/{id}/versions/{versionId}") ResponseEntity<McpConnectorApi.VersionDetail> version(HttpServletRequest request,
+            @PathVariable("id") String id, @PathVariable("versionId") String versionId) {
+        return ResponseEntity.ok().header("Cache-Control", "no-store").body(service.version(RequestIdentity.caller(request), id, versionId));
+    }
+    @GetMapping("/{id}/activation") ResponseEntity<McpConnectorApi.Activation> activation(HttpServletRequest request, @PathVariable("id") String id) {
+        return activation(service.activation(RequestIdentity.caller(request), id));
+    }
+    @PostMapping("/{id}/versions/{versionId}/enable") ResponseEntity<McpConnectorApi.Activation> enable(HttpServletRequest request,
+            @PathVariable("id") String id, @PathVariable("versionId") String versionId) {
+        return activation(service.enable(RequestIdentity.caller(request), id, versionId, version(request), key(request)));
+    }
+    @PostMapping("/{id}/disable") ResponseEntity<McpConnectorApi.Activation> disable(HttpServletRequest request, @PathVariable("id") String id) {
+        return activation(service.disable(RequestIdentity.caller(request), id, version(request), key(request)));
+    }
+    private static ResponseEntity<McpConnectorApi.Activation> activation(McpConnectorApi.Activation value) {
+        return ResponseEntity.ok().eTag("\"" + value.revision() + "\"").header("Cache-Control", "no-store").body(value);
+    }
     private static ResponseEntity<McpConnectorApi.Configuration> configuration(int status, McpConnectorApi.Configuration value) {
         return ResponseEntity.status(status).eTag("\"" + value.revision() + "\"").header("Cache-Control", "no-store").body(value);
     }

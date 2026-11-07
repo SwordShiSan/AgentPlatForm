@@ -477,6 +477,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/connectors/{id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["connectorVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{id}/versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["connectorVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{id}/activation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["connectorActivation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{id}/versions/{versionId}/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["enableConnectorVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{id}/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["disableConnector"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/connectors/tests/{id}": {
         parameters: {
             query?: never;
@@ -1556,6 +1641,53 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        McpVersion: {
+            /** Format: uuid */
+            connectorId: string;
+            /** Format: uuid */
+            versionId: string;
+            /** Format: int64 */
+            versionNumber: number;
+            /** @enum {string} */
+            state: "DRAFT" | "PUBLISHED" | "REVOKED";
+            /** Format: int64 */
+            revision: number;
+            /** Format: uri */
+            endpoint: string;
+            /** @enum {string} */
+            authKind: "NONE" | "BEARER" | "API_KEY";
+            /** Format: uuid */
+            credentialId: string | null;
+            /** Format: int64 */
+            credentialRevision: number | null;
+            policyHash: string;
+            toolCount: number;
+            /** Format: int64 */
+            sourceConfigurationRevision: number;
+        };
+        McpVersionPage: {
+            items: components["schemas"]["McpVersion"][];
+            /** Format: int64 */
+            nextCursor: number | null;
+        };
+        McpTool: {
+            name: string;
+            description: string | null;
+            schemaJson: string;
+            schemaSha256: string;
+        };
+        McpActivation: {
+            /** Format: int64 */
+            revision: number;
+            /** Format: uuid */
+            enabledVersionId: string | null;
+        };
+        McpVersionDetail: {
+            version: components["schemas"]["McpVersion"];
+            tools: components["schemas"]["McpTool"][];
+            activation: components["schemas"]["McpActivation"];
+            eligible: boolean;
+        };
         McpConnectorInput: {
             /** Format: uri */
             endpoint: string;
@@ -3615,6 +3747,142 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["McpProbe"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connectorVersions: {
+        parameters: {
+            query?: {
+                cursor?: number;
+                limit?: number;
+            };
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Immutable discovered versions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpVersionPage"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connectorVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Frozen version and discovered tool schemas */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpVersionDetail"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connectorActivation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current explicit enablement */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpActivation"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    enableConnectorVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Version explicitly enabled */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpActivation"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    disableConnector: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Connector disabled without changing historical bindings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpActivation"];
                 };
             };
             default: components["responses"]["IdentityProblem"];

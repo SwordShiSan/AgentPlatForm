@@ -170,6 +170,37 @@ CREATE TABLE pf.mcp_connector_configuration (
      OR (auth_kind='BEARER' AND credential_id IS NOT NULL AND credential_revision IS NOT NULL AND api_key_header IS NULL)
      OR (auth_kind='API_KEY' AND credential_id IS NOT NULL AND credential_revision IS NOT NULL AND api_key_header IS NOT NULL))
 );
+CREATE TABLE pf.mcp_connector_activation (
+ space_id uuid NOT NULL,
+ owner_user_id uuid NOT NULL,
+ capability_id uuid NOT NULL,
+ enabled_version_id uuid,
+ revision bigint NOT NULL DEFAULT 0 CHECK (revision >= 0),
+ PRIMARY KEY (space_id,owner_user_id,capability_id),
+ FOREIGN KEY (space_id,owner_user_id,capability_id) REFERENCES pf.mcp_connector_configuration(space_id,owner_user_id,capability_id),
+ FOREIGN KEY (space_id,owner_user_id,capability_id,enabled_version_id)
+   REFERENCES pf.mcp_connector_version(space_id,owner_user_id,capability_id,version_id)
+);
+CREATE TABLE pf.mcp_activation_command (
+ space_id uuid NOT NULL,
+ owner_user_id uuid NOT NULL,
+ request_id uuid NOT NULL,
+ capability_id uuid NOT NULL,
+ action text NOT NULL CHECK (action IN ('ENABLE','DISABLE')),
+ version_id uuid,
+ expected_revision bigint NOT NULL CHECK (expected_revision >= 0),
+ result_revision bigint NOT NULL CHECK (result_revision = expected_revision + 1),
+ result_version_id uuid,
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ PRIMARY KEY (space_id,owner_user_id,request_id),
+ FOREIGN KEY (space_id,owner_user_id,capability_id) REFERENCES pf.mcp_connector_configuration(space_id,owner_user_id,capability_id),
+ FOREIGN KEY (space_id,owner_user_id,capability_id,version_id) REFERENCES pf.mcp_connector_version(space_id,owner_user_id,capability_id,version_id),
+ FOREIGN KEY (space_id,owner_user_id,capability_id,result_version_id) REFERENCES pf.mcp_connector_version(space_id,owner_user_id,capability_id,version_id),
+ CHECK ((action='ENABLE' AND version_id IS NOT NULL AND result_version_id IS NOT NULL AND result_version_id=version_id)
+     OR (action='DISABLE' AND version_id IS NULL AND result_version_id IS NULL))
+);
+CREATE TRIGGER mcp_activation_command_immutable BEFORE UPDATE OR DELETE ON pf.mcp_activation_command
+ FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
 CREATE TABLE pf.mcp_connector_request (
  space_id uuid NOT NULL,
  owner_user_id uuid NOT NULL,
@@ -220,6 +251,7 @@ CREATE TABLE pf.mcp_probe (
  CHECK (state <> 'READY' OR result_version_id IS NOT NULL)
 );
 CREATE INDEX mcp_probe_work ON pf.mcp_probe(state,created_at);
+CREATE UNIQUE INDEX mcp_probe_result_version_unique ON pf.mcp_probe(space_id,result_version_id) WHERE result_version_id IS NOT NULL;
 CREATE TABLE pf.mcp_probe_outbox (
  id uuid PRIMARY KEY,
  space_id uuid NOT NULL,
@@ -456,6 +488,6 @@ CREATE TRIGGER capability_audit_immutable BEFORE UPDATE OR DELETE ON pf.capabili
 REVOKE ALL ON pf.capability, pf.capability_version, pf.skill_package_version, pf.skill_import,
  pf.skill_import_completion_request, pf.skill_import_reservation, pf.skill_import_outbox, pf.skill_import_inbox, pf.skill_import_quarantine, pf.capability_version_status,
  pf.connector_credential,pf.connector_credential_revocation,pf.mcp_connector_version,pf.mcp_connector_tool,
- pf.mcp_connector_configuration,pf.mcp_connector_request,pf.mcp_probe,pf.mcp_probe_outbox,pf.mcp_probe_inbox,pf.mcp_probe_quarantine,pf.capability_version_command,
+ pf.mcp_connector_configuration,pf.mcp_connector_activation,pf.mcp_activation_command,pf.mcp_connector_request,pf.mcp_probe,pf.mcp_probe_outbox,pf.mcp_probe_inbox,pf.mcp_probe_quarantine,pf.capability_version_command,
  pf.capability_binding_set, pf.capability_binding_selection, pf.capability_binding_request,
  pf.capability_binding_request_selection, pf.capability_audit FROM PUBLIC;

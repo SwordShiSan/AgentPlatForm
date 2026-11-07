@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.capability.McpVersionMapper">
+ <resultMap id="version" type="com.agentplatform.domain.capability.McpVersionRepository$Version">
+  <constructor><arg name="connectorId" column="capability_id" javaType="java.util.UUID"/><arg name="versionId" column="version_id" javaType="java.util.UUID"/>
+   <arg name="versionNumber" column="version_number" javaType="_long"/><arg name="state" column="state" javaType="java.lang.String"/>
+   <arg name="revision" column="revision" javaType="_long"/><arg name="endpoint" column="endpoint" javaType="java.lang.String"/>
+   <arg name="authKind" column="auth_kind" javaType="java.lang.String"/><arg name="credentialId" column="credential_id" javaType="java.util.UUID"/>
+   <arg name="credentialRevision" column="credential_revision" javaType="java.lang.Long"/><arg name="policyHash" column="policy_hash" javaType="java.lang.String"/>
+   <arg name="toolCount" column="tool_count" javaType="_int"/><arg name="sourceConfigurationRevision" column="configuration_revision" javaType="_long"/></constructor>
+ </resultMap>
+ <resultMap id="tool" type="com.agentplatform.domain.capability.McpVersionRepository$Tool">
+  <constructor><arg name="name" column="tool_name" javaType="java.lang.String"/><arg name="description" column="description" javaType="java.lang.String"/>
+   <arg name="schemaJson" column="schema_canonical" javaType="java.lang.String"/><arg name="schemaSha256" column="schema_hash" javaType="java.lang.String"/></constructor>
+ </resultMap>
+ <resultMap id="activation" type="com.agentplatform.domain.capability.McpVersionRepository$Activation">
+  <constructor><arg name="revision" column="revision" javaType="_long"/><arg name="enabledVersionId" column="enabled_version_id" javaType="java.util.UUID"/></constructor>
+ </resultMap>
+ <resultMap id="command" type="com.agentplatform.domain.capability.McpVersionRepository$Command">
+  <constructor><arg name="connectorId" column="capability_id" javaType="java.util.UUID"/><arg name="action" column="action" javaType="java.lang.String"/>
+   <arg name="versionId" column="version_id" javaType="java.util.UUID"/><arg name="expectedRevision" column="expected_revision" javaType="_long"/>
+   <arg name="resultRevision" column="result_revision" javaType="_long"/><arg name="resultVersionId" column="result_version_id" javaType="java.util.UUID"/></constructor>
+ </resultMap>
+ <sql id="joins">FROM pf.mcp_connector_version m JOIN pf.capability_version v ON v.space_id=m.space_id AND v.owner_user_id=m.owner_user_id
+  AND v.capability_id=m.capability_id AND v.id=m.version_id JOIN pf.capability_version_status s ON s.space_id=v.space_id
+  AND s.owner_user_id=v.owner_user_id AND s.capability_id=v.capability_id AND s.version_id=v.id JOIN pf.mcp_probe p
+  ON p.space_id=m.space_id AND p.owner_user_id=m.owner_user_id AND p.capability_id=m.capability_id AND p.result_version_id=m.version_id AND p.state='READY'</sql>
+ <sql id="columns">m.capability_id,m.version_id,v.version_number,s.state,s.revision,m.endpoint,m.auth_kind,m.credential_id,m.credential_revision,m.policy_hash,m.tool_count,p.configuration_revision</sql>
+ <select id="authorized" resultType="boolean">SELECT CASE WHEN pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}) THEN
+  EXISTS(SELECT 1 FROM pf.space WHERE id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND type='PERSONAL') ELSE false END</select>
+ <select id="lock" resultType="java.lang.Integer">SELECT 1 FROM pg_advisory_xact_lock(hashtextextended('r62:mcp-activation:'||CAST(#{actor.spaceId} AS text)||':'||CAST(#{actor.userId} AS text),0))</select>
+ <select id="exists" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.mcp_connector_configuration WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND capability_id=#{connector})</select>
+ <select id="list" resultMap="version">SELECT <include refid="columns"/> <include refid="joins"/>
+  WHERE m.space_id=#{actor.spaceId} AND m.owner_user_id=#{actor.userId} AND m.capability_id=#{connector}
+  <if test="before != null">AND v.version_number&lt;#{before}</if> ORDER BY v.version_number DESC LIMIT #{limit}</select>
+ <select id="find" resultMap="version">SELECT <include refid="columns"/> <include refid="joins"/>
+  WHERE m.space_id=#{actor.spaceId} AND m.owner_user_id=#{actor.userId} AND m.capability_id=#{connector} AND m.version_id=#{version}<if test="lock"> FOR UPDATE OF s</if></select>
+ <select id="tools" resultMap="tool">SELECT tool_name,description,schema_canonical,schema_hash FROM pf.mcp_connector_tool
+  WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND capability_id=#{connector} AND version_id=#{version} ORDER BY tool_name</select>
+ <select id="eligible" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.mcp_connector_configuration c
+  JOIN pf.mcp_connector_version m ON m.space_id=c.space_id AND m.owner_user_id=c.owner_user_id AND m.capability_id=c.capability_id
+  JOIN pf.mcp_probe p ON p.space_id=m.space_id AND p.owner_user_id=m.owner_user_id AND p.capability_id=m.capability_id AND p.result_version_id=m.version_id
+  WHERE c.space_id=#{actor.spaceId} AND c.owner_user_id=#{actor.userId} AND c.capability_id=#{version.connectorId} AND m.version_id=#{version.versionId}
+   AND p.state='READY' AND p.configuration_revision=c.revision AND m.policy_hash=#{policy}
+   AND (m.auth_kind='NONE' OR EXISTS(SELECT 1 FROM pf.connector_credential k WHERE k.space_id=m.space_id AND k.owner_user_id=m.owner_user_id
+    AND k.id=m.credential_id AND k.revision=m.credential_revision AND k.state='ACTIVE' FOR SHARE OF k)) FOR SHARE OF c)</select>
+ <select id="activation" resultMap="activation">SELECT revision,enabled_version_id FROM pf.mcp_connector_activation
+  WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND capability_id=#{connector}</select>
+ <insert id="initialize">INSERT INTO pf.mcp_connector_activation(space_id,owner_user_id,capability_id)
+  VALUES(#{actor.spaceId},#{actor.userId},#{connector}) ON CONFLICT DO NOTHING</insert>
+ <update id="publish">UPDATE pf.capability_version_status SET state='PUBLISHED',revision=revision+1,updated_at=clock_timestamp()
+  WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND capability_id=#{version.connectorId}
+   AND version_id=#{version.versionId} AND state='DRAFT' AND revision=#{version.revision}</update>
+ <update id="setActivation">UPDATE pf.mcp_connector_activation SET enabled_version_id=#{version,jdbcType=OTHER},revision=revision+1
+  WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND capability_id=#{connector} AND revision=#{expected}</update>
+ <select id="accepted" resultMap="command">SELECT capability_id,action,version_id,expected_revision,result_revision,result_version_id FROM pf.mcp_activation_command
+  WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND request_id=#{request}</select>
+ <insert id="record">INSERT INTO pf.mcp_activation_command(space_id,owner_user_id,request_id,capability_id,action,version_id,expected_revision,result_revision,result_version_id)
+  VALUES(#{actor.spaceId},#{actor.userId},#{request},#{command.connectorId},#{command.action},#{command.versionId,jdbcType=OTHER},#{command.expectedRevision},#{command.resultRevision},#{command.resultVersionId,jdbcType=OTHER})</insert>
+ <insert id="audit">INSERT INTO pf.capability_audit(id,space_id,owner_user_id,action,resource_id,trace_id)
+  VALUES(#{id},#{actor.spaceId},#{actor.userId},CASE WHEN #{command.action}='ENABLE' THEN 'CONNECTOR_ENABLED' ELSE 'CONNECTOR_DISABLED' END,#{command.connectorId},#{trace})</insert>
+</mapper>

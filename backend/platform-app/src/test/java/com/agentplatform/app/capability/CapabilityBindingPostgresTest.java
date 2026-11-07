@@ -17,6 +17,8 @@ import com.agentplatform.infrastructure.dao.capability.ConnectorCredentialMapper
 import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisConnectorCredentialRepository;
 import com.agentplatform.infrastructure.dao.capability.McpConnectorMapper;
 import com.agentplatform.infrastructure.dao.capability.McpProbeMapper;
+import com.agentplatform.infrastructure.dao.capability.McpVersionMapper;
+import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisMcpVersionRepository;
 import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisMcpConnectorRepository;
 import com.agentplatform.infrastructure.dao.typehandler.UuidTypeHandler;
 import com.zaxxer.hikari.HikariConfig;
@@ -45,6 +47,7 @@ class CapabilityBindingPostgresTest {
     SkillCatalogService catalog;
     ConnectorCredentialService connectorCredentials;
     McpConnectorService connectors;
+    McpVersionService mcpVersions;
     TransactionalMcpProbeRepository mcpWorker;
     Actor alice, bob;
     UUID capability, version, workspace;
@@ -84,6 +87,7 @@ class CapabilityBindingPostgresTest {
                 + "GRANT INSERT(id,space_id,owner_user_id,request_id,request_fingerprint,ciphertext,nonce,key_version,state) ON pf.connector_credential TO r62_api; "
                 + "GRANT UPDATE(state,revision) ON pf.connector_credential TO r62_api; GRANT SELECT,INSERT ON pf.connector_credential_revocation TO r62_api; "
                 + "GRANT SELECT,INSERT,UPDATE ON pf.mcp_connector_configuration TO r62_api; GRANT SELECT,INSERT ON pf.mcp_connector_request,pf.mcp_probe,pf.mcp_probe_outbox TO r62_api; "
+                + "GRANT SELECT,INSERT,UPDATE ON pf.mcp_connector_activation TO r62_api; GRANT SELECT,INSERT ON pf.mcp_activation_command TO r62_api; GRANT SELECT ON pf.mcp_connector_version,pf.mcp_connector_tool TO r62_api; "
                 + "GRANT UPDATE(state,updated_at) ON pf.capability_version_status TO r62_api; "
                 + "GRANT SELECT ON pf.capability_version_status TO r62_api; GRANT UPDATE(revision) ON pf.capability_version_status TO r62_api; "
                 + "CREATE ROLE r62_worker NOLOGIN; GRANT USAGE ON SCHEMA pf TO r62_worker; "
@@ -149,6 +153,8 @@ class CapabilityBindingPostgresTest {
                 new TransactionTemplate(new JdbcTransactionManager(apiPool)), mcpKey);
         java.util.Arrays.fill(mcpKey, (byte) 0);
         connectors = new McpConnectorService(new MyBatisMcpConnectorRepository(session.getMapper(McpConnectorMapper.class)),
+                new TransactionTemplate(new JdbcTransactionManager(apiPool)), "a".repeat(64));
+        mcpVersions = new McpVersionService(new MyBatisMcpVersionRepository(session.getMapper(McpVersionMapper.class)),
                 new TransactionTemplate(new JdbcTransactionManager(apiPool)), "a".repeat(64));
         var workerFactory = new SqlSessionFactoryBean(); workerFactory.setDataSource(workerPool);
         var workerConfiguration = new org.apache.ibatis.session.Configuration(); workerConfiguration.setMapUnderscoreToCamelCase(true);
@@ -383,6 +389,17 @@ class CapabilityBindingPostgresTest {
         String schema = "{\"type\":\"object\"}"; String schemaHash = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(schema.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
         mcpWorker.ready(command, List.of(new com.agentplatform.domain.capability.McpProbeRepository.Tool("fixture", "test", schema, schemaHash)));
         assertEquals("READY", connectors.probe(alice, probe.id()).state());
+        UUID discovered = connectors.probe(alice, probe.id()).resultVersionId();
+        assertEquals(1, mcpVersions.get(alice, config.id(), discovered).tools().size());
+        UUID enable = UUID.randomUUID();
+        assertEquals(1, mcpVersions.change(alice, config.id(), discovered, 0, enable, trace).revision());
+        assertEquals(1, mcpVersions.change(alice, config.id(), discovered, 0, enable, trace).revision());
+        var selection = new Selection(config.id(), discovered);
+        service.replace(alice, null, 0, false, List.of(selection));
+        assertTrue(service.effective(alice, null).unavailable().isEmpty());
+        assertEquals(2, mcpVersions.change(alice, config.id(), null, 1, UUID.randomUUID(), trace).revision());
+        assertTrue(service.effective(alice, null).unavailable().contains(selection));
+        assertThrows(com.agentplatform.domain.files.FileFailure.class, () -> mcpVersions.current(bob, config.id()));
         try (var connection = DriverManager.getConnection(url, "postgres", password); var query = connection.createStatement();
              var rows = query.executeQuery("SELECT schema_canonical,schema_hash FROM pf.mcp_connector_tool WHERE capability_id='" + config.id() + "'")) {
             assertTrue(rows.next()); assertEquals(schema, rows.getString(1)); assertEquals(schemaHash, rows.getString(2));
