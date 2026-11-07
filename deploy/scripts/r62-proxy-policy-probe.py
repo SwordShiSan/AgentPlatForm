@@ -2,7 +2,9 @@
 from pathlib import Path
 import importlib.util
 import ipaddress
+import hashlib
 import json
+import os
 import secrets
 import subprocess
 import tempfile
@@ -13,6 +15,8 @@ DATA = ROOT / '.cache/r62-local/proxy-policy' / ('run-' + str(time.time_ns()))
 DOCKER = ['docker', '--context', 'desktop-linux']
 OPENSSL = Path('C:/Program Files/Git/mingw64/bin/openssl.exe')
 SQUID = 'ubuntu/squid@sha256:031d51a433928cf7476611f6138af85681ce4eec8568d1d9a4dcd28d16289c78'
+JAR = ROOT / 'backend/platform-app/target/platform-app-0.1.0-SNAPSHOT.jar'
+JDK = ROOT / '.tools/jdk-21.0.12.1/jdk-21.0.12.1+1/bin'
 
 def call(args, **kwargs): return subprocess.run([str(x) for x in args], check=True, capture_output=True, **kwargs)
 def module():
@@ -40,6 +44,12 @@ def main():
             root = Path(directory); cert = root / 'fixture.crt'; key = root / 'fixture.key'; config = root / 'squid.conf'
             call([OPENSSL, 'req', '-x509', '-newkey', 'rsa:2048', '-sha256', '-days', '1', '-nodes', '-keyout', key,
                   '-out', cert, '-subj', '/CN=fixture.invalid', '-addext', 'subjectAltName=DNS:fixture.invalid'], timeout=30)
+            trust = root / 'trust.jks'; env = dict(os.environ, R62_FIXTURE_STORE_PASSWORD=secrets.token_urlsafe(20))
+            call([JDK / 'keytool.exe', '-importcert', '-noprompt', '-alias', 'fixture', '-file', cert, '-keystore', trust,
+                  '-storetype', 'JKS', '-storepass:env', 'R62_FIXTURE_STORE_PASSWORD'], env=env, timeout=30)
+            classes = root / 'classes'; classes.mkdir()
+            classpath = os.pathsep.join([str(ROOT / 'backend/platform-infrastructure/target/classes'), str(ROOT / 'backend/platform-domain/target/classes')])
+            call([JDK / 'javac.exe', '-cp', classpath, '-d', classes, ROOT / 'deploy/probes/R62McpCandidateProbe.java'], timeout=45)
             text = module().render(worker_ip).replace('max_filedescriptors 1024\n',
                     'max_filedescriptors 1024\ndns_nameservers ' + dns_ip + '\npositive_dns_ttl 1 seconds\n')
             config.write_text(text, encoding='utf-8', newline='\n')
@@ -74,13 +84,26 @@ def main():
                 time.sleep(1)
             other = client(other_ip, '403')
             if other.returncode: raise RuntimeError('Other worker was not denied')
+            sdk = subprocess.run(DOCKER + ['run', '--rm', '--network', control, '--ip', worker_ip,
+                '--user', '10001:10001', '--memory', '512m', '--memory-swap', '512m', '--cap-drop', 'ALL',
+                '--security-opt', 'no-new-privileges:true', '--read-only', '--mount', 'type=bind,src=' + str(root) + ',dst=/fixture,readonly',
+                '--mount', 'type=bind,src=' + str(JAR) + ',dst=/app/platform.jar,readonly', '--entrypoint', 'java',
+                'maven:3.9.9-eclipse-temurin-21', '-Xms16m', '-Xmx128m', '-Dloader.path=/fixture/classes',
+                '-Dloader.main=R62McpCandidateProbe', '-cp', '/app/platform.jar',
+                'org.springframework.boot.loader.launch.PropertiesLauncher', proxy_ip, '/fixture/trust.jks'], capture_output=True, timeout=90)
+            if sdk.returncode or b'R62_CANDIDATE_DISCOVERY_PASS' not in sdk.stdout:
+                (DATA / 'sdk.private.log').write_bytes(sdk.stdout + sdk.stderr)
+                raise RuntimeError('Packaged SDK discovery did not pass; inspect protected log')
+            if b'deterministic-fixture-only' in sdk.stdout or b'deterministic-fixture-only' in sdk.stderr:
+                raise RuntimeError('Fixture secret leaked into SDK process output')
             (root / 'rebind').write_text('switch', encoding='utf-8'); time.sleep(3)
             changed = client(worker_ip, '403')
             if changed.returncode: raise RuntimeError('Private DNS destination was not denied')
             dnslog = call(DOCKER + ['logs', dns], timeout=20).stdout.decode(errors='replace')
             assert 'DNS_A_PUBLIC_FIXTURE' in dnslog and 'DNS_A_LOOPBACK' in dnslog
-            receipt = {'status': 'PASS', 'scope': 'generated ACL: authorized worker, other worker, DNS change and TLS',
-                'fixtureImage': image, 'squidImage': SQUID, 'notRun': ['deployed production configuration', 'SDK business call', 'all destination ranges']}
+            receipt = {'status': 'PASS', 'scope': 'generated ACL: packaged SDK discovery, authorized worker, other worker, DNS change and TLS',
+                'fixtureImage': image, 'squidImage': SQUID, 'jarSha256': hashlib.sha256(JAR.read_bytes()).hexdigest(),
+                'notRun': ['deployed production configuration', 'SDK business call', 'all destination ranges']}
             (DATA / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8'); print(json.dumps(receipt))
     except Exception as failure:
         (DATA / 'failure.txt').write_text(str(failure), encoding='utf-8')
