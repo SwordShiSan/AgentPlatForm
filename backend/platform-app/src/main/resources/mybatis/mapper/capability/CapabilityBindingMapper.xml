@@ -14,6 +14,14 @@
             <arg name="versionId" column="version_id" javaType="java.util.UUID"/>
         </constructor>
     </resultMap>
+    <resultMap id="request" type="com.agentplatform.infrastructure.dao.po.CapabilityBindingRequestRow">
+        <constructor>
+            <arg name="requestHash" column="request_hash" javaType="java.lang.String"/>
+            <arg name="setId" column="binding_set_id" javaType="java.util.UUID"/>
+            <arg name="revision" column="result_revision" javaType="_long"/>
+            <arg name="inheritPersonal" column="inherit_personal" javaType="_boolean"/>
+        </constructor>
+    </resultMap>
     <select id="authorized" resultType="boolean">
         SELECT CASE WHEN pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}) THEN
           EXISTS (SELECT 1 FROM pf.space s WHERE s.id=#{actor.spaceId}
@@ -60,4 +68,24 @@
           WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId}
             AND capability_id=#{selection.capabilityId} AND version_id=#{selection.versionId} AND state='PUBLISHED' FOR SHARE)
     </select>
+    <select id="accepted" resultMap="request">
+        SELECT request_hash,binding_set_id,result_revision,inherit_personal FROM pf.capability_binding_request
+        WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND request_id=#{requestId}
+    </select>
+    <select id="requestSelections" resultMap="selection">
+        SELECT capability_id,version_id FROM pf.capability_binding_request_selection
+        WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND request_id=#{requestId} ORDER BY capability_id
+    </select>
+    <insert id="recordRequest">
+        INSERT INTO pf.capability_binding_request(space_id,owner_user_id,request_id,request_hash,binding_set_id,result_revision,inherit_personal)
+        VALUES(#{actor.spaceId},#{actor.userId},#{requestId},#{hash},#{setId},#{revision},#{inherit})
+    </insert>
+    <insert id="recordSelection">
+        INSERT INTO pf.capability_binding_request_selection(space_id,owner_user_id,request_id,capability_id,version_id)
+        VALUES(#{actor.spaceId},#{actor.userId},#{requestId},#{selection.capabilityId},#{selection.versionId})
+    </insert>
+    <insert id="audit">
+        INSERT INTO pf.capability_audit(id,space_id,owner_user_id,action,resource_id,trace_id)
+        VALUES(#{id},#{actor.spaceId},#{actor.userId},'BINDINGS_REPLACED',#{setId},#{traceId})
+    </insert>
 </mapper>

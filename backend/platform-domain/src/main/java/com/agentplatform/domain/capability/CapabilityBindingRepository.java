@@ -10,6 +10,7 @@ public interface CapabilityBindingRepository {
                       List<CapabilityBindings.Selection> selections) {
         public BindingSet { selections = List.copyOf(selections); }
     }
+    record AcceptedRequest(String requestHash, BindingSet result) {}
 
     boolean authorized(Actor actor, UUID workspaceId);
     void lock(Actor actor, UUID workspaceId);
@@ -18,4 +19,6 @@ public interface CapabilityBindingRepository {
     boolean replace(Actor actor, UUID setId, long expectedRevision, boolean inheritPersonal,
                     List<CapabilityBindings.Selection> selections);
     boolean published(Actor actor, CapabilityBindings.Selection selection);
+    AcceptedRequest accepted(Actor actor, UUID requestId);
+    void recordAccepted(Actor actor, UUID requestId, String requestHash, BindingSet result, UUID traceId);
 }

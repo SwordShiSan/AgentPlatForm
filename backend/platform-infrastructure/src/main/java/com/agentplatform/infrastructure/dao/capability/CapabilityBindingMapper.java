@@ -20,4 +20,10 @@ public interface CapabilityBindingMapper {
     int clear(@Param("actor") Actor actor, @Param("setId") UUID setId);
     int add(@Param("actor") Actor actor, @Param("setId") UUID setId, @Param("selection") Selection selection);
     boolean published(@Param("actor") Actor actor, @Param("selection") Selection selection);
+    com.agentplatform.infrastructure.dao.po.CapabilityBindingRequestRow accepted(@Param("actor") Actor actor, @Param("requestId") UUID requestId);
+    List<Selection> requestSelections(@Param("actor") Actor actor, @Param("requestId") UUID requestId);
+    int recordRequest(@Param("actor") Actor actor, @Param("requestId") UUID requestId, @Param("hash") String hash,
+                      @Param("setId") UUID setId, @Param("revision") long revision, @Param("inherit") boolean inherit);
+    int recordSelection(@Param("actor") Actor actor, @Param("requestId") UUID requestId, @Param("selection") Selection selection);
+    int audit(@Param("actor") Actor actor, @Param("id") UUID id, @Param("setId") UUID setId, @Param("traceId") UUID traceId);
 }

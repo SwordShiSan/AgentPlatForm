@@ -55,6 +55,8 @@ class CapabilityBindingPostgresTest {
                 + "GRANT EXECUTE ON FUNCTION pf.authorize_workspace_actor(uuid,uuid) TO r62_api; "
                 + "GRANT SELECT,INSERT,UPDATE ON pf.capability_binding_set TO r62_api; "
                 + "GRANT SELECT,INSERT,DELETE ON pf.capability_binding_selection TO r62_api; "
+                + "GRANT SELECT,INSERT ON pf.capability_binding_request,pf.capability_binding_request_selection TO r62_api; "
+                + "GRANT INSERT ON pf.capability_audit TO r62_api; "
                 + "GRANT SELECT ON pf.capability_version_status TO r62_api; GRANT UPDATE(state) ON pf.capability_version_status TO r62_api");
     }
 
@@ -126,5 +128,17 @@ class CapabilityBindingPostgresTest {
         assertEquals(422, assertThrows(ChatFailure.class,
                 () -> service.replace(bob, null, 0, false, List.of(new Selection(capability, version)))).status());
         assertEquals(404, assertThrows(ChatFailure.class, () -> service.read(bob, workspace)).status());
+    }
+
+    @Test void lostResponseReturnsOriginalResultAndChangedRequestIsRejected() {
+        var selected = new Selection(capability, version);
+        var request = UUID.randomUUID(); var trace = UUID.randomUUID();
+        var first = service.replace(alice, null, 0, false, List.of(selected), request, trace);
+        service.replace(alice, null, first.revision(), false, List.of());
+        var replay = service.replace(alice, null, 0, false, List.of(selected), request, trace);
+        assertEquals(first, replay);
+        assertEquals(409, assertThrows(ChatFailure.class,
+                () -> service.replace(alice, null, 0, false, List.of(), request, trace)).status());
+        assertTrue(service.read(alice, null).selections().isEmpty());
     }
 }

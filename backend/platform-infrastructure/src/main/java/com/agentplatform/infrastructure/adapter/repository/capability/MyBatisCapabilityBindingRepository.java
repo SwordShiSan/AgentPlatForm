@@ -24,4 +24,14 @@ public final class MyBatisCapabilityBindingRepository implements CapabilityBindi
         return true;
     }
     @Override public boolean published(Actor actor, Selection selection) { return mapper.published(actor, selection); }
+    @Override public AcceptedRequest accepted(Actor actor, UUID requestId) {
+        var row = mapper.accepted(actor, requestId);
+        return row == null ? null : new AcceptedRequest(row.requestHash(), new BindingSet(row.setId(), row.revision(),
+                row.inheritPersonal(), mapper.requestSelections(actor, requestId)));
+    }
+    @Override public void recordAccepted(Actor actor, UUID requestId, String requestHash, BindingSet result, UUID traceId) {
+        mapper.recordRequest(actor, requestId, requestHash, result.id(), result.revision(), result.inheritPersonal());
+        for (Selection selection : result.selections()) mapper.recordSelection(actor, requestId, selection);
+        mapper.audit(actor, UUID.randomUUID(), result.id(), traceId);
+    }
 }

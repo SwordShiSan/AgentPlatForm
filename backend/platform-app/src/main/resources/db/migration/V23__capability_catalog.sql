@@ -161,6 +161,52 @@ CREATE TABLE pf.capability_binding_selection (
    REFERENCES pf.capability_version(space_id,owner_user_id,capability_id,id)
 );
 
+-- A retry resolves the already accepted result without reapplying a change or relying on the current revision.
+CREATE TABLE pf.capability_binding_request (
+ space_id uuid NOT NULL,
+ owner_user_id uuid NOT NULL,
+ request_id uuid NOT NULL,
+ request_hash varchar(64) NOT NULL CHECK (request_hash ~ '^[a-f0-9]{64}$'),
+ binding_set_id uuid NOT NULL,
+ result_revision bigint NOT NULL CHECK (result_revision > 0),
+ inherit_personal boolean NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ PRIMARY KEY (space_id,owner_user_id,request_id),
+ FOREIGN KEY (space_id,owner_user_id,binding_set_id)
+   REFERENCES pf.capability_binding_set(space_id,owner_user_id,id)
+);
+CREATE TABLE pf.capability_binding_request_selection (
+ space_id uuid NOT NULL,
+ owner_user_id uuid NOT NULL,
+ request_id uuid NOT NULL,
+ capability_id uuid NOT NULL,
+ version_id uuid NOT NULL,
+ PRIMARY KEY (space_id,owner_user_id,request_id,capability_id),
+ FOREIGN KEY (space_id,owner_user_id,request_id)
+   REFERENCES pf.capability_binding_request(space_id,owner_user_id,request_id),
+ FOREIGN KEY (space_id,owner_user_id,capability_id,version_id)
+   REFERENCES pf.capability_version(space_id,owner_user_id,capability_id,id)
+);
+CREATE TRIGGER capability_binding_request_immutable BEFORE UPDATE OR DELETE ON pf.capability_binding_request
+ FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
+CREATE TRIGGER capability_binding_request_selection_immutable BEFORE UPDATE OR DELETE ON pf.capability_binding_request_selection
+ FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
+
+CREATE TABLE pf.capability_audit (
+ id uuid PRIMARY KEY,
+ space_id uuid NOT NULL,
+ owner_user_id uuid NOT NULL,
+ action text NOT NULL CHECK (action IN ('BINDINGS_REPLACED','SKILL_IMPORTED','SKILL_PUBLISHED','SKILL_REVOKED',
+   'CONNECTOR_CREATED','CONNECTOR_TESTED','CONNECTOR_ENABLED','CONNECTOR_DISABLED','CREDENTIAL_CHANGED')),
+ resource_id uuid NOT NULL,
+ trace_id uuid NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ FOREIGN KEY (space_id,owner_user_id) REFERENCES pf.membership(space_id,user_id)
+);
+CREATE TRIGGER capability_audit_immutable BEFORE UPDATE OR DELETE ON pf.capability_audit
+ FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
+
 REVOKE ALL ON pf.capability, pf.capability_version, pf.skill_package_version, pf.skill_import,
  pf.skill_import_reservation, pf.skill_import_outbox, pf.skill_import_inbox, pf.capability_version_status,
- pf.capability_binding_set, pf.capability_binding_selection FROM PUBLIC;
+ pf.capability_binding_set, pf.capability_binding_selection, pf.capability_binding_request,
+ pf.capability_binding_request_selection, pf.capability_audit FROM PUBLIC;
