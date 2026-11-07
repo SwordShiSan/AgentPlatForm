@@ -416,6 +416,69 @@ class CapabilityBindingPostgresTest {
         assertThrows(com.agentplatform.domain.files.FileFailure.class, () -> mcpWorker.ready(command, List.of()));
     }
 
+    @Test void realBrokerAndObjectStoreCreateOneSkillVersion(@org.junit.jupiter.api.io.TempDir Path temporary) throws Exception {
+        Assumptions.assumeTrue("1".equals(System.getenv("R62_INTEGRATED_ACCEPTANCE")), "R62 PG/MQ/S3 integration NOT_RUN");
+        int s3Port = Integer.parseInt(System.getenv("R62_S3_PORT"));
+        int mqPort = Integer.parseInt(System.getenv("R62_AMQP_PORT"));
+        String mqPassword = Files.readString(Path.of(System.getenv("R62_AMQP_PASSWORD_FILE"))).strip();
+        var provider = software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(
+                software.amazon.awssdk.auth.credentials.AwsBasicCredentials.create("fixture", "fixture"));
+        try (var s3 = com.agentplatform.infrastructure.storage.S3Clients.create(java.net.URI.create("http://127.0.0.1:" + s3Port), provider)) {
+            String bucket = "r62-" + UUID.randomUUID().toString().replace("-", "");
+            s3.createBucket(b -> b.bucket(bucket));
+            var assets = new com.agentplatform.infrastructure.storage.S3AssetStore(s3, bucket);
+            var bytes = new java.io.ByteArrayOutputStream();
+            try (var zip = new java.util.zip.ZipOutputStream(bytes)) {
+                zip.putNextEntry(new java.util.zip.ZipEntry("SKILL.md"));
+                zip.write("---\nname: fixture-skill\ndescription: Deterministic fixture\n---\n\nFixture instructions.\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                zip.closeEntry();
+            }
+            byte[] archive = bytes.toByteArray();
+            String hash = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(archive));
+            var actor = new com.agentplatform.domain.capability.SkillImportRepository.Actor(alice.userId(), alice.spaceId());
+            var service = new SkillImportService(imports, assets);
+            var upload = service.create(actor, UUID.randomUUID(), null, archive.length, hash);
+            service.transfer(actor, upload.id(), archive.length, new java.io.ByteArrayInputStream(archive));
+            service.complete(actor, upload.id(), UUID.randomUUID());
+            var connection = new org.springframework.amqp.rabbit.connection.CachingConnectionFactory("127.0.0.1", mqPort);
+            connection.setUsername("r62fixture"); connection.setPassword(mqPassword);
+            connection.setPublisherConfirmType(org.springframework.amqp.rabbit.connection.CachingConnectionFactory.ConfirmType.CORRELATED);
+            connection.setPublisherReturns(true);
+            var admin = new org.springframework.amqp.rabbit.core.RabbitAdmin(connection);
+            var exchange = new org.springframework.amqp.core.DirectExchange(com.agentplatform.infrastructure.capability.SpringSkillMessaging.EXCHANGE, true, false);
+            var queue = org.springframework.amqp.core.QueueBuilder.durable(com.agentplatform.infrastructure.capability.SpringSkillMessaging.QUEUE).quorum().build();
+            admin.declareExchange(exchange); admin.declareQueue(queue);
+            admin.declareBinding(org.springframework.amqp.core.BindingBuilder.bind(queue).to(exchange).with(com.agentplatform.infrastructure.capability.SpringSkillMessaging.ROUTE));
+            var timers = java.util.concurrent.Executors.newScheduledThreadPool(2);
+            var completed = new java.util.concurrent.CountDownLatch(1); var duplicate = new java.util.concurrent.CountDownLatch(1);
+            var calls = new java.util.concurrent.atomic.AtomicInteger();
+            var observed = new com.agentplatform.domain.capability.SkillValidationRepository() {
+                public void guard(Command c) { worker.guard(c); }
+                public void draft(Command c, Manifest m) { worker.draft(c, m); }
+                public void rejected(Command c, String reason) { worker.rejected(c, reason); }
+                public void unknown(Command c, String reason) { worker.unknown(c, reason); }
+                public Publication nextPublication(UUID owner) { return worker.nextPublication(owner); }
+                public void published(Publication p) { worker.published(p); }
+                public Command claim(Publication p, UUID owner) { var command = worker.claim(p, owner); if (command == null) duplicate.countDown(); return command; }
+                public void quarantine(UUID id, String hash) { worker.quarantine(id, hash); }
+            };
+            try (var messaging = new com.agentplatform.infrastructure.capability.SpringSkillMessaging(connection, observed)) {
+                var execution = new SkillValidationExecution(worker, new SkillValidationService(worker, assets,
+                        new com.agentplatform.infrastructure.capability.SkillArchiveValidator(), temporary), timers);
+                messaging.start(command -> { calls.incrementAndGet(); try { execution.run(command); } finally { completed.countDown(); } });
+                var publication = worker.nextPublication(UUID.randomUUID()); assertNotNull(publication);
+                messaging.publish(publication); worker.published(publication);
+                assertTrue(completed.await(40, java.util.concurrent.TimeUnit.SECONDS), "worker must process the durable handoff");
+                assertEquals("DRAFT", imports.find(actor, upload.id()).state());
+                assertEquals("DRAFT", versions.get(alice, upload.capabilityId(), upload.versionId()).state());
+                messaging.publish(publication);
+                assertTrue(duplicate.await(20, java.util.concurrent.TimeUnit.SECONDS), "duplicate delivery must reach the durable inbox check");
+                assertEquals(1, calls.get(), "duplicate handoff must not run validation twice");
+                assertEquals(hash, assets.inspect(upload.objectKey()).sha256());
+            } finally { timers.shutdownNow(); connection.destroy(); }
+        }
+    }
+
     @Test void revokedCredentialStopsProbeBeforeDiscovery() {
         UUID trace = UUID.randomUUID(); UUID createRequest = UUID.randomUUID();
         var credential = connectorCredentials.create(alice, createRequest, "fixture-secret", trace);

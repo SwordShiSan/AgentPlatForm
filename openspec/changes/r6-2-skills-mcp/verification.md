@@ -7,6 +7,8 @@
 - 能力绑定纯领域测试 2 项 PASS。Skill ZIP 校验的定向测试 6 项 PASS，包含链接、Unix 扩展链接及文件数量边界；导入持久链路已实现，真实 PG／MQ／S3 端到端仍未验收，不能视为完整包安全验收。
 - 基于隔离 PostgreSQL 的 V22→V23、连接器发现版本启用／停用、幂等及跨用户拒绝定向回归 PASS（源码工作树内容绑定在本地验收记录）。真实出口、远程服务及界面仍须分别验收。
 - `McpProbeExecutionTest` 验证探测本地期限到达后记录 UNKNOWN、原调用未退出时不释放消费者、迟到结果不发布，定向 PASS；这不是远端调用停止证明，也不替代真实代理和连接异常验收。
+- 独立 PG／RabbitMQ／SeaweedFS 联合 Skill 导入实验：通过实际对象上传、confirm／领取／ACK、归档校验和 DRAFT 入库，PASS；证据 `.cache/r62-local/integrated/run-1794038456173729200` 与相应 PostgreSQL 输入哈希记录。该次发送了重复消息但未证明其已到达 inbox，重复投递断言需重新验证。首次尝试因测试对象存储默认卷增长耗尽测试卷失败，保留 `.cache/r62-local/integrated/run-1794038136929286700`；按已有低配卷增长经验修正夹具后通过。此结果不覆盖真实 API／浏览器、所有故障窗口或 MCP。
+- 加入真实 inbox 到达确认后重跑：第二条消息确实进入持久领取检查且未再次执行，PG／MQ／S3 闭环 PASS，证据 `.cache/r62-local/integrated/run-1794038701480273500`。该实验使用独立回环依赖和实际存储适配器，不代表生产受控出口或 runner 验收。
 - 官方维护的 `ubuntu/squid:7.2-26.04_beta` 查询未找到；`7.2-26.04_edge` 的 linux/amd64 manifest 已固定并拉取，无网络容器中执行二进制报告 7.7，而 tag／OCI label 报告 7.2。实验身份见 `deploy/config/r62-squid-image.json`；受控出口功能、DNS／实际目标验证仍 NOT_RUN。
 - `AgentScopeMcpCompatibilityTest` 在独立回环 Tomcat 使用官方 SDK Streamable HTTP 服务，发现工具时调用计数为0，显式调用后计数为1，PASS；该探针是明文回环，仅证明 SDK 兼容，不代表 TLS、受控出口或平台账本通过。测试停止时 Tomcat 对 Reactor 共享线程发出清理提示，退出码0；持续资源释放仍需后续受限环境观察。
 - SDK 可用性对照增加不可达代理检查：配置的 HTTP 客户端自定义器被调用，代理不可用时初始化失败而不直连，之后正常回环发现与调用仍 PASS；这不替代真实代理／TLS 联合实验。

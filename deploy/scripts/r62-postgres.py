@@ -43,13 +43,17 @@ def main():
         def inputs():
             return {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in sorted(set(tracked) - {''}) if (ROOT / name).is_file()}
         before = inputs()
-        result = subprocess.run([str(ROOT / 'backend' / 'mvnw.cmd'), '-Dtest=CapabilityBindingPostgresTest,SkillImportControllerTest,SkillImportServiceTest,SkillValidationServiceTest,SkillArchiveValidatorTest,ConnectorCredentialCipherTest,ConnectorCredentialConfigurationTest,ConnectorCredentialControllerTest',
+        selection = ('CapabilityBindingPostgresTest#realBrokerAndObjectStoreCreateOneSkillVersion'
+                     if os.environ.get('R62_INTEGRATED_ACCEPTANCE') == '1' else
+                     'CapabilityBindingPostgresTest,SkillImportControllerTest,SkillImportServiceTest,SkillValidationServiceTest,SkillArchiveValidatorTest,ConnectorCredentialCipherTest,ConnectorCredentialConfigurationTest,ConnectorCredentialControllerTest')
+        result = subprocess.run([str(ROOT / 'backend' / 'mvnw.cmd'), '-Dtest=' + selection,
                                  '-Dsurefire.failIfNoSpecifiedTests=false', 'test'], cwd=ROOT / 'backend',
                                 env=env, capture_output=True, timeout=300)
         (DATA / 'maven.log').write_bytes(result.stdout + result.stderr)
         unchanged = before == inputs()
         receipt = {'status': 'PASS' if result.returncode == 0 and unchanged else 'FAIL', 'exitCode': result.returncode,
-                   'scope': 'V22-to-V23 migration; binding, import, connector credential and probe transactions; failed local proxy through SDK; targeted unit tests; no real MQ or S3',
+                   'scope': ('isolated PG/MQ/S3 Skill import pipeline' if os.environ.get('R62_INTEGRATED_ACCEPTANCE') == '1' else
+                             'V22-to-V23 migration; binding, import, connector credential and probe transactions; failed local proxy through SDK; targeted unit tests; no real MQ or S3'),
                    'source': run(['git', 'rev-parse', 'HEAD'], cwd=ROOT).stdout.decode().strip(),
                    'workingTreeClean': not bool(run(['git', 'status', '--porcelain'], cwd=ROOT).stdout.strip()), 'inputUnchanged': unchanged}
         (DATA / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
