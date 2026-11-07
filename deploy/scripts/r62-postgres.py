@@ -39,11 +39,15 @@ def main():
             raise RuntimeError('Isolated PostgreSQL not ready')
         env = dict(os.environ, R62_TEST_JDBC_URL='jdbc:postgresql://127.0.0.1:' + str(port) + '/r62_test?sslmode=disable',
                    R62_TEST_PORT=str(port), R62_TEST_PASSWORD_FILE=str(password_file), R62_ACCEPTANCE='1')
+        if os.environ.get('R62_MCP_APPROVAL_ACCEPTANCE') == '1':
+            env.update(R43_TEST_JDBC_URL=env['R62_TEST_JDBC_URL'], R43_TEST_PASSWORD_FILE=str(password_file))
         tracked = run(['git', 'ls-files', '-c', '-o', '--exclude-standard', '-z', '--', 'backend'], cwd=ROOT).stdout.decode().split('\0')
         def inputs():
             return {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in sorted(set(tracked) - {''}) if (ROOT / name).is_file()}
         before = inputs()
-        selection = ('CapabilityBindingPostgresTest#realBrokerAndObjectStoreCreateOneSkillVersion'
+        selection = ('ApprovalPostgresTest#r62ProtectedMcpFixtureRunsOnlyAfterOriginalApproval'
+                     if os.environ.get('R62_MCP_APPROVAL_ACCEPTANCE') == '1' else
+                     'CapabilityBindingPostgresTest#realBrokerAndObjectStoreCreateOneSkillVersion'
                      if os.environ.get('R62_INTEGRATED_ACCEPTANCE') == '1' else
                      'CapabilityBindingPostgresTest,SkillImportControllerTest,SkillImportServiceTest,SkillValidationServiceTest,SkillArchiveValidatorTest,ConnectorCredentialCipherTest,ConnectorCredentialConfigurationTest,ConnectorCredentialControllerTest')
         result = subprocess.run([str(ROOT / 'backend' / 'mvnw.cmd'), '-Dtest=' + selection,
@@ -52,7 +56,9 @@ def main():
         (DATA / 'maven.log').write_bytes(result.stdout + result.stderr)
         unchanged = before == inputs()
         receipt = {'status': 'PASS' if result.returncode == 0 and unchanged else 'FAIL', 'exitCode': result.returncode,
-                   'scope': ('isolated PG/MQ/S3 Skill import pipeline' if os.environ.get('R62_INTEGRATED_ACCEPTANCE') == '1' else
+                   'scope': ('isolated PostgreSQL, approval ledger and loopback SDK MCP fixture; no actual MQ or controlled proxy'
+                             if os.environ.get('R62_MCP_APPROVAL_ACCEPTANCE') == '1' else
+                             'isolated PG/MQ/S3 Skill import pipeline' if os.environ.get('R62_INTEGRATED_ACCEPTANCE') == '1' else
                              'V22-to-V23 migration; binding, import, connector credential and probe transactions; failed local proxy through SDK; targeted unit tests; no real MQ or S3'),
                    'source': run(['git', 'rev-parse', 'HEAD'], cwd=ROOT).stdout.decode().strip(),
                    'workingTreeClean': not bool(run(['git', 'status', '--porcelain'], cwd=ROOT).stdout.strip()), 'inputUnchanged': unchanged}
