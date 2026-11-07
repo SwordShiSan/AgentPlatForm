@@ -26,7 +26,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 /** Exercises actual migration, mapper and versioned transactions on an isolated database. */
 class CapabilityBindingPostgresTest {
     static String url, password;
-    HikariDataSource pool;
+    HikariDataSource pool, apiPool;
     CapabilityBindingService service;
     Actor alice, bob;
     UUID capability, version, workspace;
@@ -50,6 +50,12 @@ class CapabilityBindingPostgresTest {
                 .schemas("pf", "pf_runtime").target("22").load();
         old.migrate(); assertEquals("22", old.info().current().getVersion().toString());
         base.migrate(); base.validate(); assertEquals("23", base.info().current().getVersion().toString());
+        sql("CREATE ROLE r62_api NOLOGIN; GRANT USAGE ON SCHEMA pf TO r62_api; "
+                + "GRANT SELECT ON pf.space,pf.workspace TO r62_api; GRANT UPDATE(version) ON pf.workspace TO r62_api; "
+                + "GRANT EXECUTE ON FUNCTION pf.authorize_workspace_actor(uuid,uuid) TO r62_api; "
+                + "GRANT SELECT,INSERT,UPDATE ON pf.capability_binding_set TO r62_api; "
+                + "GRANT SELECT,INSERT,DELETE ON pf.capability_binding_selection TO r62_api; "
+                + "GRANT SELECT ON pf.capability_version_status TO r62_api; GRANT UPDATE(state) ON pf.capability_version_status TO r62_api");
     }
 
     @BeforeEach void setup() throws Exception {
@@ -57,6 +63,9 @@ class CapabilityBindingPostgresTest {
         var config = new HikariConfig(); config.setJdbcUrl(url); config.setUsername("postgres");
         config.setPassword(password); config.setMaximumPoolSize(4); config.setMinimumIdle(0);
         pool = new HikariDataSource(config);
+        var apiConfig = new HikariConfig(); apiConfig.setJdbcUrl(url); apiConfig.setUsername("postgres");
+        apiConfig.setPassword(password); apiConfig.setMaximumPoolSize(4); apiConfig.setMinimumIdle(0);
+        apiConfig.setConnectionInitSql("SET ROLE r62_api"); apiPool = new HikariDataSource(apiConfig);
         var identity = com.agentplatform.app.identity.IdentityPersistenceFixture.create(pool);
         UUID first = identity.provision(UUID.randomUUID(), "r62-" + UUID.randomUUID(),
                 "r62_" + UUID.randomUUID().toString().replace("-", ""), "fixture-only", true);
@@ -76,7 +85,7 @@ class CapabilityBindingPostgresTest {
                 + version + "','" + alice.spaceId() + "','" + first + "','" + capability + "',1,repeat('a',64));"
                 + "INSERT INTO pf.capability_version_status(space_id,owner_user_id,capability_id,version_id,state) VALUES('"
                 + alice.spaceId() + "','" + first + "','" + capability + "','" + version + "','PUBLISHED'); COMMIT");
-        var factory = new SqlSessionFactoryBean(); factory.setDataSource(pool);
+        var factory = new SqlSessionFactoryBean(); factory.setDataSource(apiPool);
         var configuration = new org.apache.ibatis.session.Configuration();
         configuration.setMapUnderscoreToCamelCase(true);
         configuration.setLocalCacheScope(org.apache.ibatis.session.LocalCacheScope.STATEMENT); configuration.setCacheEnabled(false);
@@ -84,10 +93,10 @@ class CapabilityBindingPostgresTest {
         factory.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:mybatis/mapper/**/*.xml"));
         var mapper = new SqlSessionTemplate(factory.getObject()).getMapper(CapabilityBindingMapper.class);
         service = new CapabilityBindingService(new MyBatisCapabilityBindingRepository(mapper),
-                new TransactionTemplate(new JdbcTransactionManager(pool)));
+                new TransactionTemplate(new JdbcTransactionManager(apiPool)));
     }
 
-    @AfterEach void close() { if (pool != null) pool.close(); }
+    @AfterEach void close() { if (apiPool != null) apiPool.close(); if (pool != null) pool.close(); }
 
     @Test void workspaceInheritsOrExplicitlyClearsAndStaleRevisionIsRejected() {
         var selected = new Selection(capability, version);
