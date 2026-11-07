@@ -68,7 +68,21 @@ INSERT INTO pf.asset_object(id,space_id,category,version_id,object_key,sha256,si
   repeat('a',64),10,'AVAILABLE','00000000-0000-0000-0000-000000000001');
 INSERT INTO pf.capability_binding_set(id,space_id,owner_user_id) VALUES
  ('40000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000002');
+INSERT INTO pf.capability(id,space_id,owner_user_id,kind) VALUES
+ ('20000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001','MCP');
+INSERT INTO pf.capability_version(id,space_id,owner_user_id,capability_id,version_number,content_hash) VALUES
+ ('30000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001','20000000-0000-0000-0000-000000000002',1,repeat('a',64));
+INSERT INTO pf.connector_credential(id,space_id,owner_user_id,ciphertext,nonce,key_version,state) VALUES
+ ('60000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001',decode('abcd','hex'),decode(repeat('00',12),'hex'),1,'ACTIVE');
+INSERT INTO pf.mcp_connector_version(space_id,owner_user_id,capability_id,version_id,endpoint,auth_kind,credential_id,credential_revision,protocol,policy_hash,tool_count,schemas_bytes) VALUES
+ ('10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001','20000000-0000-0000-0000-000000000002',
+ '30000000-0000-0000-0000-000000000002','https://example.com/mcp','BEARER','60000000-0000-0000-0000-000000000001',1,'STREAMABLE_HTTP',repeat('a',64),0,0);
+UPDATE pf.connector_credential SET state='REVOKED',revision=revision+1 WHERE id='60000000-0000-0000-0000-000000000001';
 DO $$ BEGIN
+ BEGIN
+  UPDATE pf.connector_credential SET state='ACTIVE',revision=revision+1 WHERE id='60000000-0000-0000-0000-000000000001';
+  RAISE EXCEPTION 'revoked credential reactivated';
+ EXCEPTION WHEN SQLSTATE '55000' THEN NULL; END;
  BEGIN
   INSERT INTO pf.skill_package_version(space_id,owner_user_id,capability_id,version_id,asset_id,
     archive_bytes,archive_sha256,expanded_bytes,file_count,name,description,manifest,dependency_manifest)

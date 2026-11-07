@@ -59,6 +59,78 @@ CREATE TABLE pf.skill_package_version (
 CREATE TRIGGER skill_package_version_immutable BEFORE UPDATE OR DELETE ON pf.skill_package_version
  FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
 
+-- Connector secrets are separate from model credentials and belong to one member of one space.
+CREATE TABLE pf.connector_credential (
+ id uuid PRIMARY KEY,
+ space_id uuid NOT NULL,
+ owner_user_id uuid NOT NULL,
+ ciphertext bytea NOT NULL,
+ nonce bytea NOT NULL CHECK (octet_length(nonce) = 12),
+ key_version integer NOT NULL CHECK (key_version > 0),
+ revision bigint NOT NULL DEFAULT 1 CHECK (revision > 0),
+ state text NOT NULL CHECK (state IN ('ACTIVE','REVOKED')),
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ UNIQUE (space_id,owner_user_id,id),
+ FOREIGN KEY (space_id,owner_user_id) REFERENCES pf.membership(space_id,user_id)
+);
+CREATE FUNCTION pf.guard_connector_credential_update() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NEW.id IS DISTINCT FROM OLD.id OR NEW.space_id IS DISTINCT FROM OLD.space_id
+    OR NEW.owner_user_id IS DISTINCT FROM OLD.owner_user_id OR NEW.ciphertext IS DISTINCT FROM OLD.ciphertext
+    OR NEW.nonce IS DISTINCT FROM OLD.nonce OR NEW.key_version IS DISTINCT FROM OLD.key_version
+    OR NEW.created_at IS DISTINCT FROM OLD.created_at OR OLD.state <> 'ACTIVE'
+    OR NEW.state <> 'REVOKED' OR NEW.revision <> OLD.revision + 1 THEN
+  RAISE EXCEPTION 'CONNECTOR_CREDENTIAL_IMMUTABLE' USING ERRCODE='55000';
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER connector_credential_revoke_only BEFORE UPDATE ON pf.connector_credential
+ FOR EACH ROW EXECUTE FUNCTION pf.guard_connector_credential_update();
+CREATE TRIGGER connector_credential_no_delete BEFORE DELETE ON pf.connector_credential
+ FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
+REVOKE ALL ON FUNCTION pf.guard_connector_credential_update() FROM PUBLIC;
+
+CREATE TABLE pf.mcp_connector_version (
+ space_id uuid NOT NULL,
+ owner_user_id uuid NOT NULL,
+ capability_id uuid NOT NULL,
+ version_id uuid NOT NULL,
+ endpoint text NOT NULL CHECK (octet_length(endpoint) BETWEEN 9 AND 4096),
+ auth_kind text NOT NULL CHECK (auth_kind IN ('NONE','BEARER','API_KEY')),
+ api_key_header text CHECK (api_key_header IN ('X-API-Key','api-key')),
+ credential_id uuid,
+ credential_revision bigint,
+ protocol text NOT NULL CHECK (protocol = 'STREAMABLE_HTTP'),
+ policy_hash varchar(64) NOT NULL CHECK (policy_hash ~ '^[a-f0-9]{64}$'),
+ tool_count integer NOT NULL CHECK (tool_count BETWEEN 0 AND 100),
+ schemas_bytes bigint NOT NULL CHECK (schemas_bytes BETWEEN 0 AND 1048576),
+ PRIMARY KEY (space_id,owner_user_id,capability_id,version_id),
+ FOREIGN KEY (space_id,owner_user_id,capability_id,version_id)
+   REFERENCES pf.capability_version(space_id,owner_user_id,capability_id,id),
+ FOREIGN KEY (space_id,owner_user_id,credential_id)
+   REFERENCES pf.connector_credential(space_id,owner_user_id,id),
+ CHECK ((auth_kind='NONE' AND credential_id IS NULL AND credential_revision IS NULL AND api_key_header IS NULL)
+     OR (auth_kind='BEARER' AND credential_id IS NOT NULL AND credential_revision IS NOT NULL AND api_key_header IS NULL)
+     OR (auth_kind='API_KEY' AND credential_id IS NOT NULL AND credential_revision IS NOT NULL AND api_key_header IS NOT NULL))
+);
+CREATE TRIGGER mcp_connector_version_immutable BEFORE UPDATE OR DELETE ON pf.mcp_connector_version
+ FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
+
+CREATE TABLE pf.mcp_connector_tool (
+ space_id uuid NOT NULL,
+ owner_user_id uuid NOT NULL,
+ capability_id uuid NOT NULL,
+ version_id uuid NOT NULL,
+ tool_name text NOT NULL CHECK (octet_length(tool_name) BETWEEN 1 AND 512),
+ input_schema jsonb NOT NULL CHECK (jsonb_typeof(input_schema) = 'object' AND octet_length(input_schema::text) <= 65536),
+ schema_hash varchar(64) NOT NULL CHECK (schema_hash ~ '^[a-f0-9]{64}$'),
+ PRIMARY KEY (space_id,owner_user_id,capability_id,version_id,tool_name),
+ FOREIGN KEY (space_id,owner_user_id,capability_id,version_id)
+   REFERENCES pf.mcp_connector_version(space_id,owner_user_id,capability_id,version_id)
+);
+CREATE TRIGGER mcp_connector_tool_immutable BEFORE UPDATE OR DELETE ON pf.mcp_connector_tool
+ FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
+
 CREATE TABLE pf.skill_import (
  id uuid PRIMARY KEY,
  space_id uuid NOT NULL,
@@ -208,5 +280,6 @@ CREATE TRIGGER capability_audit_immutable BEFORE UPDATE OR DELETE ON pf.capabili
 
 REVOKE ALL ON pf.capability, pf.capability_version, pf.skill_package_version, pf.skill_import,
  pf.skill_import_reservation, pf.skill_import_outbox, pf.skill_import_inbox, pf.capability_version_status,
+ pf.connector_credential,pf.mcp_connector_version,pf.mcp_connector_tool,
  pf.capability_binding_set, pf.capability_binding_selection, pf.capability_binding_request,
  pf.capability_binding_request_selection, pf.capability_audit FROM PUBLIC;
