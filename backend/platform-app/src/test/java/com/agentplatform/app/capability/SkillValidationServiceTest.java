@@ -76,4 +76,30 @@ class SkillValidationServiceTest {
         new SkillValidationService(broken, new Store(corrupt), new SkillArchiveValidator(), temp).validate(command(corrupt, hash(corrupt)));
         assertEquals("SKILL_ARCHIVE_INVALID", broken.rejected);
     }
+
+    @Test void selectedMaterialIsStreamedVerifiedAndCleanedUp() throws Exception {
+        byte[] bytes = archive("SKILL.md");
+        Path input = temp.resolve("input.zip"); java.nio.file.Files.write(input, bytes);
+        var validator = new SkillArchiveValidator(); var manifest = validator.validate(input);
+        var version = new com.agentplatform.domain.capability.CapabilityMaterialization.Version(UUID.randomUUID(), UUID.randomUUID(),
+                manifest.archiveSha256(), manifest.files().stream().map(file ->
+                new com.agentplatform.domain.capability.CapabilityMaterialization.File(file.path(), file.bytes(), file.sha256())).toList());
+        var store = new Store(bytes); var guards = new java.util.concurrent.atomic.AtomicInteger();
+        var staging = new SkillMaterialStaging(store,
+                new com.agentplatform.infrastructure.capability.SkillMaterializationVerifier(validator), temp);
+        Path stagedPath;
+        try (var staged = staging.stage("server-selected-key", bytes.length, version, guards::incrementAndGet)) {
+            stagedPath = staged.archive(); assertTrue(java.nio.file.Files.exists(stagedPath));
+            assertTrue(store.closed); assertTrue(guards.get() >= 3);
+        }
+        assertFalse(java.nio.file.Files.exists(stagedPath));
+        var wrong = new com.agentplatform.domain.capability.CapabilityMaterialization.Version(version.capabilityId(),
+                version.versionId(), "0".repeat(64), version.files());
+        assertThrows(java.io.IOException.class, () -> staging.stage("server-selected-key", bytes.length, wrong, () -> {}));
+        var calls = new java.util.concurrent.atomic.AtomicInteger();
+        assertThrows(SecurityException.class, () -> staging.stage("server-selected-key", bytes.length, version, () -> {
+            if (calls.incrementAndGet() >= 2) throw new SecurityException("revoked");
+        }));
+        try (var files = java.nio.file.Files.list(temp)) { assertEquals(1, files.count()); }
+    }
 }
