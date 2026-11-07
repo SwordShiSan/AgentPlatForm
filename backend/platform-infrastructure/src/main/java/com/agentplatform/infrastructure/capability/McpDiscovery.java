@@ -32,6 +32,9 @@ public final class McpDiscovery {
         private static boolean validSecret(String value) {
             return value != null && !value.isBlank() && value.length() <= 8192 && value.indexOf('\r') < 0 && value.indexOf('\n') < 0;
         }
+        AuthKind kind() { return kind; }
+        String header() { return header; }
+        String secret() { return secret; }
     }
     public record Tool(String name, String description, String schemaJson, String schemaSha256) {
         @Override public String toString() { return "Tool[name=" + name + ", schemaSha256=" + schemaSha256 + "]"; }

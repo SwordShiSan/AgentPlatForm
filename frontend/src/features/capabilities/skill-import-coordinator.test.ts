@@ -34,4 +34,13 @@ describe('Skill import recovery', () => {
     await expect(continueSkillImport(requestState, new File(['abc'], 'skill.zip'), 'space', signal(), vi.fn())).rejects.toThrow('不一致');
     expect(transfer.transferSkillArchive).not.toHaveBeenCalled(); expect(request.POST).not.toHaveBeenCalled();
   });
+  it('does not restore an old request after the session is aborted', async () => {
+    let finish!: (value: unknown) => void;
+    request.GET.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const requestState = pending(); const controller = new AbortController(); const persist = vi.fn();
+    const result = skillImportStatus(requestState, 'space', controller.signal, persist);
+    controller.abort(); finish({ data: { id: 'original', state: 'DRAFT' } });
+    await expect(result).rejects.toMatchObject({ name: 'AbortError' });
+    expect(requestState.importId).toBeUndefined(); expect(persist).not.toHaveBeenCalled();
+  });
 });

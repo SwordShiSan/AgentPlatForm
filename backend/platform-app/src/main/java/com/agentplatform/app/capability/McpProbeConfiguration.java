@@ -1,7 +1,7 @@
 package com.agentplatform.app.capability;
 
 import com.agentplatform.domain.capability.McpProbeRepository;
-import com.agentplatform.infrastructure.capability.McpDiscovery;
+import com.agentplatform.infrastructure.capability.McpDiscoveryProcess;
 import com.agentplatform.infrastructure.capability.SpringMcpMessaging;
 import com.agentplatform.infrastructure.chat.CredentialCipher;
 import com.agentplatform.infrastructure.dao.capability.McpProbeMapper;
@@ -42,11 +42,13 @@ public class McpProbeConfiguration {
     }
     @Bean McpProbeExecution mcpProbeExecution(McpProbeRepository repository, @Qualifier("mcpProbeTimers") ThreadPoolTaskScheduler timers,
             @Value("${platform.mcp.egress-host}") String host, @Value("${platform.mcp.egress-port}") int port,
-            @Value("${platform.mcp.master-key-file}") String mcpFile, @Value("${platform.chat.master-key-file}") String modelFile) throws java.io.IOException {
+            @Value("${platform.mcp.master-key-file}") String mcpFile, @Value("${platform.chat.master-key-file}") String modelFile,
+            @Value("${platform.mcp.trust-store:}") String trustStore) throws java.io.IOException {
         if (host == null || host.isBlank() || port < 1 || port > 65535) throw new IllegalArgumentException("MCP_EGRESS_REQUIRED");
         byte[] key = IndependentMcpKeyLoader.load(mcpFile, modelFile);
-        try { return new McpProbeExecution(repository, new McpDiscovery(InetSocketAddress.createUnresolved(host, port)),
-                    new CredentialCipher(key), timers.getScheduledExecutor()); }
+        try { return new McpProbeExecution(repository, new McpDiscoveryProcess(InetSocketAddress.createUnresolved(host, port),
+                    trustStore.isBlank() ? null : java.nio.file.Path.of(trustStore))::discover,
+                    new CredentialCipher(key), timers.getScheduledExecutor(), Duration.ofSeconds(120)); }
         finally { Arrays.fill(key, (byte) 0); }
     }
     @Bean SmartLifecycle mcpProbeLifecycle(McpProbeRepository repository, SpringMcpMessaging messaging,
