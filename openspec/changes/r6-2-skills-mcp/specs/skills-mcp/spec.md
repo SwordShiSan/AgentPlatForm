@@ -37,6 +37,10 @@
 - **WHEN** 工具 schema 改变
 - **THEN** 创建待确认新版本而不改变现有绑定
 
+#### Scenario: Remote discovery response exceeds available memory or deadline
+- **WHEN** 远端发现响应过大、子进程异常退出或期限内无法确认停止
+- **THEN** 主工作进程不发布该版本，保留原探测待核对且不自动重放；密钥不进入命令参数、日志或证据
+
 #### Scenario: Call outcome is unknown
 - **WHEN** 受保护调用已发出但结果不明
 - **THEN** 保存 UNKNOWN 并禁止自动重放
