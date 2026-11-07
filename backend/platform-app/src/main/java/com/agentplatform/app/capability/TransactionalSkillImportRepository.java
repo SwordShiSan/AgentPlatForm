@@ -50,6 +50,7 @@ public final class TransactionalSkillImportRepository implements SkillImportRepo
         });
     }
     @Override public Upload find(Actor actor, UUID id) { return tx(() -> { access(actor); return view(mapper.find(actor, id)); }); }
+    @Override public Upload findRequest(Actor actor, UUID requestId) { return tx(() -> { access(actor); return view(mapper.findRequest(actor, requestId)); }); }
     @Override public Upload beginTransfer(Actor actor, UUID id, UUID owner) {
         return tx(() -> { access(actor); if (mapper.begin(actor, id, owner) != 1) throw new FileFailure(409, "SKILL_IMPORT_NOT_UPLOADABLE");
             return view(mapper.find(actor, id)); });

@@ -27,6 +27,10 @@ public final class SkillImportController {
     @GetMapping("/{id}") ResponseEntity<SkillImportApi.View> get(HttpServletRequest request, @PathVariable("id") String id) {
         return ResponseEntity.ok().header("Cache-Control", "no-store").body(service.get(RequestIdentity.caller(request), id));
     }
+    @GetMapping("/requests/{requestId}") ResponseEntity<SkillImportApi.View> request(HttpServletRequest request,
+            @PathVariable("requestId") String requestId) {
+        return ResponseEntity.ok().header("Cache-Control", "no-store").body(service.request(RequestIdentity.caller(request), requestId));
+    }
     @PutMapping(value = "/{id}/content", consumes = "application/octet-stream")
     ResponseEntity<SkillImportApi.View> transfer(HttpServletRequest request, @PathVariable("id") String id) throws IOException {
         long length = request.getContentLengthLong();

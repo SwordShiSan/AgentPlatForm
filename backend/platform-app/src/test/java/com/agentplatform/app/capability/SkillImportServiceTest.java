@@ -20,6 +20,7 @@ class SkillImportServiceTest {
         private Upload row() { return new Upload(id, capability, version, asset, state, 3, hash, "private", 1); }
         @Override public Upload create(Actor a, UUID requestId, String requestHash, UUID capability, long bytes, String sha) { throw new UnsupportedOperationException(); }
         @Override public Upload find(Actor a, UUID id) { return row(); }
+        @Override public Upload findRequest(Actor a, UUID request) { return row(); }
         @Override public Upload beginTransfer(Actor a, UUID id, UUID owner) { this.owner = owner; state = "UPLOADING"; return row(); }
         @Override public void guardTransfer(Actor a, UUID id, UUID owner) { assertEquals(this.owner, owner); guards++; }
         @Override public void verified(Actor a, UUID id, UUID owner) { state = "VERIFIED"; }

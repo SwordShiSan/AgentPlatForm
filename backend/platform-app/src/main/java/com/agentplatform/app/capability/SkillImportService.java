@@ -68,6 +68,9 @@ public final class SkillImportService implements com.agentplatform.api.capabilit
     @Override public View get(com.agentplatform.api.chat.ChatApi.Caller caller, String id) {
         return view(repository.find(actor(caller), uuid(id)));
     }
+    @Override public View request(com.agentplatform.api.chat.ChatApi.Caller caller, String requestId) {
+        return view(repository.findRequest(actor(caller), uuid(requestId)));
+    }
     @Override public View transfer(com.agentplatform.api.chat.ChatApi.Caller caller, String id, long length, InputStream stream) {
         return view(transfer(actor(caller), uuid(id), length, stream));
     }

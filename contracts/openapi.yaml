@@ -465,6 +465,20 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/SkillImport'}
         default: *a1
+  /api/v1/skills/imports/requests/{requestId}:
+    get:
+      operationId: skillImportByRequest
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: requestId, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Original import associated with an accepted request
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillImport'}
+        default: *a1
   /api/v1/skills/imports/{id}:
     get:
       operationId: skillImport

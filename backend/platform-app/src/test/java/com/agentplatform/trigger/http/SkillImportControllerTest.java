@@ -13,6 +13,7 @@ class SkillImportControllerTest {
         private View view(String state) { return new View("id", "capability", "version", state, 3, "hash", 1); }
         @Override public View create(ChatApi.Caller c, String key, Create body) { return view("CREATED"); }
         @Override public View get(ChatApi.Caller c, String id) { return view("CREATED"); }
+        @Override public View request(ChatApi.Caller c, String id) { return view("CREATED"); }
         @Override public View transfer(ChatApi.Caller c, String id, long length, InputStream stream) { assertEquals(3, length); return view("VERIFIED"); }
         @Override public View complete(ChatApi.Caller c, String id, String key) { return view("QUEUED"); }
     }

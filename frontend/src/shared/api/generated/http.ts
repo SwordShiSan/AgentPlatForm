@@ -361,6 +361,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/skills/imports/requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["skillImportByRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/skills/imports/{id}": {
         parameters: {
             query?: never;
@@ -3160,6 +3176,31 @@ export interface operations {
         responses: {
             /** @description Stable upload identity and reserved capacity */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillImport"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    skillImportByRequest: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Original import associated with an accepted request */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

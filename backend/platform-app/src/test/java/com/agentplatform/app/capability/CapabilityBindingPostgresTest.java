@@ -188,6 +188,9 @@ class CapabilityBindingPostgresTest {
         UUID request = UUID.randomUUID(); String hash = "a".repeat(64), sha = "b".repeat(64);
         var first = imports.create(actor, request, hash, null, 123, sha);
         assertEquals(first.id(), imports.create(actor, request, hash, null, 123, sha).id());
+        assertEquals(first.id(), imports.findRequest(actor, request).id());
+        assertEquals(404, assertThrows(com.agentplatform.domain.files.FileFailure.class,
+                () -> imports.findRequest(other, request)).status());
         assertEquals(409, assertThrows(com.agentplatform.domain.files.FileFailure.class,
                 () -> imports.create(actor, request, "c".repeat(64), null, 123, sha)).status());
         assertEquals(404, assertThrows(com.agentplatform.domain.files.FileFailure.class,

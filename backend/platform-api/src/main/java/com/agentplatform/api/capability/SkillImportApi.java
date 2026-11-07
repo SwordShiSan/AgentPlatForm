@@ -8,6 +8,7 @@ public interface SkillImportApi {
     record View(String id, String capabilityId, String versionId, String state, long sizeBytes, String sha256, long revision) {}
     View create(ChatApi.Caller caller, String requestId, Create create);
     View get(ChatApi.Caller caller, String id);
+    View request(ChatApi.Caller caller, String requestId);
     View transfer(ChatApi.Caller caller, String id, long length, InputStream stream);
     View complete(ChatApi.Caller caller, String id, String requestId);
 }
