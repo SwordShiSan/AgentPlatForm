@@ -13,6 +13,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /** Coordinates versioned binding changes; a workspace can explicitly inherit or select nothing. */
 public final class CapabilityBindingService {
+    public record Effective(CapabilityBindings.Source source, List<Selection> selections,
+                            List<Selection> unavailable) {
+        public Effective { selections = List.copyOf(selections); unavailable = List.copyOf(unavailable); }
+    }
     private final CapabilityBindingRepository repository;
     private final TransactionTemplate transactions;
 
@@ -25,6 +29,19 @@ public final class CapabilityBindingService {
         return transactions.execute(status -> {
             requireAccess(actor, workspaceId);
             return repository.find(actor, workspaceId);
+        });
+    }
+
+    /** Returns retained selections and separately identifies versions that are no longer usable. */
+    public Effective effective(Actor actor, UUID workspaceId) {
+        return transactions.execute(status -> {
+            requireAccess(actor, workspaceId);
+            BindingSet personal = repository.find(actor, null);
+            BindingSet workspace = workspaceId == null ? null : repository.find(actor, workspaceId);
+            var resolved = CapabilityBindings.resolve(personal == null ? List.of() : personal.selections(),
+                    workspace == null || workspace.inheritPersonal() ? null : workspace.selections());
+            var unavailable = resolved.selections().stream().filter(s -> !repository.published(actor, s)).toList();
+            return new Effective(resolved.source(), resolved.selections(), unavailable);
         });
     }
 

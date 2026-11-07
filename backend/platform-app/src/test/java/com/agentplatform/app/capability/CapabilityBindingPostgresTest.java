@@ -101,13 +101,25 @@ class CapabilityBindingPostgresTest {
     @Test void workspaceInheritsOrExplicitlyClearsAndStaleRevisionIsRejected() {
         var selected = new Selection(capability, version);
         assertEquals(List.of(selected), service.replace(alice, null, 0, false, List.of(selected)).selections());
+        assertEquals(List.of(selected), service.effective(alice, workspace).selections());
         var empty = service.replace(alice, workspace, 0, false, List.of());
         assertFalse(empty.inheritPersonal()); assertTrue(empty.selections().isEmpty());
+        assertTrue(service.effective(alice, workspace).selections().isEmpty());
         var inherited = service.replace(alice, workspace, empty.revision(), true, List.of());
         assertTrue(inherited.inheritPersonal());
+        assertEquals(List.of(selected), service.effective(alice, workspace).selections());
         assertEquals(412, assertThrows(ChatFailure.class,
                 () -> service.replace(alice, workspace, empty.revision(), false, List.of(selected))).status());
         assertTrue(service.read(alice, workspace).inheritPersonal());
+    }
+
+    @Test void revokedVersionRemainsSelectedButCannotBeNewlyBound() throws Exception {
+        var selected = new Selection(capability, version);
+        service.replace(alice, null, 0, false, List.of(selected));
+        sql("UPDATE pf.capability_version_status SET state='REVOKED',revision=revision+1 WHERE version_id='" + version + "'");
+        assertEquals(List.of(selected), service.effective(alice, workspace).unavailable());
+        assertEquals(422, assertThrows(ChatFailure.class,
+                () -> service.replace(alice, workspace, 0, false, List.of(selected))).status());
     }
 
     @Test void otherUserCannotBindVersionOrReadWorkspace() {
