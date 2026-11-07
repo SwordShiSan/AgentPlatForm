@@ -7,6 +7,7 @@ import com.agentplatform.domain.capability.CapabilityBindings.Selection;
 import com.agentplatform.domain.chat.ChatFailure;
 import com.agentplatform.infrastructure.adapter.repository.capability.MyBatisCapabilityBindingRepository;
 import com.agentplatform.infrastructure.dao.capability.CapabilityBindingMapper;
+import com.agentplatform.infrastructure.dao.capability.SkillImportMapper;
 import com.agentplatform.infrastructure.dao.typehandler.UuidTypeHandler;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -28,6 +29,7 @@ class CapabilityBindingPostgresTest {
     static String url, password;
     HikariDataSource pool, apiPool;
     CapabilityBindingService service;
+    TransactionalSkillImportRepository imports;
     Actor alice, bob;
     UUID capability, version, workspace;
 
@@ -57,6 +59,8 @@ class CapabilityBindingPostgresTest {
                 + "GRANT SELECT,INSERT,DELETE ON pf.capability_binding_selection TO r62_api; "
                 + "GRANT SELECT,INSERT ON pf.capability_binding_request,pf.capability_binding_request_selection TO r62_api; "
                 + "GRANT INSERT ON pf.capability_audit TO r62_api; "
+                + "GRANT SELECT,UPDATE ON pf.space_storage TO r62_api; GRANT SELECT ON pf.capability TO r62_api; GRANT UPDATE(kind) ON pf.capability TO r62_api; "
+                + "GRANT SELECT,INSERT,UPDATE ON pf.skill_import,pf.skill_import_reservation,pf.skill_import_outbox TO r62_api; "
                 + "GRANT SELECT ON pf.capability_version_status TO r62_api; GRANT UPDATE(revision) ON pf.capability_version_status TO r62_api");
     }
 
@@ -93,8 +97,11 @@ class CapabilityBindingPostgresTest {
         configuration.setLocalCacheScope(org.apache.ibatis.session.LocalCacheScope.STATEMENT); configuration.setCacheEnabled(false);
         configuration.getTypeHandlerRegistry().register(new UuidTypeHandler()); factory.setConfiguration(configuration);
         factory.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:mybatis/mapper/**/*.xml"));
-        var mapper = new SqlSessionTemplate(factory.getObject()).getMapper(CapabilityBindingMapper.class);
+        var session = new SqlSessionTemplate(factory.getObject());
+        var mapper = session.getMapper(CapabilityBindingMapper.class);
         service = new CapabilityBindingService(new MyBatisCapabilityBindingRepository(mapper),
+                new TransactionTemplate(new JdbcTransactionManager(apiPool)));
+        imports = new TransactionalSkillImportRepository(session.getMapper(SkillImportMapper.class),
                 new TransactionTemplate(new JdbcTransactionManager(apiPool)));
     }
 
@@ -141,5 +148,58 @@ class CapabilityBindingPostgresTest {
         assertEquals(409, assertThrows(ChatFailure.class,
                 () -> service.replace(alice, null, 0, false, List.of(), request, trace)).status());
         assertTrue(service.read(alice, null).selections().isEmpty());
+    }
+
+    @Test void importReservesOnceAndQueuesOnceWithAuthorizedOwner() throws Exception {
+        var actor = new com.agentplatform.domain.capability.SkillImportRepository.Actor(alice.userId(), alice.spaceId());
+        var other = new com.agentplatform.domain.capability.SkillImportRepository.Actor(bob.userId(), bob.spaceId());
+        UUID request = UUID.randomUUID(); String hash = "a".repeat(64), sha = "b".repeat(64);
+        var first = imports.create(actor, request, hash, null, 123, sha);
+        assertEquals(first.id(), imports.create(actor, request, hash, null, 123, sha).id());
+        assertEquals(409, assertThrows(com.agentplatform.domain.files.FileFailure.class,
+                () -> imports.create(actor, request, "c".repeat(64), null, 123, sha)).status());
+        assertEquals(404, assertThrows(com.agentplatform.domain.files.FileFailure.class,
+                () -> imports.find(other, first.id())).status());
+        UUID owner = UUID.randomUUID(); imports.beginTransfer(actor, first.id(), owner);
+        imports.guardTransfer(actor, first.id(), owner); imports.verified(actor, first.id(), owner);
+        assertEquals("QUEUED", imports.enqueue(actor, first.id()).state());
+        assertEquals("QUEUED", imports.enqueue(actor, first.id()).state());
+        try (var connection = DriverManager.getConnection(url, "postgres", password);
+             var query = connection.createStatement();
+             var rows = query.executeQuery("SELECT reserved_bytes,(SELECT count(*) FROM pf.skill_import_outbox WHERE import_id='"
+                     + first.id() + "') FROM pf.space_storage WHERE space_id='" + alice.spaceId() + "'")) {
+            assertTrue(rows.next()); assertEquals(123, rows.getLong(1)); assertEquals(1, rows.getInt(2));
+        }
+    }
+
+    @Test void uncertainImportRetainsQuotaForReconciliation() throws Exception {
+        var actor = new com.agentplatform.domain.capability.SkillImportRepository.Actor(alice.userId(), alice.spaceId());
+        var row = imports.create(actor, UUID.randomUUID(), "a".repeat(64), null, 123, "b".repeat(64));
+        UUID owner = UUID.randomUUID(); imports.beginTransfer(actor, row.id(), owner);
+        imports.transferUnknown(actor, row.id(), owner);
+        assertEquals("BLOCKED", imports.find(actor, row.id()).state());
+        try (var connection = DriverManager.getConnection(url, "postgres", password);
+             var query = connection.createStatement();
+             var rows = query.executeQuery("SELECT s.reserved_bytes,r.state FROM pf.space_storage s JOIN pf.skill_import_reservation r ON r.space_id=s.space_id WHERE r.import_id='" + row.id() + "'")) {
+            assertTrue(rows.next()); assertEquals(123, rows.getLong(1)); assertEquals("RECONCILING", rows.getString(2));
+        }
+    }
+
+    @Test void concurrentImportsCannotOversellQuota() throws Exception {
+        sql("UPDATE pf.space_storage SET object_limit_bytes=100 WHERE space_id='" + alice.spaceId() + "'");
+        var actor = new com.agentplatform.domain.capability.SkillImportRepository.Actor(alice.userId(), alice.spaceId());
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try (var executor = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            var attempts = java.util.stream.IntStream.range(0, 2).mapToObj(i -> executor.submit(() -> {
+                start.await();
+                try { imports.create(actor, UUID.randomUUID(), "a".repeat(64), null, 70, "b".repeat(64)); return 200; }
+                catch (com.agentplatform.domain.files.FileFailure failure) { return failure.status(); }
+            })).toList();
+            start.countDown();
+            var results = new java.util.ArrayList<Integer>();
+            for (var attempt : attempts) results.add(attempt.get(30, java.util.concurrent.TimeUnit.SECONDS));
+            java.util.Collections.sort(results);
+            assertEquals(List.of(200, 422), results);
+        }
     }
 }

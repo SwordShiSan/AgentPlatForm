@@ -8,6 +8,10 @@ import com.agentplatform.domain.files.FileFailure;
 import java.io.InputStream;
 import java.util.Objects;
 import java.util.UUID;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 
 /** Streams one bounded archive to private storage; completion only queues validation. */
 public final class SkillImportService {
@@ -18,6 +22,17 @@ public final class SkillImportService {
     public SkillImportService(SkillImportRepository repository, AssetStore assets) {
         this.repository = Objects.requireNonNull(repository);
         this.assets = Objects.requireNonNull(assets);
+    }
+
+    public SkillImportRepository.Upload create(Actor actor, UUID requestId, UUID existingCapability, long bytes, String sha256) {
+        if (actor == null || requestId == null || bytes < 0 || bytes > MAX_ARCHIVE_BYTES
+                || sha256 == null || !sha256.matches("[a-f0-9]{64}")) throw new FileFailure(400, "INVALID_SKILL_ARCHIVE");
+        String content = "skill-import-v1\n" + (existingCapability == null ? "new" : existingCapability)
+                + "\n" + bytes + "\n" + sha256 + "\n";
+        try {
+            String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content.getBytes(StandardCharsets.UTF_8)));
+            return repository.create(actor, requestId, hash, existingCapability, bytes, sha256);
+        } catch (NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
     }
 
     public SkillImportRepository.Upload transfer(Actor actor, UUID id, long length, InputStream input) {

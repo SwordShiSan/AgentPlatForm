@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.capability.SkillImportMapper">
+    <resultMap id="upload" type="com.agentplatform.infrastructure.dao.po.SkillImportRow">
+        <constructor>
+            <arg name="id" column="id" javaType="java.util.UUID"/>
+            <arg name="targetCapabilityId" column="target_capability_id" javaType="java.util.UUID"/>
+            <arg name="targetVersionId" column="target_version_id" javaType="java.util.UUID"/>
+            <arg name="targetAssetId" column="target_asset_id" javaType="java.util.UUID"/>
+            <arg name="state" column="state" javaType="java.lang.String"/>
+            <arg name="declaredBytes" column="declared_bytes" javaType="_long"/>
+            <arg name="declaredSha256" column="declared_sha256" javaType="java.lang.String"/>
+            <arg name="stagingObjectKey" column="staging_object_key" javaType="java.lang.String"/>
+            <arg name="revision" column="revision" javaType="_long"/>
+            <arg name="requestHash" column="request_hash" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <sql id="columns">id,target_capability_id,target_version_id,target_asset_id,state,declared_bytes,declared_sha256,staging_object_key,revision,request_hash</sql>
+    <select id="authorized" resultType="boolean">
+        SELECT CASE WHEN pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}) THEN
+            EXISTS(SELECT 1 FROM pf.space WHERE id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND type='PERSONAL')
+          ELSE false END
+    </select>
+    <select id="lock" resultType="java.lang.Integer">
+        SELECT 1 FROM pg_advisory_xact_lock(hashtextextended('r62:skill-import:' || CAST(#{actor.spaceId} AS text),0))
+    </select>
+    <select id="lockQuota" resultType="java.util.UUID">
+        SELECT space_id FROM pf.space_storage WHERE space_id=#{actor.spaceId} FOR UPDATE
+    </select>
+    <select id="existingSkill" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM pf.capability WHERE id=#{capability} AND space_id=#{actor.spaceId}
+          AND owner_user_id=#{actor.userId} AND kind='SKILL' FOR SHARE)
+    </select>
+    <select id="find" resultMap="upload">
+        SELECT <include refid="columns"/> FROM pf.skill_import
+        WHERE id=#{id} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId}
+    </select>
+    <select id="findRequest" resultMap="upload">
+        SELECT <include refid="columns"/> FROM pf.skill_import
+        WHERE request_id=#{requestId} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId}
+    </select>
+    <update id="reserve">
+        UPDATE pf.space_storage SET reserved_bytes=reserved_bytes+#{bytes},version=version+1
+        WHERE space_id=#{actor.spaceId} AND status='ACTIVE' AND committed_bytes+reserved_bytes+#{bytes} &lt;= object_limit_bytes
+    </update>
+    <insert id="insert">
+        INSERT INTO pf.skill_import(id,space_id,owner_user_id,request_id,request_hash,state,declared_bytes,declared_sha256,
+          staging_object_key,target_capability_id,target_version_id,target_asset_id)
+        VALUES(#{id},#{actor.spaceId},#{actor.userId},#{requestId},#{requestHash},'CREATED',#{bytes},#{sha},
+          #{key},#{capability},#{version},#{asset})
+    </insert>
+    <insert id="reservation">
+        INSERT INTO pf.skill_import_reservation(import_id,space_id,bytes,state) VALUES(#{id},#{actor.spaceId},#{bytes},'RESERVED')
+    </insert>
+    <update id="begin">
+        UPDATE pf.skill_import SET state='UPLOADING',transfer_owner=#{owner},transfer_until=clock_timestamp()+interval '60 seconds',revision=revision+1
+        WHERE id=#{id} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND state='CREATED'
+    </update>
+    <update id="guard">
+        UPDATE pf.skill_import SET transfer_until=clock_timestamp()+interval '60 seconds'
+        WHERE id=#{id} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId}
+          AND state='UPLOADING' AND transfer_owner=#{owner} AND transfer_until&gt;clock_timestamp()
+    </update>
+    <update id="finish">
+        UPDATE pf.skill_import SET state=#{state},transfer_owner=NULL,transfer_until=NULL,revision=revision+1
+        WHERE id=#{id} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId}
+          AND state='UPLOADING' AND transfer_owner=#{owner} AND transfer_until&gt;clock_timestamp()
+    </update>
+    <update id="reconcileReservation">
+        UPDATE pf.skill_import_reservation SET state='RECONCILING',revision=revision+1
+        WHERE import_id=#{id} AND space_id=#{actor.spaceId} AND state='RESERVED'
+    </update>
+    <update id="queue">
+        UPDATE pf.skill_import SET state='QUEUED',revision=revision+1
+        WHERE id=#{id} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND state='VERIFIED'
+    </update>
+    <insert id="outbox">
+        INSERT INTO pf.skill_import_outbox(id,space_id,import_id,generation)
+        SELECT #{event},space_id,id,generation FROM pf.skill_import
+        WHERE id=#{id} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND state='QUEUED'
+    </insert>
+</mapper>
