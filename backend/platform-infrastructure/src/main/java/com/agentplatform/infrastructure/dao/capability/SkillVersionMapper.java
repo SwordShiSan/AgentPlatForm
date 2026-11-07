@@ -12,6 +12,8 @@ public interface SkillVersionMapper {
     boolean authorized(@Param("actor") Actor actor);
     void lock(@Param("actor") Actor actor);
     View find(@Param("actor") Actor actor, @Param("capability") UUID capability, @Param("version") UUID version, @Param("lock") boolean lock);
+    com.agentplatform.domain.capability.SkillVersionRepository.MaterialSource material(@Param("actor") Actor actor,
+            @Param("capability") UUID capability, @Param("version") UUID version);
     Command accepted(@Param("actor") Actor actor, @Param("request") UUID request);
     int transition(@Param("actor") Actor actor, @Param("capability") UUID capability, @Param("version") UUID version,
                    @Param("expected") long expected, @Param("from") String from, @Param("to") String to);

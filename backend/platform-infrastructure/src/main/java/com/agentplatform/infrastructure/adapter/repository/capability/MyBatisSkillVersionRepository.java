@@ -11,6 +11,7 @@ public final class MyBatisSkillVersionRepository implements SkillVersionReposito
     @Override public boolean authorized(Actor actor) { return mapper.authorized(actor); }
     @Override public void lock(Actor actor) { mapper.lock(actor); }
     @Override public View find(Actor actor, UUID capability, UUID version, boolean lock) { return mapper.find(actor, capability, version, lock); }
+    @Override public MaterialSource material(Actor actor, UUID capability, UUID version) { return mapper.material(actor, capability, version); }
     @Override public Command accepted(Actor actor, UUID request) { return mapper.accepted(actor, request); }
     @Override public boolean transition(Actor actor, UUID capability, UUID version, long expected, String from, String to) {
         return mapper.transition(actor, capability, version, expected, from, to) == 1;

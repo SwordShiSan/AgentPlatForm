@@ -47,7 +47,7 @@ def main():
         before = inputs()
         selection = ('ApprovalPostgresTest#r62ProtectedMcpFixtureRunsOnlyAfterOriginalApproval'
                      if os.environ.get('R62_MCP_APPROVAL_ACCEPTANCE') == '1' else
-                     'CapabilityBindingPostgresTest#realBrokerAndObjectStoreCreateOneSkillVersion'
+                     'CapabilityBindingPostgresTest#realBrokerAndObjectStoreCreateOneSkillVersion,TaskSkillMaterialServiceTest'
                      if os.environ.get('R62_INTEGRATED_ACCEPTANCE') == '1' else
                      'CapabilityBindingPostgresTest,SkillImportControllerTest,SkillImportServiceTest,SkillValidationServiceTest,SkillArchiveValidatorTest,ConnectorCredentialCipherTest,ConnectorCredentialConfigurationTest,ConnectorCredentialControllerTest')
         result = subprocess.run([str(ROOT / 'backend' / 'mvnw.cmd'), '-Dtest=' + selection,

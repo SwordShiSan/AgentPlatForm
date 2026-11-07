@@ -19,6 +19,15 @@ public final class SkillVersionService {
     public View get(Actor actor, UUID capability, UUID version) {
         return transactions.execute(status -> { access(actor); return requireView(actor, capability, version, false); });
     }
+    /** Internal selection only; the caller must also check its task lease and bindings. */
+    SkillVersionRepository.MaterialSource material(Actor actor, UUID capability, UUID version) {
+        return transactions.execute(status -> {
+            access(actor);
+            var source = repository.material(actor, capability, version);
+            if (source == null) throw new FileFailure(404, "SKILL_MATERIAL_UNAVAILABLE");
+            return source;
+        });
+    }
     public View change(Actor actor, UUID capability, UUID version, String action, long expected, UUID request, UUID trace) {
         if (actor == null || capability == null || version == null || request == null || trace == null || expected < 1
                 || !("PUBLISH".equals(action) || "REVOKE".equals(action))) throw new FileFailure(400, "INVALID_SKILL_VERSION_COMMAND");

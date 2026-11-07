@@ -15,6 +15,7 @@
 - 独立 PG／RabbitMQ／SeaweedFS 联合 Skill 导入实验：通过实际对象上传、confirm／领取／ACK、归档校验和 DRAFT 入库，PASS；证据 `.cache/r62-local/integrated/run-1794038456173729200` 与相应 PostgreSQL 输入哈希记录。该次发送了重复消息但未证明其已到达 inbox，重复投递断言需重新验证。首次尝试因测试对象存储默认卷增长耗尽测试卷失败，保留 `.cache/r62-local/integrated/run-1794038136929286700`；按已有低配卷增长经验修正夹具后通过。此结果不覆盖真实 API／浏览器、所有故障窗口或 MCP。
 - 加入真实 inbox 到达确认后重跑：第二条消息确实进入持久领取检查且未再次执行，PG／MQ／S3 闭环 PASS，证据 `.cache/r62-local/integrated/run-1794038701480273500`。该实验使用独立回环依赖和实际存储适配器，不代表生产受控出口或 runner 验收。
 - 扩展同一 PG／MQ／S3 联合夹具：导入发布后，按数据库保存的文件清单从私有对象存储流式暂存并核对哈希；跨用户元数据读取拒绝，撤销版本后再次暂存拒绝，PASS。证据 `.cache/r62-local/integrated/run-1794044707383056100`。授权检查由测试夹具调用现有版本服务，不代表 runner 已接入或任务绑定已完成。
+- 扩展材料元数据查询及暂存入口：真实 PG／MQ／S3 验证发布版本读取、跨用户拒绝、撤销后拒绝，PASS；任务租约、工作区与绑定变化的服务测试另以模拟仓储 PASS。两项测试及输入哈希见 `.cache/r62-local/postgres/run-1794054590924384500`，联合运行见 `.cache/r62-local/integrated/run-1794054568597352000`。真实任务与 runner 的联合验证仍 NOT_RUN。
 - 官方维护的 `ubuntu/squid:7.2-26.04_beta` 查询未找到；`7.2-26.04_edge` 的 linux/amd64 manifest 已固定并拉取，无网络容器中执行二进制报告 7.7，而 tag／OCI label 报告 7.2。实验身份见 `deploy/config/r62-squid-image.json`；受控出口功能、DNS／实际目标验证仍 NOT_RUN。
 - `AgentScopeMcpCompatibilityTest` 在独立回环 Tomcat 使用官方 SDK Streamable HTTP 服务，发现工具时调用计数为0，显式调用后计数为1，PASS；该探针是明文回环，仅证明 SDK 兼容，不代表 TLS、受控出口或平台账本通过。测试停止时 Tomcat 对 Reactor 共享线程发出清理提示，退出码0；持续资源释放仍需后续受限环境观察。
 - SDK 可用性对照增加不可达代理检查：配置的 HTTP 客户端自定义器被调用，代理不可用时初始化失败而不直连，之后正常回环发现与调用仍 PASS；这不替代真实代理／TLS 联合实验。
