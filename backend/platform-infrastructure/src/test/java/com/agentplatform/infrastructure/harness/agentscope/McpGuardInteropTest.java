@@ -76,6 +76,21 @@ class McpGuardInteropTest {
                 assertTrue(checks.get() >= 2, "permission is checked at discovery and execution");
                 assertEquals(1, remoteCalls.get());
                 assertEquals(OperationStatus.SUCCEEDED, store.journal(scope).operations().get("one").status());
+
+                var deniedStore = new FileProbeStore(root.resolve("denied-state"));
+                var deniedRounds = new AtomicInteger();
+                ModelGateway deniedModel = (s, messages, tools) -> deniedRounds.incrementAndGet() == 1
+                        ? CompletableFuture.completedFuture(new Round("", List.of(FileProbeStore.call("denied")), "tool_calls", 1, 1))
+                        : CompletableFuture.completedFuture(new Round("denied", List.of(), "stop", 1, 1));
+                var deniedFactory = new AgentScopeRuntimeFactory(deniedModel, (s, call) -> Decision.DENY,
+                        (s, call) -> { throw new AssertionError("Denied tool must not execute"); },
+                        deniedStore, deniedStore, FileProbeStore::definitions, root.resolve("workspace-denied"));
+                try (var deniedRun = deniedFactory.prepare(new Request(scope, Bundle.baseline(),
+                        List.of(Message.text(Role.USER, "run the fixture")), false, List.of(), 1), deniedStore)) {
+                    deniedRun.start().toCompletableFuture().get(20, TimeUnit.SECONDS);
+                }
+                assertEquals(1, remoteCalls.get(), "denied operation must not reach MCP server");
+                assertEquals(OperationStatus.DENIED, deniedStore.journal(scope).operations().get("denied").status());
             }
         } finally {
             server.close();
