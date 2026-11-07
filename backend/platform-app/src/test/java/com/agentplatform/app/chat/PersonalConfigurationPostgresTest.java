@@ -46,8 +46,8 @@ class PersonalConfigurationPostgresTest {
         base.clean();
         var old=Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").target("21").load();
         old.migrate(); assertEquals("21",old.info().current().getVersion().toString());
-        base.migrate(); base.validate(); assertEquals("22",base.info().current().getVersion().toString());
-        base.clean();base.migrate();base.validate();assertEquals("22",base.info().current().getVersion().toString());
+        base.migrate(); base.validate(); assertEquals("23",base.info().current().getVersion().toString());
+        base.clean();base.migrate();base.validate();assertEquals("23",base.info().current().getVersion().toString());
         try (var connection=DriverManager.getConnection(url,"postgres",password);var query=connection.createStatement();
              var rows=query.executeQuery("SELECT schema_version FROM pf.baseline_version WHERE id=1")) {
             assertTrue(rows.next());assertEquals(1,rows.getInt(1));
