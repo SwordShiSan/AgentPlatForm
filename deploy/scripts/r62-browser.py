@@ -9,9 +9,9 @@ import subprocess
 import time
 import zipfile
 
-parser = argparse.ArgumentParser(); parser.add_argument('--skill-only', action='store_true'); parser.add_argument('--connector-only', action='store_true')
+parser = argparse.ArgumentParser(); parser.add_argument('--skill-only', action='store_true'); parser.add_argument('--connector-only', action='store_true'); parser.add_argument('--probe-only', action='store_true')
 args = parser.parse_args()
-if args.skill_only and args.connector_only: parser.error('Choose at most one focused test')
+if sum([args.skill_only, args.connector_only, args.probe_only]) > 1: parser.error('Choose at most one focused test')
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / '.cache/r62-local'
 spec = importlib.util.spec_from_file_location('r62_local', ROOT / 'deploy/scripts/r62-local.py')
@@ -35,18 +35,19 @@ command = [str(node), str(ROOT/'frontend/node_modules/@playwright/test/cli.js'),
            '--reporter=json', '--output', str(out/'artifacts')]
 if args.skill_only: command += ['--grep', 'import, publish']
 if args.connector_only: command += ['--grep', 'connector metadata']
+if args.probe_only: command += ['--grep', 'discover and explicitly enable']
 report, errors = out/'playwright.json', out/'playwright.stderr.log'
 with report.open('xb') as stdout, errors.open('xb') as stderr:
     result = subprocess.run(command, cwd=ROOT/'frontend', env=env, stdout=stdout, stderr=stderr, timeout=300)
 try:
     stats = json.loads(report.read_text(encoding='utf-8'))['stats']
-    passed = result.returncode == 0 and stats['unexpected'] == 0 and stats['skipped'] == 0 and stats['expected'] == (1 if args.skill_only or args.connector_only else 2)
+    passed = result.returncode == 0 and stats['unexpected'] == 0 and stats['skipped'] == 0 and stats['expected'] == (1 if args.skill_only or args.connector_only or args.probe_only else 3)
 except (ValueError, KeyError):
     stats = {}; passed = False
 record = {'status': 'PASS' if passed else 'FAIL', 'exitCode': result.returncode, 'source': images['source'],
     'buildInputHash': images['inputHash'], 'runtimeConfigSha256': hashlib.sha256((DATA/'runtime-config.json').read_bytes()).hexdigest(),
     'imageConfigIds': {name: value['configId'] for name, value in images['images'].items()}, 'stats': stats,
-    'scope': ('skill' if args.skill_only else 'connector' if args.connector_only else 'both') + ': isolated control-plane browser, no physical runner or remote MCP call', 'supplierCalls': 0,
+    'scope': ('skill' if args.skill_only else 'connector' if args.connector_only else 'probe' if args.probe_only else 'all') + ': isolated control-plane browser, no physical runner or MCP business call', 'supplierCalls': 0,
     'reportSha256': hashlib.sha256(report.read_bytes()).hexdigest()}
 (out/'result.json').write_text(json.dumps(record, indent=2)+'\n', encoding='utf-8')
 print(json.dumps({'status': record['status'], 'evidence': str(out.relative_to(ROOT))}))

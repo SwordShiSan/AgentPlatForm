@@ -26,8 +26,8 @@ services:
     image: rabbitmq:4.3.6-management@sha256:8dd6e3570ddaa2ef82a6c3a8950e79c1f73893adfbdddbc374fc1f1ac8a0f5dd
     hostname: agentplatform-r62-mq
     restart: "no"
-    mem_limit: 512m
-    memswap_limit: 512m
+    mem_limit: 384m
+    memswap_limit: 384m
     cpus: 1
     environment: {RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 1:1 +A 4"}
     volumes:
@@ -39,8 +39,8 @@ services:
   seaweedfs:
     image: chrislusf/seaweedfs@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
     restart: "no"
-    mem_limit: 640m
-    memswap_limit: 640m
+    mem_limit: 544m
+    memswap_limit: 544m
     cpus: 1
     entrypoint: [weed]
     command: [server, "-dir=/data", "-ip=seaweedfs", "-ip.bind=0.0.0.0", "-filer", "-s3", "-s3.ip.bind=0.0.0.0", "-master.volumeSizeLimitMB=64", "-volume.max=4", "-volume.minFreeSpace=1"]
@@ -58,11 +58,30 @@ services:
     ulimits: {nofile: {soft: 1024, hard: 1024}}
     tmpfs: ["/tmp:rw,noexec,nosuid,size=8m,mode=1777", "/var/log/squid:rw,nosuid,size=8m", "/var/spool/squid:rw,nosuid,size=8m"]
     volumes: ["${R62_ROOT}/squid.conf:/etc/squid/squid.conf:ro"]
+    extra_hosts: ["fixture.invalid:${R62_MCP_FIXTURE_IP}"]
     entrypoint: [/usr/sbin/squid-gnutls, -N, -f, /etc/squid/squid.conf]
     healthcheck: {test: [CMD, /usr/sbin/squid-gnutls, -k, check, -f, /etc/squid/squid.conf], interval: 5s, timeout: 3s, retries: 20}
     networks:
       mcp-control: {ipv4_address: "${R62_PROXY_IP}"}
       mcp-egress: {}
+      mcp-fixture: {}
+  mcp-fixture:
+    image: "${R62_MCP_FIXTURE_ID}"
+    user: "10001:10001"
+    restart: "no"
+    mem_limit: 64m
+    memswap_limit: 64m
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - "${R62_ROOT}/fixture.key:/fixture/fixture.key:ro"
+      - "${R62_ROOT}/fixture.crt:/fixture/fixture.crt:ro"
+      - "./probes/r62-mcp-tls-fixture.py:/fixture-server.py:ro"
+    entrypoint: [python3, -u, /fixture-server.py]
+    healthcheck: {test: [CMD, python3, -c, "import socket; s=socket.create_connection(('127.0.0.1',8443),2); s.close()"], interval: 5s, timeout: 3s, retries: 20}
+    networks:
+      mcp-fixture: {ipv4_address: "${R62_MCP_FIXTURE_IP}"}
   api:
     <<: *app
     mem_limit: 512m
@@ -140,12 +159,13 @@ services:
       PLATFORM_MCP_MASTER_KEY_FILE: /run/secrets/mcp_master_key
       PLATFORM_MCP_EGRESS_HOST: mcp-proxy
       PLATFORM_MCP_EGRESS_PORT: "3128"
+      PLATFORM_MCP_TRUST_STORE: /run/secrets/mcp_trust
       PLATFORM_WORKSPACE_CONTROL_RUNNER_BASE: http://127.0.0.1:1
       PLATFORM_WORKSPACE_CONTROL_PRIVATE_KEY_FILE: /run/secrets/control_private
       PLATFORM_WORKSPACE_CONTROL_RUNNER_PUBLIC_KEY_FILE: /run/secrets/runner_public
       PLATFORM_WORKSPACE_CONTROL_KEY_ID: r62-control
       PLATFORM_WORKSPACE_CONTROL_RUNNER_KEY_ID: r62-runner
-    secrets: [worker_password,mq_worker_password,master_key,mcp_master_key,s3_access,s3_secret,control_private,runner_public]
+    secrets: [worker_password,mq_worker_password,master_key,mcp_master_key,s3_access,s3_secret,control_private,runner_public,mcp_trust]
     networks:
       r62: {}
       mcp-control: {ipv4_address: "${R62_WORKER_IP}"}
@@ -200,6 +220,7 @@ secrets:
   s3_secret: {file: "${R62_ROOT}/s3-secret"}
   control_private: {file: "${R62_ROOT}/control-3072-private.pem"}
   runner_public: {file: "${R62_ROOT}/runner-3072-public.pem"}
+  mcp_trust: {file: "${R62_ROOT}/fixture-trust.jks"}
 volumes: {postgres-data: {}, mq-data: {}, s3-data: {}}
 networks:
   r62:
@@ -213,6 +234,10 @@ networks:
   mcp-egress:
     ipam:
       config: [{subnet: "${R62_EGRESS_SUBNET:?Set isolated egress subnet}"}]
+  mcp-fixture:
+    internal: true
+    ipam:
+      config: [{subnet: "${R62_MCP_FIXTURE_SUBNET:?Set isolated fixture subnet}"}]
   ingress:
     ipam:
       config: [{subnet: "${R62_INGRESS_SUBNET:?Set isolated ingress subnet}"}]

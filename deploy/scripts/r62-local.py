@@ -12,6 +12,7 @@ import json
 import os
 import re
 import secrets
+import shutil
 import socket
 import subprocess
 import time
@@ -88,11 +89,11 @@ def prepare():
                 saved['mcpSubnet']=str(candidate);break
         if 'mcpSubnet' not in saved: raise RuntimeError('No independent MCP control subnet available')
         manifest.write_text(json.dumps(saved,indent=2)+'\n',encoding='utf-8')
-    for name,base in [('egressSubnet','10.238.'),('ingressSubnet','10.239.')]:
+    for name,base in [('egressSubnet','10.238.'),('ingressSubnet','10.239.'),('mcpFixtureSubnet','11.246.')]:
         if name in saved: continue
         ids=call(['docker','network','ls','-q']).split()
         networks=json.loads(call(['docker','network','inspect',*ids])) if ids else []
-        occupied=[ipaddress.ip_network(saved[key]) for key in ['subnet','mcpSubnet','egressSubnet','ingressSubnet'] if key in saved]
+        occupied=[ipaddress.ip_network(saved[key]) for key in ['subnet','mcpSubnet','egressSubnet','ingressSubnet','mcpFixtureSubnet'] if key in saved]
         for network in networks:
             for item in network.get('IPAM',{}).get('Config',[]) or []:
                 if item.get('Subnet'): occupied.append(ipaddress.ip_network(item['Subnet']))
@@ -115,6 +116,17 @@ def prepare():
         if not private.exists():
             call([openssl,'genpkey','-algorithm','RSA','-pkeyopt','rsa_keygen_bits:3072','-out',private],sensitive=True)
             call([openssl,'pkey','-in',private,'-pubout','-out',public],sensitive=True)
+    fixture_key,fixture_cert,trust=PRIVATE/'fixture.key',PRIVATE/'fixture.crt',PRIVATE/'fixture-trust.jks'
+    if any(path.exists() for path in [fixture_key,fixture_cert,trust]) and not all(path.exists() for path in [fixture_key,fixture_cert,trust]):
+        raise RuntimeError('Incomplete MCP TLS fixture identity')
+    if not fixture_key.exists():
+        call([openssl,'req','-x509','-newkey','rsa:2048','-sha256','-days','30','-nodes','-keyout',fixture_key,'-out',fixture_cert,
+              '-subj','/CN=fixture.invalid','-addext','subjectAltName=DNS:fixture.invalid'],sensitive=True)
+        java=ROOT/'.tools/jdk-21.0.12.1/jdk-21.0.12.1+1'
+        shutil.copyfile(java/'lib/security/cacerts',trust)
+        env=dict(os.environ,R62_TRUST_PASSWORD='changeit')
+        call([java/'bin/keytool.exe','-importcert','-noprompt','-alias','r62-fixture','-file',fixture_cert,
+              '-keystore',trust,'-storepass:env','R62_TRUST_PASSWORD'],env=env,sensitive=True)
     users = []
     for name in ['api', 'worker', 'operator']:
         value = (PRIVATE / ('mq-' + name + '-password')).read_text().strip()
@@ -172,7 +184,7 @@ def environment(validate_source=True):
         before=json.loads((DATA/'build-inputs.json').read_text(encoding='utf-8'));current=source_manifest()
         changed={name for name in set(before)|set(current) if before.get(name)!=current.get(name)}
         fixture_only={'deploy/scripts/r62-local.py','deploy/compose.r62-local.yaml','deploy/probes/r62-s3-init.py',
-                      'deploy/scripts/r62-browser.py','frontend/tests/e2e/capabilities-r62.spec.ts'}
+                      'deploy/scripts/r62-browser.py','deploy/scripts/test-r62-local-stop.py','frontend/tests/e2e/capabilities-r62.spec.ts'}
         if changed-fixture_only: raise RuntimeError('Image inputs changed since build: '+str(sorted(changed-fixture_only)))
         (DATA/'runtime-config.json').write_text(json.dumps({'buildSource':images['source'],'buildInputHash':images['inputHash'],
             'fixtureInputs':{name:current.get(name) for name in sorted(fixture_only)},'fixtureOnlyChanges':sorted(changed)},indent=2)+'\n',encoding='utf-8')
@@ -181,6 +193,8 @@ def environment(validate_source=True):
         R62_MCP_SUBNET=manifest['mcpSubnet'],R62_WORKER_IP=str(ipaddress.ip_network(manifest['mcpSubnet']).network_address+10),
         R62_PROXY_IP=str(ipaddress.ip_network(manifest['mcpSubnet']).network_address+20),
         R62_EGRESS_SUBNET=manifest['egressSubnet'],R62_INGRESS_SUBNET=manifest['ingressSubnet'],
+        R62_MCP_FIXTURE_SUBNET=manifest['mcpFixtureSubnet'],R62_MCP_FIXTURE_IP=str(ipaddress.ip_network(manifest['mcpFixtureSubnet']).network_address+10),
+        R62_MCP_FIXTURE_ID='sha256:35828d15944404ccfbf0a791190521cc78f257704d93940d53f367b721fbbbe0',
         R62_HELPER_ID=images['images']['file-helper']['configId'],R62_STORAGE_PROBE_ID=images['images']['storage-probe']['configId'],
         R62_API_IMAGE=images['images']['api']['tag'],R62_GATEWAY_IMAGE=images['images']['gateway']['tag'],R62_FIXTURE_IMAGE=images['images']['provider-fixture']['tag'])
 
@@ -250,7 +264,7 @@ def start():
         sql("BEGIN;INSERT INTO pf.workspace(id,space_id,actor_id,name,state,quota_bytes,quota_inodes,project_id,operation_id) VALUES('"+workspace+"','"+space+"','"+user+"','R62 metadata','READY',2147483648,100000,200001,'"+operation+"');INSERT INTO pf.workspace_operation(id,space_id,workspace_id,actor_id,command_id,status) VALUES('"+operation+"','"+space+"','"+workspace+"','"+user+"','"+command+"','COMMITTED');COMMIT;")
         marker.write_text(json.dumps({'workspaceId':workspace,'physicalAllocation':False},indent=2)+'\n',encoding='utf-8')
     (PRIVATE/'workspace-metadata.json').write_text(marker.read_text(encoding='utf-8'),encoding='utf-8')
-    call(COMPOSE+['up','-d','--no-build','--wait','--wait-timeout','150','seaweedfs','mcp-proxy'],env=env,timeout=240)
+    call(COMPOSE+['up','-d','--no-build','--wait','--wait-timeout','150','seaweedfs','mcp-proxy','mcp-fixture'],env=env,timeout=240)
     call(['docker','run','--rm','--network','agentplatform-r62-local_r62','--memory','128m','--memory-swap','128m',
           '--cap-drop','ALL','--security-opt','no-new-privileges:true','--read-only',
           '--mount','type=bind,src='+str(PRIVATE/'s3-access')+',dst=/fixture/s3-access,readonly',
@@ -267,7 +281,7 @@ def start():
             if row['State']['Running']: raise RuntimeError('Stop the fixture before changing worker secret mounts')
             call(COMPOSE+['up','-d','--no-deps','--force-recreate','worker'],env=env,timeout=120)
     call(COMPOSE+['up','-d','--no-build','--wait','--wait-timeout','150','api','worker','fixture','gateway'],env=env,timeout=240)
-    expected={'postgres','rabbitmq','seaweedfs','mcp-proxy','api','worker','fixture','gateway'}
+    expected={'postgres','rabbitmq','seaweedfs','mcp-proxy','mcp-fixture','api','worker','fixture','gateway'}
     present=set(call(COMPOSE+['ps','--services','--filter','status=running'],env=env).split())
     if present != expected: raise RuntimeError('Fixture required services are not all running: '+str(sorted(expected-present)))
     deadline=time.monotonic()+30
@@ -281,6 +295,24 @@ def start():
     if present != expected: raise RuntimeError('A required fixture service exited during readiness checks')
     print('R62 local gateway ready on 127.0.0.1:'+str(port))
 
+def stop():
+    project='agentplatform-r62-local'
+    ids=call(['docker','ps','-q','--no-trunc','--filter','label=com.docker.compose.project='+project]).split()
+    if not ids:
+        print('R62 fixture already stopped; volumes retained');return
+    rows=json.loads(call(['docker','inspect',*ids]));allowed={'gateway','api','worker','fixture','mcp-fixture','mcp-proxy','seaweedfs','rabbitmq','postgres','operator'}
+    groups=[[],[]]
+    for row in rows:
+        labels=row['Config'].get('Labels') or {};service=labels.get('com.docker.compose.service');name=row['Name'].lstrip('/')
+        if labels.get('com.docker.compose.project')!=project or service not in allowed or not name.startswith(project+'-'):
+            raise RuntimeError('Unexpected container in fixture project; refusing broad stop')
+        groups[1 if service in {'mcp-proxy','seaweedfs','rabbitmq','postgres'} else 0].append(row['Id'])
+    for group in groups:
+        if group: call(['docker','stop','-t','15',*group],timeout=180)
+    if call(['docker','ps','-q','--filter','label=com.docker.compose.project='+project]).strip():
+        raise RuntimeError('A fixture container remains running')
+    print('R62 fixture stopped; volumes retained')
+
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('action',choices=['prepare','build','start','status','stop']);parser.add_argument('--fresh-db',action='store_true');args=parser.parse_args();action=args.action
     if args.fresh_db and action!='prepare':raise ValueError('--fresh-db is only valid with prepare')
@@ -293,7 +325,6 @@ def main():
     elif action=='build': build()
     elif action=='start': start()
     elif action=='status': print(call(['docker','ps','-a','--filter','label=com.docker.compose.project=agentplatform-r62-local','--format','{{.Names}} {{.Status}}']))
-    else:
-        env=environment(validate_source=False);call(COMPOSE+['stop','gateway','api','worker','fixture','mcp-proxy','seaweedfs','rabbitmq','postgres'],env=env,timeout=180);print('R62 fixture stopped; volumes retained')
+    else: stop()
 
 if __name__=='__main__': main()

@@ -66,3 +66,28 @@ test('connector metadata and secret stay private to the owning account', async (
   expect(list.ok()).toBeTruthy(); expect(JSON.stringify(await list.json())).not.toContain(credential.id);
   await other.close();
 });
+
+test('discover and explicitly enable the isolated TLS connector version', async ({ page }) => {
+  await login(page); await page.goto('/app/settings/capabilities');
+  await page.getByLabel('新密钥').fill('deterministic-fixture-only');
+  const saved = page.waitForResponse(response => response.url().endsWith('/api/v1/me/connector-credentials') && response.request().method() === 'POST');
+  await page.getByRole('button', { name: '保存密钥' }).click();
+  const credential = await (await saved).json(); await expect(page.getByText('密钥已保存，内容不会再次显示。')).toBeVisible();
+  await page.getByLabel('HTTPS 地址').fill('https://fixture.invalid:8443/mcp');
+  await page.getByLabel('认证', { exact: true }).selectOption('BEARER');
+  await page.getByLabel('密钥', { exact: true }).selectOption(credential.id);
+  await page.getByRole('button', { name: '保存连接器' }).click();
+  await expect(page.getByText('连接器已保存，请探测并确认版本。')).toBeVisible();
+  await page.getByRole('button', { name: '探测工具' }).click();
+  await expect.poll(async () => {
+    const state = await page.getByText(/探测状态：/).textContent();
+    if (!state?.includes('READY') && !state?.includes('FAILED')) await page.getByRole('button', { name: '查询原探测' }).click();
+    return await page.getByText(/探测状态：/).textContent();
+  }, { timeout: 90_000, intervals: [1000, 2000] }).toContain('READY');
+  await page.getByRole('button', { name: /版本 1 — DRAFT/ }).click();
+  await expect(page.getByText('工具 1 项；可启用')).toBeVisible();
+  await page.getByRole('button', { name: '确认并启用' }).click();
+  await expect(page.getByText('版本已启用。')).toBeVisible();
+  await expect(page.getByRole('button', { name: '停用' })).toBeVisible();
+  expect(await page.evaluate(() => JSON.stringify(sessionStorage))).not.toContain('deterministic-fixture-only');
+});
