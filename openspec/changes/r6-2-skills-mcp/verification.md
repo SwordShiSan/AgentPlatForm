@@ -30,7 +30,7 @@
 - `CapabilityMaterializationTest` 两项纯领域测试 PASS：顺序无关的材料清单哈希、任务／包身份改变、越界路径、文件目录冲突及容量拒绝。尚未接入 runner 或执行实际挂载，不构成隔离验收。
 - `SkillArchiveValidatorTest` 8 项 PASS，包括对所选版本的压缩包 SHA256 和完整文件路径、大小、哈希清单逐项比对；此校验尚未接入 runner，不能替代材料下载、只读挂载或实时授权验收。
 - `SkillValidationServiceTest` 3 项 PASS，包含独立材料流式暂存、下载期间撤权、哈希不符和临时文件清理；存储使用内存夹具，真实对象存储下载、任务授权与 runner 的集成仍 NOT_RUN。
-- 无网络 Linux 容器中 `SkillMaterialExtractorTest` 1 项 PASS、`SkillValidationServiceTest` 3 项 PASS：私有目录逐文件解包、清单校验及撤权清理；验证仍未覆盖签名 runner、挂载和真实运行任务。首次离线构建的参数及构建工具版本不符分别失败，随后使用项目固定 Maven 3.9.11 通过；后续单类修改采用已编译依赖的定向 Linux 验证。
+- 无网络 Linux 容器中 `SkillMaterialExtractorTest` 1 项 PASS、`SkillValidationServiceTest` 3 项 PASS：私有目录逐文件解包、清单校验及撤权清理；定向复验的解包源码 SHA256 `ce73ecfe3843edb985ee3f88dfbeda9e79dfa6a414b66ed2e2a67eb476090e38`、暂存源码 SHA256 `e4cc79f4861dbab4151ca0564e332dff91bbe9d962793109fdc82193c35a187f`。验证仍未覆盖签名 runner、挂载和真实运行任务。首次离线构建的参数及构建工具版本不符分别失败，随后使用项目固定 Maven 3.9.11 通过；后续单类修改采用已编译依赖的定向 Linux 验证。
 - `SandboxPolicyTest` 7 项 PASS，新增仅限 R6.2 验收命名空间的工作区路径，并拒绝越界及近似路径；这只是路径配置测试，不代表实际容器或真实挂载通过。
 - 本机 Docker 运行时清单不含 runsc；云端只读预检确认 runsc 可用，但 `/srv/agentplatform` 可用空间约7.17GiB，尚不足以同时预留独立4GiB测试盘和5GiB安全余量。待测试夹具完成后按已授权冷归档流程核对旧测试产物保护副本及引用，再决定是否回收；未执行生产停机或清理。
 - 2026-11-07 用户明确要求清理旧镜像及临时文件。已精确清理历史测试／旧版本应用镜像、已停止的旧应用及验收容器和6个旧传输包，未删除卷或业务数据；云端根盘复核约11.15GiB可用、R5 Host 健康 HTTP200。原位 R3/R4 回退容器和镜像已按用户仅保留最新版本的要求移除，不能继续声称旧容器可原位回退。清理详情在云端 `/srv/agentplatform/operations/r62-cleanup-20261107`；实际建立测试盘前仍须复核余量。R5 切换 helper 本机副本和客户端哈希已与云端同步，只读 status 验证11服务在线，未执行切换。
