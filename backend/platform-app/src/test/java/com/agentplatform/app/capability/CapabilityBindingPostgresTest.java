@@ -356,8 +356,12 @@ class CapabilityBindingPostgresTest {
              var rows = query.executeQuery("SELECT position(convert_to('mcp-fixture-sentinel-secret','UTF8') in ciphertext) FROM pf.connector_credential WHERE id='" + first.id() + "'")) {
             assertTrue(rows.next()); assertEquals(0, rows.getInt(1));
         }
-        var revoked = connectorCredentials.revoke(alice, first.id(), first.revision(), UUID.randomUUID(), trace);
+        UUID revokeRequest = UUID.randomUUID();
+        var revoked = connectorCredentials.revoke(alice, first.id(), first.revision(), revokeRequest, trace);
         assertEquals("REVOKED", revoked.state());
+        assertEquals(revoked, connectorCredentials.byRequest(alice, revokeRequest));
+        assertEquals(404, assertThrows(com.agentplatform.domain.files.FileFailure.class,
+                () -> connectorCredentials.byRequest(bob, revokeRequest)).status());
         assertEquals(404, assertThrows(com.agentplatform.domain.files.FileFailure.class,
                 () -> connectorCredentials.revoke(bob, first.id(), first.revision(), UUID.randomUUID(), trace)).status());
     }
@@ -413,7 +417,11 @@ class CapabilityBindingPostgresTest {
     }
 
     @Test void revokedCredentialStopsProbeBeforeDiscovery() {
-        UUID trace = UUID.randomUUID(); var credential = connectorCredentials.create(alice, UUID.randomUUID(), "fixture-secret", trace);
+        UUID trace = UUID.randomUUID(); UUID createRequest = UUID.randomUUID();
+        var credential = connectorCredentials.create(alice, createRequest, "fixture-secret", trace);
+        assertEquals(credential.id(), connectorCredentials.byRequest(alice, createRequest).id());
+        assertEquals(404, assertThrows(com.agentplatform.domain.files.FileFailure.class,
+                () -> connectorCredentials.byRequest(bob, createRequest)).status());
         var config = connectors.create(alice, UUID.randomUUID(), new McpConnectorService.Input("https://example.com/mcp", "BEARER", null,
                 credential.id(), credential.revision()), trace);
         var probe = connectors.enqueue(alice, config.id(), config.revision(), UUID.randomUUID(), trace);

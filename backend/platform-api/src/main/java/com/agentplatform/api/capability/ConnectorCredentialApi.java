@@ -8,6 +8,7 @@ public interface ConnectorCredentialApi {
     record Metadata(String id, long revision, String state, String createdAt) {}
     record Page(List<Metadata> items, String nextCursor) {}
     Page list(ChatApi.Caller caller, String cursor, int limit);
+    Metadata byRequest(ChatApi.Caller caller, String requestId);
     Metadata create(ChatApi.Caller caller, String requestId, String secret);
     Metadata replace(ChatApi.Caller caller, String id, long expected, String requestId, String secret);
     Metadata revoke(ChatApi.Caller caller, String id, long expected, String requestId);

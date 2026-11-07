@@ -79,6 +79,15 @@ public final class ConnectorCredentialService {
             return new Page(page, rows.size() > limit ? page.getLast().id() : null);
         });
     }
+    public Metadata byRequest(Actor actor, UUID requestId) {
+        if (requestId == null) throw new FileFailure(400, "CONNECTOR_CREDENTIAL_INVALID");
+        return transactions.execute(status -> { access(actor); var found = repository.findRequest(actor, requestId);
+            if (found != null) return found.metadata();
+            var revoked = repository.findRevocation(actor, requestId);
+            if (revoked == null) throw new FileFailure(404, "RESOURCE_NOT_FOUND");
+            var current = required(actor, revoked.credentialId(), false);
+            return new Metadata(current.id(), revoked.resultRevision(), "REVOKED", current.createdAt()); });
+    }
     public Metadata revoke(Actor actor, UUID id, long expected, UUID requestId, UUID trace) {
         if (actor == null || id == null || expected < 1 || requestId == null || trace == null)
             throw new FileFailure(400, "CONNECTOR_CREDENTIAL_INVALID");

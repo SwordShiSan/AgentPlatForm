@@ -33,6 +33,9 @@ public class ConnectorCredentialConfiguration {
                 @Override public ConnectorCredentialApi.Metadata create(ChatApi.Caller caller, String requestId, String secret) {
                     return view(service.create(actor(caller), uuid(requestId), secret, com.agentplatform.types.RequestTrace.current()));
                 }
+                @Override public ConnectorCredentialApi.Metadata byRequest(ChatApi.Caller caller, String requestId) {
+                    return view(service.byRequest(actor(caller), uuid(requestId)));
+                }
                 @Override public ConnectorCredentialApi.Metadata replace(ChatApi.Caller caller, String id, long expected, String requestId, String secret) {
                     return view(service.replace(actor(caller), uuid(id), expected, uuid(requestId), secret, com.agentplatform.types.RequestTrace.current()));
                 }

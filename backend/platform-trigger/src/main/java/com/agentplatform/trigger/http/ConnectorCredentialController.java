@@ -24,6 +24,10 @@ public final class ConnectorCredentialController {
         if (body == null) throw new FileFailure(400, "CONNECTOR_CREDENTIAL_INVALID");
         return response(201, service.create(RequestIdentity.caller(request), key(request), body.secret()));
     }
+    @GetMapping("/requests/{requestId}") ResponseEntity<ConnectorCredentialApi.Metadata> byRequest(HttpServletRequest request,
+            @PathVariable("requestId") String requestId) {
+        return response(200, service.byRequest(RequestIdentity.caller(request), requestId));
+    }
     @PostMapping("/{id}/replace") ResponseEntity<ConnectorCredentialApi.Metadata> replace(HttpServletRequest request,
             @PathVariable("id") String id, @RequestBody SecretBody body) {
         if (body == null) throw new FileFailure(400, "CONNECTOR_CREDENTIAL_INVALID");
