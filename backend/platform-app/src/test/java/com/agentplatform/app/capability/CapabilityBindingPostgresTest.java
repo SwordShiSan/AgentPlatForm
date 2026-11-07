@@ -61,6 +61,7 @@ class CapabilityBindingPostgresTest {
                 + "GRANT INSERT ON pf.capability_audit TO r62_api; "
                 + "GRANT SELECT,UPDATE ON pf.space_storage TO r62_api; GRANT SELECT ON pf.capability TO r62_api; GRANT UPDATE(kind) ON pf.capability TO r62_api; "
                 + "GRANT SELECT,INSERT,UPDATE ON pf.skill_import,pf.skill_import_reservation,pf.skill_import_outbox TO r62_api; "
+                + "GRANT SELECT,INSERT ON pf.skill_import_completion_request TO r62_api; "
                 + "GRANT SELECT ON pf.capability_version_status TO r62_api; GRANT UPDATE(revision) ON pf.capability_version_status TO r62_api");
     }
 
@@ -162,8 +163,12 @@ class CapabilityBindingPostgresTest {
                 () -> imports.find(other, first.id())).status());
         UUID owner = UUID.randomUUID(); imports.beginTransfer(actor, first.id(), owner);
         imports.guardTransfer(actor, first.id(), owner); imports.verified(actor, first.id(), owner);
-        assertEquals("QUEUED", imports.enqueue(actor, first.id()).state());
-        assertEquals("QUEUED", imports.enqueue(actor, first.id()).state());
+        UUID completion = UUID.randomUUID();
+        assertEquals("QUEUED", imports.enqueue(actor, first.id(), completion).state());
+        assertEquals("QUEUED", imports.enqueue(actor, first.id(), completion).state());
+        var another = imports.create(actor, UUID.randomUUID(), "d".repeat(64), null, 0, sha);
+        assertEquals(409, assertThrows(com.agentplatform.domain.files.FileFailure.class,
+                () -> imports.enqueue(actor, another.id(), completion)).status());
         try (var connection = DriverManager.getConnection(url, "postgres", password);
              var query = connection.createStatement();
              var rows = query.executeQuery("SELECT reserved_bytes,(SELECT count(*) FROM pf.skill_import_outbox WHERE import_id='"

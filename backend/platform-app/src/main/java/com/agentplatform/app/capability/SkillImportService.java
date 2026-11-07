@@ -56,8 +56,8 @@ public final class SkillImportService implements com.agentplatform.api.capabilit
         return repository.find(actor, id);
     }
 
-    public SkillImportRepository.Upload complete(Actor actor, UUID id) {
-        return repository.enqueue(actor, id);
+    public SkillImportRepository.Upload complete(Actor actor, UUID id, UUID requestId) {
+        return repository.enqueue(actor, id, requestId);
     }
 
     @Override public View create(com.agentplatform.api.chat.ChatApi.Caller caller, String requestId, Create body) {
@@ -71,8 +71,8 @@ public final class SkillImportService implements com.agentplatform.api.capabilit
     @Override public View transfer(com.agentplatform.api.chat.ChatApi.Caller caller, String id, long length, InputStream stream) {
         return view(transfer(actor(caller), uuid(id), length, stream));
     }
-    @Override public View complete(com.agentplatform.api.chat.ChatApi.Caller caller, String id) {
-        return view(complete(actor(caller), uuid(id)));
+    @Override public View complete(com.agentplatform.api.chat.ChatApi.Caller caller, String id, String requestId) {
+        return view(complete(actor(caller), uuid(id), uuid(requestId)));
     }
     private static View view(SkillImportRepository.Upload row) {
         return new View(row.id().toString(), row.capabilityId().toString(), row.versionId().toString(), row.state(),

@@ -13,5 +13,5 @@ public interface SkillImportRepository {
     void guardTransfer(Actor actor, UUID importId, UUID owner);
     void verified(Actor actor, UUID importId, UUID owner);
     void transferUnknown(Actor actor, UUID importId, UUID owner);
-    Upload enqueue(Actor actor, UUID importId);
+    Upload enqueue(Actor actor, UUID importId, UUID requestId);
 }

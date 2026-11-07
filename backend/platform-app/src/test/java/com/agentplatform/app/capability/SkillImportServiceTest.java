@@ -24,7 +24,7 @@ class SkillImportServiceTest {
         @Override public void guardTransfer(Actor a, UUID id, UUID owner) { assertEquals(this.owner, owner); guards++; }
         @Override public void verified(Actor a, UUID id, UUID owner) { state = "VERIFIED"; }
         @Override public void transferUnknown(Actor a, UUID id, UUID owner) { state = "BLOCKED"; }
-        @Override public Upload enqueue(Actor a, UUID id) { state = "QUEUED"; return row(); }
+        @Override public Upload enqueue(Actor a, UUID id, UUID request) { state = "QUEUED"; return row(); }
     }
     private static final class Store implements AssetStore {
         boolean failAfterRead;
@@ -46,7 +46,7 @@ class SkillImportServiceTest {
         var actor = new SkillImportRepository.Actor(UUID.randomUUID(), UUID.randomUUID());
         assertEquals("VERIFIED", service.transfer(actor, repo.id, 3, new ByteArrayInputStream("abc".getBytes(StandardCharsets.UTF_8))).state());
         assertTrue(repo.guards > 0);
-        assertEquals("QUEUED", service.complete(actor, repo.id).state());
+        assertEquals("QUEUED", service.complete(actor, repo.id, UUID.randomUUID()).state());
     }
     @Test void uncertainWriteIsBlockedInsteadOfBeingAssumedUnsent() throws Exception {
         var repo = new Repository(sha()); var store = new Store(); store.failAfterRead = true;

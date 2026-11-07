@@ -27,4 +27,6 @@ public interface SkillImportMapper {
     int reconcileReservation(@Param("actor") Actor actor, @Param("id") UUID id);
     int queue(@Param("actor") Actor actor, @Param("id") UUID id);
     int outbox(@Param("actor") Actor actor, @Param("id") UUID id, @Param("event") UUID event);
+    UUID completion(@Param("actor") Actor actor, @Param("requestId") UUID requestId);
+    int recordCompletion(@Param("actor") Actor actor, @Param("id") UUID id, @Param("requestId") UUID requestId);
 }

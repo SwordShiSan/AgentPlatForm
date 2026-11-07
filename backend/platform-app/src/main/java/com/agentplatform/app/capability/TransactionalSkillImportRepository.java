@@ -65,16 +65,24 @@ public final class TransactionalSkillImportRepository implements SkillImportRepo
                 throw new FileFailure(409, "SKILL_IMPORT_RESERVATION_CONFLICT");
             return null; });
     }
-    @Override public Upload enqueue(Actor actor, UUID id) {
+    @Override public Upload enqueue(Actor actor, UUID id, UUID requestId) {
+        if (actor == null || requestId == null) throw new FileFailure(400, "INVALID_SKILL_IMPORT_REQUEST");
         return tx(() -> {
-            access(actor); var current = view(mapper.find(actor, id));
-            if ("QUEUED".equals(current.state())) return current;
+            mapper.lock(actor); access(actor);
+            var previous = mapper.completion(actor, requestId);
+            if (previous != null) {
+                if (!previous.equals(id)) throw new FileFailure(409, "IDEMPOTENCY_CONFLICT");
+                return view(mapper.find(actor, id));
+            }
+            var current = view(mapper.find(actor, id));
+            if ("QUEUED".equals(current.state())) { mapper.recordCompletion(actor, id, requestId); return current; }
             if (mapper.queue(actor, id) != 1) {
                 var latest = view(mapper.find(actor, id));
-                if ("QUEUED".equals(latest.state())) return latest;
+                if ("QUEUED".equals(latest.state())) { mapper.recordCompletion(actor, id, requestId); return latest; }
                 throw new FileFailure(409, "SKILL_IMPORT_NOT_VERIFIED");
             }
             mapper.outbox(actor, id, UUID.randomUUID());
+            mapper.recordCompletion(actor, id, requestId);
             return view(mapper.find(actor, id));
         });
     }

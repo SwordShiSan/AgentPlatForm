@@ -80,4 +80,12 @@
         SELECT #{event},space_id,id,generation FROM pf.skill_import
         WHERE id=#{id} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND state='QUEUED'
     </insert>
+    <select id="completion" resultType="java.util.UUID">
+        SELECT import_id FROM pf.skill_import_completion_request
+        WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND request_id=#{requestId}
+    </select>
+    <insert id="recordCompletion">
+        INSERT INTO pf.skill_import_completion_request(space_id,owner_user_id,request_id,import_id)
+        VALUES(#{actor.spaceId},#{actor.userId},#{requestId},#{id})
+    </insert>
 </mapper>

@@ -35,6 +35,8 @@ public final class SkillImportController {
                 .body(service.transfer(RequestIdentity.caller(request), id, length, request.getInputStream()));
     }
     @PostMapping("/{id}/complete") ResponseEntity<SkillImportApi.View> complete(HttpServletRequest request, @PathVariable("id") String id) {
-        return ResponseEntity.accepted().header("Cache-Control", "no-store").body(service.complete(RequestIdentity.caller(request), id));
+        String key = request.getHeader("Idempotency-Key");
+        if (key == null) throw new FileFailure(428, "IDEMPOTENCY_KEY_REQUIRED");
+        return ResponseEntity.accepted().header("Cache-Control", "no-store").body(service.complete(RequestIdentity.caller(request), id, key));
     }
 }

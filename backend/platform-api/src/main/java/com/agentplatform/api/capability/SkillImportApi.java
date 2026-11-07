@@ -9,5 +9,5 @@ public interface SkillImportApi {
     View create(ChatApi.Caller caller, String requestId, Create create);
     View get(ChatApi.Caller caller, String id);
     View transfer(ChatApi.Caller caller, String id, long length, InputStream stream);
-    View complete(ChatApi.Caller caller, String id);
+    View complete(ChatApi.Caller caller, String id, String requestId);
 }

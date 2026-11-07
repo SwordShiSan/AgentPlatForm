@@ -2971,6 +2971,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                "Idempotency-Key": string;
                 "X-CSRF-Token": string;
                 "X-Space-Id"?: string;
             };

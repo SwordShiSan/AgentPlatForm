@@ -158,6 +158,7 @@ CREATE TABLE pf.skill_import (
  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  UNIQUE (space_id,id),
  UNIQUE (space_id,owner_user_id,request_id),
+ UNIQUE (space_id,owner_user_id,id),
  FOREIGN KEY (space_id,owner_user_id) REFERENCES pf.membership(space_id,user_id),
  FOREIGN KEY (space_id,owner_user_id,capability_id,version_id)
    REFERENCES pf.capability_version(space_id,owner_user_id,capability_id,id),
@@ -169,6 +170,18 @@ CREATE TABLE pf.skill_import (
    AND capability_id=target_capability_id AND version_id=target_version_id AND archive_sha256=declared_sha256))
 );
 CREATE INDEX skill_import_work ON pf.skill_import(state,created_at);
+CREATE TABLE pf.skill_import_completion_request (
+ space_id uuid NOT NULL,
+ owner_user_id uuid NOT NULL,
+ request_id uuid NOT NULL,
+ import_id uuid NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ PRIMARY KEY (space_id,owner_user_id,request_id),
+ FOREIGN KEY (space_id,owner_user_id) REFERENCES pf.membership(space_id,user_id),
+ FOREIGN KEY (space_id,owner_user_id,import_id) REFERENCES pf.skill_import(space_id,owner_user_id,id)
+);
+CREATE TRIGGER skill_import_completion_request_immutable BEFORE UPDATE OR DELETE ON pf.skill_import_completion_request
+ FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
 CREATE TABLE pf.skill_import_reservation (
  import_id uuid PRIMARY KEY,
  space_id uuid NOT NULL REFERENCES pf.space_storage(space_id),
@@ -305,7 +318,7 @@ CREATE TRIGGER capability_audit_immutable BEFORE UPDATE OR DELETE ON pf.capabili
  FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
 
 REVOKE ALL ON pf.capability, pf.capability_version, pf.skill_package_version, pf.skill_import,
- pf.skill_import_reservation, pf.skill_import_outbox, pf.skill_import_inbox, pf.capability_version_status,
+ pf.skill_import_completion_request, pf.skill_import_reservation, pf.skill_import_outbox, pf.skill_import_inbox, pf.capability_version_status,
  pf.connector_credential,pf.mcp_connector_version,pf.mcp_connector_tool,
  pf.capability_binding_set, pf.capability_binding_selection, pf.capability_binding_request,
  pf.capability_binding_request_selection, pf.capability_audit FROM PUBLIC;
