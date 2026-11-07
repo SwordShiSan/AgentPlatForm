@@ -51,6 +51,11 @@ public final class SkillValidationService {
             catch (IllegalArgumentException invalidArchive) {
                 repository.rejected(command, "SKILL_ARCHIVE_INVALID");
                 return;
+            } catch (IOException invalidArchive) {
+                Throwable cause = invalidArchive;
+                while (cause != null && !(cause instanceof java.util.zip.ZipException)) cause = cause.getCause();
+                if (cause == null) throw invalidArchive;
+                repository.rejected(command, "SKILL_ARCHIVE_INVALID"); return;
             }
             if (!result.archiveSha256().equals(command.sha256())) throw new IOException("ASSET_HASH_MISMATCH");
             guard.run();

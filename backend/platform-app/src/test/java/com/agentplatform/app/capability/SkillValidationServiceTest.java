@@ -72,5 +72,8 @@ class SkillValidationServiceTest {
         byte[] valid = archive("SKILL.md"); var mismatch = new Repository();
         new SkillValidationService(mismatch, new Store(valid), new SkillArchiveValidator(), temp).validate(command(valid, "0".repeat(64)));
         assertEquals("SKILL_IMPORT_RESULT_UNKNOWN", mismatch.unknown); assertNull(mismatch.manifest);
+        byte[] corrupt = "not a zip".getBytes(StandardCharsets.UTF_8); var broken = new Repository();
+        new SkillValidationService(broken, new Store(corrupt), new SkillArchiveValidator(), temp).validate(command(corrupt, hash(corrupt)));
+        assertEquals("SKILL_ARCHIVE_INVALID", broken.rejected);
     }
 }

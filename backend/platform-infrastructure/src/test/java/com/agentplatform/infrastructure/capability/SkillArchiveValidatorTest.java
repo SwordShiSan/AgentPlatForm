@@ -54,6 +54,8 @@ class SkillArchiveValidatorTest {
         var validator = new SkillArchiveValidator();
         assertThrows(IllegalArgumentException.class, () -> validator.validate(archive(Map.of("SKILL.md", bytes("no metadata")))));
         assertThrows(IllegalArgumentException.class, () -> validator.validate(archive(Map.of("SKILL.md", new byte[]{(byte) 0xff}))));
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(archive(Map.of("SKILL.md",
+                bytes("---\nname: " + "a".repeat(513) + "\ndescription: test\n---\nbody")))));
     }
 
     @Test void preservesDeclaredDependenciesForPublicationReview() throws Exception {

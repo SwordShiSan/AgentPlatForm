@@ -107,7 +107,9 @@ public final class SkillArchiveValidator {
             var parsed = MarkdownSkillParser.parse(markdown);
             Map<String, Object> meta = parsed.getMetadata();
             if (!parsed.hasFrontmatter() || !(meta.get("name") instanceof String name) || name.isBlank()
-                    || !(meta.get("description") instanceof String description) || description.isBlank())
+                    || name.getBytes(StandardCharsets.UTF_8).length > 512
+                    || !(meta.get("description") instanceof String description) || description.isBlank()
+                    || description.getBytes(StandardCharsets.UTF_8).length > MAX_METADATA)
                 throw invalid("INVALID_SKILL_METADATA");
             files.sort(java.util.Comparator.comparing(FileEntry::path));
             if (!archiveHash.equals(archiveHash(channel))) throw invalid("ARCHIVE_CHANGED");
