@@ -23,7 +23,7 @@ public final class TransactionalSkillImportRepository implements SkillImportRepo
     private static Upload view(SkillImportRow row) {
         if (row == null) throw new FileFailure(404, "RESOURCE_NOT_FOUND");
         return new Upload(row.id(), row.targetCapabilityId(), row.targetVersionId(), row.targetAssetId(), row.state(),
-                row.declaredBytes(), row.declaredSha256(), row.stagingObjectKey(), row.revision());
+                row.declaredBytes(), row.declaredSha256(), row.stagingObjectKey(), row.revision(), row.errorCode());
     }
     @Override public Upload create(Actor actor, UUID requestId, String requestHash, UUID existingCapability, long bytes, String sha256) {
         if (requestId == null || requestHash == null || !requestHash.matches("[a-f0-9]{64}")

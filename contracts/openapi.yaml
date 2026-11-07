@@ -2774,7 +2774,7 @@ components:
     SkillImport:
       type: object
       additionalProperties: false
-      required: [id, capabilityId, versionId, state, sizeBytes, sha256, revision]
+      required: [id, capabilityId, versionId, state, sizeBytes, sha256, revision, errorCode]
       properties:
         id: {type: string, format: uuid}
         capabilityId: {type: string, format: uuid}
@@ -2783,6 +2783,7 @@ components:
         sizeBytes: {type: integer, format: int64}
         sha256: {type: string, pattern: '^[a-f0-9]{64}$'}
         revision: {type: integer, format: int64, minimum: 1}
+        errorCode: {type: [string, 'null'], pattern: '^[A-Z0-9_]{1,64}$'}
     CapabilitySelection:
       type: object
       additionalProperties: false

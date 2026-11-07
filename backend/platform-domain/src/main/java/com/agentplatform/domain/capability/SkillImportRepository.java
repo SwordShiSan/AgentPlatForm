@@ -6,7 +6,7 @@ import java.util.UUID;
 public interface SkillImportRepository {
     record Actor(UUID userId, UUID spaceId) {}
     record Upload(UUID id, UUID capabilityId, UUID versionId, UUID assetId, String state,
-                  long size, String sha256, String objectKey, long revision) {}
+                  long size, String sha256, String objectKey, long revision, String errorCode) {}
     Upload create(Actor actor, UUID requestId, String requestHash, UUID existingCapability, long bytes, String sha256);
     Upload find(Actor actor, UUID importId);
     Upload findRequest(Actor actor, UUID requestId);

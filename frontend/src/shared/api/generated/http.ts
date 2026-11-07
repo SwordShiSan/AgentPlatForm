@@ -1862,6 +1862,7 @@ export interface components {
             sha256: string;
             /** Format: int64 */
             revision: number;
+            errorCode: string | null;
         };
         CapabilitySelection: {
             /** Format: uuid */

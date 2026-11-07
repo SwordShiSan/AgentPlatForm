@@ -5,7 +5,7 @@ import java.io.InputStream;
 
 public interface SkillImportApi {
     record Create(String capabilityId, long sizeBytes, String sha256) {}
-    record View(String id, String capabilityId, String versionId, String state, long sizeBytes, String sha256, long revision) {}
+    record View(String id, String capabilityId, String versionId, String state, long sizeBytes, String sha256, long revision, String errorCode) {}
     View create(ChatApi.Caller caller, String requestId, Create create);
     View get(ChatApi.Caller caller, String id);
     View request(ChatApi.Caller caller, String requestId);

@@ -32,68 +32,77 @@ const candidate = ref<components['schemas']['CapabilitySelection']>();
 const pending = ref<PendingSkillImport>(); const state = ref<Import>(); const file = ref<File>();
 const busy = ref(false); const message = ref(''); const progress = ref(0); const requestNotFound = ref(false);
 let controller = new AbortController();
-watch(scope, value => { pending.value = value ? loadSkillImport(value) : undefined; state.value = undefined; file.value = undefined; requestNotFound.value = false; }, { immediate: true });
+let generation = 0;
+watch(scope, value => { generation++; controller.abort(); controller = new AbortController(); busy.value = false;
+  pending.value = value ? loadSkillImport(value) : undefined; state.value = undefined; file.value = undefined; detail.value = undefined; candidate.value = undefined; requestNotFound.value = false; }, { immediate: true });
 watch(() => selected.value?.capabilityId, () => { versionCursor.value = undefined; });
 function persist() { if (!scope.value || !saveSkillImport(scope.value, pending.value)) throw new Error('无法保存导入身份，请检查浏览器存储'); }
-function expired() { controller.abort(); clearSkillImports(); pending.value = undefined; file.value = undefined; detail.value = undefined; candidate.value = undefined; }
+function expired() { generation++; busy.value = false; controller.abort(); clearSkillImports(); pending.value = undefined; file.value = undefined; detail.value = undefined; candidate.value = undefined; }
 onMounted(() => globalThis.addEventListener('platform:session-expired', expired));
-onBeforeUnmount(() => { controller.abort(); globalThis.removeEventListener('platform:session-expired', expired); });
+onBeforeUnmount(() => { generation++; controller.abort(); globalThis.removeEventListener('platform:session-expired', expired); });
 function picked(event: Event) { file.value = (event.target as HTMLInputElement).files?.[0]; }
 async function begin() {
   if (busy.value || !file.value || !space.value || pending.value) return;
-  busy.value = true; message.value = ''; controller = new AbortController();
+  busy.value = true; message.value = ''; controller = new AbortController(); const current = generation;
   try {
     if (file.value.size > 20 * 1024 * 1024) throw new Error('压缩包不能超过 20 MiB');
     const hash = await fileHash(file.value, controller.signal);
+    if (current !== generation) return;
     pending.value = { requestId: newRequestId(), completionId: newRequestId(), body: { sizeBytes: file.value.size, sha256: hash,
       ...(selected.value ? { capabilityId: selected.value.capabilityId } : {}) } };
     persist();
-    state.value = await continueSkillImport(pending.value, file.value, space.value, controller.signal, persist, n => { progress.value = n; });
+    const result = await continueSkillImport(pending.value, file.value, space.value, controller.signal,
+      () => { if (current !== generation) throw new DOMException('Session changed', 'AbortError'); persist(); }, n => { if (current === generation) progress.value = n; });
+    if (current !== generation) return; state.value = result;
     message.value = '导入请求已提交，请查看处理状态。';
-  } catch (error) { message.value = error instanceof Error ? error.message : '导入尚未确认，请查询原请求。'; }
-  finally { busy.value = false; }
+  } catch (error) { if (current === generation) message.value = error instanceof Error ? error.message : '导入尚未确认，请查询原请求。'; }
+  finally { if (current === generation) busy.value = false; }
 }
 async function check() {
   if (busy.value || !pending.value || !space.value) return;
-  busy.value = true; message.value = ''; controller = new AbortController();
+  busy.value = true; message.value = ''; controller = new AbortController(); const current = generation;
   try {
-    state.value = await skillImportStatus(pending.value, space.value, controller.signal, persist); requestNotFound.value = false;
+    const result = await skillImportStatus(pending.value, space.value, controller.signal,
+      () => { if (current !== generation) throw new DOMException('Session changed', 'AbortError'); persist(); });
+    if (current !== generation) return; state.value = result; requestNotFound.value = false;
     if (state.value.state === 'DRAFT') await cache.invalidateQueries({ queryKey: ['capabilities', user.value, space.value] });
-  } catch (error) {
+  } catch (error) { if (current !== generation) return;
     requestNotFound.value = !pending.value?.importId && error instanceof ApiError && error.problem.status === 404;
     message.value = requestNotFound.value ? '尚未找到原请求，可以使用同一请求身份继续。' : '状态暂未确认；保留原请求，稍后可再次查询。';
   }
-  finally { busy.value = false; }
+  finally { if (current === generation) busy.value = false; }
 }
 async function resume() {
   if (busy.value || !pending.value || !space.value) return;
-  busy.value = true; message.value = ''; controller = new AbortController();
-  try { persist(); state.value = await continueSkillImport(pending.value, file.value, space.value, controller.signal, persist, n => { progress.value = n; }); requestNotFound.value = false; }
-  catch (error) { message.value = error instanceof Error ? error.message : '操作未确认，请查询原请求。'; }
-  finally { busy.value = false; }
+  busy.value = true; message.value = ''; controller = new AbortController(); const current = generation;
+  try { persist(); const result = await continueSkillImport(pending.value, file.value, space.value, controller.signal,
+    () => { if (current !== generation) throw new DOMException('Session changed', 'AbortError'); persist(); }, n => { if (current === generation) progress.value = n; });
+    if (current !== generation) return; state.value = result; requestNotFound.value = false; }
+  catch (error) { if (current === generation) message.value = error instanceof Error ? error.message : '操作未确认，请查询原请求。'; }
+  finally { if (current === generation) busy.value = false; }
 }
 function dismiss() {
   if (!scope.value || !state.value || !['DRAFT', 'REJECTED'].includes(state.value.state)) return;
   saveSkillImport(scope.value); pending.value = undefined; state.value = undefined; file.value = undefined;
 }
 async function show(item: Skill) {
-  message.value = ''; detail.value = undefined;
-  try { detail.value = (await api.GET('/api/v1/skills/{id}/versions/{versionId}', { params: { path: { id: item.capabilityId,
-    versionId: item.versionId }, header: { 'X-Space-Id': space.value } } })).data; }
-  catch { message.value = '无法读取该版本，请检查权限或连接。'; }
+  message.value = ''; detail.value = undefined; const current = generation;
+  try { const value = (await api.GET('/api/v1/skills/{id}/versions/{versionId}', { params: { path: { id: item.capabilityId,
+    versionId: item.versionId }, header: { 'X-Space-Id': space.value } } })).data; if (current === generation) detail.value = value; }
+  catch { if (current === generation) message.value = '无法读取该版本，请检查权限或连接。'; }
 }
 async function change(action: 'publish' | 'revoke') {
   if (!detail.value || busy.value) return;
-  const chosen = detail.value; busy.value = true; message.value = '';
+  const chosen = detail.value; busy.value = true; message.value = ''; const current = generation;
   try {
-    const token = (await api.GET('/api/v1/auth/csrf')).data?.csrfToken; if (!token) throw new Error('安全验证暂不可用'); setCsrf(token);
+    const token = (await api.GET('/api/v1/auth/csrf')).data?.csrfToken; if (current !== generation) return; if (!token) throw new Error('安全验证暂不可用'); setCsrf(token);
     const options = { params: { path: { id: chosen.capabilityId, versionId: chosen.versionId }, header: { 'X-Space-Id': space.value,
       'X-CSRF-Token': token, 'If-Match': `"${chosen.revision}"`, 'Idempotency-Key': newRequestId() } } };
     const result = action === 'publish' ? await api.POST('/api/v1/skills/{id}/versions/{versionId}/publish', options)
       : await api.POST('/api/v1/skills/{id}/versions/{versionId}/revoke', options);
-    detail.value = result.data; await cache.invalidateQueries({ queryKey: ['capabilities', user.value, space.value] });
-  } catch { message.value = '结果未确认或版本已变化，请重新读取版本后核对。'; detail.value = undefined; }
-  finally { busy.value = false; }
+    if (current !== generation) return; detail.value = result.data; await cache.invalidateQueries({ queryKey: ['capabilities', user.value, space.value] });
+  } catch { if (current === generation) { message.value = '结果未确认或版本已变化，请重新读取版本后核对。'; detail.value = undefined; } }
+  finally { if (current === generation) busy.value = false; }
 }
 </script>
 
@@ -109,6 +118,7 @@ async function change(action: 'publish' | 'revoke') {
       <button type="button" :disabled="busy || !file || !!pending" @click="begin">开始导入</button>
       <template v-if="pending">
         <p role="status">状态：{{ state?.state ?? '等待查询' }} <span v-if="progress">{{ progress }}%</span></p>
+        <p v-if="state?.errorCode">处理提示：{{ state.errorCode }}</p>
         <button type="button" :disabled="busy" @click="check">查询原请求</button>
         <button v-if="requestNotFound" type="button" :disabled="busy" @click="resume">继续原请求</button>
         <button v-if="state && ['CREATED', 'VERIFIED'].includes(state.state)" type="button" :disabled="busy" @click="resume">继续原请求</button>

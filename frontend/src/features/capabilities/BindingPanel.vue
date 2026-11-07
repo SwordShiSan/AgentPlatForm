@@ -13,6 +13,7 @@ const props = defineProps<{ userId: string; spaceId: string; candidate?: Selecti
 const scope = computed(() => bindingScope(props.userId, props.spaceId));
 const cache = useQueryClient(); const workspace = ref(''); const selections = ref<Selection[]>([]); const inherit = ref(false);
 const dirty = ref(false); const busy = ref(false); const message = ref(''); const pending = ref<PendingBinding>();
+let generation = 0;
 const workspaces = useQuery({ queryKey: computed(() => ['capabilities', props.userId, props.spaceId, 'workspaces']),
   queryFn: async () => (await api.GET('/api/v1/workspaces', { params: { header: { 'X-Space-Id': props.spaceId } } })).data! });
 const bindings = useQuery({ queryKey: computed(() => ['capabilities', props.userId, props.spaceId, 'bindings', workspace.value]),
@@ -22,14 +23,14 @@ const bindings = useQuery({ queryKey: computed(() => ['capabilities', props.user
 const effective = useQuery({ queryKey: computed(() => ['capabilities', props.userId, props.spaceId, 'effective', workspace.value]),
   queryFn: async () => (await api.GET('/api/v1/effective-capabilities', { params: { header: { 'X-Space-Id': props.spaceId },
     query: workspace.value ? { workspaceId: workspace.value } : {} } })).data! });
-watch(scope, value => { pending.value = loadBindingRequest(value); workspace.value = pending.value?.workspaceId ?? ''; dirty.value = false; }, { immediate: true });
+watch(scope, value => { generation++; busy.value = false; pending.value = loadBindingRequest(value); workspace.value = pending.value?.workspaceId ?? ''; dirty.value = false; }, { immediate: true });
 watch(workspace, () => { dirty.value = false; message.value = ''; });
 watch(() => bindings.data.value, value => { if (value && !dirty.value && !pending.value) {
   selections.value = value.selections.map(item => ({ ...item })); inherit.value = value.inheritPersonal;
 } }, { immediate: true });
-function reset() { pending.value = undefined; selections.value = []; clearBindingRequests(); }
+function reset() { generation++; busy.value = false; pending.value = undefined; selections.value = []; clearBindingRequests(); }
 onMounted(() => globalThis.addEventListener('platform:session-expired', reset));
-onBeforeUnmount(() => globalThis.removeEventListener('platform:session-expired', reset));
+onBeforeUnmount(() => { generation++; globalThis.removeEventListener('platform:session-expired', reset); });
 function add() {
   if (!props.candidate || pending.value || inherit.value) return;
   if (selections.value.some(item => item.capabilityId === props.candidate!.capabilityId)) {
@@ -40,21 +41,21 @@ function add() {
 }
 function remove(index: number) { selections.value = selections.value.filter((_, i) => i !== index); dirty.value = true; }
 async function send(request: PendingBinding) {
-  busy.value = true; message.value = '';
+  busy.value = true; message.value = ''; const current = generation;
   try {
-    const token = (await api.GET('/api/v1/auth/csrf')).data?.csrfToken; if (!token) throw new Error('安全验证暂不可用'); setCsrf(token);
+    const token = (await api.GET('/api/v1/auth/csrf')).data?.csrfToken; if (current !== generation) return; if (!token) throw new Error('安全验证暂不可用'); setCsrf(token);
     const header = { 'X-Space-Id': props.spaceId, 'X-CSRF-Token': token,
       'Idempotency-Key': request.requestId, 'If-Match': `"${request.revision}"` };
     if (request.workspaceId) await api.PUT('/api/v1/workspaces/{id}/capability-bindings', { params: { path: { id: request.workspaceId }, header }, body: request.body });
     else await api.PUT('/api/v1/me/capability-bindings', { params: { header }, body: request.body });
-    saveBindingRequest(scope.value); pending.value = undefined; dirty.value = false;
+    if (current !== generation) return; saveBindingRequest(scope.value); pending.value = undefined; dirty.value = false;
     await cache.invalidateQueries({ queryKey: ['capabilities', props.userId, props.spaceId] }).catch(() => undefined); message.value = '能力选择已保存。';
-  } catch (error) {
+  } catch (error) { if (current !== generation) return;
     if (error instanceof ApiError && [400, 412, 422, 428].includes(error.problem.status)) {
       saveBindingRequest(scope.value); pending.value = undefined;
       message.value = error.problem.status === 412 ? '设置已变化，当前选择已保留；请核对后重新加载。' : '选择未被接受，请检查能力是否有效。';
     } else message.value = '结果尚未确认，可以使用原请求再次确认；不会改变请求内容。';
-  } finally { busy.value = false; }
+  } finally { if (current === generation) busy.value = false; }
 }
 async function save() {
   if (busy.value || pending.value || !bindings.data.value) return;

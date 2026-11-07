@@ -10,7 +10,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 
 class SkillImportControllerTest {
     private static final class Fake implements SkillImportApi {
-        private View view(String state) { return new View("id", "capability", "version", state, 3, "hash", 1); }
+        private View view(String state) { return new View("id", "capability", "version", state, 3, "hash", 1, null); }
         @Override public View create(ChatApi.Caller c, String key, Create body) { return view("CREATED"); }
         @Override public View get(ChatApi.Caller c, String id) { return view("CREATED"); }
         @Override public View request(ChatApi.Caller c, String id) { return view("CREATED"); }

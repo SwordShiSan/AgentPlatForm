@@ -79,7 +79,7 @@ public final class SkillImportService implements com.agentplatform.api.capabilit
     }
     private static View view(SkillImportRepository.Upload row) {
         return new View(row.id().toString(), row.capabilityId().toString(), row.versionId().toString(), row.state(),
-                row.size(), row.sha256(), row.revision());
+                row.size(), row.sha256(), row.revision(), row.errorCode());
     }
     private static Actor actor(com.agentplatform.api.chat.ChatApi.Caller caller) {
         if (caller == null) throw new FileFailure(401, "AUTHENTICATION_REQUIRED");

@@ -17,7 +17,7 @@ class SkillImportServiceTest {
         final UUID id = UUID.randomUUID(), capability = UUID.randomUUID(), version = UUID.randomUUID(), asset = UUID.randomUUID();
         final String hash; String state = "CREATED"; int guards; UUID owner;
         Repository(String hash) { this.hash = hash; }
-        private Upload row() { return new Upload(id, capability, version, asset, state, 3, hash, "private", 1); }
+        private Upload row() { return new Upload(id, capability, version, asset, state, 3, hash, "private", 1, null); }
         @Override public Upload create(Actor a, UUID requestId, String requestHash, UUID capability, long bytes, String sha) { throw new UnsupportedOperationException(); }
         @Override public Upload find(Actor a, UUID id) { return row(); }
         @Override public Upload findRequest(Actor a, UUID request) { return row(); }

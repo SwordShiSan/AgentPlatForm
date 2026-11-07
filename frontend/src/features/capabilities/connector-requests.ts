@@ -3,6 +3,7 @@ export interface ConnectorRequests {
   credentialRequest?: string;
   configurationRequest?: string;
   probeRequest?: string;
+  activation?: { requestId: string; connectorId: string; versionId?: string; revision: number };
 }
 const prefix = 'agentplatform:connector-requests:';
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
@@ -11,10 +12,16 @@ export function saveConnectorRequests(scope: string, value?: ConnectorRequests):
   try {
     if (!scope.startsWith(prefix)) return false;
     if (value) {
+      const activation = value.activation;
+      if (activation && (!uuid.test(activation.requestId) || !uuid.test(activation.connectorId)
+        || (activation.versionId !== undefined && !uuid.test(activation.versionId))
+        || !Number.isSafeInteger(activation.revision) || activation.revision < 0)) return false;
       const safe = { ...(value.credentialRequest ? { credentialRequest: value.credentialRequest } : {}),
         ...(value.configurationRequest ? { configurationRequest: value.configurationRequest } : {}),
-        ...(value.probeRequest ? { probeRequest: value.probeRequest } : {}) };
-      if (Object.values(safe).some(id => !uuid.test(id))) return false;
+        ...(value.probeRequest ? { probeRequest: value.probeRequest } : {}),
+        ...(activation ? { activation: { requestId: activation.requestId, connectorId: activation.connectorId,
+          ...(activation.versionId ? { versionId: activation.versionId } : {}), revision: activation.revision } } : {}) };
+      if ([safe.credentialRequest, safe.configurationRequest, safe.probeRequest].some(id => id !== undefined && !uuid.test(id))) return false;
       sessionStorage.setItem(scope, JSON.stringify(safe));
     } else sessionStorage.removeItem(scope);
     return true;
@@ -26,10 +33,16 @@ export function loadConnectorRequests(scope: string): ConnectorRequests {
     const raw = sessionStorage.getItem(scope); if (!raw) return {};
     if (raw.length > 512) throw new Error('invalid request identity');
     const data = JSON.parse(raw) as ConnectorRequests;
+    const activation = data.activation;
+    if (activation && (!uuid.test(activation.requestId) || !uuid.test(activation.connectorId)
+      || (activation.versionId !== undefined && !uuid.test(activation.versionId))
+      || !Number.isSafeInteger(activation.revision) || activation.revision < 0)) throw new Error('invalid request identity');
     const result = { ...(data.credentialRequest ? { credentialRequest: data.credentialRequest } : {}),
       ...(data.configurationRequest ? { configurationRequest: data.configurationRequest } : {}),
-      ...(data.probeRequest ? { probeRequest: data.probeRequest } : {}) };
-    if (Object.values(result).some(id => typeof id !== 'string' || !uuid.test(id))) throw new Error('invalid request identity');
+      ...(data.probeRequest ? { probeRequest: data.probeRequest } : {}),
+      ...(activation ? { activation: { requestId: activation.requestId, connectorId: activation.connectorId,
+        ...(activation.versionId ? { versionId: activation.versionId } : {}), revision: activation.revision } } : {}) };
+    if ([result.credentialRequest, result.configurationRequest, result.probeRequest].some(id => id !== undefined && (typeof id !== 'string' || !uuid.test(id)))) throw new Error('invalid request identity');
     return result;
   } catch { saveConnectorRequests(scope); return {}; }
 }

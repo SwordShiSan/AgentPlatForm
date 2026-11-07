@@ -13,9 +13,10 @@
             <arg name="stagingObjectKey" column="staging_object_key" javaType="java.lang.String"/>
             <arg name="revision" column="revision" javaType="_long"/>
             <arg name="requestHash" column="request_hash" javaType="java.lang.String"/>
+            <arg name="errorCode" column="error_code" javaType="java.lang.String"/>
         </constructor>
     </resultMap>
-    <sql id="columns">id,target_capability_id,target_version_id,target_asset_id,state,declared_bytes,declared_sha256,staging_object_key,revision,request_hash</sql>
+    <sql id="columns">id,target_capability_id,target_version_id,target_asset_id,state,declared_bytes,declared_sha256,staging_object_key,revision,request_hash,error_code</sql>
     <select id="authorized" resultType="boolean">
         SELECT CASE WHEN pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}) THEN
             EXISTS(SELECT 1 FROM pf.space WHERE id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND type='PERSONAL')

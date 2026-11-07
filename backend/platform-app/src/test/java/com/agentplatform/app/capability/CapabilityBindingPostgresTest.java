@@ -379,6 +379,18 @@ class CapabilityBindingPostgresTest {
         assertEquals("ACTIVE", rows.stream().filter(c -> c.id().equals(next.id())).findFirst().orElseThrow().state());
     }
 
+    @Test void rejectedSkillImportExposesOnlyStableErrorCode() {
+        var actor = new com.agentplatform.domain.capability.SkillImportRepository.Actor(alice.userId(), alice.spaceId());
+        var upload = imports.create(actor, UUID.randomUUID(), "a".repeat(64), null, 7, "b".repeat(64));
+        UUID transfer = UUID.randomUUID(); imports.beginTransfer(actor, upload.id(), transfer); imports.verified(actor, upload.id(), transfer);
+        imports.enqueue(actor, upload.id(), UUID.randomUUID());
+        var publication = worker.nextPublication(UUID.randomUUID()); worker.published(publication);
+        var command = worker.claim(publication, UUID.randomUUID());
+        worker.rejected(command, "SKILL_ARCHIVE_INVALID");
+        assertEquals("REJECTED", imports.find(actor, upload.id()).state());
+        assertEquals("SKILL_ARCHIVE_INVALID", imports.find(actor, upload.id()).errorCode());
+    }
+
     @Test void probeCompletionCreatesDraftOnceAndRejectsOldFence() throws Exception {
         UUID trace = UUID.randomUUID();
         UUID createRequest = UUID.randomUUID(); UUID probeRequest = UUID.randomUUID();
