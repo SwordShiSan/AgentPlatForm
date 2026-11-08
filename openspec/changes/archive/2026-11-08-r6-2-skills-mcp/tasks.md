@@ -12,4 +12,4 @@
 ## Verification and closure
 
 - [x] 8. 工程、迁移、真实依赖、权限、浏览器及180秒观察；独立验收索引见 `evidence/r62/acceptance-index.json`。
-- [ ] 9. 两级 PR、归档、台账、Skill 和两份保护交付。
+- [x] 9. 两级 PR、归档、台账、Skill 和两份保护交付已完成；step→phase PR #160 与 phase→main PR #161 均已合并，最终交付副本及哈希见外部交付记录。
