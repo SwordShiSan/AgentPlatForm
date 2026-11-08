@@ -13,6 +13,12 @@ import java.util.*;
 /** Scoped authorization facts share the same Spring transaction and lock ordering as task ownership. */
 final class PermissionPersistence extends ChatPersistenceSupport {
     PermissionPersistence(ChatMappers mappers) { super(mappers); }
+    UUID boundWorkspace(Lease lease) { return tx(c -> {
+        MyBatisExecutionLedger.guard(c, lease);
+        PermissionRow row = c.permissions().permission(lease.spaceId(), lease.taskId());
+        if (row == null || !lease.userId().equals(row.actorId())) throw new ChatFailure(404, "RESOURCE_NOT_FOUND");
+        return row.workspaceId();
+    }); }
     private static boolean mutable(PermissionRow p) {
         return !p.cancelRequested() && Set.of("QUEUED", "RUNNING", "WAITING_INPUT").contains(p.status());
     }

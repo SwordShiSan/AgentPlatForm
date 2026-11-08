@@ -117,7 +117,7 @@ final class ConfigurationPersistence extends ChatPersistenceSupport {
             values.keySet().retainAll(Set.of("modelId","modelName","modelVersion","credentialId","credentialRevision","credentialSource","window","maxOutput","modelWindow","contextSafety","contextPolicyVersion","stateBytes","checkpointBytes","thinking","pricingVersion","inputPrice","outputPrice","perCallMicros","bundleHash","workspaceId","permissionMode","planMode","resolution"));
             values.putIfAbsent("resolution",Map.of("resolverVersion","LEGACY"));
             var result=new LinkedHashMap<String,Object>();result.put("configSnapshotId",row10.id().toString());result.put("configHash",row10.configHash());result.put("bundleId",row10.bundleId().toString());result.put("values",values);result.put("restrictions",Map.of("credentialActive",row10.credentialActive(),"modelActive",row10.modelActive()));
-            if(ContextPolicy.CURRENT_VERSION.equals(values.get("contextPolicyVersion"))){var usage=new LinkedHashMap<String,Object>();usage.put("estimatedInputTokens",c.configuration().latestInputEstimate(id));usage.put("estimated",true);result.put("contextUsage",usage);}return result;
+            if(ContextPolicy.CURRENT_VERSION.equals(values.get("contextPolicyVersion"))||ContextPolicy.COMPACTION_VERSION.equals(values.get("contextPolicyVersion"))){var usage=new LinkedHashMap<String,Object>();usage.put("estimatedInputTokens",c.configuration().latestInputEstimate(id));usage.put("estimated",true);result.put("contextUsage",usage);}return result;
          }
     });}
     public Map<String,Object> credentialMetadata(Actor a){return tx(c->{auth(c,a);return credentialMetadata(c,a);});}

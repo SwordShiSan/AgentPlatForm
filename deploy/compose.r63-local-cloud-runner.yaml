@@ -1,0 +1,17 @@
+# Optional Linux-only acceptance override. The runner itself remains on the cloud host.
+services:
+  api:
+    environment:
+      PLATFORM_ATTACHMENTS_ENABLED: "true"
+      PLATFORM_PREVIEW_ENABLED: "true"
+      PLATFORM_PREVIEW_IMAGE_ID: ${R63_PREVIEW_IMAGE_ID:?Pin the accepted renderer config ID}
+      PLATFORM_PREVIEW_BUNDLE: ${R63_PREVIEW_BUNDLE:?Pin the accepted parser bundle}
+      PLATFORM_PREVIEW_POLICY_HASH: ${R63_PREVIEW_POLICY_HASH:?Pin the accepted renderer policy}
+  worker:
+    environment:
+      PLATFORM_ATTACHMENTS_ENABLED: "true"
+      PLATFORM_PREVIEW_ENABLED: "true"
+      PLATFORM_PREVIEW_IMAGE_ID: ${R63_PREVIEW_IMAGE_ID:?Pin the accepted renderer config ID}
+      PLATFORM_PREVIEW_BUNDLE: ${R63_PREVIEW_BUNDLE:?Pin the accepted parser bundle}
+      PLATFORM_PREVIEW_POLICY_HASH: ${R63_PREVIEW_POLICY_HASH:?Pin the accepted renderer policy}
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_BASE: http://runner:18163

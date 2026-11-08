@@ -7,6 +7,9 @@ import com.agentplatform.domain.chat.*;
 import com.agentplatform.domain.chat.ChatData.*;
 import com.agentplatform.domain.health.ReadinessProbe;
 import com.agentplatform.domain.identity.IdentityStore;
+import com.agentplatform.domain.harness.HarnessPorts.MemoryPort;
+import com.agentplatform.domain.harness.HarnessPorts.RetrievalPort;
+import com.agentplatform.domain.harness.HarnessPorts.EvidenceValidationPort;
 import com.agentplatform.infrastructure.chat.*;
 import java.nio.file.*;
 import java.util.UUID;
@@ -46,11 +49,14 @@ public class ChatConfiguration {
             @Value("${platform.workspace.tools.enabled:false}")boolean workspaceTools,
             @Value("${platform.chat.context-v2.enabled:false}")boolean contextEnabled,
             @Value("${platform.chat.context.window-tokens:262144}")int contextWindow,
-            @Value("${platform.chat.context.max-output-tokens:4096}")int maxOutput) {
-        var context=contextEnabled?com.agentplatform.domain.chat.ContextPolicy.current(contextWindow,maxOutput):com.agentplatform.domain.chat.ContextPolicy.legacy();
+            @Value("${platform.chat.context.max-output-tokens:4096}")int maxOutput,
+            @Value("${platform.chat.context.compaction.enabled:false}")boolean compactionEnabled,
+            @Value("${platform.chat.context.evidence.enabled:false}")boolean contextEvidenceEnabled) {
+        var context=contextEnabled?(compactionEnabled?com.agentplatform.domain.chat.ContextPolicy.compaction(contextWindow,maxOutput):com.agentplatform.domain.chat.ContextPolicy.current(contextWindow,maxOutput)):com.agentplatform.domain.chat.ContextPolicy.legacy();
+        if(contextEvidenceEnabled&&!contextEnabled)throw new IllegalArgumentException("CONTEXT_EVIDENCE_REQUIRES_CONTEXT_V2");
         var locks=locksProvider.getIfAvailable();
         var locked=locks==null?null:new ConfigurationResolver.Layer(locks.modelId(),locks.credentialSource(),locks.planMode(),locks.permissionMode());
-        return new TransactionalChatRepository(new MyBatisChatRepository(mappers,workspaceTools,context,personalConfigEnabled?workspaceConfiguration:null,personalConfigEnabled?submissionIdentity:null,locked,planCapability,permissionsCapability), transactions);
+        return new TransactionalChatRepository(new MyBatisChatRepository(mappers,workspaceTools,context,personalConfigEnabled?workspaceConfiguration:null,personalConfigEnabled?submissionIdentity:null,locked,planCapability,permissionsCapability,contextEvidenceEnabled), transactions);
     }
     @Configuration(proxyBeanMethods=false)
     @Profile({"chat-local","chat-worker"})
@@ -83,6 +89,8 @@ public class ChatConfiguration {
     com.agentplatform.api.chat.WorkspaceOperationsApi workspaceOperationsApi(ChatRepository repository,com.agentplatform.domain.files.AssetStore assets){return new WorkspaceOperationsService(repository,assets);}
     @Bean @Profile("chat-local") ReadinessProbe chatReadiness(ChatRepository repository,IdentityStore identity,DispatchTransport transport){return ()->identity.ready()&&repository.ready()&&transport.connected();}
     @Bean @Profile({"chat-local","chat-worker","chat-ops"}) CredentialCipher credentialCipher(@Value("${platform.chat.master-key-file}")String file)throws Exception{return new CredentialCipher(Files.readAllBytes(Path.of(file)));}
+    @Bean @Profile({"chat-local","chat-worker"}) ContextProjectionService contextProjectionService(com.agentplatform.domain.chat.ContextProjectionStore store,tools.jackson.databind.json.JsonMapper json){return new ContextProjectionService(store,json);}
+    @Bean @Profile({"chat-local","chat-worker"}) com.agentplatform.domain.chat.ContextProjectionStore contextProjectionStore(com.agentplatform.infrastructure.dao.chat.ContextProjectionMapper mapper,org.springframework.transaction.support.TransactionTemplate transactions,tools.jackson.databind.json.JsonMapper json){return new com.agentplatform.infrastructure.adapter.repository.chat.MyBatisContextProjectionStore(mapper,transactions,json);}
     @Bean @Profile("chat-worker") ChatProvider chatProvider(@Value("${platform.chat.provider-base:https://api.deepseek.com}")String base,@Value("${platform.chat.fixture-provider:false}")boolean fixture,
             @Value("${platform.chat.fixture-tools:false}")boolean tools,@Value("${platform.workspace.tools.enabled:false}")boolean workspaceTools,org.springframework.core.env.Environment environment){
         if(tools&&!environment.acceptsProfiles(org.springframework.core.env.Profiles.of("recovery-fixture")))throw new IllegalArgumentException("FIXTURE_PROFILE_REQUIRED");
@@ -95,11 +103,19 @@ public class ChatConfiguration {
             @Value("${platform.chat.approvals-enabled:false}")boolean approvals,
             @Value("${platform.chat.acceptance-run:}")String acceptanceRun,org.springframework.beans.factory.ObjectProvider<WorkspaceToolRuntime> workspaceTools,
             org.springframework.beans.factory.ObjectProvider<com.agentplatform.domain.files.AssetStore> assets,
-            @Value("${platform.attachments.enabled:false}")boolean attachmentsEnabled,org.springframework.core.env.Environment environment){
+            @Value("${platform.attachments.enabled:false}")boolean attachmentsEnabled,
+            org.springframework.beans.factory.ObjectProvider<ContextProjectionService> contextProjection,
+            org.springframework.beans.factory.ObjectProvider<MemoryPort> contextMemory,
+            org.springframework.beans.factory.ObjectProvider<RetrievalPort> contextRetrieval,
+            org.springframework.beans.factory.ObjectProvider<EvidenceValidationPort> evidenceValidator,
+            org.springframework.core.env.Environment environment){
         var execution=new ChatExecution(repository,provider,cipher,Path.of(root),timers.getScheduledExecutor(),
                     tools?new com.agentplatform.infrastructure.chat.RecoveryFixtureTool(Path.of(root).resolve("fixture-effects")):null);
         var workspaceRuntime=workspaceTools.getIfAvailable();if(workspaceRuntime!=null)execution.configureWorkspaceTools(workspaceRuntime);
         if(attachmentsEnabled)execution.configureAttachments(assets.getObject());
+        execution.configureContextProjection(contextProjection.getIfAvailable());
+        if(contextMemory.getIfAvailable()!=null&&contextRetrieval.getIfAvailable()!=null&&evidenceValidator.getIfAvailable()!=null)
+            execution.configureContextEvidence(contextMemory.getObject(),contextRetrieval.getObject(),evidenceValidator.getObject());
         if(approvals){
             if(!environment.acceptsProfiles(org.springframework.core.env.Profiles.of("recovery-fixture")))throw new IllegalArgumentException("FIXTURE_PROFILE_REQUIRED");
             execution.configureToolApprovals();

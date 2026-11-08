@@ -4,6 +4,8 @@
   <artifactId>platform-infrastructure</artifactId>
   <dependencies>
     <dependency><groupId>org.apache.commons</groupId><artifactId>commons-compress</artifactId></dependency>
+    <dependency><groupId>com.microsoft.onnxruntime</groupId><artifactId>onnxruntime</artifactId><version>1.31.1</version></dependency>
+    <dependency><groupId>ai.djl.huggingface</groupId><artifactId>tokenizers</artifactId><version>0.38.0</version></dependency>
     <dependency><groupId>software.amazon.awssdk</groupId><artifactId>s3</artifactId></dependency>
     <dependency><groupId>software.amazon.awssdk</groupId><artifactId>url-connection-client</artifactId></dependency>
     <dependency><groupId>org.mybatis.spring.boot</groupId><artifactId>mybatis-spring-boot-starter</artifactId><version>4.0.0</version></dependency>

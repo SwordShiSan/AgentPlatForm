@@ -10,6 +10,8 @@ public final class CompositionRules {
         if (!bundle.sdkVersion().equals("2.0.4") || bundle.contractVersion() != 1 || bundle.stateSchemaVersion() != 1) throw new IllegalArgumentException("CHECKPOINT_INCOMPATIBLE");
         if (!bundle.codecVersion().equals("platform-v1") || !Set.of("scripted", "deepseek-flash").contains(bundle.modelFamily())) throw new IllegalArgumentException("PROVIDER_STATE_INCOMPATIBLE");
         Map<String,String> expected = bundle.modelFamily().equals("scripted") ? Bundle.baseline().components()
+                : "reviewed-personal-memory-v1".equals(bundle.components().get("memory"))
+                    ? com.agentplatform.domain.chat.ChatRuntime.evidenceBundle(bundle.components().containsKey("tools"),bundle.components().containsKey("compaction")).components()
                 : "canonical-large-context-v2".equals(bundle.components().get("context"))
                     ? com.agentplatform.domain.chat.ChatRuntime.contextBundle(bundle.components().containsKey("tools")).components()
                 : bundle.components().containsKey("tools") ? com.agentplatform.domain.chat.ChatRuntime.workspaceBundle().components()

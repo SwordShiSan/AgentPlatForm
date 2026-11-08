@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.chat.ContextProjectionMapper">
+  <resultMap id="ProjectionRow" type="com.agentplatform.infrastructure.dao.po.ContextProjectionRows$ProjectionRow">
+    <constructor>
+      <arg name="epoch" column="context_epoch" javaType="_long"/>
+      <arg name="bundleHash" column="bundle_hash" javaType="java.lang.String"/>
+      <arg name="watermarkJson" column="ledger_watermark" javaType="java.lang.String"/>
+      <arg name="sourceManifestSha256" column="source_manifest_sha256" javaType="java.lang.String"/>
+      <arg name="summary" column="summary" javaType="java.lang.String"/>
+      <arg name="summarySha256" column="summary_sha256" javaType="java.lang.String"/>
+      <arg name="estimatedInputTokens" column="input_estimated_tokens" javaType="_long"/>
+      <arg name="policyVersion" column="policy_version" javaType="java.lang.String"/>
+      <arg name="createdAt" column="created_at" javaType="java.time.Instant"/>
+    </constructor>
+  </resultMap>
+  <select id="lockExecutionSlot" resultType="java.lang.Integer"><![CDATA[
+    SELECT 1 FROM pf.execution_slot s WHERE s.id=1 AND s.task_id=#{lease.taskId,jdbcType=OTHER}
+      AND s.owner_id=#{lease.ownerId,jdbcType=OTHER} AND s.fencing_token=#{lease.fence}
+      AND s.lease_until>clock_timestamp() FOR UPDATE
+  ]]></select>
+  <select id="lockConversationLease" resultType="java.lang.Integer"><![CDATA[
+    SELECT 1 FROM pf.conversation_lease v WHERE v.space_id=#{lease.spaceId,jdbcType=OTHER}
+      AND v.conversation_id=#{lease.conversationId,jdbcType=OTHER} AND v.task_id=#{lease.taskId,jdbcType=OTHER}
+      AND v.attempt_id=#{lease.attemptId,jdbcType=OTHER} AND v.owner_id=#{lease.ownerId,jdbcType=OTHER}
+      AND v.generation=#{lease.generation} AND v.fencing_token=#{lease.fence} AND v.lease_until>clock_timestamp() FOR UPDATE
+  ]]></select>
+  <select id="lockTask" resultType="java.lang.Integer"><![CDATA[
+    SELECT 1 FROM pf.task t JOIN pf.membership m ON m.space_id=t.space_id AND m.user_id=t.creator_id
+      WHERE t.id=#{lease.taskId,jdbcType=OTHER} AND t.space_id=#{lease.spaceId,jdbcType=OTHER}
+        AND t.creator_id=#{lease.userId,jdbcType=OTHER} AND t.conversation_id=#{lease.conversationId,jdbcType=OTHER}
+        AND t.status='RUNNING' AND NOT t.cancel_requested AND m.status='ACTIVE' FOR UPDATE OF t
+  ]]></select>
+  <select id="lockDispatchAttempt" resultType="java.lang.Integer"><![CDATA[
+    SELECT 1 FROM pf.execution_dispatch d JOIN pf.attempt a ON a.task_id=d.task_id
+      WHERE d.task_id=#{lease.taskId,jdbcType=OTHER} AND d.status='CLAIMED' AND d.lease_owner=#{lease.ownerId,jdbcType=OTHER}
+        AND d.fencing_token=#{lease.fence} AND d.generation=#{lease.generation} AND d.lease_until>clock_timestamp()
+        AND a.id=#{lease.attemptId,jdbcType=OTHER} AND a.space_id=#{lease.spaceId,jdbcType=OTHER}
+        AND a.owner_id=#{lease.ownerId,jdbcType=OTHER} AND a.fencing_token=#{lease.fence} AND a.dispatch_generation=d.generation AND a.status='RUNNING'
+        FOR UPDATE OF d,a
+  ]]></select>
+  <select id="taskVisible" resultType="java.lang.Integer"><![CDATA[
+    SELECT 1 FROM pf.task t JOIN pf.membership m ON m.space_id=t.space_id AND m.user_id=t.creator_id
+      WHERE t.id=#{task,jdbcType=OTHER} AND t.creator_id=#{actor.userId,jdbcType=OTHER}
+        AND t.space_id=#{actor.spaceId,jdbcType=OTHER} AND m.status='ACTIVE'
+  ]]></select>
+  <select id="current" resultMap="ProjectionRow"><![CDATA[
+    SELECT p.context_epoch,p.bundle_hash,p.ledger_watermark::text ledger_watermark,p.source_manifest_sha256,
+      p.summary,p.summary_sha256,p.input_estimated_tokens,p.policy_version,p.created_at
+    FROM pf.task_context_projection_current c JOIN pf.task_context_projection p
+      ON p.space_id=c.space_id AND p.task_id=c.task_id AND p.context_epoch=c.context_epoch
+    WHERE c.space_id=#{lease.spaceId,jdbcType=OTHER} AND c.task_id=#{lease.taskId,jdbcType=OTHER}
+  ]]></select>
+  <select id="currentForOwner" resultMap="ProjectionRow"><![CDATA[
+    SELECT p.context_epoch,p.bundle_hash,p.ledger_watermark::text ledger_watermark,p.source_manifest_sha256,
+      p.summary,p.summary_sha256,p.input_estimated_tokens,p.policy_version,p.created_at
+    FROM pf.task t JOIN pf.membership m ON m.space_id=t.space_id AND m.user_id=t.creator_id
+      JOIN pf.task_context_projection_current c ON c.space_id=t.space_id AND c.task_id=t.id
+      JOIN pf.task_context_projection p ON p.space_id=c.space_id AND p.task_id=c.task_id AND p.context_epoch=c.context_epoch
+    WHERE t.id=#{task,jdbcType=OTHER} AND t.creator_id=#{actor.userId,jdbcType=OTHER}
+      AND t.space_id=#{actor.spaceId,jdbcType=OTHER} AND m.status='ACTIVE'
+  ]]></select>
+  <select id="lockCurrentEpoch" resultType="java.lang.Long"><![CDATA[
+    SELECT context_epoch FROM pf.task_context_projection_current WHERE space_id=#{lease.spaceId,jdbcType=OTHER}
+      AND task_id=#{lease.taskId,jdbcType=OTHER} FOR UPDATE
+  ]]></select>
+  <insert id="insert"><![CDATA[
+    INSERT INTO pf.task_context_projection(space_id,task_id,context_epoch,bundle_hash,ledger_watermark,source_manifest_sha256,
+      summary,summary_sha256,input_estimated_tokens,policy_version)
+    VALUES(#{lease.spaceId,jdbcType=OTHER},#{lease.taskId,jdbcType=OTHER},#{epoch},#{bundleHash},jsonb_build_object('ledgerHash',#{watermark,jdbcType=VARCHAR}),
+      #{sourceHash},#{summary},#{summaryHash},#{estimate},#{policy})
+  ]]></insert>
+  <insert id="point"><![CDATA[
+    INSERT INTO pf.task_context_projection_current(space_id,task_id,context_epoch)
+    VALUES(#{lease.spaceId,jdbcType=OTHER},#{lease.taskId,jdbcType=OTHER},#{epoch})
+    ON CONFLICT(task_id) DO UPDATE SET context_epoch=EXCLUDED.context_epoch,updated_at=clock_timestamp()
+      WHERE pf.task_context_projection_current.space_id=EXCLUDED.space_id
+        AND pf.task_context_projection_current.context_epoch=#{expected}
+  ]]></insert>
+</mapper>

@@ -1,0 +1,391 @@
+{
+  "stage": "R6.3",
+  "status": "ACCEPTANCE_PASS_LIMITED_PENDING_PROTECTED_PROMOTION",
+  "verified": false,
+  "baseline": {
+    "main": "a5c4e4857032d6c0dd5c0d0be34ebbd95d822197",
+    "phase": "abc8dd11f11cfd7fd7195cb9a2012d69975b1d77",
+    "stepBranch": "step/r6.3-knowledge-memory",
+    "change": "r6-3-knowledge-memory"
+  },
+  "candidate": {
+    "worktree": "R6.3 implementation candidate; product inputs match frozen image manifest; promotion pending",
+    "productImageInputHash": "d99dd37ea8e25df1f5706dfe2dc9aff131b7b0720559216f49b9061b1139564b",
+    "buildInputsManifestSha256": "5eb9d048c5de7068539b13072daae473a6913e91e4e5f3966222d04e798430ee",
+    "runtimeFixtureConfigSha256": "9396b3d826caf48129f9d1e5d4d7064d645452dc88626c60f6fe1cb620edbc1f",
+    "productSourceDriftAfterBuild": 0,
+    "fixtureOnlyChangesAfterBuild": [
+      "backend/platform-app/src/test/java/com/agentplatform/app/knowledge/KnowledgeV23UpgradePostgresTest.java",
+      "deploy/scripts/r63-local.py",
+      "deploy/scripts/r63-memory-matrix.py",
+      "deploy/scripts/r63-resource-sample.py",
+      "deploy/scripts/r63-retrieval-scale.py",
+      "deploy/compose.r63-local.yaml",
+      "deploy/scripts/r63-model-cold-rss.py"
+    ],
+    "baseGitHead": "abc8dd11f11cfd7fd7195cb9a2012d69975b1d77",
+    "gitHeadAtProductImageBuild": "abc8dd11f11cfd7fd7195cb9a2012d69975b1d77",
+    "candidateCommit": "pending local acceptance commit",
+    "candidateDescription": "R6.3 product inputs match the frozen build manifest and productSourceDriftAfterBuild is 0; fixture-only files are listed separately."
+  },
+  "images": {
+    "identityFileSha256": "bc4d3dee56ce053269ad8711393022974d62a839b23909f861b53b9119283a0f",
+    "api": "sha256:9d8ee1416a202c37769d2a138d1ace83dcfa161ffca4338612da76b09c1f83ba",
+    "gateway": "sha256:b4e441c437ffb26059060fec3964b720ff568e7b2b07e1f291b6d29a3e9f769e",
+    "providerFixture": "sha256:211974dc2ba37540e78299effa24a9425f9700593648be1310f8583aa98fcfd4",
+    "fileHelperReused": "sha256:a0f2fb315bbd72fac1eb5c38e2216a3cd285c778a2de301bd117572016e729ec",
+    "storageProbe": "sha256:b96f810c0b18749f7f4caa777718d4c14142776540726ba73cf37917822a79cb"
+  },
+  "model": {
+    "repositoryCommit": "761b726dd34fb83930e26aab4e9ac3899aa1fa78",
+    "onnxSha256": "f80102d3f2a1229f387d3c81909990d8945513e347b0eab049f7de3c6f98c193",
+    "tokenizerSha256": "0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39"
+  },
+  "checks": {
+    "mavenVerify": {
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "backend/mvnw.cmd -B verify",
+      "modules": 7,
+      "tests": 387,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 4,
+      "jdk": "Java 21.0.10",
+      "log": ".cache/r63-local/maven-final-verify.log",
+      "logSha256": "5ca11b42a6f62c998c01d55932319b0a243a8262490c462557cae4121826c900"
+    },
+    "v23ToV24Upgrade": {
+      "status": "PASS",
+      "command": "Pinned Maven 3.9.11; KnowledgeV23UpgradePostgresTest in isolated agentplatform-r63-local_r63 network",
+      "database": "r63_upgrade_r63_2fa963f96f7f",
+      "assertion": "empty DB→V23→existing identity/space rows→V24; validate and preserve runtime baseline schema 1",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": ".cache/r63-local/v23-upgrade-r63_2fa963f96f7f-container.log",
+      "logSha256": "59d767fad71cfe49a3bf9e3d5ae45cd84e6dcb393dda50b900c50fb11e922716"
+    },
+    "persistenceBoundary": {
+      "status": "PASS",
+      "exitCode": 0,
+      "productionJavaFiles": 514,
+      "allowedExceptions": 3,
+      "command": "python deploy/scripts/check-persistence-boundaries.py"
+    },
+    "frontend": {
+      "status": "PASS",
+      "node": "22.23.3",
+      "typecheckExitCode": 0,
+      "vitestFiles": 18,
+      "vitestTests": 81,
+      "vitestFailures": 0,
+      "buildExitCode": 0,
+      "contractCheckExitCode": 0,
+      "contractFixtureExitCode": 0,
+      "localLinks": 87,
+      "canonicalExternalReferences": 27,
+      "logSha256": "4c8b5b0e1f85443abade1bbebfa51346beabd47279feeb57f5657f038ead0f5"
+    },
+    "openSpecStrict": {
+      "status": "PASS",
+      "cli": "1.3.0",
+      "command": "OPENSPEC_TELEMETRY=0 DO_NOT_TRACK=1 openspec validate r6-3-knowledge-memory --strict",
+      "exitCode": 0,
+      "note": "The CLI printed non-fatal telemetry DNS errors when run with telemetry enabled; strict validation still exited 0. Final run with telemetry disabled exited 0 without changing product behavior."
+    },
+    "localFunctionalSmoke": {
+      "status": "PASS_LIMITED",
+      "database": "r63_2fa963f96f7f",
+      "realPostgresRabbitMqSeaweedFs": true,
+      "freshV24Database": true,
+      "knowledgeIndex": "READY",
+      "relevantSearchHits": 1,
+      "noAnswerSearchHits": 0,
+      "memoryLifecycle": "PENDING->ACTIVE->DELETED",
+      "protectedTaskEvidence": "PERSONAL_MEMORY+KNOWLEDGE",
+      "attachmentObjectRoundTripHashMatch": true,
+      "extractionInput": "FIXTURE_ONLY pre-extracted text; physical renderer not part of this run",
+      "supplierCalls": 0,
+      "result": ".cache/r63-local/knowledge-acceptance-result-r63_2fa963f96f7f.json",
+      "resultSha256": "72f1bd4f98362fa5e42de6785f3bf92f00049852bd59f01180469455d02e0758",
+      "acceptanceJournalSha256": "ecbe42cc3f83835e42e7f70afe88ee2edce872ceac9c9323d1a7e28ec8e8a5d1"
+    },
+    "retrieval": {
+      "status": "PASS_LIMITED",
+      "qualityQueries": 10,
+      "hitAt8": 10,
+      "noAnswerHits": 0,
+      "corpus": "one real bilingual source plus synthetic unrelated zero-vector scale rows",
+      "scale": {
+        "10000Chunks": {
+          "samples": 40,
+          "p95Ms": 110.75
+        },
+        "20000Chunks": {
+          "samples": 40,
+          "p95Ms": 200.53
+        }
+      },
+      "result": ".cache/r63-local/retrieval-scale-result-r63_2fa963f96f7f.json",
+      "resultSha256": "a0fcf7cbcc7caf66e27c4a65275e813c783783ce7b06158afdc37837585467af"
+    },
+    "memoryMatrix": {
+      "status": "PASS_LIMITED",
+      "assertions": [
+        "owner workspace accepted and foreign workspace denied",
+        "administrator and restricted account memory isolation",
+        "concurrent same-topic confirmation leaves exactly one ACTIVE row",
+        "database-clock FACT expiry and PREFERENCE review transition with audit"
+      ],
+      "remaining": "source-permission revocation/no-recall after activation; all remaining category expiry boundaries",
+      "result": ".cache/r63-local/memory-matrix-r63_2fa963f96f7f.json",
+      "resultSha256": "2d857c5379087f8d99a9b3ec3e7a2f7b4b9957945a6343a1f8588e80bb8076be"
+    },
+    "memoryNoRecallAfterDelete": {
+      "status": "PASS_LIMITED",
+      "database": "r63_2fa963f96f7f",
+      "activePersonalMemoryCountAtCheck": 0,
+      "subsequentTaskStatus": "SUCCEEDED",
+      "providerObservation": "context-evidence-memory=0;knowledge=0",
+      "supplierCalls": 0,
+      "receipt": ".cache/r63-local/memory-no-recall-result.json",
+      "receiptSha256": "5309a7be6848d5fef9550768314585544b957f275043b44a0a40d269b1ef3e0f",
+      "note": "The completed deterministic task returned zero memory and zero knowledge references for its query; only the zero memory count is relevant. An initial harness assertion incorrectly required an unrelated knowledge hit."
+    },
+    "browser": {
+      "status": "PASS_LIMITED",
+      "browser": "Microsoft Edge headless with real local API",
+      "widths": [
+        375,
+        768,
+        1440
+      ],
+      "receipt": {
+        "path": ".cache/r63-local/browser-final/receipt.json",
+        "sha256": "52327303b172460723eb912f6f6f4a19e41fd0cb39a7dfe3029d66283e4f8aa0"
+      },
+      "keyboardSubset": [
+        "keyboard login tab flow",
+        "search input reachable by Tab",
+        "search action reachable and submitted by Enter"
+      ],
+      "assertions": [
+        "knowledge search and memory view",
+        "restricted-account isolation",
+        "dark theme persistence",
+        "no horizontal overflow at the listed CSS viewport widths",
+        "no browser runtime errors"
+      ],
+      "notRun": [
+        "true 200 percent browser zoom: headless Edge ignored the attempted browser-zoom shortcut; no visual-zoom claim is made",
+        "full keyboard audit and visual contrast review"
+      ]
+    },
+    "cloudPhysicalRenderer": {
+      "status": "PASS_LIMITED",
+      "scope": "PHYSICAL_GVISOR_TEXT_EXTRACT_ONLY; no local sandbox expected; not signed durable application E2E",
+      "runtime": "runsc",
+      "imageConfigId": "sha256:502ba213ee70a1ed10e6a01aec519fb64c757a0c8201c774553c49d58f646545",
+      "runscSha256": "210b437a9cfae51e8f8c9074ed19b8b5e59477178e2e391a18117d8d6b924f7a",
+      "formats": [
+        "DOCX",
+        "XLSX",
+        "PPTX"
+      ],
+      "r5ContainerIdentityUnchanged": true,
+      "result": ".cache/r63-local/cloud-renderer-result.json",
+      "resultSha256": "0d58203eef4967c8b16f3853ce5d9987919b87ca22ebaf7eb7c00a94724cccf5"
+    },
+    "localResources": {
+      "status": "PASS_LIMITED",
+      "seconds": 184.9,
+      "samples": 22,
+      "violations": 0,
+      "limitMiBIncludingRuntimeAndHelper": 2880,
+      "minimumHostMemAvailableMiB": 4688.7,
+      "minimumLocalRootFreeBytes": 152716062720,
+      "maximumSampledSwapUsedMiB": 19.4,
+      "sandboxStartedLocally": false,
+      "appsAndDependenciesOnly": true,
+      "apiWorkerValuesAreSampledContainerUsageNotColdRss": true,
+      "summary": ".cache/r63-local/resource-observation-r63_2fa963f96f7f-02.json",
+      "summarySha256": "cc341b4396000e145d40d14e98bebac0def4d8719bb43188620faff8dbb7cdb8",
+      "samplesSha256": "57ef95631b2b737848feb45bfb57aba0aa7f7e64812efa118eaca36a4936f6e1"
+    },
+    "signedCloudExtractionToKnowledgeIndex": {
+      "status": "PASS",
+      "scope": "single signed application pipeline on cloud Linux with official runsc; attachment upload, TEXT_EXTRACT operation, S3 readback hash, knowledge index READY and semantic marker search",
+      "result": {
+        "path": ".cache/r63-local/signed-extraction-result-r63_2fa963f96f7f.json",
+        "sha256": "21de780cd1fda9ed36c41009706b9f95084147882fc1210d622a9e3c075053ab"
+      },
+      "journal": {
+        "path": ".cache/r63-local/signed-extraction-journal-r63_2fa963f96f7f.json",
+        "sha256": "abd71f8a4248243cbcacb03b7026ed767df88371ed1158c7efb51c4c7e7fea8f"
+      },
+      "rendererImageConfigId": "sha256:502ba213ee70a1ed10e6a01aec519fb64c757a0c8201c774553c49d58f646545",
+      "runscSha256": "210b437a9cfae51e8f8c9074ed19b8b5e59477178e2e391a18117d8d6b924f7a",
+      "sourceSha256": "6ed0c437b425a4ea7618c87d90f34b299835d93257c76dfa06a3bb2118e68266",
+      "extractedObjectSha256": "59d0a9a446ccfe70eed2b7b8bbf2fd3f093c9916e76f3bc4927a40176836caea",
+      "supplierCalls": 0,
+      "localSandboxStarted": false
+    },
+    "knowledgeFailedRebuildRetention": {
+      "status": "PASS_LIMITED",
+      "assertions": [
+        "injected extraction identity mismatch fails the new build",
+        "previous committed index version remains active and searchable",
+        "original quarantined delivery is requeued only after no-execution proof",
+        "fixture hashes restored"
+      ],
+      "result": {
+        "path": ".cache/r63-local/index-retention-result-r63_2fa963f96f7f.json",
+        "sha256": "9d4fceb0fc413d2cf64dbcfe12d4a38229afb5aa91c2a3dbb8ccac0cdbe700e3"
+      },
+      "limitation": "The injected failure used the isolated pre-extracted-text fixture; ACK-loss/redelivery of this specific index route is not a separate fault-injection receipt."
+    },
+    "sourceRevocationNoRecall": {
+      "status": "PASS_LIMITED",
+      "assertions": [
+        "source document deletion through authenticated API removes search hits",
+        "a subsequent deterministic task has zero knowledge references",
+        "memory source revocation between recall and model admission is rejected by application test",
+        "knowledge source revocation between retrieval and model admission is rejected by application test"
+      ],
+      "apiReceipt": {
+        "path": ".cache/r63-local/r63-source-revocation-02.json",
+        "sha256": "77b78be68aaf6f668b1f15389c5c69ff1ca658a672016f5c8427c47d0d843ad3"
+      },
+      "tests": [
+        "TaskContextEvidenceServiceTest.rejectsMemoryRevokedBetweenRecallAndModelAdmission",
+        "TaskContextEvidenceServiceTest.rejectsKnowledgeDocumentRevokedBetweenRetrievalAndModelAdmission"
+      ],
+      "limitation": "The post-delete task used an isolated fixture after all active fixture copies of that source were absent; this does not prove every ACL revocation race against a live production corpus."
+    },
+    "memoryExpiryAllCategories": {
+      "status": "PASS_LIMITED",
+      "categories": {
+        "FACT": "EXPIRED",
+        "PREFERENCE": "REVIEW_REQUIRED",
+        "PROCEDURE": "REVIEW_REQUIRED"
+      },
+      "matrixReceipt": {
+        "path": ".cache/r63-local/memory-matrix-r63_2fa963f96f7f.json",
+        "sha256": "2d857c5379087f8d99a9b3ec3e7a2f7b4b9957945a6343a1f8588e80bb8076be"
+      },
+      "procedureReceipt": {
+        "path": ".cache/r63-local/memory-procedure-expiry-result.json",
+        "sha256": "d4f648221afb3e5f7afdc0bd8cb4fa0f66ca4814710068ce86e67c0739c94ffc"
+      },
+      "limitations": "Verifies database-clock transition behavior and audit for each category; not a long-duration wall-clock soak."
+    },
+    "contextProjectionDurability": {
+      "status": "PASS_LIMITED",
+      "assertions": [
+        "projection committed with epoch and summary hash",
+        "canonical conversation history hash unchanged before and after projection",
+        "same projection read after isolated API restart",
+        "unit coverage rejects over-limit required input, preserves whole tool pairs, and does not mutate canonical message list",
+        "source revocation is rechecked before model admission"
+      ],
+      "receipt": {
+        "path": ".cache/r63-local/context-projection-result-r63_2fa963f96f7f-durable-projection-jsonb.json",
+        "sha256": "be198c09153c92436c09359cf7fefab73571b677b7dd0352a4b18eb911be4066"
+      },
+      "tests": [
+        "ContextProjectionServiceTest.compactsOnlyAssistantProseAndKeepsUserInputsAndWholeToolPairs",
+        "ContextProjectionServiceTest.refusesWhenRequiredUserInputAloneCannotFit",
+        "TaskContextEvidenceServiceTest.rejectsMemoryRevokedBetweenRecallAndModelAdmission",
+        "TaskContextEvidenceServiceTest.rejectsKnowledgeDocumentRevokedBetweenRetrievalAndModelAdmission"
+      ],
+      "limitation": "No separate real-database cancellation or forced transaction-failure injection was run while a projection commit was in flight."
+    },
+    "modelColdStartProcessRss": {
+      "status": "PASS_LIMITED",
+      "receipt": {
+        "path": ".cache/r63-local/model-rss-process-closeout-20261109.json",
+        "sha256": "94d6b77eef730e3e8a2e964e4eb2addfbb7445677692fec8a57bb5a88531c10f"
+      },
+      "measurement": "Java /proc/1/status VmRSS/VmHWM, distinct from Docker cgroup memory usage; one restart and deterministic local semantic query; container stayed healthy.",
+      "supplierCalls": 0,
+      "localSandboxStarted": false,
+      "limitation": "Sample is from the isolated local API process; it is not a cloud host-wide memory guarantee and does not claim physical co-residency with runsc."
+    },
+    "sharedHeavyRuntimeAdmission": {
+      "status": "PASS_LIMITED",
+      "receipt": {
+        "path": ".cache/r63-local/shared-heavy-slot-r63_2fa963f96f7f-closeout-20261109.json",
+        "sha256": "a265577701a20ece7dbbe02691e58d1eb83fbf03214ba30dd948ed5bc30c0fb6"
+      },
+      "assertions": [
+        "synthetic SANDBOX ownership of the database-backed shared slot causes semantic search to reject before ONNX inference with HEAVY_RUNTIME_BUSY",
+        "the exact synthetic slot is released and returns idle"
+      ],
+      "limitation": "This proves admission coordination, not simultaneous physical sandbox and full-service load; actual runsc signed extraction was exercised separately on the cloud host."
+    },
+    "cloudProductionRestoration": {
+      "status": "PASS",
+      "receipt": {
+        "path": ".cache/r63-local/r5-restored-final.json",
+        "sha256": "8fa1e2b850d202994f9ecb9def98ee2bdfadc2e5cdb054465111712dec79507a"
+      },
+      "assertions": [
+        "original R5 API/gateway/runner/worker container IDs remain running",
+        "health status is acceptable for each original service",
+        "R6.3 candidate runner is not running"
+      ],
+      "r63Deployment": false
+    },
+    "supplierRequests": {
+      "status": "PASS",
+      "realSupplierCalls": 0,
+      "deterministicProviderUsed": true
+    }
+  },
+  "remainingGates": [
+    "protected step-to-phase promotion",
+    "protected phase-to-main promotion",
+    "OpenSpec archive and phase/ledger synchronization",
+    "final clean-main body/evidence package with hash-checked protected copies"
+  ],
+  "production": {
+    "cloudPlatform": "R5",
+    "r63Deployment": false,
+    "productionTagCreated": false,
+    "realSupplierCalls": 0,
+    "finalReadonlyVerification": {
+      "path": ".cache/r63-local/r5-restored-final.json",
+      "sha256": "8fa1e2b850d202994f9ecb9def98ee2bdfadc2e5cdb054465111712dec79507a"
+    }
+  },
+  "privateArtifacts": "Raw fixture credentials, DB data and runtime logs remain in ignored .cache/r63-local; do not publish them.",
+  "knownLimitations": [
+    "Retrieval quality corpus is deliberately small (one real bilingual source plus synthetic unrelated rows); Hit@8 and scale timings are bounded fixture results.",
+    "Knowledge failed-build/old-active retention is demonstrated; a knowledge-route-specific ACK-loss/redelivery fault injection was not separately run.",
+    "Context projection persistence/restart and canonical-history stability are verified; cancellation-during-commit and forced database-transaction failure were not separately injected.",
+    "The shared heavy-slot gate is exercised synthetically; cloud runsc signed extraction is separately verified, not as simultaneous full-stack plus sandbox resource saturation.",
+    "The browser tested responsive CSS widths and a keyboard subset; true 200 percent zoom and complete accessibility review remain NOT_RUN.",
+    "R6.3 is not deployed and R6 has not been released; cloud production remains R5."
+  ],
+  "skillUpdates": {
+    "status": "UPDATED",
+    "files": {
+      "acceptanceEfficiency": {
+        "path": "C:\\Users\\laili\\.codex\\skills\\ai-agent-platform\\references\\acceptance-efficiency.md",
+        "sha256": "a63ae71be31cae19ce8c1bc72f2cca0c10873f7fbad13885a4aaa85c4fad4181"
+      },
+      "reconstructionLearningLoop": {
+        "path": "C:\\Users\\laili\\.codex\\skills\\ai-agent-platform\\references\\reconstruction-learning-loop.md",
+        "sha256": "faf3d3e1bd3d29173605ccd05da40e9462b053b8854b19e8439a348c64261efb"
+      }
+    },
+    "summary": "Added R6.3 confirmed lessons: cloud-only runsc, separate RSS/cgroup/host metrics, synthetic shared-slot claim boundary, bounded revocation/expiry evidence, projection restart/hash, headless zoom limitation, and automatic phase-closeout deduplication."
+  },
+  "externalDocumentationManifest": {
+    "path": "evidence/r63/external-docs-and-skill-manifest.json",
+    "sha256": "a4c4edd65279ae4f80bf5e9007c1e2f42d4c130ac567fd268f669172769c8062",
+    "entries": 13
+  }
+}

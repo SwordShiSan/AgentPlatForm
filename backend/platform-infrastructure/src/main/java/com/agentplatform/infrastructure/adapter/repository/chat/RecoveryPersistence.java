@@ -90,7 +90,7 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
         String manifest=canonicalJson(Map.of("version",2,"phase",draft.phase().name(),"bundle",bundle,"watermark",watermark,
                 "canonicalHash",bodyHash,"stateHash",stateHash,"states",Map.of("agent_state",Map.of("version",version,"hash",hash(new String(draft.state(),StandardCharsets.UTF_8))))));
         long envelopeBytes=(long)body.getBytes(StandardCharsets.UTF_8).length+stateJson.getBytes(StandardCharsets.UTF_8).length+manifest.getBytes(StandardCharsets.UTF_8).length;
-        if(ContextPolicy.CURRENT_VERSION.equals(policy.version())&&envelopeBytes>policy.checkpointBytes())throw new ChatFailure(422,"CHECKPOINT_TOO_LARGE");
+        if(policy.supportsLargeWindow()&&envelopeBytes>policy.checkpointBytes())throw new ChatFailure(422,"CHECKPOINT_TOO_LARGE");
         UUID id=Uuid7.next();c.recovery().insertCheckpoint(l,id,WorkspaceToolPersistence.bundleId(c,l.spaceId(),l.taskId()),bundle.hash(),draft.phase().name(),manifest,hash(manifest),body,bodyHash,stateJson,stateHash,watermark);
         return id;
     }); }
@@ -100,7 +100,7 @@ final class RecoveryPersistence extends ChatPersistenceSupport {
         var policy=ContextPolicy.fromSnapshot(frozen(c,task.id(),task.spaceId()));
         try {
             long envelopeBytes=(long)cp.manifestJson().getBytes(StandardCharsets.UTF_8).length+cp.canonicalJson().getBytes(StandardCharsets.UTF_8).length+cp.stateJson().getBytes(StandardCharsets.UTF_8).length;
-            if(ContextPolicy.CURRENT_VERSION.equals(policy.version())&&envelopeBytes>policy.checkpointBytes())throw new ChatFailure(409,"CHECKPOINT_HASH_MISMATCH");
+            if(policy.supportsLargeWindow()&&envelopeBytes>policy.checkpointBytes())throw new ChatFailure(409,"CHECKPOINT_HASH_MISMATCH");
             var manifest=object(cp.manifestJson());
             if(!bundle.hash().equals(cp.bundleHash())||!canonicalJson(bundle).equals(canonicalJson(manifest.get("bundle"))))throw new ChatFailure(409,"BUNDLE_INCOMPATIBLE");
             for(var part:List.of(List.of(cp.manifestJson(),cp.manifestHash()),List.of(cp.canonicalJson(),cp.canonicalHash()),List.of(cp.stateJson(),cp.stateHash())))
