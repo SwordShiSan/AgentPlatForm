@@ -1,0 +1,96 @@
+{
+  "stage": "R6.2",
+  "change": "r6-2-skills-mcp",
+  "status": "VERIFIED",
+  "promotion": "PENDING_PROTECTED_STEP_TO_PHASE_TO_MAIN",
+  "release": "NOT_RELEASED",
+  "cloudRelease": "R5_UNCHANGED",
+  "sourceRevisionBeforeCloseout": "b1142c82abd027a9fa272690c76e6d7cd8833740",
+  "runtimeBuildInputSha256": "a0b6b5e284e1004e9d95bbacf1c3c1d81be459dfe896fbe6e7af1a9843f9e6c4",
+  "migration": "V23 on isolated acceptance database; production database not migrated",
+  "supplierCalls": 0,
+  "checks": {
+    "mavenReactorVerify": {
+      "status": "PASS",
+      "tests": 330,
+      "failures": 0,
+      "errors": 0,
+      "linuxOnlySkipped": 1,
+      "note": "Full verify passed on candidate application source: 330 tests, 0 failures/errors, one Linux-only skip. A later committed-command replay test was added and passed separately (1/1)."
+    },
+    "runnerReplay": {
+      "status": "PASS",
+      "test": "CapabilityMaterializationRunnerServiceTest.replayOfCommittedSignedCommandReturnsReceiptWithoutStartingAnotherContainer",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "testSourceSha256": "01c347e13702f71bd1ef541655f362ac67aeb7e190034db739dc4753e59eb8cd",
+      "note": "Persistent signed command replay returns the receipt without starting another container."
+    },
+    "frontend": {
+      "status": "PASS",
+      "vueTypecheck": "PASS",
+      "vitest": "81 passed across 18 files",
+      "productionBuild": "PASS"
+    },
+    "contractsAndSpecs": {
+      "status": "PASS",
+      "generatedClientCheck": "PASS",
+      "contractFixtures": "PASS",
+      "strictOpenSpec": "PASS",
+      "links": "86 local and 26 canonical external references passed"
+    },
+    "postgresRabbitMqSeaweedFs": {
+      "status": "PASS",
+      "scope": "Isolated V22-to-V23 and real PostgreSQL/RabbitMQ/SeaweedFS acceptance for import, publication, bindings, protected fixture calls, inbox duplicate handling and object-backed material authorization; production remains unchanged."
+    },
+    "browser": {
+      "status": "PASS",
+      "evidence": "browser-acceptance.json"
+    },
+    "linuxGvisorXfs": {
+      "status": "PASS",
+      "evidence": "java-capability-mount-poc.json",
+      "boundary": "Physical probe used the production docker-java runtime adapter directly. Signed runner HTTP plus persistent database plus physical Docker were not exercised together in one end-to-end run; those boundaries have separate signature, repository/lease, service-replay and physical-runtime evidence."
+    },
+    "resourceObservation": {
+      "status": "PASS",
+      "durationSeconds": 183,
+      "samples": 11,
+      "maximumSampledContainerMemoryBytes": 1114329051,
+      "scope": "Sampled local acceptance-container usage, not absolute peak or capacity guarantee."
+    },
+    "productionState": {
+      "status": "PASS",
+      "release": "R5",
+      "runningServices": 11,
+      "legacyServicesRunning": 0,
+      "r62Deployment": "NOT_DEPLOYED"
+    }
+  },
+  "evidenceFiles": {
+    "browser-acceptance.json": "sha256:584c0240583ebf4431d545a8d715d5b76f12b0f0cc2149beee4107382e04fce2",
+    "java-capability-mount-poc.json": "sha256:08be7005a196a5e34c81c4e3e0098956c0059c6e171c698cbc81783098eed1c4",
+    "resource-observation.json": "sha256:eeb97d33a7f77d988b53962e20e48fbff06fb120816cdd5b3d673076a72e82bc"
+  },
+  "historicalFailures": "Retained under the change verification log; initial stale-fixture browser failures and harness/tool invocation failures were not rewritten as passes. Fresh-database browser run passed.",
+  "unrun": [
+    "Production R6 deployment and R6 release tag",
+    "R6.4 automatic capability assembly into ordinary chat",
+    "A single signed-runner HTTP + persistent database + physical Docker end-to-end canary",
+    "Real supplier calls"
+  ],
+  "skillUpdates": {
+    "files": [
+      {
+        "path": "C:/Users/laili/.codex/skills/ai-agent-platform/references/reconstruction-operations.md",
+        "sha256": "6b5fdf84828235cd767effba700aa390f4e11d931439579ba413fcc498e4c5d7"
+      },
+      {
+        "path": "C:/Users/laili/.codex/skills/ai-agent-platform/references/reconstruction-operations-evidence.md",
+        "sha256": "c3b66633eb2aa504f280490c7d370074ed1b51cf32e54a8cbd6ada7809b706c"
+      }
+    ],
+    "scope": "R6.2 confirmed PowerShell/Maven parsing, docker-java input framing, fixture freshness, one-click launcher, and evidence-boundary lessons."
+  }
+}

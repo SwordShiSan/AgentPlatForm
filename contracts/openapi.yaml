@@ -371,6 +371,532 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/WorkspaceConfiguration'}
         default: *a1
+  /api/v1/skills:
+    get:
+      operationId: skills
+      security: [{cookieAuth: []}]
+      parameters: &skillCatalogParameters
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Paged personal Skill catalog
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillCatalogPage'}
+        default: *a1
+  /api/v1/skills/{id}/versions:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      operationId: skillVersions
+      security: [{cookieAuth: []}]
+      parameters: *skillCatalogParameters
+      responses:
+        "200":
+          description: Paged immutable Skill versions
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillCatalogPage'}
+        default: *a1
+  /api/v1/skills/{id}/versions/{versionId}:
+    get:
+      operationId: skillVersion
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: versionId, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Immutable Skill manifest and publication status
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillVersion'}
+        default: *a1
+  /api/v1/skills/{id}/versions/{versionId}/publish:
+    post:
+      operationId: publishSkillVersion
+      security: [{cookieAuth: []}]
+      parameters: &skillVersionParameters
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: versionId, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Published immutable version
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillVersion'}
+        default: *a1
+  /api/v1/skills/{id}/versions/{versionId}/revoke:
+    post:
+      operationId: revokeSkillVersion
+      security: [{cookieAuth: []}]
+      parameters: *skillVersionParameters
+      responses:
+        "200":
+          description: Revoked immutable version
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillVersion'}
+        default: *a1
+  /api/v1/skills/imports:
+    post:
+      operationId: createSkillImport
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SkillImportCreate'}
+      responses:
+        "201":
+          description: Stable upload identity and reserved capacity
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillImport'}
+        default: *a1
+  /api/v1/skills/imports/requests/{requestId}:
+    get:
+      operationId: skillImportByRequest
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: requestId, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Original import associated with an accepted request
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillImport'}
+        default: *a1
+  /api/v1/skills/imports/{id}:
+    get:
+      operationId: skillImport
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Durable upload and validation state
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillImport'}
+        default: *a1
+  /api/v1/skills/imports/{id}/content:
+    put:
+      operationId: uploadSkillImport
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: Content-Length, in: header, required: true, schema: {type: integer, minimum: 0, maximum: 20971520}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: {type: string, format: binary}
+      responses:
+        "200":
+          description: Bounded archive transferred or awaiting reconciliation
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillImport'}
+        default: *a1
+  /api/v1/skills/imports/{id}/complete:
+    post:
+      operationId: completeSkillImport
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "202":
+          description: Validation queued under the original import identity
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SkillImport'}
+        default: *a1
+  /api/v1/connectors:
+    get:
+      operationId: connectors
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: cursor, in: query, required: false, schema: {type: string, format: uuid}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Personal connector settings
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpConnectorPage'}
+        default: *a1
+    post:
+      operationId: createConnector
+      security: [{cookieAuth: []}]
+      parameters: &mcpCreateHeaders
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/McpConnectorInput'}
+      responses:
+        "201":
+          description: Connector created, not yet probed or enabled
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpConnector'}
+        default: *a1
+  /api/v1/connectors/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      operationId: connector
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Connector configuration
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpConnector'}
+        default: *a1
+    put:
+      operationId: updateConnector
+      security: [{cookieAuth: []}]
+      parameters: &mcpVersionHeaders
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/McpConnectorInput'}
+      responses:
+        "200":
+          description: Updated configuration; existing version bindings remain immutable
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpConnector'}
+        default: *a1
+  /api/v1/connectors/{id}/test:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      operationId: testConnector
+      security: [{cookieAuth: []}]
+      parameters: *mcpVersionHeaders
+      responses:
+        "202":
+          description: Durable discovery job queued; no business tool is invoked
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpProbe'}
+        default: *a1
+  /api/v1/connectors/{id}/versions:
+    get:
+      operationId: connectorVersions
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: cursor, in: query, required: false, schema: {type: integer, minimum: 1}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Immutable discovered versions
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpVersionPage'}
+        default: *a1
+  /api/v1/connectors/{id}/versions/{versionId}:
+    get:
+      operationId: connectorVersion
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: versionId, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Frozen version and discovered tool schemas
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpVersionDetail'}
+        default: *a1
+  /api/v1/connectors/{id}/activation:
+    get:
+      operationId: connectorActivation
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Current explicit enablement
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpActivation'}
+        default: *a1
+  /api/v1/connectors/{id}/versions/{versionId}/enable:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      - {name: versionId, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      operationId: enableConnectorVersion
+      security: [{cookieAuth: []}]
+      parameters: *mcpVersionHeaders
+      responses:
+        "200":
+          description: Version explicitly enabled
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpActivation'}
+        default: *a1
+  /api/v1/connectors/{id}/disable:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      operationId: disableConnector
+      security: [{cookieAuth: []}]
+      parameters: *mcpVersionHeaders
+      responses:
+        "200":
+          description: Connector disabled without changing historical bindings
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpActivation'}
+        default: *a1
+  /api/v1/connectors/requests/{requestId}:
+    get:
+      operationId: connectorByRequest
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: requestId, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Original accepted configuration snapshot for this request
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpConnector'}
+        default: *a1
+  /api/v1/connectors/tests/requests/{requestId}:
+    get:
+      operationId: connectorTestByRequest
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: requestId, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Original discovery job for this request
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpProbe'}
+        default: *a1
+  /api/v1/connectors/tests/{id}:
+    get:
+      operationId: connectorTest
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Discovery job state
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpProbe'}
+        default: *a1
+  /api/v1/me/connector-credentials:
+    get:
+      operationId: connectorCredentials
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: cursor, in: query, required: false, schema: {type: string, format: uuid}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Credential metadata only
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ConnectorCredentialPage'}
+        default: *a1
+    post:
+      operationId: createConnectorCredential
+      security: [{cookieAuth: []}]
+      parameters: &connectorCredentialWrite
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ConnectorCredentialInput'}
+      responses:
+        "201":
+          description: Encrypted credential metadata
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ConnectorCredential'}
+        default: *a1
+  /api/v1/me/connector-credentials/{id}/replace:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      operationId: replaceConnectorCredential
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ConnectorCredentialInput'}
+      responses:
+        "201":
+          description: New encrypted credential identity
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ConnectorCredential'}
+        default: *a1
+  /api/v1/me/connector-credentials/requests/{requestId}:
+    get:
+      operationId: connectorCredentialByRequest
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: requestId, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Credential metadata for the original create, replace or revoke request; no secret is returned
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ConnectorCredential'}
+        default: *a1
+  /api/v1/me/connector-credentials/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    delete:
+      operationId: revokeConnectorCredential
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Revoked credential metadata
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ConnectorCredential'}
+        default: *a1
+  /api/v1/me/capability-bindings:
+    parameters:
+      - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+    get:
+      operationId: personalCapabilityBindings
+      security: [{cookieAuth: []}]
+      responses:
+        "200":
+          description: Versioned personal selections
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CapabilityBindingSet'}
+        default: *a1
+    put:
+      operationId: replacePersonalCapabilityBindings
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CapabilityBindingUpdate'}
+      responses:
+        "200":
+          description: Accepted binding snapshot
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CapabilityBindingSet'}
+        default: *a1
+  /api/v1/workspaces/{id}/capability-bindings:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+    get:
+      operationId: workspaceCapabilityBindings
+      security: [{cookieAuth: []}]
+      responses:
+        "200":
+          description: Versioned workspace selection or inheritance
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CapabilityBindingSet'}
+        default: *a1
+    put:
+      operationId: replaceWorkspaceCapabilityBindings
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+        - {name: X-CSRF-Token, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CapabilityBindingUpdate'}
+      responses:
+        "200":
+          description: Accepted binding snapshot
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CapabilityBindingSet'}
+        default: *a1
+  /api/v1/effective-capabilities:
+    get:
+      operationId: effectiveCapabilities
+      security: [{cookieAuth: []}]
+      parameters:
+        - {name: workspaceId, in: query, required: false, schema: {type: string, format: uuid}}
+        - {name: X-Space-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Effective selections and currently unavailable versions
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EffectiveCapabilities'}
+        default: *a1
   /api/v1/me/preferences:
     get:
       operationId: chatPreferences
@@ -2084,6 +2610,220 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
   schemas:
+    McpVersion:
+      type: object
+      additionalProperties: false
+      required: [connectorId, versionId, versionNumber, state, revision, endpoint, authKind, credentialId, credentialRevision, policyHash, toolCount, sourceConfigurationRevision]
+      properties:
+        connectorId: {type: string, format: uuid}
+        versionId: {type: string, format: uuid}
+        versionNumber: {type: integer, format: int64}
+        state: {type: string, enum: [DRAFT, PUBLISHED, REVOKED]}
+        revision: {type: integer, format: int64}
+        endpoint: {type: string, format: uri}
+        authKind: {type: string, enum: [NONE, BEARER, API_KEY]}
+        credentialId: {type: [string, 'null'], format: uuid}
+        credentialRevision: {type: [integer, 'null'], format: int64}
+        policyHash: {type: string}
+        toolCount: {type: integer}
+        sourceConfigurationRevision: {type: integer, format: int64}
+    McpVersionPage:
+      type: object
+      required: [items, nextCursor]
+      additionalProperties: false
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/McpVersion'}}
+        nextCursor: {type: [integer, 'null'], format: int64}
+    McpTool:
+      type: object
+      required: [name, description, schemaJson, schemaSha256]
+      additionalProperties: false
+      properties:
+        name: {type: string}
+        description: {type: [string, 'null']}
+        schemaJson: {type: string, maxLength: 65536}
+        schemaSha256: {type: string}
+    McpActivation:
+      type: object
+      required: [revision, enabledVersionId]
+      additionalProperties: false
+      properties:
+        revision: {type: integer, format: int64}
+        enabledVersionId: {type: [string, 'null'], format: uuid}
+    McpVersionDetail:
+      type: object
+      required: [version, tools, activation, eligible]
+      additionalProperties: false
+      properties:
+        version: {$ref: '#/components/schemas/McpVersion'}
+        tools: {type: array, items: {$ref: '#/components/schemas/McpTool'}}
+        activation: {$ref: '#/components/schemas/McpActivation'}
+        eligible: {type: boolean}
+    McpConnectorInput:
+      type: object
+      additionalProperties: false
+      required: [endpoint, authKind]
+      properties:
+        endpoint: {type: string, format: uri, maxLength: 4096}
+        authKind: {type: string, enum: [NONE, BEARER, API_KEY]}
+        apiKeyHeader: {type: [string, 'null'], enum: [X-API-Key, api-key, null]}
+        credentialId: {type: [string, 'null'], format: uuid}
+        credentialRevision: {type: [integer, 'null'], format: int64, minimum: 1}
+    McpConnector:
+      type: object
+      additionalProperties: false
+      required: [id, endpoint, authKind, apiKeyHeader, credentialId, credentialRevision, revision]
+      properties:
+        id: {type: string, format: uuid}
+        endpoint: {type: string, format: uri}
+        authKind: {type: string, enum: [NONE, BEARER, API_KEY]}
+        apiKeyHeader: {type: [string, 'null'], enum: [X-API-Key, api-key, null]}
+        credentialId: {type: [string, 'null'], format: uuid}
+        credentialRevision: {type: [integer, 'null'], format: int64}
+        revision: {type: integer, format: int64, minimum: 1}
+    McpConnectorPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/McpConnector'}}
+        nextCursor: {type: [string, 'null'], format: uuid}
+    McpProbe:
+      type: object
+      additionalProperties: false
+      required: [id, connectorId, configurationRevision, state, resultVersionId, revision, errorCode]
+      properties:
+        id: {type: string, format: uuid}
+        connectorId: {type: string, format: uuid}
+        configurationRevision: {type: integer, format: int64, minimum: 1}
+        state: {type: string, enum: [QUEUED, RUNNING, READY, FAILED, BLOCKED]}
+        resultVersionId: {type: [string, 'null'], format: uuid}
+        revision: {type: integer, format: int64, minimum: 1}
+        errorCode: {type: [string, 'null']}
+    ConnectorCredentialInput:
+      type: object
+      additionalProperties: false
+      required: [secret]
+      properties:
+        secret: {type: string, minLength: 1, maxLength: 8192, writeOnly: true}
+    ConnectorCredential:
+      type: object
+      additionalProperties: false
+      required: [id, revision, state, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        revision: {type: integer, format: int64, minimum: 1}
+        state: {type: string, enum: [ACTIVE, REVOKED]}
+        createdAt: {type: string, format: date-time}
+    ConnectorCredentialPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/ConnectorCredential'}}
+        nextCursor: {type: [string, 'null'], format: uuid}
+    SkillCatalogItem:
+      type: object
+      additionalProperties: false
+      required: [capabilityId, versionId, versionNumber, name, description, state, revision]
+      properties:
+        capabilityId: {type: string, format: uuid}
+        versionId: {type: string, format: uuid}
+        versionNumber: {type: integer, format: int64, minimum: 1}
+        name: {type: string}
+        description: {type: string}
+        state: {type: string, enum: [DRAFT, PUBLISHED, REVOKED]}
+        revision: {type: integer, format: int64, minimum: 1}
+    SkillCatalogPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/SkillCatalogItem'}}
+        nextCursor: {type: [string, 'null']}
+    SkillResource:
+      type: object
+      additionalProperties: false
+      required: [path, bytes, sha256]
+      properties:
+        path: {type: string}
+        bytes: {type: integer, format: int64, minimum: 0}
+        sha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+    SkillVersion:
+      type: object
+      additionalProperties: false
+      required: [capabilityId, versionId, state, revision, name, description, resources, dependencies, assetAvailable]
+      properties:
+        capabilityId: {type: string, format: uuid}
+        versionId: {type: string, format: uuid}
+        state: {type: string, enum: [DRAFT, PUBLISHED, REVOKED]}
+        revision: {type: integer, format: int64, minimum: 1}
+        name: {type: string}
+        description: {type: string}
+        resources: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/SkillResource'}}
+        dependencies: {type: array, items: {}}
+        assetAvailable: {type: boolean}
+    SkillImportCreate:
+      type: object
+      additionalProperties: false
+      required: [sizeBytes, sha256]
+      properties:
+        capabilityId: {type: [string, 'null'], format: uuid}
+        sizeBytes: {type: integer, format: int64, minimum: 0, maximum: 20971520}
+        sha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+    SkillImport:
+      type: object
+      additionalProperties: false
+      required: [id, capabilityId, versionId, state, sizeBytes, sha256, revision, errorCode]
+      properties:
+        id: {type: string, format: uuid}
+        capabilityId: {type: string, format: uuid}
+        versionId: {type: string, format: uuid}
+        state: {type: string, enum: [CREATED, UPLOADING, VERIFIED, QUEUED, RUNNING, DRAFT, REJECTED, BLOCKED]}
+        sizeBytes: {type: integer, format: int64}
+        sha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+        revision: {type: integer, format: int64, minimum: 1}
+        errorCode: {type: [string, 'null'], pattern: '^[A-Z0-9_]{1,64}$'}
+    CapabilitySelection:
+      type: object
+      additionalProperties: false
+      required: [capabilityId, versionId]
+      properties:
+        capabilityId: {type: string, format: uuid}
+        versionId: {type: string, format: uuid}
+    CapabilityBindingUpdate:
+      type: object
+      additionalProperties: false
+      required: [inheritPersonal, selections]
+      properties:
+        inheritPersonal: {type: boolean}
+        selections:
+          type: array
+          maxItems: 100
+          items: {$ref: '#/components/schemas/CapabilitySelection'}
+    CapabilityBindingSet:
+      type: object
+      additionalProperties: false
+      required: [revision, inheritPersonal, selections]
+      properties:
+        revision: {type: integer, format: int64, minimum: 0}
+        inheritPersonal: {type: boolean}
+        selections:
+          type: array
+          maxItems: 100
+          items: {$ref: '#/components/schemas/CapabilitySelection'}
+    EffectiveCapabilities:
+      type: object
+      additionalProperties: false
+      required: [source, selections, unavailable]
+      properties:
+        source: {type: string, enum: [PERSONAL, WORKSPACE]}
+        selections:
+          type: array
+          items: {$ref: '#/components/schemas/CapabilitySelection'}
+        unavailable:
+          type: array
+          items: {$ref: '#/components/schemas/CapabilitySelection'}
     PreviewRequest:
       type: object
       additionalProperties: false

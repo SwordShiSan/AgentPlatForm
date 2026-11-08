@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "operationId": "f7778988-fa36-438d-b352-d0e0f3b44059",
+  "scope": "Production DockerSandboxRuntime through docker-java, actual runsc/systrap and isolated XFS test image; signed runner HTTP and database were not part of this physical probe",
+  "canaryJarSha256": "b6604576f2ecd38fbb7a1fa9d1f04886d5a22a9f7d0d78feb70e0b01a387bd9e",
+  "sandboxImage": "sha256:9e0bd46f894ba4a82682b933a654b888ab3cb6e34f9d28cf39a7c4f65fd09a1d",
+  "helperImage": "sha256:fa1ad6e67dde1a36b3807d56db307dee71ce70a20bb92f79dbeb9956e7a34864",
+  "testFilesystemUuid": "4b0dc5f8-17ab-4ff1-8f36-77656c52c0bd",
+  "verifiedFiles": 1,
+  "readOnlyMount": true,
+  "containerStoppedAndRemoved": true,
+  "testMountAndLoopRemoved": true,
+  "productionRestored": "R5",
+  "supplierCalls": 0
+}

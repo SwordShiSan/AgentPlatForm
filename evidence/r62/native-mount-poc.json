@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "scope": "isolated runsc systrap read-only bind only; not runner signature or complete stage acceptance",
+  "source": "ed7c4ba",
+  "scriptSha256": "34df5d3af869183a1eacb3113d054314a4b10aa122d63cd2c9bf3a602a6cf97c",
+  "root": "/srv/agentplatform/acceptance/r62-mount-poc-c15bd087764e44d983f54b2868d3f7d3",
+  "testUuid": "4b0dc5f8-17ab-4ff1-8f36-77656c52c0bd",
+  "sandboxImage": "sha256:82b3fa923e171f29531bda1b436b0a1982c2ca6ce1ea44708f0dc529d3a099d4",
+  "releaseRestored": "R5",
+  "fixtureCleanup": true,
+  "loopDetached": true,
+  "testMountAbsent": true,
+  "supplierCalls": 0,
+  "notRun": [
+    "runner signatures",
+    "MCP TLS integration",
+    "persistent capability services",
+    "full stage acceptance"
+  ]
+}

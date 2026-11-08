@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.capability.CapabilityMaterializationMapper">
+ <select id="currentLease" resultType="boolean">
+  SELECT EXISTS(
+   SELECT 1 FROM pf.task t
+   JOIN pf.attempt a ON a.space_id=t.space_id AND a.task_id=t.id
+   JOIN pf.conversation_lease l ON l.space_id=t.space_id AND l.conversation_id=t.conversation_id
+   JOIN pf.execution_dispatch d ON d.task_id=t.id
+   JOIN pf.execution_slot e ON e.task_id=t.id
+   JOIN pf.task_resource_binding rb ON rb.space_id=t.space_id AND rb.task_id=t.id AND rb.actor_id=t.creator_id
+   WHERE t.id=#{command.taskId} AND t.space_id=#{command.spaceId} AND t.creator_id=#{command.actorId} AND t.status='RUNNING'
+    AND rb.workspace_id=#{command.workspaceId}
+    AND a.id=#{command.attemptId} AND a.owner_id=#{command.ownerId} AND a.fencing_token=#{command.fence} AND a.dispatch_generation=#{command.generation} AND a.status='RUNNING' AND a.ended_at IS NULL
+    AND l.task_id=t.id AND l.attempt_id=a.id AND l.owner_id=#{command.ownerId} AND l.generation=#{command.generation} AND l.fencing_token=#{command.fence} AND l.lease_until>clock_timestamp()
+    AND d.lease_owner=#{command.ownerId} AND d.generation=#{command.generation} AND d.fencing_token=#{command.fence} AND d.lease_until>clock_timestamp()
+    AND e.owner_id=#{command.ownerId} AND e.fencing_token=#{command.fence} AND e.lease_until>clock_timestamp()
+  )
+ </select>
+ <insert id="insert">
+  INSERT INTO pf.capability_materialization_command(operation_id,command_id,space_id,task_id,attempt_id,actor_id,owner_id,workspace_id,
+   generation,fence,manifest_hash,request_hash,command_json,state,revision)
+  VALUES(#{command.operationId},#{command.commandId},#{command.spaceId},#{command.taskId},#{command.attemptId},#{command.actorId},#{command.ownerId},#{command.workspaceId},
+   #{command.generation},#{command.fence},#{command.manifestHash},#{hash},CAST(#{json} AS jsonb),'RUNNING',1)
+  ON CONFLICT(operation_id) DO NOTHING
+ </insert>
+ <select id="find" resultType="com.agentplatform.domain.capability.CapabilityMaterializationRepository$Record">
+  SELECT operation_id,command_json::text AS command_json,request_hash,state,receipt_json::text AS receipt_json,receipt_hash,error_code,revision
+  FROM pf.capability_materialization_command WHERE operation_id=#{operation}
+ </select>
+ <update id="committed">
+  UPDATE pf.capability_materialization_command SET state='COMMITTED',receipt_json=CAST(#{json} AS jsonb),receipt_hash=#{hash},revision=revision+1,
+   updated_at=clock_timestamp()
+  WHERE operation_id=#{command.operationId} AND command_id=#{command.commandId} AND request_hash IS NOT NULL AND state='RUNNING'
+   AND space_id=#{command.spaceId} AND task_id=#{command.taskId} AND attempt_id=#{command.attemptId} AND actor_id=#{command.actorId}
+   AND owner_id=#{command.ownerId} AND workspace_id=#{command.workspaceId} AND fence=#{command.fence} AND manifest_hash=#{command.manifestHash}
+ </update>
+ <update id="blocked">
+  UPDATE pf.capability_materialization_command SET state='BLOCKED',error_code=#{code},
+   receipt_json=COALESCE(CAST(#{json} AS jsonb),receipt_json),
+   receipt_hash=COALESCE(#{hash},receipt_hash),revision=revision+1,updated_at=clock_timestamp()
+  WHERE operation_id=#{command.operationId} AND command_id=#{command.commandId} AND state='RUNNING'
+   AND space_id=#{command.spaceId} AND task_id=#{command.taskId} AND attempt_id=#{command.attemptId}
+   AND owner_id=#{command.ownerId} AND workspace_id=#{command.workspaceId} AND fence=#{command.fence} AND manifest_hash=#{command.manifestHash}
+ </update>
+ <update id="failed">
+  UPDATE pf.capability_materialization_command SET state='FAILED',error_code=#{code},
+   receipt_json=CAST(#{json} AS jsonb),receipt_hash=#{hash},revision=revision+1,updated_at=clock_timestamp()
+  WHERE operation_id=#{command.operationId} AND command_id=#{command.commandId} AND state='RUNNING'
+   AND space_id=#{command.spaceId} AND task_id=#{command.taskId} AND attempt_id=#{command.attemptId}
+   AND owner_id=#{command.ownerId} AND workspace_id=#{command.workspaceId} AND fence=#{command.fence} AND manifest_hash=#{command.manifestHash}
+ </update>
+</mapper>

@@ -7,6 +7,9 @@ import com.agentplatform.domain.workspace.FileHelperData.Physical;
 import com.agentplatform.domain.workspace.FileHelperData.Snapshot;
 import com.agentplatform.domain.workspace.FileHelperData.Stopped;
 import com.agentplatform.domain.workspace.WorkspaceFailure;
+import com.agentplatform.domain.capability.CapabilityMaterialization;
+import com.agentplatform.domain.capability.CapabilityMaterializationCommand;
+import com.agentplatform.domain.capability.CapabilityMaterializationReceipt;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.InspectContainerResponse;
@@ -705,12 +708,272 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
         return new Removal(receipt.containerId(),receipt.image(),receipt.startedAt(),receipt.finishedAt(),Instant.now());
     }
 
+    /**
+     * Starts a dedicated, fixed canary container with the current workspace and only the
+     * selected manifest roots. It never reuses an environment whose bind set is immutable.
+     */
+    public CapabilityMaterializationReceipt verifyCapabilityMounts(CapabilityMaterializationCommand command,
+            CapabilityMaterialization.Manifest manifest,Map<String,java.nio.file.Path> materialRoots,
+            String capabilityPolicyHash,Runnable authority) {
+        Objects.requireNonNull(command);Objects.requireNonNull(manifest);Objects.requireNonNull(materialRoots);Objects.requireNonNull(authority);
+        if(!command.spaceId().equals(manifest.spaceId())||!command.taskId().equals(manifest.taskId())
+                ||!command.manifestHash().equals(manifest.hash())||capabilityPolicyHash==null
+                ||!capabilityPolicyHash.matches("[a-f0-9]{64}")||manifest.versions().isEmpty()
+                ||materialRoots.size()!=manifest.versions().size())throw unavailable("CAPABILITY_MATERIALIZATION_MANIFEST_MISMATCH");
+        runtime();authority.run();
+        var identity=new Identity(command.operationId(),command.spaceId(),command.workspaceId(),command.commandId(),
+                command.generation(),command.fence(),200001);
+        java.nio.file.Path work=java.nio.file.Path.of(policy.work(identity)).toAbsolutePath().normalize();
+        if(java.nio.file.Files.isSymbolicLink(work)||!java.nio.file.Files.isDirectory(work,java.nio.file.LinkOption.NOFOLLOW_LINKS))
+            throw unavailable("CAPABILITY_WORKSPACE_UNAVAILABLE");
+        try {
+            if(!work.toRealPath().equals(work))throw unavailable("CAPABILITY_WORKSPACE_UNAVAILABLE");
+        } catch(java.io.IOException invalid){throw unavailable("CAPABILITY_WORKSPACE_UNAVAILABLE");}
+        java.nio.file.Path materialBase=java.nio.file.Path.of(policy.workspaceRoot()).resolve(".platform-capability-materials").toAbsolutePath().normalize();
+        var expected=new LinkedHashMap<String,java.nio.file.Path>();
+        for(var version:manifest.versions()) {
+            var root=materialRoots.get(version.mountTarget());
+            if(root==null)throw unavailable("CAPABILITY_MATERIALIZATION_ROOT_MISMATCH");
+            try {
+                var normalized=root.toAbsolutePath().normalize();
+                if(!normalized.startsWith(materialBase)||java.nio.file.Files.isSymbolicLink(normalized)
+                        ||!java.nio.file.Files.isDirectory(normalized,java.nio.file.LinkOption.NOFOLLOW_LINKS)
+                        ||!normalized.toRealPath().equals(normalized))throw unavailable("CAPABILITY_MATERIALIZATION_ROOT_MISMATCH");
+                expected.put(version.mountTarget(),normalized);
+            } catch(java.io.IOException invalid){throw unavailable("CAPABILITY_MATERIALIZATION_ROOT_MISMATCH");}
+        }
+        if(expected.size()!=materialRoots.size())throw unavailable("CAPABILITY_MATERIALIZATION_ROOT_MISMATCH");
+        String physicalName="ap-capability-material-"+command.operationId();
+        String image=policy.image();String runtimePolicy=RunnerSignatures.sha256((policy.hash()+"|capability-materialization-v1|"
+                +capabilityPolicyHash+"|"+manifest.hash()+"|workspace-rw|selected-ro|runsc-systrap|net-none|uid10001|caps-none|memory512m-swap512m|cpu1|pids128")
+                .getBytes(StandardCharsets.UTF_8));
+        var labels=Map.of("ap.role","capability-materialization","ap.operation",command.operationId().toString(),
+                "ap.command",command.commandId().toString(),"ap.task",command.taskId().toString(),"ap.space",command.spaceId().toString(),
+                "ap.workspace",command.workspaceId().toString(),"ap.generation",Long.toString(command.generation()),
+                "ap.fence",Long.toString(command.fence()),"ap.manifest",manifest.hash(),"ap.policy",runtimePolicy);
+        try {docker.inspectContainerCmd(physicalName).exec();throw unavailable("CAPABILITY_MATERIALIZATION_EXISTING_REQUIRES_QUERY");}
+        catch(NotFoundException absent) { /* A unique command may create its exact container once. */ }
+        var binds=new ArrayList<Bind>();
+        binds.add(new Bind(work.toString(),new Volume("/workspace"),AccessMode.rw));
+        expected.forEach((target,root)->binds.add(new Bind(root.toString(),new Volume(target),AccessMode.ro)));
+        var host=HostConfig.newHostConfig().withRuntime("runsc").withNetworkMode("none").withReadonlyRootfs(true)
+                .withMemory(SandboxPolicy.MEMORY).withMemorySwap(SandboxPolicy.MEMORY).withNanoCPUs(1_000_000_000L)
+                .withPidsLimit(128L).withCapDrop(Capability.ALL).withUlimits(List.of(new Ulimit("nproc",SandboxPolicy.GUEST_NPROC,SandboxPolicy.GUEST_NPROC)))
+                .withSecurityOpts(List.of("no-new-privileges:true")).withBinds(binds.toArray(Bind[]::new))
+                .withTmpFs(Map.of("/tmp","rw,noexec,nosuid,size=64m,uid=10001,gid=10001,mode=700"))
+                .withLogConfig(new LogConfig(LogConfig.LoggingType.JSON_FILE,Map.of("max-size","10m","max-file","3")));
+        var created=docker.createContainerCmd(image).withName(physicalName).withLabels(labels).withUser("10001:10001")
+                .withWorkingDir("/workspace").withEntrypoint("python3","-I","-c","import time; time.sleep(300)")
+                .withHostConfig(host).exec();
+        String started=null;
+        Capture capture=null;
+        Long capabilityExit=null;
+        boolean attachStarted=false;
+        try {
+            authority.run();docker.startContainerCmd(created.getId()).exec();
+            var running=docker.inspectContainerCmd(created.getId()).exec();
+            verifyCapabilityContainer(running,labels,work,expected,image,runtimePolicy);
+            if(!Boolean.TRUE.equals(running.getState().getRunning()))throw unavailable("CAPABILITY_SANDBOX_NOT_RUNNING");
+            started=startedAt(running);
+            if(started==null)throw unavailable("CAPABILITY_SANDBOX_START_UNCONFIRMED");
+            byte[] input=capabilityCheckInput(manifest,expected,command.operationId());
+            if(input.length>4*1024*1024)throw unavailable("CAPABILITY_MATERIALIZATION_MANIFEST_TOO_LARGE");
+            String script=capabilityCheckScript();
+            var exec=docker.execCreateCmd(created.getId()).withAttachStdout(true).withAttachStderr(true).withAttachStdin(true)
+                    .withTty(false).withPrivileged(false).withUser("10001:10001").withWorkingDir("/workspace")
+                    .withCmd("python3","-I","-c",script,Integer.toString(input.length)).exec().getId();
+            capture=new Capture();capture.execId=exec;authority.run();
+            Capture stream=capture;
+            Thread attach=new Thread(()->{
+                try {docker.execStartCmd(exec).withDetach(false).withTty(false).withStdIn(new ByteArrayInputStream(input)).exec(stream);}
+                catch(RuntimeException streamFailure) {stream.failure=streamFailure;stream.finished.countDown();}
+                finally {stream.attachThreadFinished.countDown();}
+            },"ap-capability-materialization-"+command.operationId());
+            attach.setDaemon(true);attach.start();attachStarted=true;
+            long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(30);
+            while(System.nanoTime()<deadline) {
+                authority.run();var state=docker.inspectExecCmd(exec).exec();
+                if(Boolean.FALSE.equals(state.isRunning())&&capture.finished.getCount()==0) {capabilityExit=state.getExitCodeLong();break;}
+                Thread.sleep(50);
+            }
+            if(capabilityExit==null||capabilityExit!=0||capture.failure!=null||capture.truncated)
+                throw unavailable(capabilityFailureCode(capabilityExit,capture.failure,capture.truncated,capture.stderr()));
+            tools.jackson.databind.JsonNode result;
+            try {result=JSON.readTree(capture.stdout());}
+            catch(RuntimeException invalid){throw unavailable("CAPABILITY_MATERIALIZATION_RESULT_INVALID");}
+            if(!manifest.hash().equals(result.path("manifestHash").asText())
+                    ||result.path("verifiedFiles").asInt(-1)!=manifest.versions().stream().mapToInt(v->v.files().size()).sum()
+                    ||!result.path("readOnlyMounts").asBoolean())throw unavailable("CAPABILITY_MATERIALIZATION_RESULT_MISMATCH");
+            authority.run();
+            InspectContainerResponse stopped=stopCapabilityContainer(created.getId(),capture,attachStarted);
+            if(stopped==null)throw unavailable("CAPABILITY_MATERIALIZATION_STOP_UNCONFIRMED");
+            String finished=stopped.getState().getFinishedAt();
+            return new CapabilityMaterializationReceipt(command.commandId(),command.operationId(),command.workspaceId(),
+                    command.generation(),command.fence(),"COMMITTED",manifest.hash(),runtimePolicy,
+                    manifest.versions().stream().mapToInt(v->v.files().size()).sum(),true,0,stopped.getId(),image,
+                    Instant.parse(started),Instant.parse(finished),null,1,true);
+        } catch(InterruptedException|RuntimeException failure) {
+            if(failure instanceof InterruptedException)Thread.currentThread().interrupt();
+            InspectContainerResponse stopped=stopCapabilityContainer(created.getId(),capture,attachStarted);
+            boolean stopConfirmed=stopped!=null;
+            String actualStart=started;
+            if(actualStart==null&&stopped!=null)actualStart=startedAt(stopped);
+            String actualFinish=stopped==null?null:stopped.getState().getFinishedAt();
+            String error=failure instanceof WorkspaceFailure workspace?workspace.code():
+                    failure instanceof InterruptedException?"CAPABILITY_MATERIALIZATION_INTERRUPTED":"CAPABILITY_MATERIALIZATION_FAILED";
+            var receipt=new CapabilityMaterializationReceipt(command.commandId(),command.operationId(),command.workspaceId(),
+                    command.generation(),command.fence(),stopConfirmed?"FAILED":"BLOCKED",manifest.hash(),runtimePolicy,
+                    0,false,safeExitCode(capabilityExit),created.getId(),image,
+                    parseInstant(actualStart),parseInstant(actualFinish),error,1,stopConfirmed);
+            throw new CapabilityMaterializationFailure(receipt,failure);
+        }
+    }
+
+    private static Integer safeExitCode(Long exit) {
+        return exit==null||exit<Integer.MIN_VALUE||exit>Integer.MAX_VALUE?null:exit.intValue();
+    }
+
+    /** Convert guest diagnostics to a small allow-listed code set; never persist guest stderr. */
+    static String capabilityFailureCode(Long exit,Throwable streamFailure,boolean truncated,String stderr) {
+        if(streamFailure!=null)return "CAPABILITY_EXEC_STREAM_FAILED";
+        if(truncated)return "CAPABILITY_EXEC_OUTPUT_LIMIT";
+        if(exit==null)return "CAPABILITY_EXEC_EXIT_UNCONFIRMED";
+        if(exit==0)return "CAPABILITY_EXEC_RESULT_INVALID";
+        String safe=stderr==null?"":stderr;
+        if(safe.contains("FILE_IDENTITY"))return "CAPABILITY_FILE_IDENTITY_MISMATCH";
+        if(safe.contains("FILE_HASH"))return "CAPABILITY_FILE_HASH_MISMATCH";
+        if(safe.contains("INPUT_LENGTH"))return "CAPABILITY_INPUT_TRUNCATED";
+        if(safe.contains("MOUNT_WRITABLE"))return "CAPABILITY_MOUNT_WRITABLE";
+        if(safe.contains("PermissionError")||safe.contains("Permission denied"))return "CAPABILITY_PERMISSION_DENIED";
+        if(safe.contains("FileNotFoundError"))return "CAPABILITY_INPUT_MISSING";
+        if(safe.contains("EROFS"))return "CAPABILITY_READ_ONLY_CHECK_FAILED";
+        return "CAPABILITY_GUEST_PROCESS_FAILED";
+    }
+
+    private InspectContainerResponse stopCapabilityContainer(String containerId,Capture capture,boolean attachStarted) {
+        try {
+            var current=docker.inspectContainerCmd(containerId).exec();
+            if(isNeverStarted(current))return current;
+            if(Boolean.TRUE.equals(current.getState().getRunning()))docker.stopContainerCmd(containerId).withTimeout(2).exec();
+            long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);
+            do {
+                var stopped=docker.inspectContainerCmd(containerId).exec();
+                boolean callbackStopped=!attachStarted||capture!=null&&capture.finished.await(50,TimeUnit.MILLISECONDS)
+                        &&capture.attachThreadFinished.await(50,TimeUnit.MILLISECONDS);
+                if((confirmedContainerStopped(stopped.getState())||isNeverStarted(stopped))&&callbackStopped)return stopped;
+                Thread.sleep(50);
+            } while(System.nanoTime()<deadline);
+        } catch(InterruptedException interrupted) {Thread.currentThread().interrupt();}
+        catch(RuntimeException unavailable) { /* An unknown stop result remains BLOCKED. */ }
+        return null;
+    }
+
+    private boolean isNeverStarted(InspectContainerResponse container) {
+        var state=container==null?null:container.getState();
+        return state!=null&&"created".equals(state.getStatus())&&Boolean.FALSE.equals(state.getRunning())
+                &&Long.valueOf(0).equals(state.getPidLong())&&startedAt(container)==null;
+    }
+
+    private static Instant parseInstant(String value) {
+        if(value==null||value.isBlank())return null;
+        try {Instant parsed=Instant.parse(value);return parsed.isAfter(Instant.EPOCH)?parsed:null;}
+        catch(RuntimeException invalid){return null;}
+    }
+
+    private void verifyCapabilityContainer(InspectContainerResponse found,Map<String,String> labels,java.nio.file.Path work,
+            Map<String,java.nio.file.Path> roots,String image,String policyHash) {
+        var host=found.getHostConfig();var mounts=host.getBinds();
+        if(!image.equals(found.getImageId())||found.getConfig().getLabels()==null||!found.getConfig().getLabels().entrySet().containsAll(labels.entrySet())
+                ||!"10001:10001".equals(found.getConfig().getUser())||!Boolean.TRUE.equals(host.getReadonlyRootfs())||Boolean.TRUE.equals(host.getPrivileged())
+                ||!"runsc".equals(host.getRuntime())||!"none".equals(host.getNetworkMode())||!Long.valueOf(SandboxPolicy.MEMORY).equals(host.getMemory())
+                ||!Long.valueOf(SandboxPolicy.MEMORY).equals(host.getMemorySwap())||!Long.valueOf(1_000_000_000L).equals(host.getNanoCPUs())
+                ||!Long.valueOf(128).equals(host.getPidsLimit())||host.getDevices()!=null&&host.getDevices().length!=0
+                ||host.getCapAdd()!=null&&host.getCapAdd().length!=0||host.getCapDrop()==null||!Arrays.asList(host.getCapDrop()).equals(List.of(Capability.ALL))
+                ||host.getSecurityOpts()==null||!host.getSecurityOpts().contains("no-new-privileges:true")||mounts==null||mounts.length!=roots.size()+1
+                ||host.getTmpFs()==null||!"rw,noexec,nosuid,size=64m,uid=10001,gid=10001,mode=700".equals(host.getTmpFs().get("/tmp")))
+            throw unavailable("CAPABILITY_SANDBOX_IDENTITY_MISMATCH");
+        var byTarget=new HashMap<String,Bind>();for(var bind:mounts)byTarget.put(bind.getVolume().getPath(),bind);
+        var workspace=byTarget.remove("/workspace");
+        if(workspace==null||!work.toString().equals(workspace.getPath())||workspace.getAccessMode()!=AccessMode.rw)
+            throw unavailable("CAPABILITY_SANDBOX_MOUNT_MISMATCH");
+        for(var item:roots.entrySet()) {
+            var bind=byTarget.remove(item.getKey());
+            if(bind==null||!item.getValue().toString().equals(bind.getPath())||bind.getAccessMode()!=AccessMode.ro)
+                throw unavailable("CAPABILITY_SANDBOX_MOUNT_MISMATCH");
+        }
+        if(!byTarget.isEmpty())throw unavailable("CAPABILITY_SANDBOX_MOUNT_MISMATCH");
+    }
+
+    private static byte[] capabilityCheckInput(CapabilityMaterialization.Manifest manifest,Map<String,java.nio.file.Path> roots,UUID operation) {
+        var versions=new ArrayList<Map<String,Object>>();
+        for(var version:manifest.versions())versions.add(Map.of("mount",version.mountTarget(),"writeProbe",".platform-ro-"+operation,
+                "files",version.files().stream().map(file->Map.of("path",file.path(),"bytes",file.bytes(),"sha256",file.sha256())).toList()));
+        return JSON.writeValueAsBytes(Map.of("manifestHash",manifest.hash(),"versions",versions));
+    }
+
+    private static String capabilityCheckScript() {
+        return "import errno,hashlib,json,os,stat,sys\n"
+                +"n=int(sys.argv[1]); raw=sys.stdin.buffer.read(n)\n"
+                +"if len(raw)!=n: raise RuntimeError('INPUT_LENGTH')\n"
+                +"m=json.loads(raw); total=0\n"
+                +"for v in m['versions']:\n"
+                +" r=os.open(v['mount'],os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW);\n"
+                +" for f in v['files']:\n"
+                +"  parts=f['path'].split('/'); d=os.dup(r)\n"
+                +"  try:\n"
+                +"   for p in parts[:-1]: n=os.open(p,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=d); os.close(d); d=n\n"
+                +"   fd=os.open(parts[-1],os.O_RDONLY|os.O_NOFOLLOW,dir_fd=d); s=os.fstat(fd)\n"
+                +"   if not stat.S_ISREG(s.st_mode) or s.st_size!=f['bytes']: raise RuntimeError('FILE_IDENTITY')\n"
+                +"   h=hashlib.sha256(); size=0\n"
+                +"   while True:\n"
+                +"    b=os.read(fd,65536)\n"
+                +"    if not b: break\n"
+                +"    size+=len(b); h.update(b)\n"
+                +"   os.close(fd)\n"
+                +"   if size!=f['bytes'] or h.hexdigest()!=f['sha256']: raise RuntimeError('FILE_HASH')\n"
+                +"   total+=1\n"
+                +"  finally: os.close(d)\n"
+                +" try: os.open(v['writeProbe'],os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=r); raise RuntimeError('MOUNT_WRITABLE')\n"
+                +" except OSError as e:\n"
+                +"  if e.errno!=errno.EROFS: raise\n"
+                +" os.close(r)\n"
+                +"print(json.dumps({'manifestHash':m['manifestHash'],'verifiedFiles':total,'readOnlyMounts':True},separators=(',',':')),flush=True)";
+    }
+
+    /** Remove only a previously persisted, exact stopped capability canary. */
+    public void removeCapabilityMaterialization(CapabilityMaterializationCommand command,CapabilityMaterializationReceipt receipt) {
+        if(receipt==null||!Set.of("COMMITTED","FAILED").contains(receipt.state())||!receipt.stopConfirmed()
+                ||!command.operationId().equals(receipt.operationId()))throw unavailable("CAPABILITY_MATERIALIZATION_STOP_UNCONFIRMED");
+        if(receipt.containerId()==null)return;
+        InspectContainerResponse found;
+        try {found=docker.inspectContainerCmd(receipt.containerId()).exec();}
+        catch(NotFoundException alreadyRemoved){return;}
+        var labels=found.getConfig().getLabels();
+        boolean neverStarted=receipt.startedAt()==null&&receipt.finishedAt()==null&&isNeverStarted(found);
+        boolean exited=confirmedContainerStopped(found.getState())&&receipt.finishedAt()!=null
+                &&Objects.equals(receipt.finishedAt(),parseInstant(found.getState().getFinishedAt()));
+        boolean startMatches=receipt.startedAt()==null?neverStarted:Objects.equals(receipt.startedAt(),parseInstant(startedAt(found)));
+        if((!neverStarted&&!exited)||!startMatches||!policy.image().equals(receipt.imageId())||!policy.image().equals(found.getImageId())
+                ||labels==null||!command.operationId().toString().equals(labels.get("ap.operation"))
+                ||!command.commandId().toString().equals(labels.get("ap.command"))
+                ||!command.taskId().toString().equals(labels.get("ap.task"))
+                ||!command.spaceId().toString().equals(labels.get("ap.space"))
+                ||!command.workspaceId().toString().equals(labels.get("ap.workspace"))
+                ||!Long.toString(command.generation()).equals(labels.get("ap.generation"))
+                ||!Long.toString(command.fence()).equals(labels.get("ap.fence"))
+                ||!command.manifestHash().equals(labels.get("ap.manifest"))
+                ||!Objects.equals(receipt.policyHash(),labels.get("ap.policy")))
+            throw unavailable("CAPABILITY_MATERIALIZATION_STOP_MISMATCH");
+        docker.removeContainerCmd(found.getId()).withForce(false).withRemoveVolumes(false).exec();
+    }
+
     @Override public void close() throws java.io.IOException { docker.close(); }
 
     private static final class Capture extends ResultCallback.Adapter<Frame> {
         private final ByteArrayOutputStream out = new ByteArrayOutputStream();
         private final ByteArrayOutputStream err = new ByteArrayOutputStream();
         private final CountDownLatch finished = new CountDownLatch(1);
+        private final CountDownLatch attachThreadFinished = new CountDownLatch(1);
         private volatile String execId;
         private volatile boolean startRequested;
         private volatile boolean stopRequested;
@@ -731,6 +994,7 @@ public final class DockerSandboxRuntime implements SandboxRuntime {
             try { super.onError(error); } finally { finished.countDown(); }
         }
         synchronized String stdout() { return out.toString(StandardCharsets.UTF_8); }
+        synchronized String stderr() { return err.toString(StandardCharsets.UTF_8); }
         synchronized Output output(long exit, boolean timeout, boolean cancelled, Stop stopped) {
             return new Output(execId, exit, stdout(), err.toString(StandardCharsets.UTF_8), truncated, timeout, cancelled, stopped);
         }

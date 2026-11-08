@@ -32,7 +32,9 @@ public final class RunnerSignatures {
                         || path.equals("/internal/file-operations/v1") || path.equals("/internal/file-operations/v1/"+operationId)
                         || path.equals("/internal/file-captures/v1") || path.equals("/internal/file-captures/v1/"+operationId)
                         || path.equals("/internal/previews/v1") || path.equals("/internal/previews/v1/"+operationId)
-                        || path.equals("/internal/extractions/v1") || path.equals("/internal/extractions/v1/"+operationId)) || path.contains("?")
+                        || path.equals("/internal/extractions/v1") || path.equals("/internal/extractions/v1/"+operationId)
+                        || path.equals("/internal/capability-materializations/v1")
+                        || path.equals("/internal/capability-materializations/v1/"+operationId)) || path.contains("?")
                     || path.contains("#") || path.contains("..") || generation < 1 || fence < 1) {
                 throw new IllegalArgumentException("Invalid runner binding");
             }

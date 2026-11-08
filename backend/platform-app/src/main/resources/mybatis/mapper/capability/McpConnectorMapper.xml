@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.capability.McpConnectorMapper">
+ <resultMap id="config" type="com.agentplatform.domain.capability.McpConnectorRepository$Configuration">
+  <constructor><arg name="id" column="capability_id" javaType="java.util.UUID"/><arg name="endpoint" column="endpoint" javaType="java.lang.String"/>
+   <arg name="authKind" column="auth_kind" javaType="java.lang.String"/><arg name="apiKeyHeader" column="api_key_header" javaType="java.lang.String"/>
+   <arg name="credentialId" column="credential_id" javaType="java.util.UUID"/><arg name="credentialRevision" column="credential_revision" javaType="java.lang.Long"/>
+   <arg name="revision" column="revision" javaType="_long"/></constructor>
+ </resultMap>
+ <resultMap id="request" type="com.agentplatform.infrastructure.dao.po.McpConnectorRequestRow">
+  <constructor><arg name="requestHash" column="request_hash" javaType="java.lang.String"/><arg name="resultSnapshot" column="result_snapshot" javaType="java.lang.String"/></constructor>
+ </resultMap>
+ <resultMap id="probe" type="com.agentplatform.domain.capability.McpConnectorRepository$Probe">
+  <constructor><arg name="id" column="id" javaType="java.util.UUID"/><arg name="connectorId" column="capability_id" javaType="java.util.UUID"/>
+   <arg name="configurationRevision" column="configuration_revision" javaType="_long"/><arg name="state" column="state" javaType="java.lang.String"/>
+   <arg name="resultVersionId" column="result_version_id" javaType="java.util.UUID"/><arg name="revision" column="revision" javaType="_long"/>
+   <arg name="errorCode" column="error_code" javaType="java.lang.String"/></constructor>
+ </resultMap>
+ <select id="authorized" resultType="boolean">SELECT CASE WHEN pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}) THEN
+  EXISTS(SELECT 1 FROM pf.space WHERE id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND type='PERSONAL') ELSE false END</select>
+ <select id="lock" resultType="java.lang.Integer">SELECT 1 FROM pg_advisory_xact_lock(hashtextextended('r62:mcp-config:'||CAST(#{actor.spaceId} AS text)||':'||CAST(#{actor.userId} AS text),0))</select>
+ <select id="activeCredential" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.connector_credential WHERE space_id=#{actor.spaceId}
+  AND owner_user_id=#{actor.userId} AND id=#{id} AND revision=#{revision} AND state='ACTIVE' FOR SHARE)</select>
+ <select id="find" resultMap="config">SELECT capability_id,endpoint,auth_kind,api_key_header,credential_id,credential_revision,revision
+  FROM pf.mcp_connector_configuration WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND capability_id=#{id}<if test="lock"> FOR UPDATE</if></select>
+ <select id="list" resultMap="config">SELECT capability_id,endpoint,auth_kind,api_key_header,credential_id,credential_revision,revision
+  FROM pf.mcp_connector_configuration WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId}
+  <if test="after != null">AND capability_id&gt;#{after}</if> ORDER BY capability_id LIMIT #{limit}</select>
+ <select id="accepted" resultMap="request">SELECT request_hash,result_snapshot::text FROM pf.mcp_connector_request
+  WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND request_id=#{request}</select>
+ <insert id="insertCapability">INSERT INTO pf.capability(id,space_id,owner_user_id,kind) VALUES(#{config.id},#{actor.spaceId},#{actor.userId},'MCP')</insert>
+ <insert id="insert">INSERT INTO pf.mcp_connector_configuration(space_id,owner_user_id,capability_id,endpoint,auth_kind,api_key_header,credential_id,credential_revision)
+  VALUES(#{actor.spaceId},#{actor.userId},#{config.id},#{config.endpoint},#{config.authKind},#{config.apiKeyHeader,jdbcType=VARCHAR},#{config.credentialId,jdbcType=OTHER},#{config.credentialRevision,jdbcType=BIGINT})</insert>
+ <update id="update">UPDATE pf.mcp_connector_configuration SET endpoint=#{config.endpoint},auth_kind=#{config.authKind},api_key_header=#{config.apiKeyHeader,jdbcType=VARCHAR},
+  credential_id=#{config.credentialId,jdbcType=OTHER},credential_revision=#{config.credentialRevision,jdbcType=BIGINT},revision=revision+1,updated_at=clock_timestamp()
+  WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND capability_id=#{config.id} AND revision=#{expected}</update>
+ <insert id="record">INSERT INTO pf.mcp_connector_request(space_id,owner_user_id,request_id,request_hash,capability_id,result_revision,result_snapshot)
+  VALUES(#{actor.spaceId},#{actor.userId},#{request},#{hash},#{config.id},#{config.revision},CAST(#{snapshot} AS jsonb))</insert>
+ <insert id="audit">INSERT INTO pf.capability_audit(id,space_id,owner_user_id,action,resource_id,trace_id)
+  VALUES(#{id},#{actor.spaceId},#{actor.userId},#{action},#{resource},#{trace})</insert>
+ <select id="probeRequest" resultMap="probe">SELECT id,capability_id,configuration_revision,state,result_version_id,revision,error_code FROM pf.mcp_probe
+  WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND request_id=#{request}</select>
+ <select id="probeRequestHash" resultType="string">SELECT request_hash FROM pf.mcp_probe
+  WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND request_id=#{request}</select>
+ <select id="probe" resultMap="probe">SELECT id,capability_id,configuration_revision,state,result_version_id,revision,error_code FROM pf.mcp_probe
+  WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND id=#{id}</select>
+ <insert id="insertProbe">INSERT INTO pf.mcp_probe(id,space_id,owner_user_id,capability_id,request_id,request_hash,configuration_revision,endpoint,auth_kind,api_key_header,credential_id,credential_revision,policy_hash,state,trace_id)
+  VALUES(#{id},#{actor.spaceId},#{actor.userId},#{config.id},#{request},#{hash},#{config.revision},#{config.endpoint},#{config.authKind},
+   #{config.apiKeyHeader,jdbcType=VARCHAR},#{config.credentialId,jdbcType=OTHER},#{config.credentialRevision,jdbcType=BIGINT},#{policy},'QUEUED',#{trace})</insert>
+ <insert id="outbox">INSERT INTO pf.mcp_probe_outbox(id,space_id,probe_id,generation) SELECT #{event},space_id,id,generation FROM pf.mcp_probe
+  WHERE id=#{id} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId}</insert>
+</mapper>

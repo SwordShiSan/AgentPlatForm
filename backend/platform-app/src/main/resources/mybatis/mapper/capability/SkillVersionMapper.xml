@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.capability.SkillVersionMapper">
+ <resultMap id="view" type="com.agentplatform.domain.capability.SkillVersionRepository$View">
+  <constructor><arg name="capabilityId" column="capability_id" javaType="java.util.UUID"/><arg name="versionId" column="version_id" javaType="java.util.UUID"/>
+   <arg name="state" column="state" javaType="java.lang.String"/><arg name="revision" column="revision" javaType="_long"/>
+   <arg name="name" column="name" javaType="java.lang.String"/><arg name="description" column="description" javaType="java.lang.String"/>
+   <arg name="manifestJson" column="manifest" javaType="java.lang.String"/><arg name="dependenciesJson" column="dependency_manifest" javaType="java.lang.String"/>
+   <arg name="assetAvailable" column="asset_available" javaType="_boolean"/></constructor>
+ </resultMap>
+ <resultMap id="materialSource" type="com.agentplatform.domain.capability.SkillVersionRepository$MaterialSource">
+  <constructor><arg name="capabilityId" column="capability_id" javaType="java.util.UUID"/><arg name="versionId" column="version_id" javaType="java.util.UUID"/>
+   <arg name="objectKey" column="object_key" javaType="java.lang.String"/><arg name="archiveBytes" column="archive_bytes" javaType="_long"/>
+   <arg name="archiveSha256" column="archive_sha256" javaType="java.lang.String"/><arg name="manifestJson" column="manifest" javaType="java.lang.String"/></constructor>
+ </resultMap>
+ <resultMap id="commandRow" type="com.agentplatform.domain.capability.SkillVersionRepository$Command">
+  <constructor><arg name="requestId" column="request_id" javaType="java.util.UUID"/><arg name="capabilityId" column="capability_id" javaType="java.util.UUID"/>
+   <arg name="versionId" column="version_id" javaType="java.util.UUID"/><arg name="action" column="action" javaType="java.lang.String"/>
+   <arg name="expectedRevision" column="expected_revision" javaType="_long"/><arg name="resultRevision" column="result_revision" javaType="_long"/>
+   <arg name="resultState" column="result_state" javaType="java.lang.String"/></constructor>
+ </resultMap>
+ <select id="authorized" resultType="boolean">SELECT CASE WHEN pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}) THEN
+  EXISTS(SELECT 1 FROM pf.space WHERE id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND type='PERSONAL') ELSE false END</select>
+ <select id="lock" resultType="java.lang.Integer">SELECT 1 FROM pg_advisory_xact_lock(hashtextextended('r62:version:'||CAST(#{actor.spaceId} AS text)||':'||CAST(#{actor.userId} AS text),0))</select>
+ <select id="find" resultMap="view">
+  SELECT s.capability_id,s.version_id,s.state,s.revision,p.name,p.description,p.manifest::text,p.dependency_manifest::text,
+   (a.status='AVAILABLE') AS asset_available FROM pf.capability_version_status s
+  JOIN pf.capability c ON c.space_id=s.space_id AND c.owner_user_id=s.owner_user_id AND c.id=s.capability_id AND c.kind='SKILL'
+  JOIN pf.skill_package_version p ON p.space_id=s.space_id AND p.owner_user_id=s.owner_user_id AND p.capability_id=s.capability_id AND p.version_id=s.version_id
+  JOIN pf.asset_object a ON a.space_id=p.space_id AND a.id=p.asset_id
+  WHERE s.space_id=#{actor.spaceId} AND s.owner_user_id=#{actor.userId} AND s.capability_id=#{capability} AND s.version_id=#{version}
+  <if test="lock">FOR UPDATE OF s</if>
+ </select>
+ <select id="material" resultMap="materialSource">
+  SELECT p.capability_id,p.version_id,a.object_key,p.archive_bytes,p.archive_sha256,p.manifest::text
+  FROM pf.skill_package_version p
+  JOIN pf.capability_version_status s ON s.space_id=p.space_id AND s.owner_user_id=p.owner_user_id
+    AND s.capability_id=p.capability_id AND s.version_id=p.version_id AND s.state='PUBLISHED'
+  JOIN pf.capability c ON c.space_id=p.space_id AND c.owner_user_id=p.owner_user_id AND c.id=p.capability_id AND c.kind='SKILL'
+  JOIN pf.asset_object a ON a.space_id=p.space_id AND a.id=p.asset_id AND a.status='AVAILABLE'
+  WHERE p.space_id=#{actor.spaceId} AND p.owner_user_id=#{actor.userId}
+    AND p.capability_id=#{capability} AND p.version_id=#{version}
+ </select>
+ <select id="accepted" resultMap="commandRow">SELECT request_id,capability_id,version_id,action,expected_revision,result_revision,result_state
+  FROM pf.capability_version_command WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND request_id=#{request}</select>
+ <update id="transition">UPDATE pf.capability_version_status SET state=#{to},revision=revision+1,updated_at=clock_timestamp()
+  WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND capability_id=#{capability} AND version_id=#{version}
+    AND revision=#{expected} AND state=#{from}</update>
+ <insert id="command">INSERT INTO pf.capability_version_command(space_id,owner_user_id,request_id,capability_id,version_id,action,expected_revision,result_revision,result_state)
+  VALUES(#{actor.spaceId},#{actor.userId},#{command.requestId},#{command.capabilityId},#{command.versionId},#{command.action},#{command.expectedRevision},#{command.resultRevision},#{command.resultState})</insert>
+ <insert id="audit">INSERT INTO pf.capability_audit(id,space_id,owner_user_id,action,resource_id,trace_id)
+  VALUES(#{id},#{actor.spaceId},#{actor.userId},CASE WHEN #{command.action}='PUBLISH' THEN 'SKILL_PUBLISHED' ELSE 'SKILL_REVOKED' END,#{command.versionId},#{trace})</insert>
+</mapper>

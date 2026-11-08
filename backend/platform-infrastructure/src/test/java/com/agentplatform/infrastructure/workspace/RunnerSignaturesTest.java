@@ -88,4 +88,19 @@ class RunnerSignaturesTest {
         assertThrows(IllegalArgumentException.class,()->new RunnerSignatures.Binding("GET","/internal/file-operations/v1/"+UUID.randomUUID(),
                 file.commandId(),file.operationId(),file.spaceId(),file.workspaceId(),1,7));
     }
+    @Test void capabilityMaterializationRouteBindsExactTaskManifestBody() {
+        var command=new RunnerSignatures.Binding("POST","/internal/capability-materializations/v1",
+                binding.commandId(),binding.operationId(),binding.spaceId(),binding.workspaceId(),3,11);
+        byte[] body=("{\"protocol\":\"CAPABILITY_MATERIALIZATION_V1\",\"manifestHash\":\""+"a".repeat(64)+"\"}")
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        String token=control(CLOCK).sign(command,body);
+        runner(CLOCK).verify(token,command,body);
+        byte[] altered=body.clone();altered[0]='[';
+        assertThrows(WorkspaceFailure.class,()->runner(CLOCK).verify(token,command,altered));
+        var query=new RunnerSignatures.Binding("GET","/internal/capability-materializations/v1/"+command.operationId(),
+                command.commandId(),command.operationId(),command.spaceId(),command.workspaceId(),command.generation(),command.fence());
+        assertEquals(query,runner(CLOCK).verifiedQuery(control(CLOCK).sign(query,new byte[0]),query.path()));
+        assertThrows(IllegalArgumentException.class,()->new RunnerSignatures.Binding("GET",query.path()+"/extra",
+                command.commandId(),command.operationId(),command.spaceId(),command.workspaceId(),command.generation(),command.fence()));
+    }
 }

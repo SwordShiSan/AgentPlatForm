@@ -30,14 +30,14 @@ class ApprovalPostgresTest {
     @TempDir Path work;
     @BeforeAll static void migrate() throws Exception {
         url=System.getenv("R43_TEST_JDBC_URL");Assumptions.assumeTrue(url!=null,"R43 database not configured; NOT_RUN");
-        assertTrue(FixtureDatabaseScope.r44(url)||"jdbc:postgresql://127.0.0.1:15456/r43_test?connectTimeout=2&socketTimeout=5".equals(url));
+        assertTrue(FixtureDatabaseScope.r44(url)||FixtureDatabaseScope.r62(url)||"jdbc:postgresql://127.0.0.1:15456/r43_test?connectTimeout=2&socketTimeout=5".equals(url));
         password=Files.readString(Path.of(System.getenv("R43_TEST_PASSWORD_FILE"))).strip();
         Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").cleanDisabled(false).load().clean();
         administratorFixture=null;
         var previous=Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").target("16").load();previous.migrate();
         assertEquals("16",previous.info().current().getVersion().toString());
         var current=Flyway.configure().dataSource(url,"postgres",password).defaultSchema("pf").schemas("pf","pf_runtime").load();current.migrate();current.validate();
-        assertEquals("18",current.info().current().getVersion().toString());
+        assertEquals(FixtureDatabaseScope.r62(url)?"23":"18",current.info().current().getVersion().toString());
     }
     @BeforeEach void setup(){
         var config=new com.zaxxer.hikari.HikariConfig();config.setJdbcUrl(url);config.setUsername("postgres");config.setPassword(password);config.setMaximumPoolSize(4);config.setMinimumIdle(1);
@@ -94,6 +94,64 @@ class ApprovalPostgresTest {
         assertEquals(1,count("SELECT count(*) FROM pf.tool_approval_consumption WHERE operation_id='"+operation+"' AND outcome='ALLOW_ONCE'"));
         assertEquals(1,count("SELECT count(*) FROM pf.interaction_answer WHERE task_id='"+task.id()+"'"));
         assertEquals(1,count("SELECT count(*) FROM pf.message WHERE task_id='"+task.id()+"' AND role='USER'"));
+    }
+    @Test void r62ProtectedMcpFixtureRunsOnlyAfterOriginalApproval() throws Exception {
+        Assumptions.assumeTrue(FixtureDatabaseScope.r62(url), "R62 isolated database required; NOT_RUN");
+        var transport = io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider.builder()
+                .jsonMapper(io.modelcontextprotocol.json.McpJsonMapper.getDefault()).mcpEndpoint("/mcp").build();
+        var schema = new io.modelcontextprotocol.spec.McpSchema.JsonSchema("object", Map.of("text", Map.of("type", "string")),
+                List.of("text"), false, null, null);
+        var definition = io.modelcontextprotocol.spec.McpSchema.Tool.builder().name("approval_probe")
+                .description("isolated deterministic fixture").inputSchema(schema).build();
+        var remoteCalls = new AtomicInteger(); var delayResponse = new java.util.concurrent.atomic.AtomicBoolean();
+        var server = io.modelcontextprotocol.server.McpServer.sync(transport).serverInfo("r62-approval-fixture", "1")
+                .capabilities(io.modelcontextprotocol.spec.McpSchema.ServerCapabilities.builder().tools(false).build())
+                .tool(definition, (exchange, arguments) -> {
+                    remoteCalls.incrementAndGet();
+                    if (delayResponse.get()) {
+                        try { Thread.sleep(7000); }
+                        catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
+                    }
+                    return new io.modelcontextprotocol.spec.McpSchema.CallToolResult("fixture: " + arguments.get("text"), false);
+                }).build();
+        var tomcat = new org.apache.catalina.startup.Tomcat();
+        tomcat.setBaseDir(work.resolve("mcp-tomcat").toString()); tomcat.setPort(0);
+        tomcat.getConnector().setProperty("address", "127.0.0.1");
+        var context = tomcat.addContext("", work.toString());
+        org.apache.catalina.startup.Tomcat.addServlet(context, "mcp", transport).setAsyncSupported(true);
+        context.addServletMappingDecoded("/mcp", "mcp");
+        try {
+            tomcat.start();
+            try (var client = io.agentscope.core.tool.mcp.McpClientBuilder.create("r62-protected-fixture")
+                    .streamableHttpTransport("http://127.0.0.1:" + tomcat.getConnector().getLocalPort() + "/mcp")
+                    .timeout(java.time.Duration.ofSeconds(3)).buildAsync().block(java.time.Duration.ofSeconds(15))) {
+                assertNotNull(client); client.initialize().block(java.time.Duration.ofSeconds(15));
+                assertEquals(1, client.listTools().block(java.time.Duration.ofSeconds(15)).size());
+                var task = task(); var calls = new AtomicInteger(); var never = new AtomicInteger();
+                var provider = provider(calls, List.of(tool("r62-original-call"), done()));
+                var pending = waiting(task, provider, never);
+                assertEquals(0, remoteCalls.get()); assertEquals(0, never.get());
+                answer(task, pending, UUID.randomUUID(), Decision.ALLOW_ONCE);
+                run(claim(task), provider, (scope, call) -> client.callTool("approval_probe", call.arguments()).toFuture()
+                        .thenApply(result -> new HarnessData.Observation(call.id(), call.name(), result.content().toString(),
+                                result.isError() ? HarnessData.OperationStatus.FAILED : HarnessData.OperationStatus.SUCCEEDED)));
+                assertEquals(1, remoteCalls.get()); assertEquals("SUCCEEDED", repository.task(user, task.id()).status());
+                assertEquals(1, count("SELECT count(*) FROM pf.tool_approval_consumption WHERE task_id='" + task.id() + "' AND outcome='ALLOW_ONCE'"));
+                assertEquals(1, count("SELECT count(*) FROM pf.tool_operation WHERE task_id='" + task.id() + "' AND status='SUCCEEDED'"));
+                var uncertainTask = task(); var uncertainCalls = new AtomicInteger(); var noEarlyEffect = new AtomicInteger();
+                var uncertainProvider = provider(uncertainCalls, List.of(tool("r62-uncertain-call"), done()));
+                var uncertainPending = waiting(uncertainTask, uncertainProvider, noEarlyEffect);
+                answer(uncertainTask, uncertainPending, UUID.randomUUID(), Decision.ALLOW_ONCE);
+                delayResponse.set(true);
+                run(claim(uncertainTask), uncertainProvider, (scope, call) -> client.callTool("approval_probe", call.arguments()).toFuture()
+                        .thenApply(result -> new HarnessData.Observation(call.id(), call.name(), result.content().toString(),
+                                result.isError() ? HarnessData.OperationStatus.FAILED : HarnessData.OperationStatus.SUCCEEDED)));
+                assertEquals(2, remoteCalls.get(), "the uncertain physical call must not be replayed");
+                assertEquals("BLOCKED", repository.task(user, uncertainTask.id()).status());
+                assertEquals("UNKNOWN", scalar("SELECT status FROM pf.tool_operation WHERE task_id='" + uncertainTask.id() + "'"));
+                assertFalse(repository.recovery(user, uncertainTask.id()).eligible());
+            }
+        } finally { server.close(); tomcat.stop(); tomcat.destroy(); }
     }
     @Test void denialPersistsBeforeNextModelAndSuppressesSameFingerprint()throws Exception{
         var task=task();var calls=new AtomicInteger();var effects=new AtomicInteger();var provider=provider(calls,List.of(tool("deny-first"),tool("deny-new-id"),done()));

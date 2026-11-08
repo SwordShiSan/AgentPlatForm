@@ -1,0 +1,184 @@
+{
+  "status": "PASS",
+  "sourceRevision": "b1142c82abd027a9fa272690c76e6d7cd8833740",
+  "buildInputHash": "a0b6b5e284e1004e9d95bbacf1c3c1d81be459dfe896fbe6e7af1a9843f9e6c4",
+  "imageConfigIds": {
+    "api": "sha256:7ea08fb53618da0c5fa1b9c74f3d360228edf900fd4bafd04a6f6f807aca6533",
+    "gateway": "sha256:2cfd8e12f419d1abb771795d0dd0e8ed0fb696297ec2bbcc7435c86820a028e4",
+    "provider-fixture": "sha256:38674da1f55ce4b0073b863259b52a68fffa4c8b19455c1fb44e39319957e878",
+    "file-helper": "sha256:a0f2fb315bbd72fac1eb5c38e2216a3cd285c778a2de301bd117572016e729ec",
+    "storage-probe": "sha256:ac19d2dd78a2cdba90b94c6eb5e9ee57867ef598bfed33b6f26f7817a22052ba"
+  },
+  "durationSeconds": 183,
+  "sampleCount": 11,
+  "samples": [
+    {
+      "at": "2026-11-07T18:43:26.807590+00:00",
+      "containerMemoryBytes": {
+        "worker": 261514854,
+        "api": 452565401,
+        "fixture": 14931722,
+        "gateway": 2387607,
+        "seaweedfs": 97664368,
+        "mcp-proxy": 10726932,
+        "mcp-fixture": 14176747,
+        "rabbitmq": 113560780,
+        "postgres": 75015127
+      },
+      "totalContainerMemoryBytes": 1042543538
+    },
+    {
+      "at": "2026-11-07T18:43:44.987078+00:00",
+      "containerMemoryBytes": {
+        "worker": 261514854,
+        "api": 452670259,
+        "fixture": 14931722,
+        "gateway": 2387607,
+        "seaweedfs": 97664368,
+        "mcp-proxy": 10716446,
+        "mcp-fixture": 14176747,
+        "rabbitmq": 113560780,
+        "postgres": 75004641
+      },
+      "totalContainerMemoryBytes": 1042627424
+    },
+    {
+      "at": "2026-11-07T18:44:03.177417+00:00",
+      "containerMemoryBytes": {
+        "worker": 261514854,
+        "api": 452879974,
+        "fixture": 14931722,
+        "gateway": 2387607,
+        "seaweedfs": 97674854,
+        "mcp-proxy": 10716446,
+        "mcp-fixture": 14176747,
+        "rabbitmq": 113560780,
+        "postgres": 75308728
+      },
+      "totalContainerMemoryBytes": 1043151712
+    },
+    {
+      "at": "2026-11-07T18:44:21.365600+00:00",
+      "containerMemoryBytes": {
+        "worker": 261619712,
+        "api": 453089689,
+        "fixture": 14931722,
+        "gateway": 2387607,
+        "seaweedfs": 97674854,
+        "mcp-proxy": 10716446,
+        "mcp-fixture": 14239662,
+        "rabbitmq": 113560780,
+        "postgres": 71565312
+      },
+      "totalContainerMemoryBytes": 1039785784
+    },
+    {
+      "at": "2026-11-07T18:44:39.491806+00:00",
+      "containerMemoryBytes": {
+        "worker": 261724569,
+        "api": 453089689,
+        "fixture": 14931722,
+        "gateway": 2387607,
+        "seaweedfs": 94896128,
+        "mcp-proxy": 10716446,
+        "mcp-fixture": 14176747,
+        "rabbitmq": 113560780,
+        "postgres": 71680655
+      },
+      "totalContainerMemoryBytes": 1037164343
+    },
+    {
+      "at": "2026-11-07T18:44:57.723325+00:00",
+      "containerMemoryBytes": {
+        "worker": 261829427,
+        "api": 453194547,
+        "fixture": 14931722,
+        "gateway": 2387607,
+        "seaweedfs": 94896128,
+        "mcp-proxy": 10716446,
+        "mcp-fixture": 14176747,
+        "rabbitmq": 113560780,
+        "postgres": 71995228
+      },
+      "totalContainerMemoryBytes": 1037688632
+    },
+    {
+      "at": "2026-11-07T18:45:15.928527+00:00",
+      "containerMemoryBytes": {
+        "worker": 261934284,
+        "api": 453194547,
+        "fixture": 14931722,
+        "gateway": 2387607,
+        "seaweedfs": 94896128,
+        "mcp-proxy": 10716446,
+        "mcp-fixture": 14176747,
+        "rabbitmq": 113665638,
+        "postgres": 72016199
+      },
+      "totalContainerMemoryBytes": 1037919318
+    },
+    {
+      "at": "2026-11-07T18:45:34.093130+00:00",
+      "containerMemoryBytes": {
+        "worker": 262039142,
+        "api": 453299404,
+        "fixture": 14931722,
+        "gateway": 2387607,
+        "seaweedfs": 94896128,
+        "mcp-proxy": 10779361,
+        "mcp-fixture": 14176747,
+        "rabbitmq": 113665638,
+        "postgres": 71733084
+      },
+      "totalContainerMemoryBytes": 1037908833
+    },
+    {
+      "at": "2026-11-07T18:45:52.307952+00:00",
+      "containerMemoryBytes": {
+        "worker": 262039142,
+        "api": 453404262,
+        "fixture": 14931722,
+        "gateway": 2387607,
+        "seaweedfs": 94896128,
+        "mcp-proxy": 10716446,
+        "mcp-fixture": 14176747,
+        "rabbitmq": 113665638,
+        "postgres": 71816970
+      },
+      "totalContainerMemoryBytes": 1038034662
+    },
+    {
+      "at": "2026-11-07T18:46:10.490268+00:00",
+      "containerMemoryBytes": {
+        "worker": 262668288,
+        "api": 453404262,
+        "fixture": 14931722,
+        "gateway": 2387607,
+        "seaweedfs": 94896128,
+        "mcp-proxy": 10716446,
+        "mcp-fixture": 14176747,
+        "rabbitmq": 113665638,
+        "postgres": 71816970
+      },
+      "totalContainerMemoryBytes": 1038663808
+    },
+    {
+      "at": "2026-11-07T18:46:26.763375+00:00",
+      "containerMemoryBytes": {
+        "worker": 262773145,
+        "api": 453509120,
+        "fixture": 14931722,
+        "gateway": 2387607,
+        "seaweedfs": 94896128,
+        "mcp-proxy": 10716446,
+        "mcp-fixture": 14176747,
+        "rabbitmq": 189058252,
+        "postgres": 71879884
+      },
+      "totalContainerMemoryBytes": 1114329051
+    }
+  ],
+  "maximumSampledContainerMemoryBytes": 1114329051,
+  "observationScope": "sampled Docker container usage; not an absolute peak or concurrency claim",
+  "supplierCalls": 0
+}

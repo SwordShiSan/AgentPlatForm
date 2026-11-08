@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.capability.CapabilityBindingMapper">
+    <resultMap id="binding" type="com.agentplatform.infrastructure.dao.po.CapabilityBindingSetRow">
+        <constructor>
+            <arg name="id" column="id" javaType="java.util.UUID"/>
+            <arg name="revision" column="revision" javaType="_long"/>
+            <arg name="inheritPersonal" column="inherit_personal" javaType="_boolean"/>
+        </constructor>
+    </resultMap>
+    <resultMap id="selection" type="com.agentplatform.domain.capability.CapabilityBindings$Selection">
+        <constructor>
+            <arg name="capabilityId" column="capability_id" javaType="java.util.UUID"/>
+            <arg name="versionId" column="version_id" javaType="java.util.UUID"/>
+        </constructor>
+    </resultMap>
+    <resultMap id="request" type="com.agentplatform.infrastructure.dao.po.CapabilityBindingRequestRow">
+        <constructor>
+            <arg name="requestHash" column="request_hash" javaType="java.lang.String"/>
+            <arg name="setId" column="binding_set_id" javaType="java.util.UUID"/>
+            <arg name="revision" column="result_revision" javaType="_long"/>
+            <arg name="inheritPersonal" column="inherit_personal" javaType="_boolean"/>
+        </constructor>
+    </resultMap>
+    <select id="authorized" resultType="boolean">
+        SELECT CASE WHEN pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}) THEN
+          EXISTS (SELECT 1 FROM pf.space s WHERE s.id=#{actor.spaceId}
+            AND s.type='PERSONAL' AND s.owner_user_id=#{actor.userId})
+          AND (CAST(#{workspaceId,jdbcType=OTHER} AS uuid) IS NULL OR EXISTS (
+            SELECT 1 FROM pf.workspace w WHERE w.id=#{workspaceId,jdbcType=OTHER}
+              AND w.space_id=#{actor.spaceId} AND w.state='READY' FOR SHARE OF w))
+        ELSE false END
+    </select>
+    <select id="lock" resultType="java.lang.Integer">
+        SELECT 1 FROM pg_advisory_xact_lock(hashtextextended('r62:bindings:' ||
+          CAST(#{actor.spaceId} AS text) || ':' || CAST(#{actor.userId} AS text),0))
+    </select>
+    <select id="find" resultMap="binding">
+        SELECT id,revision,inherit_personal FROM pf.capability_binding_set
+        WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId}
+          AND workspace_id IS NOT DISTINCT FROM #{workspaceId,jdbcType=OTHER}
+    </select>
+    <select id="selections" resultMap="selection">
+        SELECT capability_id,version_id FROM pf.capability_binding_selection
+        WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND binding_set_id=#{setId}
+        ORDER BY capability_id
+    </select>
+    <insert id="initialize">
+        INSERT INTO pf.capability_binding_set(id,space_id,owner_user_id,workspace_id,inherit_personal)
+        VALUES(#{id},#{actor.spaceId},#{actor.userId},#{workspaceId,jdbcType=OTHER},
+          CASE WHEN CAST(#{workspaceId,jdbcType=OTHER} AS uuid) IS NULL THEN false ELSE true END)
+        ON CONFLICT DO NOTHING
+    </insert>
+    <update id="update">
+        UPDATE pf.capability_binding_set SET revision=revision+1,inherit_personal=#{inherit}
+        WHERE id=#{setId} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND revision=#{revision}
+    </update>
+    <delete id="clear">
+        DELETE FROM pf.capability_binding_selection
+        WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND binding_set_id=#{setId}
+    </delete>
+    <insert id="add">
+        INSERT INTO pf.capability_binding_selection(space_id,owner_user_id,binding_set_id,capability_id,version_id)
+        VALUES(#{actor.spaceId},#{actor.userId},#{setId},#{selection.capabilityId},#{selection.versionId})
+    </insert>
+    <select id="published" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM pf.capability_version_status s JOIN pf.capability c
+          ON c.space_id=s.space_id AND c.owner_user_id=s.owner_user_id AND c.id=s.capability_id
+          WHERE s.space_id=#{actor.spaceId} AND s.owner_user_id=#{actor.userId}
+            AND s.capability_id=#{selection.capabilityId} AND s.version_id=#{selection.versionId} AND s.state='PUBLISHED'
+            AND (c.kind='SKILL' OR (c.kind='MCP' AND EXISTS(SELECT 1 FROM pf.mcp_connector_activation a
+              JOIN pf.mcp_connector_version v ON v.space_id=a.space_id AND v.owner_user_id=a.owner_user_id
+               AND v.capability_id=a.capability_id AND v.version_id=a.enabled_version_id
+              WHERE a.space_id=s.space_id AND a.owner_user_id=s.owner_user_id AND a.capability_id=s.capability_id
+               AND a.enabled_version_id=s.version_id AND (v.auth_kind='NONE' OR EXISTS(SELECT 1 FROM pf.connector_credential k
+                 WHERE k.space_id=v.space_id AND k.owner_user_id=v.owner_user_id AND k.id=v.credential_id
+                  AND k.revision=v.credential_revision AND k.state='ACTIVE'))))) FOR SHARE OF s)
+    </select>
+    <select id="accepted" resultMap="request">
+        SELECT request_hash,binding_set_id,result_revision,inherit_personal FROM pf.capability_binding_request
+        WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND request_id=#{requestId}
+    </select>
+    <select id="requestSelections" resultMap="selection">
+        SELECT capability_id,version_id FROM pf.capability_binding_request_selection
+        WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND request_id=#{requestId} ORDER BY capability_id
+    </select>
+    <insert id="recordRequest">
+        INSERT INTO pf.capability_binding_request(space_id,owner_user_id,request_id,request_hash,binding_set_id,result_revision,inherit_personal)
+        VALUES(#{actor.spaceId},#{actor.userId},#{requestId},#{hash},#{setId},#{revision},#{inherit})
+    </insert>
+    <insert id="recordSelection">
+        INSERT INTO pf.capability_binding_request_selection(space_id,owner_user_id,request_id,capability_id,version_id)
+        VALUES(#{actor.spaceId},#{actor.userId},#{requestId},#{selection.capabilityId},#{selection.versionId})
+    </insert>
+    <insert id="audit">
+        INSERT INTO pf.capability_audit(id,space_id,owner_user_id,action,resource_id,trace_id)
+        VALUES(#{id},#{actor.spaceId},#{actor.userId},'BINDINGS_REPLACED',#{setId},#{traceId})
+    </insert>
+</mapper>

@@ -1,0 +1,11 @@
+{
+  "purpose": "R6.2 local egress feasibility only; not an acceptance or production identity",
+  "source": "ubuntu/squid:7.2-26.04_edge",
+  "registryIndexDigest": "sha256:9134914972b6119a2265fd96f694a627c68070a2a6d905d1383cd87f9c2e5cdd",
+  "platform": "linux/amd64",
+  "platformManifestDigest": "sha256:031d51a433928cf7476611f6138af85681ce4eec8568d1d9a4dcd28d16289c78",
+  "binaryVersionObserved": "7.7",
+  "binaryPackageObserved": "7.7-0ubuntu0.26.04.2",
+  "status": "EXPERIMENTAL_NOT_VERIFIED",
+  "note": "The image tag and OCI label report 7.2, but the binary reports 7.7. Recheck the executable and configuration when fixing a final candidate."
+}
