@@ -2,7 +2,7 @@
 
 ## Closeout update — 2026-11-09
 
-**Current state: step PR #164 is merged to phase; archive/ledger closeout promotion and phase→main promotion remain pending.** The archive is prepared in the local closeout tree but is not yet on the protected phase branch. Repository-wide strict validation passed (34 items). The evidence package is still pending. Until the remaining protected PRs and clean-main hash-checked package complete, R6.3 is not VERIFIED; R6 remains 2/4 VERIFIED and not RELEASED. Cloud production is restored to the original R5 containers. R6.3 has not been deployed or tagged. Real supplier calls: 0.
+**Current state: step PR #164 and archive/ledger closeout PR #165 are merged into phase; phase→main promotion and final package remain pending.** The current phase commit is e613a2bdaf1324be2ebbb8ad8d0f584b0e2942ec. Repository-wide strict validation passed (34 items). Until protected phase→main promotion and final clean-main package/hash verification complete, R6.3 is not VERIFIED; R6 remains 2/4 VERIFIED and not RELEASED. Cloud production remains on the original R5 containers. R6.3 has not been deployed or tagged. Real supplier calls: 0.
 
 The signed cloud application path is now proven end-to-end: attachment upload → signed TEXT_EXTRACT on cloud runsc → private S3 hash readback → knowledge index READY → semantic marker hit. Result SHA256 `21de780cd1fda9ed36c41009706b9f95084147882fc1210d622a9e3c075053ab`; journal SHA256 `abd71f8a4248243cbcacb03b7026ed767df88371ed1158c7efb51c4c7e7fea8f`. The physical sandbox exists only on cloud Linux. The local workstation has no runsc, did not install it, and did not start a local sandbox.
 
@@ -76,4 +76,4 @@ The local workstation intentionally has no `runsc` sandbox. Physical gVisor rend
 5. Full browser keyboard/200%-zoom review if retained as a hard requirement, then final checks and evidence freeze.
 6. Only after all mandatory gates pass: protected step→phase→main promotion, OpenSpec archive, final clean-main evidence/body package and hash-checked protected copies.
 
-Historical hold instruction from the initial snapshot. The archive is prepared locally; its protected phase promotion, phase-to-main promotion, and package verification remain. Any bounded or unrun item stays explicit; no R6.4 work starts.
+Historical hold instruction from the initial snapshot. The archive and phase ledger are now in the protected phase branch; phase-to-main promotion and package verification remain. Any bounded or unrun item stays explicit; no R6.4 work starts.
