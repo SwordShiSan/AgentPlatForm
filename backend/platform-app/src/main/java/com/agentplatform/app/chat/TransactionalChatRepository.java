@@ -147,6 +147,7 @@ public final class TransactionalChatRepository implements ChatRepository {
     @Override public List<HarnessData.Approval> controlApprovals(Lease l){return tx(transactions,()->delegate.controlApprovals(l));}
     @Override public void stageToolApprovals(Lease l,List<HarnessData.Call> calls){tx(transactions,()->{delegate.stageToolApprovals(l,calls);return null;});}
     @Override public List<HarnessData.Approval> toolApprovals(Lease l){return tx(transactions,()->delegate.toolApprovals(l));}
+    @Override public boolean toolRunning(Lease l,HarnessData.Call call){return tx(transactions,()->delegate.toolRunning(l,call));}
     @Override public boolean planMode(Lease l){return tx(transactions,()->delegate.planMode(l));}
     @Override public void consumeOptional(Lease l){tx(transactions,()->{delegate.consumeOptional(l);return null;});}
     @Override public List<com.agentplatform.domain.chat.QuotaData.View> quota(Actor a){return tx(transactions,()->delegate.quota(a));}

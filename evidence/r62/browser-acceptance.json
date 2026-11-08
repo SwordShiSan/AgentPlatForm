@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "sourceRevision": "b1142c82abd027a9fa272690c76e6d7cd8833740",
+  "buildInputSha256": "a0b6b5e284e1004e9d95bbacf1c3c1d81be459dfe896fbe6e7af1a9843f9e6c4",
+  "runtimeConfigSha256": "ec2bb28a8c461c128b8588f0c1af6ccb8b6cef6d7eb1a04fd97b4ba935b19e99",
+  "apiImageConfigId": "sha256:7ea08fb53618da0c5fa1b9c74f3d360228edf900fd4bafd04a6f6f807aca6533",
+  "gatewayImageConfigId": "sha256:2cfd8e12f419d1abb771795d0dd0e8ed0fb696297ec2bbcc7435c86820a028e4",
+  "tests": 3,
+  "failures": 0,
+  "scope": "Isolated control-plane browser: import/publish/bind, secret non-disclosure and cross-user isolation, TLS MCP discovery/version enablement; includes 375/768/1440 viewport, 200 percent zoom and keyboard focus checks. No physical runner or MCP business call.",
+  "reportSha256": "18c98f1c3cab41cd7c88541d97a4b9314834a6360b1662c38f6d164feb679b93",
+  "resultFileSha256": "5d5f86e7f0396adb09c513eb72f6b83baa5891b660071c5b539ffc616524e9b4",
+  "supplierCalls": 0
+}

@@ -17,6 +17,10 @@ public final class MyBatisConnectorCredentialRepository implements ConnectorCred
         return row == null ? null : new Creation(row.fingerprint(), new Metadata(row.id(), row.revision(), row.state(), row.createdAt()));
     }
     @Override public Metadata find(Actor actor, UUID id, boolean lock) { return mapper.find(actor, id, lock); }
+    @Override public Use forUse(Actor actor, UUID id, long revision) {
+        var encrypted = mapper.forUse(actor, id, revision);
+        return encrypted == null ? null : new Use(id, revision, encrypted);
+    }
     @Override public List<Metadata> list(Actor actor, UUID after, int limit) { return mapper.list(actor, after, limit); }
     @Override public void insert(Actor actor, UUID request, String fingerprint, ConnectorCiphertext encrypted) { mapper.insert(actor, request, fingerprint, encrypted); }
     @Override public Revocation findRevocation(Actor actor, UUID request) { return mapper.revocation(actor, request); }

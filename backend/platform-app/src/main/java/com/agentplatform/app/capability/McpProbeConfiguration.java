@@ -40,14 +40,17 @@ public class McpProbeConfiguration {
     @Bean(destroyMethod="close") SpringMcpMessaging mcpMessaging(CachingConnectionFactory connections, McpProbeRepository repository) {
         return new SpringMcpMessaging(connections, repository);
     }
+    @Bean McpDiscoveryProcess mcpDiscoveryProcess(@Value("${platform.mcp.egress-host}") String host,
+            @Value("${platform.mcp.egress-port}") int port,@Value("${platform.mcp.trust-store:}") String trustStore) {
+        if(host==null||host.isBlank()||port<1||port>65535)throw new IllegalArgumentException("MCP_EGRESS_REQUIRED");
+        return new McpDiscoveryProcess(InetSocketAddress.createUnresolved(host,port),
+                trustStore.isBlank()?null:java.nio.file.Path.of(trustStore));
+    }
     @Bean McpProbeExecution mcpProbeExecution(McpProbeRepository repository, @Qualifier("mcpProbeTimers") ThreadPoolTaskScheduler timers,
-            @Value("${platform.mcp.egress-host}") String host, @Value("${platform.mcp.egress-port}") int port,
-            @Value("${platform.mcp.master-key-file}") String mcpFile, @Value("${platform.chat.master-key-file}") String modelFile,
-            @Value("${platform.mcp.trust-store:}") String trustStore) throws java.io.IOException {
-        if (host == null || host.isBlank() || port < 1 || port > 65535) throw new IllegalArgumentException("MCP_EGRESS_REQUIRED");
+            McpDiscoveryProcess process,
+            @Value("${platform.mcp.master-key-file}") String mcpFile, @Value("${platform.chat.master-key-file}") String modelFile) throws java.io.IOException {
         byte[] key = IndependentMcpKeyLoader.load(mcpFile, modelFile);
-        try { return new McpProbeExecution(repository, new McpDiscoveryProcess(InetSocketAddress.createUnresolved(host, port),
-                    trustStore.isBlank() ? null : java.nio.file.Path.of(trustStore))::discover,
+        try { return new McpProbeExecution(repository, process::discover,
                     new CredentialCipher(key), timers.getScheduledExecutor(), Duration.ofSeconds(120)); }
         finally { Arrays.fill(key, (byte) 0); }
     }

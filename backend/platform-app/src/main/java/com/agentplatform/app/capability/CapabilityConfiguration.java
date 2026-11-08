@@ -9,13 +9,13 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Configuration(proxyBeanMethods = false)
-@Profile("chat-local")
+@Profile({"chat-local", "chat-worker", "workspace-runner"})
 @ConditionalOnProperty(name = "platform.capabilities.enabled", havingValue = "true")
 public class CapabilityConfiguration {
     @Bean CapabilityBindingService capabilityBindingService(CapabilityBindingMapper mapper, TransactionTemplate transactions) {
         return new CapabilityBindingService(new MyBatisCapabilityBindingRepository(mapper), transactions);
     }
-    @Bean com.agentplatform.api.capability.CapabilityBindingsApi capabilityBindingsApi(CapabilityBindingService service) {
+    @Bean @Profile("chat-local") com.agentplatform.api.capability.CapabilityBindingsApi capabilityBindingsApi(CapabilityBindingService service) {
         return new com.agentplatform.api.capability.CapabilityBindingsApi() {
             @Override public Bindings read(com.agentplatform.api.chat.ChatApi.Caller caller, String workspaceId) {
                 return service.read(caller, workspaceId);

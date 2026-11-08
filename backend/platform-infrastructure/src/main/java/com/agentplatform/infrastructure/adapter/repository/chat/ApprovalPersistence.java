@@ -144,6 +144,12 @@ final class ApprovalPersistence extends ChatPersistenceSupport implements Approv
         return List.of(new Approval(original(operation),allowed));
     }); }
 
+    @Override public boolean toolRunning(Lease lease, Call call) { return tx(c -> {
+        owned(c, lease, true);
+        var operation = requireOperation(c, lease, call);
+        return "RUNNING".equals(operation.status());
+    }); }
+
     static Decision apply(ChatMappers c,Lease lease,Call call,Decision base) {
         if(base==Decision.DENY||PlanControls.NAMES.contains(call.name()))return base;
         var p=permission(c,lease.spaceId(),lease.taskId());

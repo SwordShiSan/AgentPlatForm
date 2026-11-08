@@ -16,17 +16,17 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
 @Configuration(proxyBeanMethods = false)
-@Profile("workspace-api")
+@Profile({"workspace-api", "chat-worker", "workspace-runner"})
 @ConditionalOnProperty(name = "platform.capabilities.enabled", havingValue = "true")
 public class SkillVersionConfiguration {
     private static final JsonMapper JSON = JsonMapper.builder().build();
     @Bean SkillVersionService skillVersionService(SkillVersionMapper mapper, TransactionTemplate transactions) {
         return new SkillVersionService(new MyBatisSkillVersionRepository(mapper), transactions);
     }
-    @Bean SkillCatalogApi skillCatalogApi(SkillCatalogMapper mapper, TransactionTemplate transactions) {
+    @Bean @Profile("workspace-api") SkillCatalogApi skillCatalogApi(SkillCatalogMapper mapper, TransactionTemplate transactions) {
         return new SkillCatalogService(new MyBatisSkillCatalogRepository(mapper), transactions);
     }
-    @Bean SkillVersionApi skillVersionApi(SkillVersionService service) {
+    @Bean @Profile("workspace-api") SkillVersionApi skillVersionApi(SkillVersionService service) {
         return new SkillVersionApi() {
             @Override public View get(com.agentplatform.api.chat.ChatApi.Caller caller, String capabilityId, String versionId) {
                 return view(service.get(actor(caller), uuid(capabilityId), uuid(versionId)));

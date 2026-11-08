@@ -7,16 +7,23 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Map;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Trusted, memory-bounded discovery process. The parent is its only caller. */
 public final class McpDiscoveryChild {
-    private static final int MAX_INPUT = 131072;
+    private static final int MAX_INPUT = 512 * 1024;
     private static final JsonMapper JSON = JsonMapper.builder().build();
-    public record Input(String endpoint, String authKind, String header, String secret, String proxyHost, int proxyPort) {
+    public record Input(String action, String endpoint, String authKind, String header, String secret,
+            String proxyHost, int proxyPort, String toolName, String schemaSha256, Map<String, Object> arguments) {
+        public Input(String endpoint, String authKind, String header, String secret, String proxyHost, int proxyPort) {
+            this("DISCOVER", endpoint, authKind, header, secret, proxyHost, proxyPort, null, null, null);
+        }
         @Override public String toString() { return "Input[redacted]"; }
     }
-    public record Result(int status, String code, List<McpDiscovery.Tool> tools) {}
+    public record Result(int status, String code, List<McpDiscovery.Tool> tools, String contentJson, Boolean error) {
+        public Result(int status, String code, List<McpDiscovery.Tool> tools) { this(status, code, tools, null, null); }
+    }
     private McpDiscoveryChild() {}
 
     public static void main(String[] args) throws Exception {
@@ -33,11 +40,19 @@ public final class McpDiscoveryChild {
             finally { java.util.Arrays.fill(bytes, (byte) 0); }
             var authentication = new McpDiscovery.Authentication(McpDiscovery.AuthKind.valueOf(input.authKind()), input.header(), input.secret());
             var discovery = new McpDiscovery(InetSocketAddress.createUnresolved(input.proxyHost(), input.proxyPort()));
-            result = new Result(200, null, discovery.discover(input.endpoint(), authentication));
+            if ("DISCOVER".equals(input.action())) {
+                result = new Result(200, null, discovery.discover(input.endpoint(), authentication));
+            } else if ("CALL".equals(input.action()) && input.arguments() != null) {
+                var called = discovery.invokeInChild(input.endpoint(), authentication, input.toolName(), input.schemaSha256(), input.arguments());
+                result = new Result(200, null, null, called.contentJson(), called.error());
+            } else {
+                throw new IllegalArgumentException("MCP_ACTION_INVALID");
+            }
         } catch (FileFailure failure) {
             String code = failure.getMessage();
             if (code == null || !code.matches("[A-Z0-9_]{1,64}")) code = "MCP_DISCOVERY_UNAVAILABLE";
-            result = new Result(failure.status() == 422 ? 422 : 503, code, List.of());
+            int status = List.of(400, 409, 413, 422).contains(failure.status()) ? failure.status() : 503;
+            result = new Result(status, code, List.of());
         } catch (Exception failure) {
             result = new Result(503, "MCP_DISCOVERY_UNAVAILABLE", List.of());
         }

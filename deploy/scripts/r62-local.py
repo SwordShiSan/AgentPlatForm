@@ -235,7 +235,8 @@ def start():
                  'r4-workspace-tools-grants.sql',
                  'r5-file-grants.sql','r5-preview-grants.sql','r5-workbench-grants.sql','r6-configuration-grants.sql',
                  'r62-capability-bindings-grants.sql','r62-skill-import-grants.sql','r62-skill-version-grants.sql',
-                 'r62-skill-worker-grants.sql','r62-connector-credential-grants.sql','r62-mcp-config-grants.sql','r62-mcp-worker-grants.sql']:
+                 'r62-skill-worker-grants.sql','r62-connector-credential-grants.sql','r62-mcp-config-grants.sql',
+                 'r62-mcp-worker-grants.sql','r62-capability-materialization-grants.sql']:
         sql((ROOT/'deploy/config'/name).read_text(encoding='utf-8'))
     # The R6 control-plane fixture reads the pre-existing workspace capacity and
     # worker catalog; it does not enable or start the runner or workspace tools.

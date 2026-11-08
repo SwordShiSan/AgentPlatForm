@@ -15,11 +15,20 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
-/** Discovers a fixed external endpoint through the required proxy; it never calls a business tool. */
+/** Uses the AgentScope MCP client for discovery inside the bounded child process. */
 public final class McpDiscovery {
     public enum AuthKind { NONE, BEARER, API_KEY }
+    public record CallResult(String contentJson, boolean error) {
+        public CallResult {
+            Objects.requireNonNull(contentJson);
+            if (contentJson.getBytes(StandardCharsets.UTF_8).length > 65536)
+                throw new FileFailure(422, "MCP_RESULT_LIMIT");
+        }
+        @Override public String toString() { return "CallResult[error=" + error + ", contentBytes=" + contentJson.getBytes(StandardCharsets.UTF_8).length + "]"; }
+    }
     public static final class Authentication {
         private final AuthKind kind; private final String header; private final String secret;
         public Authentication(AuthKind kind, String header, String secret) {
@@ -78,6 +87,46 @@ public final class McpDiscovery {
             return List.copyOf(result);
         } catch (FileFailure failure) { throw failure; }
         catch (Exception unavailable) { throw new FileFailure(503, "MCP_DISCOVERY_UNAVAILABLE"); }
+    }
+    /** Only McpDiscoveryChild invokes this method; the application can reach calls only through McpDiscoveryProcess. */
+    CallResult invokeInChild(String endpoint, Authentication authentication, String expectedName,
+            String expectedSchemaSha256, Map<String, Object> arguments) {
+        Objects.requireNonNull(authentication); Objects.requireNonNull(arguments);
+        if (expectedName == null || expectedName.isBlank() || expectedName.getBytes(StandardCharsets.UTF_8).length > 512
+                || expectedSchemaSha256 == null || !expectedSchemaSha256.matches("[a-f0-9]{64}"))
+            throw new FileFailure(400, "MCP_TOOL_CALL_INVALID");
+        var validated = McpEndpointPolicy.external(endpoint);
+        var builder = McpClientBuilder.create("platform-mcp-call")
+                .streamableHttpTransport(validated.toASCIIString())
+                .customizeStreamableHttpClient(client -> client.proxy(ProxySelector.of(proxy)).followRedirects(HttpClient.Redirect.NEVER)
+                        .connectTimeout(Duration.ofSeconds(10)))
+                .initializationTimeout(Duration.ofSeconds(10)).timeout(Duration.ofSeconds(60));
+        if (authentication.kind == AuthKind.BEARER) builder.header("Authorization", "Bearer " + authentication.secret);
+        else if (authentication.kind == AuthKind.API_KEY) builder.header(authentication.header, authentication.secret);
+        boolean callStarted = false;
+        try (var client = builder.buildAsync().block(Duration.ofSeconds(15))) {
+            if (client == null) throw new FileFailure(503, "MCP_CALL_UNAVAILABLE");
+            client.initialize().block(Duration.ofSeconds(15));
+            var tools = client.listTools().block(Duration.ofSeconds(65));
+            if (tools == null || tools.size() > 100) throw new FileFailure(503, "MCP_CALL_UNAVAILABLE");
+            var mapper = McpJsonMapper.getDefault();
+            var selected = tools.stream().filter(tool -> expectedName.equals(tool.name())).findFirst().orElse(null);
+            if (selected == null || selected.inputSchema() == null
+                    || !sha256(mapper.writeValueAsBytes(selected.inputSchema())).equals(expectedSchemaSha256))
+                throw new FileFailure(409, "MCP_TOOL_VERSION_STALE");
+            callStarted = true;
+            var response = client.callTool(expectedName, arguments).block(Duration.ofSeconds(60));
+            if (response == null) throw new FileFailure(503, "MCP_CALL_RESULT_UNKNOWN");
+            String content = mapper.writeValueAsString(response.content());
+            if (content.getBytes(StandardCharsets.UTF_8).length > 65536
+                    || authentication.secret != null && content.contains(authentication.secret))
+                throw new FileFailure(422, "MCP_TOOL_RESULT_REJECTED");
+            return new CallResult(content, response.isError());
+        } catch (FileFailure failure) { throw failure; }
+        catch (Exception failure) {
+            if (callStarted) throw new FileFailure(503, "MCP_CALL_RESULT_UNKNOWN");
+            throw new FileFailure(503, "MCP_CALL_UNAVAILABLE");
+        }
     }
     private static String sha256(byte[] value) {
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value)); }

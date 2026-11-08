@@ -30,6 +30,7 @@ if os.name == 'nt':
 node = ROOT / '.tools/node-v22.23.3-win-x64/node.exe'
 env = dict(os.environ, R62_BROWSER_ACCEPTANCE='1', BASE_URL='http://127.0.0.1:' + str(fixture['gatewayPort']),
            R62_BROWSER_SKILL_NAME=skill_name,
+           R62_EDGE_ACCEPTANCE=os.environ.get('R62_EDGE_ACCEPTANCE', '0'),
            TEMP=str(DATA/'tmp'), TMP=str(DATA/'tmp'), PATH=str(node.parent) + os.pathsep + os.environ['PATH'])
 command = [str(node), str(ROOT/'frontend/node_modules/@playwright/test/cli.js'), 'test', 'capabilities-r62.spec.ts',
            '--reporter=json', '--output', str(out/'artifacts')]

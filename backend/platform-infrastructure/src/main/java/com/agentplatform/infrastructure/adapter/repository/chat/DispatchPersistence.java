@@ -78,7 +78,7 @@ final class DispatchPersistence extends ChatPersistenceSupport {
         c.dispatch().insertConversationLease107(e.spaceId(), convo, e.aggregateId(), attempt, owner, e.generation(), fence);
         c.conversation().updateTask108(e.aggregateId());inbox(c,e,"CLAIMED");
         { var rows41 = c.conversation().selectMessage41(e.aggregateId()); var row41 = rows41.isEmpty() ? null : rows41.getFirst(); assistant=row41.value1();messageVersion=row41.value2(); }
-        Lease lease=new Lease(e.aggregateId(),e.spaceId(),actor,convo,attempt,owner,fence,model,credential,revision,assistant);
+        Lease lease=new Lease(e.aggregateId(),e.spaceId(),actor,convo,attempt,owner,fence,model,credential,revision,assistant,e.generation());
         RecoveryPersistence.claimed(c,lease);
         event(c,a,convo,e.aggregateId(),"task.state_changed",task(c,a,e.aggregateId(),false).version(),Map.of("taskId",e.aggregateId().toString(),"status","RUNNING"));
         event(c,a,convo,e.aggregateId(),"message.started",messageVersion,Map.of("messageId",assistant.toString(),"blockId",assistant.toString(),"role","ASSISTANT"));

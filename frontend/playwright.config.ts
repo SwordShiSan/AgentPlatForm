@@ -10,6 +10,7 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: process.env.BASE_URL ?? 'http://127.0.0.1:18080',
+    ...(process.env.R62_EDGE_ACCEPTANCE === '1' ? { channel: 'msedge' as const } : {}),
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     launchOptions: process.env.R54_NATIVE === '1' ? { args: ['--host-resolver-rules=MAP agentplatform.lailihao.cloud 127.0.0.1', '--no-proxy-server'] } : {},

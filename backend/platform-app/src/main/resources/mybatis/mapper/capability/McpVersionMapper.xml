@@ -5,7 +5,8 @@
   <constructor><arg name="connectorId" column="capability_id" javaType="java.util.UUID"/><arg name="versionId" column="version_id" javaType="java.util.UUID"/>
    <arg name="versionNumber" column="version_number" javaType="_long"/><arg name="state" column="state" javaType="java.lang.String"/>
    <arg name="revision" column="revision" javaType="_long"/><arg name="endpoint" column="endpoint" javaType="java.lang.String"/>
-   <arg name="authKind" column="auth_kind" javaType="java.lang.String"/><arg name="credentialId" column="credential_id" javaType="java.util.UUID"/>
+   <arg name="authKind" column="auth_kind" javaType="java.lang.String"/><arg name="apiKeyHeader" column="api_key_header" javaType="java.lang.String"/>
+   <arg name="credentialId" column="credential_id" javaType="java.util.UUID"/>
    <arg name="credentialRevision" column="credential_revision" javaType="java.lang.Long"/><arg name="policyHash" column="policy_hash" javaType="java.lang.String"/>
    <arg name="toolCount" column="tool_count" javaType="_int"/><arg name="sourceConfigurationRevision" column="configuration_revision" javaType="_long"/></constructor>
  </resultMap>
@@ -25,7 +26,7 @@
   AND v.capability_id=m.capability_id AND v.id=m.version_id JOIN pf.capability_version_status s ON s.space_id=v.space_id
   AND s.owner_user_id=v.owner_user_id AND s.capability_id=v.capability_id AND s.version_id=v.id JOIN pf.mcp_probe p
   ON p.space_id=m.space_id AND p.owner_user_id=m.owner_user_id AND p.capability_id=m.capability_id AND p.result_version_id=m.version_id AND p.state='READY'</sql>
- <sql id="columns">m.capability_id,m.version_id,v.version_number,s.state,s.revision,m.endpoint,m.auth_kind,m.credential_id,m.credential_revision,m.policy_hash,m.tool_count,p.configuration_revision</sql>
+ <sql id="columns">m.capability_id,m.version_id,v.version_number,s.state,s.revision,m.endpoint,m.auth_kind,m.api_key_header,m.credential_id,m.credential_revision,m.policy_hash,m.tool_count,p.configuration_revision</sql>
  <select id="authorized" resultType="boolean">SELECT CASE WHEN pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}) THEN
   EXISTS(SELECT 1 FROM pf.space WHERE id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND type='PERSONAL') ELSE false END</select>
  <select id="lock" resultType="java.lang.Integer">SELECT 1 FROM pg_advisory_xact_lock(hashtextextended('r62:mcp-activation:'||CAST(#{actor.spaceId} AS text)||':'||CAST(#{actor.userId} AS text),0))</select>

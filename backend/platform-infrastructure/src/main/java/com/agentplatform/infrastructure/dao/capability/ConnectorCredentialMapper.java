@@ -16,6 +16,7 @@ public interface ConnectorCredentialMapper {
     void lock(@Param("actor") Actor actor);
     ConnectorCredentialRequestRow findRequest(@Param("actor") Actor actor, @Param("request") UUID request);
     Metadata find(@Param("actor") Actor actor, @Param("id") UUID id, @Param("lock") boolean lock);
+    com.agentplatform.domain.capability.ConnectorCiphertext forUse(@Param("actor") Actor actor, @Param("id") UUID id, @Param("revision") long revision);
     List<Metadata> list(@Param("actor") Actor actor, @Param("after") UUID after, @Param("limit") int limit);
     int insert(@Param("actor") Actor actor, @Param("request") UUID request, @Param("fingerprint") String fingerprint, @Param("credential") ConnectorCiphertext credential);
     Revocation revocation(@Param("actor") Actor actor, @Param("request") UUID request);

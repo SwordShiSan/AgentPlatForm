@@ -1,6 +1,15 @@
-## Acceptance
+## Final acceptance summary (2026-11-08)
 
-状态 NOT_RUN。绑定源码、迁移、依赖和镜像；真实供应商调用0。
+状态 **PASS；R6.2 VERIFIED，待受保护的 step→phase→main 晋级；R6 仍为 2/4、未 RELEASED，云端继续运行 R5**。独立证据索引：`evidence/r62/acceptance-index.json`。真实供应商调用为 0。
+
+- 全量 Maven reactor `verify` 在候选应用代码上 PASS：330 tests、0 failures/errors、1 Linux-only skip。随后新增的 runner 已提交命令重放测试单独 PASS（1/1）；它验证签名回执查回且不会再次启动容器。
+- 前端类型检查、18 个文件的 81 项 Vitest、Vite 构建、契约生成差异检查、正常及非法 fixture、86 个本地链接／26 个 canonical 外链检查 PASS。OpenSpec strict 为 `valid=true`、无 issue；遥测网络错误退出时不影响 strict 结果。
+- 独立 V22→V23 与真实 PostgreSQL／RabbitMQ／SeaweedFS 验收覆盖导入、发布、绑定、重复交接、受保护测试调用及撤销／跨用户拒绝。实际 TLS MCP 夹具经受控出口完成探测与显式启用；业务真实远端调用为 0。
+- Playwright fresh-db 3/3 PASS，覆盖 Skill 导入/发布/绑定、凭据不回显与双用户隔离、TLS MCP 探测/版本启用、375/768/1440 viewport、200%缩放及键盘焦点；原 stale-fixture 失败仍保留在下方历史记录。
+- Linux canary 用打包后的生产 `DockerSandboxRuntime`、docker-java、真实 runsc/systrap 与独立 XFS 测试镜像完成材料只读挂载、容器停止/移除和工作区清理，PASS；停止生产栈后准确恢复 R5 并通过状态核验。该物理 canary **未**在同一次运行中经过签名 HTTP runner 与数据库账本；签名、实时授权／持久租约、服务层幂等查回及物理运行时有分项证据，故不宣称组合端到端通过。
+- 最终候选 183 秒采样 11 次，容器内存最大采样值 1,114,329,051 bytes；这是样本，不是绝对峰值或容量承诺。云端只读核验为 R5 11 服务运行、旧平台停止、R6 未部署。
+
+候选服务身份为 source revision `b1142c82abd027a9fa272690c76e6d7cd8833740`、build input SHA256 `a0b6b5e284e1004e9d95bbacf1c3c1d81be459dfe896fbe6e7af1a9843f9e6c4`。本阶段不创建生产 tag、不迁移云端 V23；R6.4 自动装配、生产业务调用和真实供应商请求为 NOT_RUN／后续范围。
 
 ## 阶段内记录
 

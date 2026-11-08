@@ -45,9 +45,17 @@
 - **WHEN** 受保护调用已发出但结果不明
 - **THEN** 保存 UNKNOWN 并禁止自动重放
 
+#### Scenario: A protected call uses the bounded SDK child
+- **WHEN** 原任务工具操作已获准且 owner、connector version、credential revision 和 schema hash 均仍有效
+- **THEN** 平台先持久化 RUNNING，再由受限子进程通过固定出口调用 SDK；结果提交前重新验证 fence，子进程本地停止不证明远端副作用停止
+
 ### Requirement: Materialization is explicit and read-only
 系统 SHALL 仅将获准固定版本材料以只读方式提供给受保护真实测试任务。
 
 #### Scenario: Mount or hash differs
 - **WHEN** 实际挂载、材料哈希或授权不匹配冻结 manifest
 - **THEN** 拒绝执行并保留相关收据
+
+#### Scenario: Runner materialization is repeated or incomplete
+- **WHEN** 相同 runner command 被重复提交，或挂载／停止／清理无法取得确定回执
+- **THEN** 查询并返回原 command 事实，不重复解包或启动；不确定时保留 BLOCKED 和执行槽

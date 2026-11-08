@@ -43,12 +43,38 @@ public final class McpDiscoveryProcess {
     }
     public List<McpDiscovery.Tool> discover(String endpoint, McpDiscovery.Authentication authentication) {
         Objects.requireNonNull(authentication);
+        var result = run(new McpDiscoveryChild.Input(endpoint, authentication.kind().name(), authentication.header(),
+                authentication.secret(), proxy.getHostString(), proxy.getPort()), false);
+        if (result.status() != 200) throw failure(result, "MCP_DISCOVERY_UNAVAILABLE");
+        if (result.tools() == null) throw unavailable();
+        return List.copyOf(result.tools());
+    }
+    public McpDiscovery.CallResult invoke(String endpoint, McpDiscovery.Authentication authentication,
+            String toolName, String schemaSha256, java.util.Map<String, Object> arguments) {
+        Objects.requireNonNull(authentication); Objects.requireNonNull(arguments);
+        if (toolName == null || toolName.isBlank() || toolName.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 512
+                || schemaSha256 == null || !schemaSha256.matches("[a-f0-9]{64}"))
+            throw new FileFailure(400, "MCP_TOOL_CALL_INVALID");
+        byte[] serialized;
+        try { serialized = JSON.writeValueAsBytes(arguments); }
+        catch (RuntimeException invalid) { throw new FileFailure(400, "MCP_TOOL_ARGUMENTS_INVALID"); }
+        try {
+            if (serialized.length > 65536) throw new FileFailure(413, "MCP_TOOL_ARGUMENTS_LIMIT");
+        } finally { Arrays.fill(serialized, (byte) 0); }
+        var input = new McpDiscoveryChild.Input("CALL", endpoint, authentication.kind().name(), authentication.header(),
+                authentication.secret(), proxy.getHostString(), proxy.getPort(), toolName, schemaSha256, arguments);
+        var result = run(input, true);
+        if (result.status() != 200) throw failure(result, "MCP_CALL_UNAVAILABLE");
+        if (result.contentJson() == null || result.error() == null) throw new FileFailure(503, "MCP_CALL_RESULT_UNKNOWN");
+        if (authentication.secret() != null && result.contentJson().contains(authentication.secret()))
+            throw new FileFailure(422, "MCP_TOOL_RESULT_REJECTED");
+        return new McpDiscovery.CallResult(result.contentJson(), result.error());
+    }
+    private McpDiscoveryChild.Result run(McpDiscoveryChild.Input input, boolean call) {
         if (poisoned.get() || !busy.compareAndSet(false, true)) throw unavailable();
         Process process = null; CompletableFuture<byte[]> read = null; CompletableFuture<Void> write = null;
         boolean stopped = false, streamsClosed = false;
         try {
-            var input = new McpDiscoveryChild.Input(endpoint, authentication.kind().name(), authentication.header(),
-                    authentication.secret(), proxy.getHostString(), proxy.getPort());
             byte[] payload = JSON.writeValueAsBytes(input);
             if (payload.length > MAX_INPUT) { Arrays.fill(payload, (byte) 0); throw new FileFailure(422, "MCP_REQUEST_LIMIT"); }
             var builder = new ProcessBuilder(command).redirectError(ProcessBuilder.Redirect.DISCARD);
@@ -61,37 +87,36 @@ public final class McpDiscoveryProcess {
             if (tmp != null) environment.put("TMP", tmp);
             environment.put("LANG", "C.UTF-8");
             try { process = builder.start(); }
-            catch (IOException failure) { Arrays.fill(payload, (byte) 0); throw unavailable(); }
+            catch (IOException failure) { Arrays.fill(payload, (byte) 0); throw unavailable(call ? "MCP_CALL_UNAVAILABLE" : "MCP_DISCOVERY_UNAVAILABLE"); }
             Process child = process;
             write = CompletableFuture.runAsync(() -> {
                 try (var stream = child.getOutputStream()) { stream.write(payload); stream.flush(); }
                 catch (IOException failure) { throw new java.util.concurrent.CompletionException(failure); }
                 finally { Arrays.fill(payload, (byte) 0); }
             });
+            int boundedOutput = call ? Math.min(outputLimit, 512 * 1024) : outputLimit;
             read = CompletableFuture.supplyAsync(() -> {
                 try (var stream = child.getInputStream()) {
-                    byte[] result = stream.readNBytes(outputLimit + 1);
-                    if (result.length > outputLimit) child.destroyForcibly();
+                    byte[] result = stream.readNBytes(boundedOutput + 1);
+                    if (result.length > boundedOutput) child.destroyForcibly();
                     return result;
                 } catch (IOException failure) { throw new java.util.concurrent.CompletionException(failure); }
             });
-            if (!child.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS)) throw unavailable();
+            if (!child.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS)) throw unavailable(call ? "MCP_CALL_RESULT_UNKNOWN" : "MCP_DISCOVERY_UNAVAILABLE");
             stopped = true;
             byte[] output = read.get(5, TimeUnit.SECONDS); write.get(5, TimeUnit.SECONDS); streamsClosed = true;
-            if (child.exitValue() != 0 || output.length > outputLimit) throw unavailable();
+            if (child.exitValue() != 0 || output.length > boundedOutput) throw unavailable(call ? "MCP_CALL_RESULT_UNKNOWN" : "MCP_DISCOVERY_UNAVAILABLE");
             var result = JSON.readValue(output, McpDiscoveryChild.Result.class);
-            if (result == null || result.tools() == null) throw unavailable();
-            if (result.status() != 200) {
-                String code = result.code();
-                if (code == null || !code.matches("[A-Z0-9_]{1,64}")) code = "MCP_DISCOVERY_UNAVAILABLE";
-                throw new FileFailure(result.status() == 422 ? 422 : 503, code);
-            }
-            return List.copyOf(result.tools());
+            if (result == null) throw unavailable();
+            return result;
         } catch (InterruptedException interrupted) {
-            Thread.currentThread().interrupt(); throw unavailable();
+            Thread.currentThread().interrupt();
+            // Discovery has no remote side effect; a tool invocation may already have been
+            // sent, so its interruption must stay UNKNOWN and must never become replayable.
+            throw unavailable(call ? "MCP_CALL_RESULT_UNKNOWN" : "MCP_DISCOVERY_UNAVAILABLE");
         } catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException | RuntimeException failure) {
             if (failure instanceof FileFailure typed) throw typed;
-            throw unavailable();
+            throw unavailable(call ? "MCP_CALL_RESULT_UNKNOWN" : "MCP_DISCOVERY_UNAVAILABLE");
         } finally {
             if (process != null && !stopped) {
                 process.destroyForcibly();
@@ -106,6 +131,12 @@ public final class McpDiscoveryProcess {
             if (process == null || (stopped && streamsClosed)) busy.set(false);
             else { poisoned.set(true); /* Never reuse a slot without confirmed child and pipe termination. */ }
         }
+    }
+    private static FileFailure failure(McpDiscoveryChild.Result result, String fallback) {
+        String code = result.code();
+        if (code == null || !code.matches("[A-Z0-9_]{1,64}")) code = fallback;
+        int status = List.of(400, 409, 413, 422).contains(result.status()) ? result.status() : 503;
+        return new FileFailure(status, code);
     }
     private static void awaitClosed(CompletableFuture<?> task) throws InterruptedException, java.util.concurrent.TimeoutException {
         if (task == null) return;
@@ -136,5 +167,6 @@ public final class McpDiscoveryProcess {
         result.addAll(List.of("-cp", cp, boot ? "org.springframework.boot.loader.launch.PropertiesLauncher" : McpDiscoveryChild.class.getName()));
         return List.copyOf(result);
     }
-    private static FileFailure unavailable() { return new FileFailure(503, "MCP_DISCOVERY_UNAVAILABLE"); }
+    private static FileFailure unavailable() { return unavailable("MCP_DISCOVERY_UNAVAILABLE"); }
+    private static FileFailure unavailable(String code) { return new FileFailure(503, code); }
 }

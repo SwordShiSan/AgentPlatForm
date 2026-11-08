@@ -6,7 +6,7 @@ import java.util.UUID;
 
 public interface McpVersionRepository {
     record Version(UUID connectorId, UUID versionId, long versionNumber, String state, long revision,
-                   String endpoint, String authKind, UUID credentialId, Long credentialRevision,
+                   String endpoint, String authKind, String apiKeyHeader, UUID credentialId, Long credentialRevision,
                    String policyHash, int toolCount, long sourceConfigurationRevision) {}
     record Tool(String name, String description, String schemaJson, String schemaSha256) {}
     record Activation(long revision, UUID enabledVersionId) {}

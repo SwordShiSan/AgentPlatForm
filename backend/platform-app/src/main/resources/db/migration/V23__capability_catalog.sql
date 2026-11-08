@@ -485,9 +485,45 @@ CREATE TABLE pf.capability_audit (
 CREATE TRIGGER capability_audit_immutable BEFORE UPDATE OR DELETE ON pf.capability_audit
  FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
 
+-- Runner-side materialization is one signed, idempotent verification command. A started command
+-- is never replayed after an ambiguous process failure; the receipt or BLOCKED row is queried.
+CREATE TABLE pf.capability_materialization_command(
+ operation_id uuid PRIMARY KEY,command_id uuid NOT NULL UNIQUE,space_id uuid NOT NULL,task_id uuid NOT NULL,attempt_id uuid NOT NULL,
+ actor_id uuid NOT NULL,owner_id uuid NOT NULL,workspace_id uuid NOT NULL,generation bigint NOT NULL CHECK(generation>0),
+ fence bigint NOT NULL CHECK(fence>0),manifest_hash varchar(64) NOT NULL CHECK(manifest_hash~'^[a-f0-9]{64}$'),
+ request_hash varchar(64) NOT NULL CHECK(request_hash~'^[a-f0-9]{64}$'),command_json jsonb NOT NULL CHECK(jsonb_typeof(command_json)='object'),
+ state text NOT NULL CHECK(state IN('RUNNING','COMMITTED','BLOCKED','FAILED')),receipt_json jsonb,receipt_hash varchar(64),
+ error_code varchar(64),revision bigint NOT NULL DEFAULT 1 CHECK(revision>0),created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ FOREIGN KEY(space_id,task_id,attempt_id) REFERENCES pf.attempt(space_id,task_id,id),
+ FOREIGN KEY(space_id,actor_id) REFERENCES pf.membership(space_id,user_id),
+ FOREIGN KEY(space_id,workspace_id) REFERENCES pf.workspace(space_id,id),
+ CHECK((receipt_json IS NULL)=(receipt_hash IS NULL)),
+ CHECK(state<>'COMMITTED' OR receipt_json IS NOT NULL),
+ CHECK(state NOT IN('BLOCKED','FAILED') OR error_code IS NOT NULL)
+);
+CREATE FUNCTION pf.guard_capability_materialization_command() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NEW.operation_id IS DISTINCT FROM OLD.operation_id OR NEW.command_id IS DISTINCT FROM OLD.command_id
+  OR NEW.space_id IS DISTINCT FROM OLD.space_id OR NEW.task_id IS DISTINCT FROM OLD.task_id OR NEW.attempt_id IS DISTINCT FROM OLD.attempt_id
+  OR NEW.actor_id IS DISTINCT FROM OLD.actor_id OR NEW.owner_id IS DISTINCT FROM OLD.owner_id OR NEW.workspace_id IS DISTINCT FROM OLD.workspace_id
+  OR NEW.generation IS DISTINCT FROM OLD.generation OR NEW.fence IS DISTINCT FROM OLD.fence OR NEW.manifest_hash IS DISTINCT FROM OLD.manifest_hash
+  OR NEW.request_hash IS DISTINCT FROM OLD.request_hash OR NEW.command_json IS DISTINCT FROM OLD.command_json OR OLD.state<>'RUNNING'
+  OR NEW.state NOT IN('COMMITTED','BLOCKED','FAILED') OR NEW.revision<>OLD.revision+1 OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+  RAISE EXCEPTION 'CAPABILITY_MATERIALIZATION_IMMUTABLE' USING ERRCODE='55000';
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER capability_materialization_command_transition BEFORE UPDATE ON pf.capability_materialization_command
+ FOR EACH ROW EXECUTE FUNCTION pf.guard_capability_materialization_command();
+CREATE TRIGGER capability_materialization_command_no_delete BEFORE DELETE ON pf.capability_materialization_command
+ FOR EACH ROW EXECUTE FUNCTION pf.reject_checkpoint_mutation();
+REVOKE ALL ON FUNCTION pf.guard_capability_materialization_command() FROM PUBLIC;
+REVOKE ALL ON pf.capability_materialization_command FROM PUBLIC;
+
 REVOKE ALL ON pf.capability, pf.capability_version, pf.skill_package_version, pf.skill_import,
  pf.skill_import_completion_request, pf.skill_import_reservation, pf.skill_import_outbox, pf.skill_import_inbox, pf.skill_import_quarantine, pf.capability_version_status,
  pf.connector_credential,pf.connector_credential_revocation,pf.mcp_connector_version,pf.mcp_connector_tool,
  pf.mcp_connector_configuration,pf.mcp_connector_activation,pf.mcp_activation_command,pf.mcp_connector_request,pf.mcp_probe,pf.mcp_probe_outbox,pf.mcp_probe_inbox,pf.mcp_probe_quarantine,pf.capability_version_command,
  pf.capability_binding_set, pf.capability_binding_selection, pf.capability_binding_request,
- pf.capability_binding_request_selection, pf.capability_audit FROM PUBLIC;
+ pf.capability_binding_request_selection, pf.capability_audit,pf.capability_materialization_command FROM PUBLIC;

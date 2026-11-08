@@ -39,7 +39,9 @@ class McpDiscoveryProcessTest {
     }
     @Test void timeoutStopsExactChildBeforeSlotCanBeReused() throws Exception {
         Path pid = temporary.resolve("pid");
-        var process = fixture("sleep", pid, Duration.ofSeconds(2), 1024);
+        // Include a cold Windows child-JVM startup allowance; the fixture's own sleep
+        // remains longer than this deadline, so termination is still exercised.
+        var process = fixture("sleep", pid, Duration.ofSeconds(8), 1024);
         var auth = new McpDiscovery.Authentication(McpDiscovery.AuthKind.NONE, null, null);
         assertEquals(503, assertThrows(FileFailure.class, () -> process.discover("https://fixture.invalid/mcp", auth)).status());
         long original = Long.parseLong(Files.readString(pid));
@@ -63,6 +65,25 @@ class McpDiscoveryProcessTest {
         assertEquals(1, tools.size()); assertEquals("fixture", tools.getFirst().name());
         assertFalse(tools.toString().contains("private-fixture-sentinel"));
     }
+    @Test void protectedToolCallUsesTheBoundedChildAndReturnsOnlyBoundedContent() throws Exception {
+        var process = fixture("call", temporary.resolve("call-pid"), Duration.ofSeconds(10), 4096);
+        var auth = new McpDiscovery.Authentication(McpDiscovery.AuthKind.BEARER, null, "private-fixture-sentinel");
+        var result = process.invoke("https://fixture.invalid/mcp", auth, "fixture", "a".repeat(64), java.util.Map.of("text", "hello"));
+        assertEquals("[\\\"ok\\\"]", result.contentJson());
+        assertFalse(result.toString().contains("ok"));
+        assertFalse(result.toString().contains("private-fixture-sentinel"));
+        assertFalse(ProcessHandle.of(Long.parseLong(Files.readString(temporary.resolve("call-pid"))))
+                .map(ProcessHandle::isAlive).orElse(false));
+    }
+    @Test void protectedCallRejectsOversizedArgumentsBeforeStartingChild() {
+        var pid = temporary.resolve("must-not-start");
+        var process = fixture("call", pid, Duration.ofSeconds(10), 4096);
+        var auth = new McpDiscovery.Authentication(McpDiscovery.AuthKind.NONE, null, null);
+        var failure = assertThrows(FileFailure.class, () -> process.invoke("https://fixture.invalid/mcp", auth,
+                "fixture", "a".repeat(64), java.util.Map.of("text", "x".repeat(65536))));
+        assertEquals("MCP_TOOL_ARGUMENTS_LIMIT", failure.getMessage());
+        assertFalse(Files.exists(pid));
+    }
     private McpDiscoveryProcess fixture(String action, Path pid, Duration timeout, int maxOutput) {
         String java = Path.of(System.getProperty("java.home"), "bin", System.getProperty("os.name").startsWith("Windows") ? "java.exe" : "java").toString();
         String cp = System.getProperty("surefire.test.class.path", System.getProperty("java.class.path"));
@@ -71,9 +92,14 @@ class McpDiscoveryProcessTest {
     }
     public static final class Fixture {
         public static void main(String[] args) throws Exception {
-            System.in.readAllBytes(); Files.writeString(Path.of(args[1]), Long.toString(ProcessHandle.current().pid()));
+            byte[] input = System.in.readAllBytes();
+            var request = tools.jackson.databind.json.JsonMapper.builder().build().readTree(input);
+            java.util.Arrays.fill(input, (byte) 0);
+            Files.writeString(Path.of(args[1]), Long.toString(ProcessHandle.current().pid()));
             if ("valid".equals(args[0])) {
                 System.out.print("{\"status\":200,\"code\":null,\"tools\":[{\"name\":\"fixture\",\"description\":\"ok\",\"schemaJson\":\"{}\",\"schemaSha256\":\"" + "a".repeat(64) + "\"}]}");
+            } else if ("call".equals(args[0]) && "CALL".equals(request.path("action").asText())) {
+                System.out.print("{\"status\":200,\"code\":null,\"tools\":null,\"contentJson\":\"[\\\\\\\"ok\\\\\\\"]\",\"error\":false}");
             } else if ("sleep".equals(args[0])) Thread.sleep(30000);
             else { System.out.write(new byte[16384]); System.out.flush(); Thread.sleep(30000); }
         }

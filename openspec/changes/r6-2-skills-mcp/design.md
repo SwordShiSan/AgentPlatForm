@@ -21,6 +21,22 @@
 - 材料下载后到 runner 接受挂载之间必须调用 `Prepared.verifyBeforeMount()`，重新验证同一 task lease、workspace 绑定及版本发布状态；校验通过仍不替代后续签名命令、持久回执及容器 inspect。
 - HTTP、MQ、S3、Docker 均不在数据库事务内等待。运维角色和网络隔离采用最小权限。
 
+### 受保护 MCP 调用的执行边界（R6.2 实施约束）
+
+- 应用层只调用 `McpDiscoveryProcess.invoke(...)`；SDK `McpClientWrapper.callTool` 仅可在同一受限子进程内执行。不得提供应用进程内的直连调用适配器。
+- 子进程输入绑定已冻结 connector version、tool name/schema hash 和受限参数，凭据仅经标准输入传递；进程继续通过固定出口和默认 TLS 校验。父进程限制参数 64KiB、子进程响应 64KiB（传输封装另设硬上限）并在退出与管道关闭确认后释放本地槽。
+- 调用前重新核验 connector/version/credential 修订与原 operation 的审批和 owner/fence；在既有 operation ledger 进入 RUNNING 后才派发。调用返回后仍须复核 owner/fence 再提交结果。
+- SDK 调用开始后任何超时、连接中断或进程异常都作为原 operation 的 UNKNOWN；不得重放。子进程被本地确认终止不等于远端副作用已停止。
+- 连接器调用只由真实绑定的受保护测试任务使用；普通聊天的 connector/Skill 自动装配仍关闭，留 R6.4。
+
+### Skill 材料的 runner 命令与只读挂载
+
+- worker 暂存并校验材料后，调用带 RS256 身份、task lease、owner、attempt、generation/fence 和 manifest 哈希的版本化 runner 命令。命令 ID 与材料 manifest 一经受理即不可变；重复调用只查询原 operation。
+- runner 重新查询真实任务租约、空间授权、工作区绑定、当前有效 binding 和不可变 Skill 版本，再从私有 S3 读取原始包、校验包哈希及逐文件 manifest，解压到 runner 独占的只读材料根目录。worker 临时目录不得假定与 Docker daemon 可见。
+- 只读目录挂载是显式签名策略的一部分；容器 inspect 必须确认唯一可写 `/workspace` 加 manifest 列出的只读 `/capabilities/<capabilityId>/<versionId>`，其余 gVisor、无网络、非 root、只读根目录等硬限制不变。旧 bundle 不增加材料挂载。
+- command/receipt 持久记录状态、owner、fence、manifest/result hash、精确容器/挂载身份与时间；数据库提交失败或挂载结果不明时保留 BLOCKED 和槽，不重复解包或启动。
+- 物化验收结束后按精确 command 停止 sandbox、确认 exec/container/callback 静止，再清理本次私有目录并提交清理回执。未能证明停止或清理时保持待核对，不释放槽。
+
 ## Risks / Trade-offs
 
 网络与只读挂载须先做真实可行性实验；不满足安全边界时停止该功能，不做静默降级。
