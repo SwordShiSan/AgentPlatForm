@@ -48,6 +48,6 @@
 - [x] 6.3b 受影响页面真实浏览器回归（真实API/Edge：知识搜索、记忆页状态筛选、受限账户隔离、375/768/1440无横向溢出、搜索按钮可聚焦、暗色主题选择保留、无运行时错误；200%缩放与完整键盘操作未验）
 - [x] 6.4 完成预算准入、180秒采样与固定证据索引（PASS_LIMITED：184.9秒应用/依赖采样PASS，2880MiB上限配置、Java进程VmRSS前后样本及数据库共享槽拒绝均有收据；物理runsc只在云端执行，不在本机启动sandbox；未验证全服务与物理sandbox并发峰值）
 - [x] 6.5a step PR #164 merged the implementation into phase
-- [x] 6.5b archive closeout PR #165 merged the OpenSpec archive/specs and phase ledger updates
-- [ ] 6.5c phase→main protected PR and exact merge verification
-- [ ] 6.6 从最终干净main准备正文与脱敏证据双副本，校验SHA256并保留至少30天
+- [x] 6.5b archive closeout PRs #165/#166 merged OpenSpec and synchronized phase status
+- [x] 6.5c phase→main PR #167 merged at f1d2c87c09e80f195d54331699cba7358fdbaa32
+- [x] 6.6 body/evidence package contents prepared from the exact promotion tree; after promotion, clean-main SHA and two protected copy hashes are recorded in the protected delivery sidecar, with at least 30-day retention
