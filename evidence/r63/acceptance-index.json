@@ -1,6 +1,6 @@
 {
   "stage": "R6.3",
-  "status": "ACCEPTANCE_PASS_LIMITED_PENDING_PROTECTED_PROMOTION",
+  "status": "ACCEPTANCE_PASS_LIMITED_STEP_PROMOTED_ARCHIVE_LOCAL_PENDING_PHASE_CLOSEOUT",
   "verified": false,
   "baseline": {
     "main": "a5c4e4857032d6c0dd5c0d0be34ebbd95d822197",
@@ -9,7 +9,7 @@
     "change": "r6-3-knowledge-memory"
   },
   "candidate": {
-    "worktree": "R6.3 implementation candidate; product inputs match frozen image manifest; promotion pending",
+    "worktree": "Step PR #164 is merged into phase at 77ef634af657d03113616856f3c90207871d6154; OpenSpec archive is prepared locally and awaits protected closeout promotion.",
     "productImageInputHash": "d99dd37ea8e25df1f5706dfe2dc9aff131b7b0720559216f49b9061b1139564b",
     "buildInputsManifestSha256": "5eb9d048c5de7068539b13072daae473a6913e91e4e5f3966222d04e798430ee",
     "runtimeFixtureConfigSha256": "9396b3d826caf48129f9d1e5d4d7064d645452dc88626c60f6fe1cb620edbc1f",
@@ -345,9 +345,8 @@
     }
   },
   "remainingGates": [
-    "protected step-to-phase promotion",
+    "protected archive and phase-ledger closeout PR into phase",
     "protected phase-to-main promotion",
-    "OpenSpec archive and phase/ledger synchronization",
     "final clean-main body/evidence package with hash-checked protected copies"
   ],
   "production": {
@@ -387,5 +386,14 @@
     "path": "evidence/r63/external-docs-and-skill-manifest.json",
     "sha256": "c425d0ed23bdf45298faebd96995a613f31211bc0cf0e3dbceb0cddffdec4554",
     "entries": 13
+  },
+  "promotion": {
+    "stepToPhase": "PASS",
+    "stepPullRequest": 164,
+    "phaseCommit": "77ef634af657d03113616856f3c90207871d6154",
+    "openSpecArchive": "2026-11-08-r6-3-knowledge-memory",
+    "repositoryStrictItems": 34,
+    "phaseToMain": "PENDING",
+    "archiveToPhase": "PENDING_CLOSEOUT_PR"
   }
 }
