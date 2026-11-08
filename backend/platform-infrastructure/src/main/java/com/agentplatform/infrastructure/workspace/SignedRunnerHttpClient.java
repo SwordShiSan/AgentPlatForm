@@ -12,7 +12,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.Flow;
 import tools.jackson.databind.json.JsonMapper;
 
-public final class SignedRunnerHttpClient implements RunnerControlPort,EnvironmentRunnerPort,EnvironmentUseRunnerPort,WorkspaceShellRunnerPort,com.agentplatform.domain.files.FileRunnerPort,AutoCloseable {
+public final class SignedRunnerHttpClient implements RunnerControlPort,EnvironmentRunnerPort,EnvironmentUseRunnerPort,WorkspaceShellRunnerPort,com.agentplatform.domain.files.FileRunnerPort,com.agentplatform.domain.capability.CapabilityMaterializationRunnerPort,AutoCloseable {
     private static final JsonMapper JSON=JsonMapper.builder().build();
     private final URI base;
     private final RunnerSignatures signatures;
@@ -134,5 +134,24 @@ public final class SignedRunnerHttpClient implements RunnerControlPort,Environme
     @Override public com.agentplatform.domain.workspace.EnvironmentUseData.Receipt queryUse(com.agentplatform.domain.workspace.EnvironmentUseData.Command command) {return use(command,true,false);}
     @Override public com.agentplatform.domain.workspace.EnvironmentUseData.Receipt executeShell(com.agentplatform.domain.workspace.EnvironmentUseData.Command command) {return use(command,false,true);}
     @Override public com.agentplatform.domain.workspace.EnvironmentUseData.Receipt queryShell(com.agentplatform.domain.workspace.EnvironmentUseData.Command command) {return use(command,true,true);}
+    private com.agentplatform.domain.capability.CapabilityMaterializationReceipt materialization(
+            com.agentplatform.domain.capability.CapabilityMaterializationCommand command,boolean query) {
+        String path="/internal/capability-materializations/v1"+(query?"/"+command.operationId():"");
+        byte[] body=query?new byte[0]:JSON.writeValueAsBytes(command);
+        var request=new RunnerSignatures.Binding(query?"GET":"POST",path,command.commandId(),command.operationId(),
+                command.spaceId(),command.workspaceId(),command.generation(),command.fence());
+        var response=new RunnerSignatures.Binding("RESPONSE",path,command.commandId(),command.operationId(),
+                command.spaceId(),command.workspaceId(),command.generation(),command.fence());
+        var receipt=exchange(request,response,body,query,com.agentplatform.domain.capability.CapabilityMaterializationReceipt.class);
+        if(receipt==null||!command.commandId().equals(receipt.commandId())||!command.operationId().equals(receipt.operationId())
+                ||!command.workspaceId().equals(receipt.workspaceId())||command.generation()!=receipt.generation()
+                ||command.fence()!=receipt.fence()||!command.manifestHash().equals(receipt.manifestHash()))
+            throw new WorkspaceFailure(503,"CAPABILITY_MATERIALIZATION_RECEIPT_MISMATCH");
+        return receipt;
+    }
+    @Override public com.agentplatform.domain.capability.CapabilityMaterializationReceipt materialize(
+            com.agentplatform.domain.capability.CapabilityMaterializationCommand command) {return materialization(command,false);}
+    @Override public com.agentplatform.domain.capability.CapabilityMaterializationReceipt query(
+            com.agentplatform.domain.capability.CapabilityMaterializationCommand command) {return materialization(command,true);}
     @Override public void close(){client.shutdownNow();}
 }

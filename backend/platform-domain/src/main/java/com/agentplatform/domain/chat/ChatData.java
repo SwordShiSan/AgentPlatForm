@@ -20,7 +20,17 @@ public final class ChatData {
     public record Event(UUID id, UUID spaceId, UUID conversationId, UUID taskId, long seq, String type, long version, Instant occurredAt, Map<String,Object> payload) {}
     public record Envelope(int schemaVersion, UUID eventId, UUID spaceId, UUID aggregateId, long generation, String kind, Instant occurredAt, String traceparent, UUID payloadRef) {}
     public record Publish(UUID id, Envelope envelope) {}
-    public record Lease(UUID taskId, UUID spaceId, UUID userId, UUID conversationId, UUID attemptId, UUID ownerId, long fence, UUID modelId, UUID credentialId, long credentialRevision, UUID assistantId) {}
+    public record Lease(UUID taskId, UUID spaceId, UUID userId, UUID conversationId, UUID attemptId, UUID ownerId,
+            long fence, UUID modelId, UUID credentialId, long credentialRevision, UUID assistantId, long generation) {
+        /** Source compatibility for tests and legacy callers which only construct generation-one leases. */
+        public Lease(UUID taskId,UUID spaceId,UUID userId,UUID conversationId,UUID attemptId,UUID ownerId,long fence,
+                UUID modelId,UUID credentialId,long credentialRevision,UUID assistantId) {
+            this(taskId,spaceId,userId,conversationId,attemptId,ownerId,fence,modelId,credentialId,credentialRevision,assistantId,1);
+        }
+        public Lease {
+            if (generation < 1) throw new IllegalArgumentException("INVALID_EXECUTION_GENERATION");
+        }
+    }
     public record Credential(UUID id, String scope, UUID spaceId, UUID ownerId, byte[] ciphertext, byte[] nonce, int keyVersion, long revision) {
         public Credential {
             if (id == null || !("PLATFORM".equals(scope) || "USER".equals(scope))

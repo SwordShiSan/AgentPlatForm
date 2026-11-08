@@ -263,6 +263,475 @@ export interface paths {
         patch: operations["updateWorkspaceConfiguration"];
         trace?: never;
     };
+    "/api/v1/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["skills"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/{id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["skillVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/{id}/versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["skillVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/{id}/versions/{versionId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["publishSkillVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/{id}/versions/{versionId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["revokeSkillVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createSkillImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/imports/requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["skillImportByRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/imports/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["skillImport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/imports/{id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["uploadSkillImport"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/imports/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["completeSkillImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["connectors"];
+        put?: never;
+        post: operations["createConnector"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["connector"];
+        put: operations["updateConnector"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["testConnector"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["connectorVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{id}/versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["connectorVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{id}/activation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["connectorActivation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{id}/versions/{versionId}/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["enableConnectorVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{id}/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["disableConnector"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["connectorByRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/tests/requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["connectorTestByRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/tests/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["connectorTest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/connector-credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["connectorCredentials"];
+        put?: never;
+        post: operations["createConnectorCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/connector-credentials/{id}/replace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["replaceConnectorCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/connector-credentials/requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["connectorCredentialByRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/connector-credentials/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["revokeConnectorCredential"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/capability-bindings": {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["personalCapabilityBindings"];
+        put: operations["replacePersonalCapabilityBindings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{id}/capability-bindings": {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["workspaceCapabilityBindings"];
+        put: operations["replaceWorkspaceCapabilityBindings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/effective-capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["effectiveCapabilities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/preferences": {
         parameters: {
             query?: never;
@@ -1220,6 +1689,203 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        McpVersion: {
+            /** Format: uuid */
+            connectorId: string;
+            /** Format: uuid */
+            versionId: string;
+            /** Format: int64 */
+            versionNumber: number;
+            /** @enum {string} */
+            state: "DRAFT" | "PUBLISHED" | "REVOKED";
+            /** Format: int64 */
+            revision: number;
+            /** Format: uri */
+            endpoint: string;
+            /** @enum {string} */
+            authKind: "NONE" | "BEARER" | "API_KEY";
+            /** Format: uuid */
+            credentialId: string | null;
+            /** Format: int64 */
+            credentialRevision: number | null;
+            policyHash: string;
+            toolCount: number;
+            /** Format: int64 */
+            sourceConfigurationRevision: number;
+        };
+        McpVersionPage: {
+            items: components["schemas"]["McpVersion"][];
+            /** Format: int64 */
+            nextCursor: number | null;
+        };
+        McpTool: {
+            name: string;
+            description: string | null;
+            schemaJson: string;
+            schemaSha256: string;
+        };
+        McpActivation: {
+            /** Format: int64 */
+            revision: number;
+            /** Format: uuid */
+            enabledVersionId: string | null;
+        };
+        McpVersionDetail: {
+            version: components["schemas"]["McpVersion"];
+            tools: components["schemas"]["McpTool"][];
+            activation: components["schemas"]["McpActivation"];
+            eligible: boolean;
+        };
+        McpConnectorInput: {
+            /** Format: uri */
+            endpoint: string;
+            /** @enum {string} */
+            authKind: "NONE" | "BEARER" | "API_KEY";
+            /** @enum {string|null} */
+            apiKeyHeader?: "X-API-Key" | "api-key" | null;
+            /** Format: uuid */
+            credentialId?: string | null;
+            /** Format: int64 */
+            credentialRevision?: number | null;
+        };
+        McpConnector: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uri */
+            endpoint: string;
+            /** @enum {string} */
+            authKind: "NONE" | "BEARER" | "API_KEY";
+            /** @enum {string|null} */
+            apiKeyHeader: "X-API-Key" | "api-key" | null;
+            /** Format: uuid */
+            credentialId: string | null;
+            /** Format: int64 */
+            credentialRevision: number | null;
+            /** Format: int64 */
+            revision: number;
+        };
+        McpConnectorPage: {
+            items: components["schemas"]["McpConnector"][];
+            /** Format: uuid */
+            nextCursor: string | null;
+        };
+        McpProbe: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            connectorId: string;
+            /** Format: int64 */
+            configurationRevision: number;
+            /** @enum {string} */
+            state: "QUEUED" | "RUNNING" | "READY" | "FAILED" | "BLOCKED";
+            /** Format: uuid */
+            resultVersionId: string | null;
+            /** Format: int64 */
+            revision: number;
+            errorCode: string | null;
+        };
+        ConnectorCredentialInput: {
+            secret: string;
+        };
+        ConnectorCredential: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            revision: number;
+            /** @enum {string} */
+            state: "ACTIVE" | "REVOKED";
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ConnectorCredentialPage: {
+            items: components["schemas"]["ConnectorCredential"][];
+            /** Format: uuid */
+            nextCursor: string | null;
+        };
+        SkillCatalogItem: {
+            /** Format: uuid */
+            capabilityId: string;
+            /** Format: uuid */
+            versionId: string;
+            /** Format: int64 */
+            versionNumber: number;
+            name: string;
+            description: string;
+            /** @enum {string} */
+            state: "DRAFT" | "PUBLISHED" | "REVOKED";
+            /** Format: int64 */
+            revision: number;
+        };
+        SkillCatalogPage: {
+            items: components["schemas"]["SkillCatalogItem"][];
+            nextCursor: string | null;
+        };
+        SkillResource: {
+            path: string;
+            /** Format: int64 */
+            bytes: number;
+            sha256: string;
+        };
+        SkillVersion: {
+            /** Format: uuid */
+            capabilityId: string;
+            /** Format: uuid */
+            versionId: string;
+            /** @enum {string} */
+            state: "DRAFT" | "PUBLISHED" | "REVOKED";
+            /** Format: int64 */
+            revision: number;
+            name: string;
+            description: string;
+            resources: components["schemas"]["SkillResource"][];
+            dependencies: unknown[];
+            assetAvailable: boolean;
+        };
+        SkillImportCreate: {
+            /** Format: uuid */
+            capabilityId?: string | null;
+            /** Format: int64 */
+            sizeBytes: number;
+            sha256: string;
+        };
+        SkillImport: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            capabilityId: string;
+            /** Format: uuid */
+            versionId: string;
+            /** @enum {string} */
+            state: "CREATED" | "UPLOADING" | "VERIFIED" | "QUEUED" | "RUNNING" | "DRAFT" | "REJECTED" | "BLOCKED";
+            /** Format: int64 */
+            sizeBytes: number;
+            sha256: string;
+            /** Format: int64 */
+            revision: number;
+            errorCode: string | null;
+        };
+        CapabilitySelection: {
+            /** Format: uuid */
+            capabilityId: string;
+            /** Format: uuid */
+            versionId: string;
+        };
+        CapabilityBindingUpdate: {
+            inheritPersonal: boolean;
+            selections: components["schemas"]["CapabilitySelection"][];
+        };
+        CapabilityBindingSet: {
+            /** Format: int64 */
+            revision: number;
+            inheritPersonal: boolean;
+            selections: components["schemas"]["CapabilitySelection"][];
+        };
+        EffectiveCapabilities: {
+            /** @enum {string} */
+            source: "PERSONAL" | "WORKSPACE";
+            selections: components["schemas"]["CapabilitySelection"][];
+            unavailable: components["schemas"]["CapabilitySelection"][];
+        };
         PreviewRequest: {
             /** Format: uuid */
             versionId: string;
@@ -2715,6 +3381,907 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkspaceConfiguration"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    skills: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paged personal Skill catalog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillCatalogPage"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    skillVersions: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paged immutable Skill versions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillCatalogPage"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    skillVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Immutable Skill manifest and publication status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillVersion"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    publishSkillVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Published immutable version */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillVersion"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    revokeSkillVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked immutable version */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillVersion"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    createSkillImport: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SkillImportCreate"];
+            };
+        };
+        responses: {
+            /** @description Stable upload identity and reserved capacity */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillImport"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    skillImportByRequest: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Original import associated with an accepted request */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillImport"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    skillImport: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Durable upload and validation state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillImport"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    uploadSkillImport: {
+        parameters: {
+            query?: never;
+            header: {
+                "Content-Length": number;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/octet-stream": string;
+            };
+        };
+        responses: {
+            /** @description Bounded archive transferred or awaiting reconciliation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillImport"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    completeSkillImport: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Validation queued under the original import identity */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillImport"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connectors: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Personal connector settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpConnectorPage"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    createConnector: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["McpConnectorInput"];
+            };
+        };
+        responses: {
+            /** @description Connector created, not yet probed or enabled */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpConnector"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connector: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Connector configuration */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpConnector"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    updateConnector: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["McpConnectorInput"];
+            };
+        };
+        responses: {
+            /** @description Updated configuration; existing version bindings remain immutable */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpConnector"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    testConnector: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Durable discovery job queued; no business tool is invoked */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpProbe"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connectorVersions: {
+        parameters: {
+            query?: {
+                cursor?: number;
+                limit?: number;
+            };
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Immutable discovered versions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpVersionPage"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connectorVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Frozen version and discovered tool schemas */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpVersionDetail"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connectorActivation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current explicit enablement */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpActivation"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    enableConnectorVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Version explicitly enabled */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpActivation"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    disableConnector: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Connector disabled without changing historical bindings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpActivation"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connectorByRequest: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Original accepted configuration snapshot for this request */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpConnector"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connectorTestByRequest: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Original discovery job for this request */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpProbe"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connectorTest: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Discovery job state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpProbe"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connectorCredentials: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Credential metadata only */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorCredentialPage"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    createConnectorCredential: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorCredentialInput"];
+            };
+        };
+        responses: {
+            /** @description Encrypted credential metadata */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorCredential"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    replaceConnectorCredential: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorCredentialInput"];
+            };
+        };
+        responses: {
+            /** @description New encrypted credential identity */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorCredential"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    connectorCredentialByRequest: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Credential metadata for the original create, replace or revoke request; no secret is returned */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorCredential"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    revokeConnectorCredential: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked credential metadata */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorCredential"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    personalCapabilityBindings: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Versioned personal selections */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CapabilityBindingSet"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    replacePersonalCapabilityBindings: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Space-Id"?: string;
+                "If-Match": string;
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CapabilityBindingUpdate"];
+            };
+        };
+        responses: {
+            /** @description Accepted binding snapshot */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CapabilityBindingSet"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    workspaceCapabilityBindings: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Versioned workspace selection or inheritance */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CapabilityBindingSet"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    replaceWorkspaceCapabilityBindings: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Space-Id"?: string;
+                "If-Match": string;
+                "Idempotency-Key": string;
+                "X-CSRF-Token": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CapabilityBindingUpdate"];
+            };
+        };
+        responses: {
+            /** @description Accepted binding snapshot */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CapabilityBindingSet"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    effectiveCapabilities: {
+        parameters: {
+            query?: {
+                workspaceId?: string;
+            };
+            header?: {
+                "X-Space-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Effective selections and currently unavailable versions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EffectiveCapabilities"];
                 };
             };
             default: components["responses"]["IdentityProblem"];

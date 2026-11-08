@@ -8,4 +8,6 @@ import java.util.List;
 public interface ApprovalLedger {
     void stageToolApprovals(Lease lease, List<HarnessData.Call> calls);
     List<HarnessData.Approval> toolApprovals(Lease lease);
+    /** Confirms the exact SDK operation is RUNNING under this current attempt/fence. */
+    default boolean toolRunning(Lease lease, HarnessData.Call call) { return false; }
 }

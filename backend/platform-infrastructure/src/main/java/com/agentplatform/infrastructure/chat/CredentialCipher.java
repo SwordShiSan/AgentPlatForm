@@ -2,6 +2,7 @@ package com.agentplatform.infrastructure.chat;
 
 import com.agentplatform.domain.chat.ChatData.Credential;
 import com.agentplatform.domain.chat.ChatFailure;
+import com.agentplatform.domain.capability.ConnectorCiphertext;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.UUID;
@@ -22,6 +23,25 @@ public final class CredentialCipher {
     }
     public String decrypt(Credential value){
         try{if(value.keyVersion()!=1)throw new IllegalArgumentException();var cipher=Cipher.getInstance("AES/GCM/NoPadding");cipher.init(Cipher.DECRYPT_MODE,new SecretKeySpec(master,"AES"),new GCMParameterSpec(128,value.nonce()));cipher.updateAAD(aad(value));return new String(cipher.doFinal(value.ciphertext()),StandardCharsets.UTF_8);}
+        catch(Exception e){throw new ChatFailure(403,"CREDENTIAL_DECRYPTION_REJECTED");}
+    }
+    private static byte[] connectorAad(ConnectorCiphertext value) {
+        return ("MCP|"+value.id()+"|"+value.spaceId()+"|"+value.ownerId()+"|"+value.keyVersion()).getBytes(StandardCharsets.UTF_8);
+    }
+    public ConnectorCiphertext encryptConnector(UUID id, UUID space, UUID owner, String value) {
+        byte[] nonce=new byte[12]; new SecureRandom().nextBytes(nonce);
+        var metadata=new ConnectorCiphertext(id,space,owner,new byte[0],nonce,1,1);
+        byte[] plaintext=value.getBytes(StandardCharsets.UTF_8);
+        try {var cipher=Cipher.getInstance("AES/GCM/NoPadding");cipher.init(Cipher.ENCRYPT_MODE,new SecretKeySpec(master,"AES"),new GCMParameterSpec(128,nonce));
+            cipher.updateAAD(connectorAad(metadata));return new ConnectorCiphertext(id,space,owner,cipher.doFinal(plaintext),nonce,1,1);}
+        catch(Exception e){throw new ChatFailure(503,"CREDENTIAL_ENCRYPTION_FAILED");}
+        finally {java.util.Arrays.fill(plaintext,(byte)0);}
+    }
+    public String decryptConnector(ConnectorCiphertext value) {
+        try {if(value.keyVersion()!=1)throw new IllegalArgumentException();var cipher=Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE,new SecretKeySpec(master,"AES"),new GCMParameterSpec(128,value.nonce()));
+            cipher.updateAAD(connectorAad(value));byte[] plaintext=cipher.doFinal(value.ciphertext());
+            try {return new String(plaintext,StandardCharsets.UTF_8);} finally {java.util.Arrays.fill(plaintext,(byte)0);}}
         catch(Exception e){throw new ChatFailure(403,"CREDENTIAL_DECRYPTION_REJECTED");}
     }
 }

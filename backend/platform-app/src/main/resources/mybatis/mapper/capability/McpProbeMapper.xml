@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.capability.McpProbeMapper">
+ <resultMap id="publication" type="com.agentplatform.domain.capability.McpProbeRepository$Publication">
+  <constructor><arg name="id" column="id" javaType="java.util.UUID"/><arg name="spaceId" column="space_id" javaType="java.util.UUID"/>
+   <arg name="probeId" column="probe_id" javaType="java.util.UUID"/><arg name="generation" column="generation" javaType="_long"/>
+   <arg name="relayOwner" column="relay_owner" javaType="java.util.UUID"/></constructor>
+ </resultMap>
+ <resultMap id="row" type="com.agentplatform.infrastructure.dao.po.McpProbeRow">
+  <constructor><arg name="id" column="id" javaType="java.util.UUID"/><arg name="spaceId" column="space_id" javaType="java.util.UUID"/>
+   <arg name="ownerUserId" column="owner_user_id" javaType="java.util.UUID"/><arg name="capabilityId" column="capability_id" javaType="java.util.UUID"/>
+   <arg name="configurationRevision" column="configuration_revision" javaType="_long"/><arg name="endpoint" column="endpoint" javaType="java.lang.String"/>
+   <arg name="authKind" column="auth_kind" javaType="java.lang.String"/><arg name="apiKeyHeader" column="api_key_header" javaType="java.lang.String"/>
+   <arg name="credentialId" column="credential_id" javaType="java.util.UUID"/><arg name="credentialRevision" column="credential_revision" javaType="java.lang.Long"/>
+   <arg name="policyHash" column="policy_hash" javaType="java.lang.String"/><arg name="generation" column="generation" javaType="_long"/>
+   <arg name="revision" column="revision" javaType="_long"/><arg name="ownerId" column="owner_id" javaType="java.util.UUID"/>
+   <arg name="fence" column="fence" javaType="java.lang.Long"/><arg name="state" column="state" javaType="java.lang.String"/>
+   <arg name="traceId" column="trace_id" javaType="java.util.UUID"/></constructor>
+ </resultMap>
+ <sql id="columns">p.id,p.space_id,p.owner_user_id,p.capability_id,p.configuration_revision,p.endpoint,p.auth_kind,p.api_key_header,p.credential_id,p.credential_revision,p.policy_hash,p.generation,p.revision,p.owner_id,p.fence,p.state,p.trace_id</sql>
+ <select id="next" resultMap="publication" affectData="true" flushCache="true">
+  WITH candidate AS (SELECT id FROM pf.mcp_probe_outbox WHERE state='PENDING' OR (state='PUBLISHING' AND relay_until&lt;clock_timestamp())
+    ORDER BY created_at,id FOR UPDATE SKIP LOCKED LIMIT 1)
+  UPDATE pf.mcp_probe_outbox o SET state='PUBLISHING',relay_owner=#{owner},relay_until=clock_timestamp()+interval '10 seconds'
+   FROM candidate c WHERE o.id=c.id RETURNING o.id,o.space_id,o.probe_id,o.generation,o.relay_owner
+ </select>
+ <update id="published">UPDATE pf.mcp_probe_outbox SET state='PUBLISHED',relay_owner=NULL,relay_until=NULL
+  WHERE id=#{publication.id} AND space_id=#{publication.spaceId} AND probe_id=#{publication.probeId}
+   AND generation=#{publication.generation} AND state='PUBLISHING' AND relay_owner=#{publication.relayOwner}</update>
+ <select id="byPublication" resultMap="row">SELECT <include refid="columns"/> FROM pf.mcp_probe p JOIN pf.mcp_probe_outbox o
+  ON o.probe_id=p.id AND o.space_id=p.space_id AND o.generation=p.generation WHERE o.id=#{publication.id}
+  AND o.space_id=#{publication.spaceId} AND o.probe_id=#{publication.probeId} AND o.generation=#{publication.generation} FOR UPDATE OF p</select>
+ <select id="byCommand" resultMap="row">SELECT <include refid="columns"/> FROM pf.mcp_probe p
+  WHERE p.id=#{command.probeId} AND p.space_id=#{command.spaceId} AND p.owner_user_id=#{command.actorId} AND p.capability_id=#{command.connectorId}
+   AND p.configuration_revision=#{command.configurationRevision} AND p.owner_id=#{command.ownerId} AND p.generation=#{command.generation}
+   AND p.fence=#{command.fence} AND p.policy_hash=#{command.policyHash} AND p.state='RUNNING' AND p.lease_until&gt;clock_timestamp() FOR UPDATE OF p</select>
+ <select id="authorized" resultType="boolean">SELECT pf.authorize_workspace_actor(#{actor},#{space})</select>
+ <select id="currentConfiguration" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.mcp_connector_configuration c
+  WHERE c.space_id=#{row.spaceId} AND c.owner_user_id=#{row.ownerUserId} AND c.capability_id=#{row.capabilityId} AND c.revision=#{row.configurationRevision}
+   AND c.endpoint=#{row.endpoint} AND c.auth_kind=#{row.authKind} AND c.api_key_header IS NOT DISTINCT FROM #{row.apiKeyHeader,jdbcType=VARCHAR}
+   AND c.credential_id IS NOT DISTINCT FROM #{row.credentialId,jdbcType=OTHER} AND c.credential_revision IS NOT DISTINCT FROM #{row.credentialRevision,jdbcType=BIGINT} FOR SHARE)</select>
+ <select id="credential" resultType="com.agentplatform.domain.capability.ConnectorCiphertext">SELECT id,space_id,owner_user_id AS owner_id,ciphertext,nonce,key_version,revision FROM pf.connector_credential
+  WHERE space_id=#{row.spaceId} AND owner_user_id=#{row.ownerUserId} AND id=#{row.credentialId} AND revision=#{row.credentialRevision} AND state='ACTIVE' FOR SHARE</select>
+ <insert id="inbox">INSERT INTO pf.mcp_probe_inbox(event_id,space_id,probe_id) VALUES(#{publication.id},#{publication.spaceId},#{publication.probeId}) ON CONFLICT DO NOTHING</insert>
+ <update id="failQueued">UPDATE pf.mcp_probe SET state='FAILED',error_code=#{reason},revision=revision+1
+  WHERE id=#{publication.probeId} AND space_id=#{publication.spaceId} AND generation=#{publication.generation} AND state='QUEUED'</update>
+ <update id="claim">UPDATE pf.mcp_probe SET state='RUNNING',owner_id=#{owner},fence=#{fence},lease_until=clock_timestamp()+interval '60 seconds',revision=revision+1
+  WHERE id=#{publication.probeId} AND space_id=#{publication.spaceId} AND generation=#{publication.generation} AND state='QUEUED'</update>
+ <update id="guard">UPDATE pf.mcp_probe SET lease_until=clock_timestamp()+interval '60 seconds' WHERE id=#{command.probeId}
+  AND space_id=#{command.spaceId} AND owner_user_id=#{command.actorId} AND state='RUNNING' AND owner_id=#{command.ownerId}
+  AND generation=#{command.generation} AND fence=#{command.fence} AND policy_hash=#{command.policyHash} AND lease_until&gt;clock_timestamp()</update>
+ <update id="block">UPDATE pf.mcp_probe SET state=#{state},error_code=#{reason},owner_id=NULL,fence=NULL,lease_until=NULL,revision=revision+1 WHERE id=#{command.probeId}
+  AND space_id=#{command.spaceId} AND owner_user_id=#{command.actorId} AND state='RUNNING' AND owner_id=#{command.ownerId}
+  AND generation=#{command.generation} AND fence=#{command.fence} AND policy_hash=#{command.policyHash} AND lease_until&gt;clock_timestamp()</update>
+ <select id="lockCapability" resultType="java.lang.Integer">SELECT 1 FROM pf.capability WHERE id=#{row.capabilityId} AND space_id=#{row.spaceId}
+  AND owner_user_id=#{row.ownerUserId} AND kind='MCP' FOR UPDATE</select>
+ <select id="nextVersion" resultType="long">SELECT coalesce(max(version_number),0)+1 FROM pf.capability_version WHERE space_id=#{row.spaceId} AND capability_id=#{row.capabilityId}</select>
+ <insert id="insertVersion">INSERT INTO pf.capability_version(id,space_id,owner_user_id,capability_id,version_number,content_hash)
+  VALUES(#{version},#{row.spaceId},#{row.ownerUserId},#{row.capabilityId},#{number},#{hash})</insert>
+ <insert id="insertMcpVersion">INSERT INTO pf.mcp_connector_version(space_id,owner_user_id,capability_id,version_id,endpoint,auth_kind,api_key_header,credential_id,credential_revision,protocol,policy_hash,tool_count,schemas_bytes)
+  VALUES(#{row.spaceId},#{row.ownerUserId},#{row.capabilityId},#{version},#{row.endpoint},#{row.authKind},#{row.apiKeyHeader,jdbcType=VARCHAR},
+  #{row.credentialId,jdbcType=OTHER},#{row.credentialRevision,jdbcType=BIGINT},'STREAMABLE_HTTP',#{row.policyHash},#{count},#{bytes})</insert>
+ <insert id="insertTool">INSERT INTO pf.mcp_connector_tool(space_id,owner_user_id,capability_id,version_id,tool_name,description,input_schema,schema_canonical,schema_hash)
+  VALUES(#{row.spaceId},#{row.ownerUserId},#{row.capabilityId},#{version},#{tool.name},#{tool.description,jdbcType=VARCHAR},CAST(#{tool.schemaJson} AS jsonb),#{tool.schemaJson},#{tool.schemaSha256})</insert>
+ <insert id="insertStatus">INSERT INTO pf.capability_version_status(space_id,owner_user_id,capability_id,version_id,state)
+  VALUES(#{row.spaceId},#{row.ownerUserId},#{row.capabilityId},#{version},'DRAFT')</insert>
+ <update id="finish">UPDATE pf.mcp_probe SET state='READY',result_version_id=#{version},owner_id=NULL,fence=NULL,lease_until=NULL,revision=revision+1
+  WHERE id=#{command.probeId} AND space_id=#{command.spaceId} AND state='RUNNING' AND owner_id=#{command.ownerId}
+  AND generation=#{command.generation} AND fence=#{command.fence} AND policy_hash=#{command.policyHash} AND lease_until&gt;clock_timestamp()</update>
+ <insert id="audit">INSERT INTO pf.capability_audit(id,space_id,owner_user_id,action,resource_id,trace_id)
+  VALUES(#{id},#{command.spaceId},#{command.actorId},'CONNECTOR_TESTED',#{command.probeId},#{command.traceId})</insert>
+ <insert id="quarantine">INSERT INTO pf.mcp_probe_quarantine(id,body_hash) VALUES(#{id},#{hash})</insert>
+</mapper>

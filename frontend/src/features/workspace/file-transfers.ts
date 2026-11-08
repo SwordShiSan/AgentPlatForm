@@ -31,7 +31,10 @@ export function transferFile(id: string, file: File, space: string, csrf: string
 export function transferAttachment(id: string, file: File, space: string, csrf: string, signal: AbortSignal, progress: (value: number) => void) {
   return transferBinary<components['schemas']['AttachmentUpload']>('attachment-uploads', id, file, space, csrf, signal, progress);
 }
-function transferBinary<T>(resource: 'uploads' | 'attachment-uploads', id: string, file: File, space: string, csrf: string, signal: AbortSignal, progress: (value: number) => void) {
+export function transferSkillArchive(id: string, file: File, space: string, csrf: string, signal: AbortSignal, progress: (value: number) => void) {
+  return transferBinary<components['schemas']['SkillImport']>('skills/imports', id, file, space, csrf, signal, progress);
+}
+function transferBinary<T>(resource: 'uploads' | 'attachment-uploads' | 'skills/imports', id: string, file: File, space: string, csrf: string, signal: AbortSignal, progress: (value: number) => void) {
   return new Promise<T>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const abort = () => xhr.abort();
