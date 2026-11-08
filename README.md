@@ -1,8 +1,8 @@
-## R6.3验收通过，phase→main待晋级（2026-11-09）
+## R6.3 VERIFIED（PASS_LIMITED）；R6完成3/4、尚未RELEASED（2026-11-09）
 
-R6.3实现与受限验收已通过step PR #164，并由归档closeout PR #165将唯一OpenSpec change及规格合入phase；当前phase提交为e613a2bdaf1324be2ebbb8ad8d0f584b0e2942ec。全仓OpenSpec strict校验34项通过。phase→main保护PR与最终干净main交付包哈希核验尚待完成；完成前R6.3不计入VERIFIED，R6仍2/4、未RELEASED。验收范围见evidence/r63/acceptance-index.json及归档verification。
+R6.3实现、OpenSpec归档与两级保护晋级已完成：实现PR #164，归档/阶段台账PR #165、#166，phase→main PR #167；代码及规格已进入main f1d2c87c09e80f195d54331699cba7358fdbaa32。R6.3本阶段状态为VERIFIED；限界与NOT_RUN保留在验收索引。云端生产继续运行原R5，R6.3未部署、未创建生产tag，真实供应商调用0；R6.4未启动。
 
-真实云端签名TEXT_EXTRACT→私有S3哈希回读→知识索引READY/语义命中已通过；另有旧索引保留、记忆生命周期、持久上下文投影重启读回、进程RSS和共享槽准入证据。PASS_LIMITED边界包括有限检索语料、未单独注入知识路由ACK丢失/重投、投影提交中的取消及数据库失败、完整服务与物理沙箱并行压测、真正200%缩放和完整无障碍审查；不扩称全矩阵通过。gVisor只在云端Linux验收，本机未安装也未启动沙箱。云端R5原容器身份已恢复；R6.3未部署，真实供应商调用0。压缩为确定性投影，不额外调用模型，也不宣称语义摘要。
+本机没有sandbox，未安装或启动runsc；物理gVisor仅在云端Linux验收。检索质量样本有限；知识路由ACK丢失/重投、投影提交中的取消/强制DB失败、全服务与物理sandbox并发压测、真正200%浏览器缩放和完整无障碍审查仍为PASS_LIMITED/NOT_RUN。压缩是确定性投影，不是语义摘要，不发额外模型请求。
 
 ## R6.2 VERIFIED（2026-11-08）
 

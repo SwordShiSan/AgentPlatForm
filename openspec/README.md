@@ -1,8 +1,6 @@
-# OpenSpec
+## R6.3 VERIFIED; R6 remains 3/4 and not released
 
-## R6.3 closeout: archive promoted to phase; main promotion pending
-
-Step PR #164 promoted the implementation. Archive closeout PR #165 merged the R6.3 OpenSpec archive and applied its specs to phase at e613a2bdaf1324be2ebbb8ad8d0f584b0e2942ec. Repository-wide strict validation passed (34 items). The protected phase-to-main PR and final clean-main evidence package/hash verification remain; R6.3 is not yet VERIFIED and R6 remains 2/4, not RELEASED. The bounded evidence and limitations are in evidence/r63/acceptance-index.json and the archived verification. Physical gVisor ran only on cloud Linux; local Docker has no sandbox and no local runsc was installed or started. Production remains the original R5 deployment; no R6.3 deployment/tag, and supplier calls are zero. R6.4 ordinary-chat capability assembly is out of scope.
+The R6.3 implementation, archive, and protected step→phase→main promotion are complete (PRs #164–#167); the promoted tree is main f1d2c87c09e80f195d54331699cba7358fdbaa32. The change is archived at changes/archive/2026-11-08-r6-3-knowledge-memory. Acceptance is VERIFIED with PASS_LIMITED boundaries recorded in evidence/r63/acceptance-index.json and the archived verification. Local Docker has no sandbox and no local runsc was installed or started; signed gVisor extraction ran on isolated cloud Linux. Production remains R5; R6.3 is not deployed or tagged, supplier calls are zero, and R6.4 has not started.
 
 保留变更：[r3-cloud-sandbox-alignment](changes/r3-cloud-sandbox-alignment/proposal.md)，其[设计](changes/r3-cloud-sandbox-alignment/design.md)、[任务](changes/r3-cloud-sandbox-alignment/tasks.md)、[验证记录](changes/r3-cloud-sandbox-alignment/verification.md)及全部delta均为 **DEFERRED／保留方案，非当前实施项、非R4前置**。用户因成本继续现行本地Docker/gVisor、XFS/helper和SeaweedFS；主规格仍描述已交付本地行为，不归档合并云delta。保留目录可能仍被CLI枚举，不表示可以实施；实施任务不勾选、功能验收保持NOT_RUN。R3 RELEASED保持，下一项单独准备R4.1 Plan/OpenSpec；本次仅文档纠正。
 

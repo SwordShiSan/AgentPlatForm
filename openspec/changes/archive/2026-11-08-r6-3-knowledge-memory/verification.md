@@ -2,7 +2,7 @@
 
 ## Closeout update — 2026-11-09
 
-**Current state: step PR #164 and archive/ledger closeout PR #165 are merged into phase; phase→main promotion and final package remain pending.** The current phase commit is e613a2bdaf1324be2ebbb8ad8d0f584b0e2942ec. Repository-wide strict validation passed (34 items). Until protected phase→main promotion and final clean-main package/hash verification complete, R6.3 is not VERIFIED; R6 remains 2/4 VERIFIED and not RELEASED. Cloud production remains on the original R5 containers. R6.3 has not been deployed or tagged. Real supplier calls: 0.
+**Final state: R6.3 VERIFIED (PASS_LIMITED); R6 is 3/4 VERIFIED and not RELEASED.** Implementation PR #164, archive/ledger PRs #165/#166, and phase→main PR #167 are merged; main promotion commit is f1d2c87c09e80f195d54331699cba7358fdbaa32. Cloud production remains on original R5 identities, R6.3 was not deployed or tagged, and real supplier calls are zero. Local Docker did not install or run runsc; physical gVisor was exercised only on cloud Linux. Known limits remain explicit in the acceptance index: bounded retrieval corpus, no knowledge-route ACK-loss/redelivery injection, no cancel/forced-DB-failure injection during projection commit, no full application plus physical sandbox co-load test, and no true 200% zoom/full accessibility review. Context projection is deterministic, not semantic summarization.
 
 The signed cloud application path is now proven end-to-end: attachment upload → signed TEXT_EXTRACT on cloud runsc → private S3 hash readback → knowledge index READY → semantic marker hit. Result SHA256 `21de780cd1fda9ed36c41009706b9f95084147882fc1210d622a9e3c075053ab`; journal SHA256 `abd71f8a4248243cbcacb03b7026ed767df88371ed1158c7efb51c4c7e7fea8f`. The physical sandbox exists only on cloud Linux. The local workstation has no runsc, did not install it, and did not start a local sandbox.
 
@@ -76,4 +76,4 @@ The local workstation intentionally has no `runsc` sandbox. Physical gVisor rend
 5. Full browser keyboard/200%-zoom review if retained as a hard requirement, then final checks and evidence freeze.
 6. Only after all mandatory gates pass: protected step→phase→main promotion, OpenSpec archive, final clean-main evidence/body package and hash-checked protected copies.
 
-Historical hold instruction from the initial snapshot. The archive and phase ledger are now in the protected phase branch; phase-to-main promotion and package verification remain. Any bounded or unrun item stays explicit; no R6.4 work starts.
+Historical hold instruction from the initial snapshot; it is superseded by the final state above. Any bounded or unrun item stays explicit; no R6.4 work starts.
