@@ -1,8 +1,8 @@
-## R6.3验收通过，归档晋级待处理（2026-11-09）
+## R6.3验收通过，phase→main待晋级（2026-11-09）
 
-R6.3实现与受限验收已通过step PR #164并合入phase提交77ef634af657d03113616856f3c90207871d6154。全仓OpenSpec strict校验34项通过；change归档已在本地准备，但尚未经保护PR合入phase。接下来完成归档/台账closeout PR，再完成phase→main保护PR与最终交付包哈希核验。上述事项完成前，R6.3不计入VERIFIED，R6仍2/4、未RELEASED。验收状态见evidence/r63/acceptance-index.json及归档verification。
+R6.3实现与受限验收已通过step PR #164，并由归档closeout PR #165将唯一OpenSpec change及规格合入phase；当前phase提交为e613a2bdaf1324be2ebbb8ad8d0f584b0e2942ec。全仓OpenSpec strict校验34项通过。phase→main保护PR与最终干净main交付包哈希核验尚待完成；完成前R6.3不计入VERIFIED，R6仍2/4、未RELEASED。验收范围见evidence/r63/acceptance-index.json及归档verification。
 
-已验证真实云端签名TEXT_EXTRACT→私有S3哈希回读→知识索引READY/语义命中；另有旧索引保留、记忆生命周期边界、持久上下文投影重启读回、进程RSS与共享槽准入收据。边界仍包括有限检索语料、未单独注入知识路由ACK丢失/重投、上下文投影提交中取消及事务失败、完整服务与物理沙箱并行压测、真正200%缩放和完整无障碍审查；详见索引，不把PASS_LIMITED扩大为全矩阵通过。gVisor只在云端Linux验收，本机未安装也未启动沙箱。云端R5原容器身份已恢复；R6.3未部署，真实供应商调用0。压缩为确定性投影，不额外调用模型，也不宣称语义摘要。
+真实云端签名TEXT_EXTRACT→私有S3哈希回读→知识索引READY/语义命中已通过；另有旧索引保留、记忆生命周期、持久上下文投影重启读回、进程RSS和共享槽准入证据。PASS_LIMITED边界包括有限检索语料、未单独注入知识路由ACK丢失/重投、投影提交中的取消及数据库失败、完整服务与物理沙箱并行压测、真正200%缩放和完整无障碍审查；不扩称全矩阵通过。gVisor只在云端Linux验收，本机未安装也未启动沙箱。云端R5原容器身份已恢复；R6.3未部署，真实供应商调用0。压缩为确定性投影，不额外调用模型，也不宣称语义摘要。
 
 ## R6.2 本地验收通过，step→phase 已合并，phase→main 待晋级（2026-11-08）
 
