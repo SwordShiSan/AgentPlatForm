@@ -1,7 +1,7 @@
 {
   "stage": "R6.3",
-  "status": "ACCEPTANCE_PASS_LIMITED_ARCHIVE_PROMOTED_PENDING_MAIN_AND_DELIVERY",
-  "verified": false,
+  "status": "VERIFIED_PASS_LIMITED",
+  "verified": true,
   "baseline": {
     "main": "a5c4e4857032d6c0dd5c0d0be34ebbd95d822197",
     "phase": "abc8dd11f11cfd7fd7195cb9a2012d69975b1d77",
@@ -9,7 +9,7 @@
     "change": "r6-3-knowledge-memory"
   },
   "candidate": {
-    "worktree": "Step PR #164 and archive closeout PR #165 are merged into phase at e613a2bdaf1324be2ebbb8ad8d0f584b0e2942ec; waiting for protected phase-to-main promotion and final clean-main package.",
+    "worktree": "R6.3 code and archive promoted to main at f1d2c87c09e80f195d54331699cba7358fdbaa32; final closeout is documentation/evidence only.",
     "productImageInputHash": "d99dd37ea8e25df1f5706dfe2dc9aff131b7b0720559216f49b9061b1139564b",
     "buildInputsManifestSha256": "5eb9d048c5de7068539b13072daae473a6913e91e4e5f3966222d04e798430ee",
     "runtimeFixtureConfigSha256": "9396b3d826caf48129f9d1e5d4d7064d645452dc88626c60f6fe1cb620edbc1f",
@@ -344,10 +344,7 @@
       "deterministicProviderUsed": true
     }
   },
-  "remainingGates": [
-    "protected phase-to-main promotion",
-    "final clean-main body/evidence package with hash-checked protected copies"
-  ],
+  "remainingGates": [],
   "production": {
     "cloudPlatform": "R5",
     "r63Deployment": false,
@@ -383,7 +380,7 @@
   },
   "externalDocumentationManifest": {
     "path": "evidence/r63/external-docs-and-skill-manifest.json",
-    "sha256": "c425d0ed23bdf45298faebd96995a613f31211bc0cf0e3dbceb0cddffdec4554",
+    "sha256": "a9a3b12c7f30bb30061690d2c2fa186dc9476f58c9c0b0f761432f56aa450ff1",
     "entries": 13
   },
   "promotion": {
@@ -392,8 +389,26 @@
     "phaseCommit": "e613a2bdaf1324be2ebbb8ad8d0f584b0e2942ec",
     "openSpecArchive": "2026-11-08-r6-3-knowledge-memory",
     "repositoryStrictItems": 34,
-    "phaseToMain": "PENDING",
+    "phaseToMain": "PASS",
     "archiveToPhase": "PASS",
-    "archivePullRequest": 165
+    "archivePullRequest": 165,
+    "phaseToMainPullRequest": 167,
+    "mainCommit": "f1d2c87c09e80f195d54331699cba7358fdbaa32"
+  },
+  "delivery": {
+    "status": "PACKAGE_CONTENTS_PREPARED_FROM_PROMOTION_TREE; FINAL_MAIN_SHA_AND_COPY_HASHES_RECORDED_IN_PROTECTED_SIDECAR",
+    "packageManifest": "protected local .protected-deliveries/r63-final-a and r63-final-b delivery-manifest.json",
+    "retentionDaysMinimum": 30,
+    "localSandboxStarted": false,
+    "physicalGvisorEvidence": "cloud Linux only"
+  },
+  "closeoutPullRequests": {
+    "implementationStepToPhase": 164,
+    "archiveStepToPhase": 165,
+    "archiveStatusSyncStepToPhase": 166,
+    "phaseToMain": 167,
+    "mainCommit": "f1d2c87c09e80f195d54331699cba7358fdbaa32",
+    "finalStatusStepToPhase": 168,
+    "finalStatusPhaseToMain": 169
   }
 }
