@@ -25,7 +25,7 @@
     ],
     "baseGitHead": "abc8dd11f11cfd7fd7195cb9a2012d69975b1d77",
     "gitHeadAtProductImageBuild": "abc8dd11f11cfd7fd7195cb9a2012d69975b1d77",
-    "candidateCommit": "pending local acceptance commit",
+    "candidateCommit": "545bcfb6966d65965873a1220029cc3bcb53ba7d",
     "candidateDescription": "R6.3 product inputs match the frozen build manifest and productSourceDriftAfterBuild is 0; fixture-only files are listed separately."
   },
   "images": {
@@ -385,7 +385,7 @@
   },
   "externalDocumentationManifest": {
     "path": "evidence/r63/external-docs-and-skill-manifest.json",
-    "sha256": "a4c4edd65279ae4f80bf5e9007c1e2f42d4c130ac567fd268f669172769c8062",
+    "sha256": "c425d0ed23bdf45298faebd96995a613f31211bc0cf0e3dbceb0cddffdec4554",
     "entries": 13
   }
 }

@@ -2,7 +2,7 @@
 
 ## Closeout update — 2026-11-09
 
-**Current state: acceptance complete with explicit PASS_LIMITED boundaries; protected promotion, archive, and final package remain pending.** The R6.3 code and local/isolated-cloud acceptance candidate are ready for step→phase→main promotion. Until those protected promotions and archive/package are complete, this change is not VERIFIED; R6 remains 2/4 VERIFIED and not RELEASED. Cloud production is restored to the original R5 containers. R6.3 has not been deployed or tagged. Real supplier calls: 0.
+**Current state: acceptance complete with explicit PASS_LIMITED boundaries; protected promotion, archive, and final package remain pending.** Candidate source commit: `545bcfb` (implementation and bounded evidence). The R6.3 code and local/isolated-cloud acceptance candidate are ready for step→phase→main promotion. Until those protected promotions and archive/package are complete, this change is not VERIFIED; R6 remains 2/4 VERIFIED and not RELEASED. Cloud production is restored to the original R5 containers. R6.3 has not been deployed or tagged. Real supplier calls: 0.
 
 The signed cloud application path is now proven end-to-end: attachment upload → signed TEXT_EXTRACT on cloud runsc → private S3 hash readback → knowledge index READY → semantic marker hit. Result SHA256 `21de780cd1fda9ed36c41009706b9f95084147882fc1210d622a9e3c075053ab`; journal SHA256 `abd71f8a4248243cbcacb03b7026ed767df88371ed1158c7efb51c4c7e7fea8f`. The physical sandbox exists only on cloud Linux. The local workstation has no runsc, did not install it, and did not start a local sandbox.
 
