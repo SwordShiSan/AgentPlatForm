@@ -1,6 +1,6 @@
 ## Final acceptance summary (2026-11-08)
 
-状态 **PASS；R6.2 VERIFIED，step→phase 的 PR #160 已合并（f8b75fe），phase→main 待晋级；R6 仍为 2/4、未 RELEASED，云端继续运行 R5**。独立证据索引：`evidence/r62/acceptance-index.json`。真实供应商调用为 0。
+状态 **PASS；R6.2 VERIFIED，step→phase PR #160（f8b75fe）与 phase→main PR #161（dc579db）均已合并；R6 为 2/4、未 RELEASED，云端继续运行 R5**。独立证据索引：`evidence/r62/acceptance-index.json`。真实供应商调用为 0。
 
 - 全量 Maven reactor `verify` 在候选应用代码上 PASS：330 tests、0 failures/errors、1 Linux-only skip。随后新增的 runner 已提交命令重放测试单独 PASS（1/1）；它验证签名回执查回且不会再次启动容器。
 - 前端类型检查、18 个文件的 81 项 Vitest、Vite 构建、契约生成差异检查、正常及非法 fixture、86 个本地链接／26 个 canonical 外链检查 PASS。OpenSpec strict 为 `valid=true`、无 issue；遥测网络错误退出时不影响 strict 结果。
