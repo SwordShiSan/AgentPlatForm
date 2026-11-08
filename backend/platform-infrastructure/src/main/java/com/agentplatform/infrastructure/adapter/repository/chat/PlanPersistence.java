@@ -254,7 +254,7 @@ final class PlanPersistence extends ChatPersistenceSupport implements PlanLedger
         // Do not accept an answer which cannot be included in the frozen context.
         var history=mappers.conversation().selectMessage37(row.spaceId(),mappers.recovery().task(row.taskId()).conversationId(),row.taskId());
         var contextPolicy=ContextPolicy.fromSnapshot(frozen(mappers,row.taskId(),row.spaceId()));
-        if(ContextPolicy.CURRENT_VERSION.equals(contextPolicy.version())){
+        if(contextPolicy.supportsLargeWindow()){
             var messages=new ArrayList<com.agentplatform.types.harness.HarnessData.Message>();
             messages.add(com.agentplatform.types.harness.HarnessData.Message.text(com.agentplatform.types.harness.HarnessData.Role.SYSTEM,"Plan discussion and approved controls"));
             var checkpoint=mappers.recovery().latest(row.taskId());

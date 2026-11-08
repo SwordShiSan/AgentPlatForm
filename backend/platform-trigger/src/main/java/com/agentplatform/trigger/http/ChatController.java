@@ -17,6 +17,8 @@ public final class ChatController {
     @org.springframework.beans.factory.annotation.Value("${platform.personal-config.enabled:false}") private boolean personalConfigEnabled;
     private final ChatApi chat;private final IdentityApi identity;private final com.agentplatform.api.chat.ChatEventStream streams;
     public ChatController(ChatApi chat,IdentityApi identity,com.agentplatform.api.chat.ChatEventStream streams){this.chat=chat;this.identity=identity;this.streams=streams;}
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    private com.agentplatform.domain.chat.ContextProjectionStore contextProjections;
     private ChatApi.Caller caller(HttpServletRequest request,boolean write) { return RequestIdentity.caller(request); }
     private static String key(HttpServletRequest request){String value=request.getHeader("Idempotency-Key");if(value==null)throw new ChatFailure(428,"IDEMPOTENCY_KEY_REQUIRED");return value;}
     @GetMapping("/models") Object models(HttpServletRequest request){return chat.models(caller(request,false));}
@@ -58,6 +60,19 @@ public final class ChatController {
         return chat.effective(actor);
     }
     @GetMapping("/tasks/{id}/configuration") Object configuration(HttpServletRequest request,@PathVariable("id")String id){return chat.configuration(caller(request,false),id);}
+    @GetMapping("/tasks/{id}/context") Object context(HttpServletRequest request,@PathVariable("id")String id){
+        var who=caller(request,false);var configuration=chat.configuration(who,id);
+        @SuppressWarnings("unchecked") var values=(Map<String,Object>)configuration.get("values");
+        long modelWindow=number(values.get("modelWindow"),8192),window=number(values.get("window"),8192),output=number(values.get("maxOutput"),1024),safety=number(values.get("contextSafety"),0);
+        var result=new LinkedHashMap<String,Object>();result.put("taskId",id);result.put("modelWindow",modelWindow);result.put("taskWindow",window);
+        result.put("maxOutput",output);result.put("safetyTokens",safety);result.put("inputLimit",Math.max(0,Math.min(modelWindow,window)-output-safety));
+        Object usage=configuration.get("contextUsage");result.put("estimatedInputTokens",usage instanceof Map<?,?> map?map.get("estimatedInputTokens"):null);result.put("estimateOnly",true);
+        com.agentplatform.domain.chat.ContextProjectionStore.Summary projection=contextProjections==null?null:contextProjections.describe(new com.agentplatform.domain.chat.ChatData.Actor(UUID.fromString(who.userId()),UUID.fromString(who.spaceId())),UUID.fromString(id));
+        result.put("projection",projection==null?null:Map.of("epoch",projection.epoch(),"bundleHash",projection.bundleHash(),"sourceManifestSha256",projection.sourceManifestSha256(),
+                "summarySha256",projection.summarySha256(),"estimatedInputTokens",projection.estimatedInputTokens(),"policyVersion",projection.policyVersion(),"createdAt",projection.createdAt()));
+        result.put("degradationCodes",List.of());return result;
+    }
+    private static long number(Object value,long fallback){return value instanceof Number n?n.longValue():fallback;}
     @GetMapping("/me/model-credentials") Object credentials(HttpServletRequest request){return versioned(chat.credentialMetadata(caller(request,false)));}
     @PutMapping("/me/model-credentials/deepseek") Object credentials(HttpServletRequest request,@jakarta.validation.Valid @RequestBody ChatRequests.Credential body){return versioned(chat.replaceCredential(caller(request,true),version(request),body.apiKey()));}
     @DeleteMapping("/me/model-credentials/deepseek") Object revokeCredential(HttpServletRequest request){return versioned(chat.replaceCredential(caller(request,true),version(request),null));}

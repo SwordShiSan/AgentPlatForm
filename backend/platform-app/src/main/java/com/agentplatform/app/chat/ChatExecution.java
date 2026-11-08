@@ -35,7 +35,15 @@ public final class ChatExecution implements AutoCloseable {
     private boolean executionStarted;
     private boolean toolApprovalsEnabled;
     private WorkspaceToolRuntime workspaceTools;
+    private ContextProjectionService contextProjection;
     private com.agentplatform.domain.files.AssetStore attachmentAssets;
+    private MemoryPort contextMemory;
+    private RetrievalPort contextRetrieval;
+    private EvidenceValidationPort evidenceValidator;
+    public synchronized void configureContextProjection(ContextProjectionService service){if(executionStarted)throw new IllegalStateException("CONTEXT_COMPOSITION_ALREADY_FIXED");contextProjection=service;}
+    public synchronized void configureContextEvidence(MemoryPort memory,RetrievalPort retrieval,EvidenceValidationPort validator){
+        if(executionStarted)throw new IllegalStateException("CONTEXT_COMPOSITION_ALREADY_FIXED");contextMemory=Objects.requireNonNull(memory);contextRetrieval=Objects.requireNonNull(retrieval);evidenceValidator=Objects.requireNonNull(validator);
+    }
     public synchronized void configureAttachments(com.agentplatform.domain.files.AssetStore assets){if(executionStarted||attachmentAssets!=null)throw new IllegalStateException("Attachment composition already fixed");attachmentAssets=Objects.requireNonNull(assets);}
     public synchronized void configureWorkspaceTools(WorkspaceToolRuntime runtime) {
         if(executionStarted||fixtureTools!=null||workspaceTools!=null)throw new IllegalStateException("WORKSPACE_TOOL_COMPOSITION_CONFLICT");
@@ -70,12 +78,17 @@ public final class ChatExecution implements AutoCloseable {
         var batch=new Batch(lease);String terminal="FAILED",reason="MODEL_EXECUTION_FAILED";boolean completed=false,waiting=false;
         try{
             var startup=repository.executionStartup(lease);deadline=startup.deadline();
+            Bundle runtimeBundle=repository.executionBundle(lease);
             var attachmentContext=new com.agentplatform.app.attachment.ContextAssembler(repository,attachmentAssets,lease);
             List<Message> history=attachmentContext.resolve(startup.history());
-            Scope scope=new Scope(lease.spaceId().toString(),lease.userId().toString(),lease.conversationId().toString(),lease.taskId().toString(),lease.attemptId().toString(),lease.fence(),repository.planMode(lease));
+            UUID boundWorkspace=repository.boundWorkspace(lease);
+            Scope scope=new Scope(lease.spaceId().toString(),lease.userId().toString(),lease.conversationId().toString(),lease.taskId().toString(),lease.attemptId().toString(),lease.fence(),repository.planMode(lease),boundWorkspace==null?null:boundWorkspace.toString());
             List<Approval> controlApprovals=repository.controlApprovals(lease);
             List<Approval> approvals=new ArrayList<>(controlApprovals);approvals.addAll(repository.toolApprovals(lease));
             boolean workspaceCapable=workspaceTools!=null&&repository.workspaceToolTask(lease);
+            boolean evidenceEnabled="reviewed-personal-memory-v1".equals(runtimeBundle.components().get("memory"))
+                    &&"authorized-knowledge-reference-v1".equals(runtimeBundle.components().get("retrieval"));
+            if(evidenceEnabled&&(contextMemory==null||contextRetrieval==null||evidenceValidator==null))throw new ChatFailure(503,"CONTEXT_EVIDENCE_UNAVAILABLE");
             // Historical control calls still need their typed codecs when a later
             // business approval restores the same task. Provider filtering below
             // keeps plan write/review unavailable once execution has begun.
@@ -90,7 +103,8 @@ public final class ChatExecution implements AutoCloseable {
             else if(workspaceCapable)modelDefinitions.add(PlanControls.DEFINITIONS.stream().filter(d->"platform_ask_user".equals(d.name())).findFirst().orElseThrow());
             modelDefinitions.addAll(workspaceDefinitions);
             modelDefinitions.addAll(businessDefinitions.stream().map(ToolDefinition::legacy).toList());
-            AtomicReference<UUID> turnId=new AtomicReference<>();String frozenModelName=repository.modelName(lease);final Instant executionDeadline=deadline;
+            AtomicReference<UUID> turnId=new AtomicReference<>();AtomicReference<List<EvidenceReference>> evidenceReferences=new AtomicReference<>(List.of());
+            String frozenModelName=repository.modelName(lease);final Instant executionDeadline=deadline;
             ModelGateway metered=new ModelGateway(){
                 @Override public String modelName(Scope ignored){return frozenModelName;}
                 public CompletionStage<Round> complete(Scope s,List<Message> messages,List<com.agentplatform.types.harness.HarnessData.Call> tools){return stream(s,messages,tools,text->{});}
@@ -103,7 +117,7 @@ public final class ChatExecution implements AutoCloseable {
                     result.whenComplete((v,e)->{if(result.isCancelled()&&pending.get()!=null)pending.get().cancel(true);});
                     var actualDefinitions=definitions.stream().filter(d->scope.planMode()||!workspaceCapable
                             ||!("platform_plan_write".equals(d.name())||"platform_plan_review".equals(d.name()))).toList();
-                    physical(lease,messages,actualDefinitions,text->{if(control.closing())throw new ChatFailure(409,"TASK_CANCEL_REQUESTED");batch.append(text);onText.accept(text);},result,pending,executionDeadline,0,false,accepted,acceptedRound,control);
+                    physical(lease,scope,evidenceReferences,messages,actualDefinitions,text->{if(control.closing())throw new ChatFailure(409,"TASK_CANCEL_REQUESTED");batch.append(text);onText.accept(text);},result,pending,executionDeadline,0,false,accepted,acceptedRound,control);
                     return result;
                 }
             };
@@ -147,9 +161,27 @@ public final class ChatExecution implements AutoCloseable {
                 public CompletionStage<List<Message>> beforeModel(Scope s,List<Message> ignored){return control.during(()->{
                     if(controls||workspaceCapable)repository.consumeOptional(lease);
                     var context=attachmentContext.resolve(repository.checkpointHistory(lease));
-                    com.agentplatform.infrastructure.harness.agentscope.AgentScopeContextAdmission.requireFits(context,
-                            modelDefinitions.stream().filter(d->scope.planMode()||!workspaceCapable
-                                    ||!("platform_plan_write".equals(d.name())||"platform_plan_review".equals(d.name()))).toList(),repository.contextPolicy(lease));
+                    var visibleDefinitions=modelDefinitions.stream().filter(d->scope.planMode()||!workspaceCapable
+                                    ||!("platform_plan_write".equals(d.name())||"platform_plan_review".equals(d.name()))).toList();
+                    var policy=repository.contextPolicy(lease);
+                    if(evidenceEnabled){
+                        context=context.stream().filter(message->!message.text().startsWith("[PLATFORM_REFERENCE ")&&!message.text().startsWith("[PLATFORM_CONTEXT_DEGRADED ")).toList();
+                        String query=context.stream().filter(message->message.role()==Role.USER).reduce((left,right)->right).map(Message::text).orElse("");
+                        EvidenceResult memory=contextMemory.recall(s).toCompletableFuture().join();
+                        EvidenceResult retrieval=contextRetrieval.search(s,query).toCompletableFuture().join();
+                        var references=new ArrayList<EvidenceReference>(memory.references());references.addAll(retrieval.references());
+                        evidenceValidator.validate(s,references);evidenceReferences.set(List.copyOf(references));
+                        var withEvidence=new ArrayList<Message>(context);
+                        for(var reference:references)withEvidence.add(evidenceMessage(reference));
+                        if(memory.degraded()||retrieval.degraded())withEvidence.add(Message.text(Role.SYSTEM,"[PLATFORM_CONTEXT_DEGRADED optional evidence unavailable: "+
+                                (memory.degraded()?memory.degradationReason():retrieval.degradationReason())+"]"));
+                        context=List.copyOf(withEvidence);
+                    }else evidenceReferences.set(List.of());
+                    if(policy.compactionEnabled()){
+                        if(contextProjection==null)throw new ChatFailure(503,"CONTEXT_COMPACTION_UNAVAILABLE");
+                        context=contextProjection.project(lease,runtimeBundle,context,visibleDefinitions,policy);
+                    }
+                    com.agentplatform.infrastructure.harness.agentscope.AgentScopeContextAdmission.requireFits(context,visibleDefinitions,policy);
                     turnId.set(repository.beginTurn(lease));return CompletableFuture.completedFuture(context);
                 });}
                 public CompletionStage<Void> afterModelCommitted(Scope s,Turn t){return control.during(()->{var call=accepted.get();if(call==null)throw new ChatFailure(409,"ACCEPTED_CALL_MISSING");if(!repository.commitRoundOutcome(lease,turnId.get(),t,call)){accepted.set(null);acceptedRound.set(null);throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION");}FixtureFaults.pause("round-before-checkpoint");return CompletableFuture.completedFuture(null);});}
@@ -170,7 +202,7 @@ public final class ChatExecution implements AutoCloseable {
                 });}
                 public CompletionStage<Completion> beforeStop(Scope s,Message message){return CompletableFuture.completedFuture(message.text().isBlank()||scope.planMode()?Completion.INCOMPLETE:Completion.PASS);}
             };
-            PreparedRun prepared=factory.prepare(new Request(scope,repository.executionBundle(lease),startup.restoring()?List.of():List.of(history.getLast()),startup.restoring(),approvals,startup.nextTurn()),boundary);active=prepared;control.run(prepared);
+            PreparedRun prepared=factory.prepare(new Request(scope,runtimeBundle,startup.restoring()?List.of():List.of(history.getLast()),startup.restoring(),approvals,startup.nextTurn()),boundary);active=prepared;control.run(prepared);
             control.timer(timers.scheduleAtFixedRate(()->{
                 try(var ticket=control.enter()){batch.flush();repository.check(lease);}
                 catch(Throwable error){if(!control.closing()){asynchronousFailure.compareAndSet(null,error);control.cancel();}}
@@ -195,7 +227,9 @@ public final class ChatExecution implements AutoCloseable {
             if(asynchronousFailure.get()!=null)error=asynchronousFailure.get();
             reason=error instanceof ChatFailure f?f.code():error instanceof TimeoutException?"PROVIDER_TIMEOUT":"MODEL_EXECUTION_FAILED";
             String frames=java.util.Arrays.stream(error.getStackTrace()).limit(4).map(frame->frame.getClassName()+"."+frame.getMethodName()+":"+frame.getLineNumber()).collect(java.util.stream.Collectors.joining(","));
-            System.getLogger(getClass().getName()).log(System.Logger.Level.WARNING,"Task="+lease.taskId()+" attempt="+lease.attemptId()+" failed; code="+reason+" category="+error.getClass().getSimpleName()+" locations="+frames);
+            String causes=java.util.stream.Stream.iterate(error,java.util.Objects::nonNull,Throwable::getCause).limit(8)
+                    .map(Throwable::getClass).map(Class::getSimpleName).collect(java.util.stream.Collectors.joining("->"));
+            System.getLogger(getClass().getName()).log(System.Logger.Level.WARNING,"Task="+lease.taskId()+" attempt="+lease.attemptId()+" failed; code="+reason+" category="+error.getClass().getSimpleName()+" causes="+causes+" locations="+frames);
             terminal="TASK_CANCEL_REQUESTED".equals(reason)?"CANCELLED":Set.of("CONTEXT_REQUIRED_TOO_LARGE","PROVIDER_USAGE_EXCEEDS_RESERVATION").contains(reason)?"BLOCKED":"FAILED";
         }finally{
             boolean quiet=control.quiesce(!completed);
@@ -210,14 +244,15 @@ public final class ChatExecution implements AutoCloseable {
             active=null;current=null;currentControl=null;
         }
     }
-    private void physical(Lease l,List<Message> messages,List<ToolDefinition> definitions,Consumer<String> text,CompletableFuture<Round> result,AtomicReference<CompletableFuture<?>> pending,Instant deadline,int retries,boolean repaired,AtomicReference<ExecutionLedger.CallResult> accepted,AtomicReference<Round> acceptedRound,ExecutionControl control){
+    private void physical(Lease l,Scope scope,AtomicReference<List<EvidenceReference>> evidenceReferences,List<Message> messages,List<ToolDefinition> definitions,Consumer<String> text,CompletableFuture<Round> result,AtomicReference<CompletableFuture<?>> pending,Instant deadline,int retries,boolean repaired,AtomicReference<ExecutionLedger.CallResult> accepted,AtomicReference<Round> acceptedRound,ExecutionControl control){
         if(result.isDone())return;
         try(var ticket=control.enter()){
             if(Instant.now().isAfter(deadline)){result.completeExceptionally(new ChatFailure(504,"PROVIDER_TIMEOUT"));return;}
             var policy=repository.contextPolicy(l);
             long estimatedInput=com.agentplatform.infrastructure.harness.agentscope.AgentScopeContextAdmission.requireFits(messages,definitions,policy);
             ChatData.Call call=repository.beginCall(l,provider.real(),estimatedInput);String key;
-            try{key=cipher.decrypt(repository.credential(l,call.id()));if(provider.real()&&acceptanceRun!=null)repository.permitAcceptanceCall(l,call,acceptanceRun);repository.startCall(l,call,provider.real());}
+            try{key=cipher.decrypt(repository.credential(l,call.id()));if(provider.real()&&acceptanceRun!=null)repository.permitAcceptanceCall(l,call,acceptanceRun);
+                if(!evidenceReferences.get().isEmpty())evidenceValidator.validate(scope,evidenceReferences.get());repository.startCall(l,call,provider.real());}
             catch(Throwable error){try{repository.settle(l,call,null,null,"CALL_NOT_SENT",false);}catch(Exception ignored){}result.completeExceptionally(error);return;}
             AtomicBoolean emitted=new AtomicBoolean();CompletableFuture<ChatProvider.Result> future;
             try{var exchange=(definitions.isEmpty()?provider.open(repository.modelName(l),key,messages,policy.maxOutput(),value->{emitted.set(true);text.accept(value);}):provider.openTyped(repository.modelName(l),key,messages,definitions,policy.maxOutput(),value->{emitted.set(true);text.accept(value);}));control.exchange(exchange);future=exchange.result().toCompletableFuture();}
@@ -235,7 +270,7 @@ public final class ChatExecution implements AutoCloseable {
                         String code=cause instanceof ChatFailure f?f.code():"PROVIDER_REQUEST_FAILED";
                         repository.settle(l,call,null,null,code,provider.real());
                         if(!emitted.get()&&retries<2&&Set.of("PROVIDER_RATE_LIMITED","PROVIDER_SERVER_REJECTED").contains(code)&&!result.isDone()){
-                            control.timer(timers.schedule(()->physical(l,messages,definitions,text,result,pending,deadline,retries+1,repaired,accepted,acceptedRound,control),retries==0?1:3,TimeUnit.SECONDS));return;
+                            control.timer(timers.schedule(()->physical(l,scope,evidenceReferences,messages,definitions,text,result,pending,deadline,retries+1,repaired,accepted,acceptedRound,control),retries==0?1:3,TimeUnit.SECONDS));return;
                         }result.completeExceptionally(cause);return;
                     }
                     if(value.rejectionCode()!=null){
@@ -249,7 +284,7 @@ public final class ChatExecution implements AutoCloseable {
                     if(!supported||empty){
                         if(!repository.settleOutcome(l,call,value.usageKnown()?value.round():null,value.requestId(),value.usageKnown()?null:incompleteTransport?"PROVIDER_REQUEST_FAILED":"PROVIDER_USAGE_MISSING",provider.real()))throw new ChatFailure(409,"PROVIDER_USAGE_EXCEEDS_RESERVATION");
                         if(!"stop".equals(value.round().finishReason())){result.completeExceptionally(new ChatFailure(503,"PROVIDER_TRUNCATED"));return;}
-                        if(!repaired){physical(l,messages,definitions,text,result,pending,deadline,retries,true,accepted,acceptedRound,control);return;}
+                        if(!repaired){physical(l,scope,evidenceReferences,messages,definitions,text,result,pending,deadline,retries,true,accepted,acceptedRound,control);return;}
                         result.completeExceptionally(new ChatFailure(503,"PROVIDER_EMPTY_RESPONSE"));return;
                     }
                     acceptedRound.set(value.round());accepted.set(new ExecutionLedger.CallResult(call,value.usageKnown(),value.requestId(),provider.real()));
@@ -264,6 +299,11 @@ public final class ChatExecution implements AutoCloseable {
         Batch(Lease lease){this.lease=lease;}
         synchronized void append(String text){buffer.append(text);bytes+=text.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;if(bytes>=4096)flush();}
         synchronized void flush(){if(buffer.isEmpty())return;repository.delta(lease,buffer.toString());buffer.setLength(0);bytes=0;}
+    }
+    private static Message evidenceMessage(EvidenceReference source){
+        String value="[PLATFORM_REFERENCE untrusted=true kind="+source.sourceKind()+" id="+source.sourceId()+" version="+source.sourceVersion()
+                +" sha256="+source.contentSha256()+" location="+source.location()+"]\\n"+source.text();
+        return Message.text(Role.ASSISTANT,value);
     }
     @Override public void close(){if(currentControl!=null)currentControl.cancel();cancellationExecutor.shutdown();if(ownsTimers)timers.shutdownNow();}
 }

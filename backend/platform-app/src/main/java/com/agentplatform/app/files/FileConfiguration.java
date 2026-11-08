@@ -20,7 +20,7 @@ import software.amazon.awssdk.auth.credentials.*;
 import software.amazon.awssdk.services.s3.S3Client;
 
 @Configuration(proxyBeanMethods=false)
-@Profile({"workspace-api","workspace-worker","workspace-runner"})
+@Profile({"workspace-api","workspace-worker","workspace-runner","preview-runner"})
 @ConditionalOnProperty(name={"platform.workspace.enabled","platform.workspace.files.enabled"},havingValue="true")
 @EnableConfigurationProperties({FileConfiguration.Properties.class,FileExecutionProperties.class})
 public class FileConfiguration {
@@ -45,12 +45,12 @@ public class FileConfiguration {
     }
     @Bean FileTransferPermit fileTransferPermit(FileTransferMapper mapper,TransactionTemplate transactions,org.springframework.core.env.Environment environment,
             @org.springframework.beans.factory.annotation.Qualifier("runnerInstanceNonce")org.springframework.beans.factory.ObjectProvider<java.util.UUID> instance) {
-        String role=environment.acceptsProfiles(org.springframework.core.env.Profiles.of("workspace-runner"))?"RUNNER":
+        String role=environment.acceptsProfiles(org.springframework.core.env.Profiles.of("workspace-runner | preview-runner"))?"RUNNER":
                 environment.acceptsProfiles(org.springframework.core.env.Profiles.of("workspace-worker"))?"WORKER":"API";
         return new TransactionalFileTransferPermit(new MyBatisFileTransferPermit(mapper,role,"RUNNER".equals(role)?instance.getObject():java.util.UUID.randomUUID()),transactions);
     }
     @Bean AssetStore fileAssetStore(S3Client fileS3Client,Properties properties,FileTransferPermit permits,org.springframework.core.env.Environment environment) {
-        return new SerialAssetStore(new S3AssetStore(fileS3Client,properties.bucket()),permits,environment.acceptsProfiles(org.springframework.core.env.Profiles.of("workspace-runner")));
+        return new SerialAssetStore(new S3AssetStore(fileS3Client,properties.bucket()),permits,environment.acceptsProfiles(org.springframework.core.env.Profiles.of("workspace-runner | preview-runner")));
     }
     @Bean @Profile({"workspace-api","workspace-worker"}) FileRepository fileRepository(FileMapper mapper,WorkspaceMapper workspaces,
             EnvironmentPreparationMapper environments,FileCaptureMapper captures,TransactionTemplate transactions,FileExecutionProperties execution) {

@@ -6,6 +6,7 @@ const chatEnabled = import.meta.env.VITE_CHAT_ENABLED === 'true';
 const workspaceEnabled = import.meta.env.VITE_WORKSPACE_ENABLED === 'true';
 const personalConfigEnabled = import.meta.env.VITE_PERSONAL_CONFIG_ENABLED === 'true';
 const capabilitiesEnabled = import.meta.env.VITE_CAPABILITIES_ENABLED === 'true';
+const knowledgeEnabled = import.meta.env.VITE_KNOWLEDGE_ENABLED === 'true';
 </script>
 
 <template>
@@ -22,6 +23,8 @@ const capabilitiesEnabled = import.meta.env.VITE_CAPABILITIES_ENABLED === 'true'
         <RouterLink v-if="chatEnabled" to="/app/settings/account">账号</RouterLink>
         <RouterLink v-if="personalConfigEnabled" to="/app/settings/general">设置</RouterLink>
         <RouterLink v-if="capabilitiesEnabled" to="/app/settings/capabilities">能力</RouterLink>
+        <RouterLink v-if="knowledgeEnabled" to="/app/knowledge">知识库</RouterLink>
+        <RouterLink v-if="knowledgeEnabled" to="/app/memories">个人记忆</RouterLink>
         <RouterLink to="/status">连接状态</RouterLink>
       </nav>
       <label class="theme-control">主题

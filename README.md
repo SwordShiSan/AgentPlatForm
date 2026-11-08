@@ -1,6 +1,12 @@
-## R6.2 本地验收通过，step→phase 已合并，phase→main 待晋级（2026-11-08）
+## R6.3验收通过，phase→main待晋级（2026-11-09）
 
-R6.2 功能与本地验收 PASS，step→phase 的受保护 PR #160 已合并（f8b75fe）；当前正在完成 phase→main，R6 仍为 2/4、未 RELEASED，云端继续 R5。Skill 版本、能力绑定、受控 MCP 和受保护物化入口已实施；聊天自动装配留 R6.4。证据见 [R6.2 验收索引](evidence/r62/acceptance-index.json)。单次签名 HTTP＋数据库＋物理容器组合 canary 未运行，分项证据边界见索引，不将其表述为端到端通过。
+R6.3实现与受限验收已通过step PR #164，并由归档closeout PR #165将唯一OpenSpec change及规格合入phase；当前phase提交为e613a2bdaf1324be2ebbb8ad8d0f584b0e2942ec。全仓OpenSpec strict校验34项通过。phase→main保护PR与最终干净main交付包哈希核验尚待完成；完成前R6.3不计入VERIFIED，R6仍2/4、未RELEASED。验收范围见evidence/r63/acceptance-index.json及归档verification。
+
+真实云端签名TEXT_EXTRACT→私有S3哈希回读→知识索引READY/语义命中已通过；另有旧索引保留、记忆生命周期、持久上下文投影重启读回、进程RSS和共享槽准入证据。PASS_LIMITED边界包括有限检索语料、未单独注入知识路由ACK丢失/重投、投影提交中的取消及数据库失败、完整服务与物理沙箱并行压测、真正200%缩放和完整无障碍审查；不扩称全矩阵通过。gVisor只在云端Linux验收，本机未安装也未启动沙箱。云端R5原容器身份已恢复；R6.3未部署，真实供应商调用0。压缩为确定性投影，不额外调用模型，也不宣称语义摘要。
+
+## R6.2 VERIFIED（2026-11-08）
+
+R6.2 两级受保护 PR 和归档已完成，R6仍2/4、未RELEASED，云端继续R5。Skill版本、能力绑定、受控MCP和受保护物化入口已实施；聊天自动装配留R6.4。证据见[R6.2验收索引](evidence/r62/acceptance-index.json)及最终交付记录。物理canary未与签名HTTP和数据库在同一次组合验收，分项证据边界见索引。
 
 ## R5 当前有效结论（2026-11-06）
 

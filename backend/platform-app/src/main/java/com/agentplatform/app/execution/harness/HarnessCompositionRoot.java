@@ -29,10 +29,11 @@ public final class HarnessCompositionRoot implements LoopBoundary {
         this.ledger = java.util.Objects.requireNonNull(ledger);
     }
     @Override public CompletionStage<List<Message>> beforeModel(Scope scope, List<Message> history) {
-        return track(scope, memory.recall(scope)).thenCombine(track(scope, retrieval.search(scope)), (memories, evidence) -> {
+        String query=history.stream().filter(message->message.role()==Role.USER).reduce((left,right)->right).map(Message::text).orElse("");
+        return track(scope, memory.recall(scope)).thenCombine(track(scope, retrieval.search(scope,query)), (memories, evidence) -> {
             var candidates = new ArrayList<Message>();
-            memories.forEach(message -> candidates.add(reference(message)));
-            evidence.forEach(message -> candidates.add(reference(message)));
+            memories.references().forEach(reference -> candidates.add(reference(reference)));
+            evidence.references().forEach(reference -> candidates.add(reference(reference)));
             return List.copyOf(candidates);
         }).thenCompose(candidates -> track(scope, context.assemble(scope, List.copyOf(history), candidates)));
     }
@@ -52,9 +53,10 @@ public final class HarnessCompositionRoot implements LoopBoundary {
     }
     @Override public void release(Scope scope) { pending.remove(key(scope)); cancelled.remove(key(scope)); }
     private String key(Scope scope) { return scope.spaceId() + ":" + scope.attemptId(); }
-    private Message reference(Message source) {
-        if (!source.calls().isEmpty() || !source.observations().isEmpty()) throw new IllegalArgumentException("REFERENCE_CANNOT_CARRY_TOOL_FACTS");
-        // Recall/retrieval are reference projections, never additional system authority or ledger facts.
-        return Message.text(Role.ASSISTANT, source.text());
+    private Message reference(EvidenceReference source) {
+        // References carry provenance and untrusted text only; they cannot forge tool observations or SDK state.
+        String value="[PLATFORM_REFERENCE untrusted=true kind="+source.sourceKind()+" id="+source.sourceId()+" version="+source.sourceVersion()
+                +" sha256="+source.contentSha256()+" location="+source.location()+"]\n"+source.text();
+        return Message.text(Role.ASSISTANT,value);
     }
 }

@@ -7,6 +7,7 @@ import com.agentplatform.domain.files.AssetStore;
 import com.agentplatform.domain.files.FileData.Actor;
 import com.agentplatform.infrastructure.dao.files.TaskAttachmentMapper;
 import com.agentplatform.infrastructure.harness.agentscope.AgentScopeContextAdmission;
+import com.agentplatform.app.chat.ContextProjectionService;
 import com.agentplatform.types.AttachmentReference;
 import com.agentplatform.types.harness.HarnessData.*;
 import java.io.*;
@@ -17,6 +18,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /** Reject oversized assembled input before accepting a task, with all transport outside transactions. */
 public final class AttachmentAdmission {
+    private static final System.Logger LOGGER=System.getLogger(AttachmentAdmission.class.getName());
     private final TaskAttachmentMapper mapper;private final TransactionTemplate transactions;
     private final ChatRepository chat;private final AssetStore assets;private final ContextPolicy policy;private final boolean toolsEnabled;
     private final java.util.concurrent.Semaphore assemblySlot=new java.util.concurrent.Semaphore(1);
@@ -60,6 +62,16 @@ public final class AttachmentAdmission {
         }
         List<ToolDefinition> definitions=plan?(tools?PlanControls.workspaceDefinitions():PlanControls.DEFINITIONS):tools?new ArrayList<>(WorkspaceTools.DEFINITIONS):new ArrayList<>();
         if(!plan&&tools)definitions.add(PlanControls.DEFINITIONS.stream().filter(d->"platform_ask_user".equals(d.name())).findFirst().orElseThrow());
-        AgentScopeContextAdmission.requireFits(AttachmentContext.materialize(messages,sources,contents),definitions,policy);
+        List<Message> assembled=AttachmentContext.materialize(messages,sources,contents);
+        long beforeProjection=AgentScopeContextAdmission.estimate(assembled,definitions);
+        try{
+            if(policy.compactionEnabled())assembled=ContextProjectionService.preview(assembled,definitions,policy);
+            AgentScopeContextAdmission.requireFits(assembled,definitions,policy);
+        }catch(ChatFailure failure){
+            if("CONTEXT_REQUIRED_TOO_LARGE".equals(failure.code()))LOGGER.log(System.Logger.Level.WARNING,
+                    "Context admission refused: policy={0}, compaction={1}, estimateBefore={2}, inputLimit={3}",
+                    policy.version(),policy.compactionEnabled(),beforeProjection,policy.inputLimit());
+            throw failure;
+        }
     }
 }

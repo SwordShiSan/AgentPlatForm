@@ -14,13 +14,13 @@ import org.springframework.context.annotation.*;
 import org.springframework.validation.annotation.Validated;
 
 @Configuration(proxyBeanMethods=false)
-@Profile("workspace-runner")
+@Profile({"workspace-runner","preview-runner"})
 @ConditionalOnProperty(name="platform.preview.enabled",havingValue="true")
 @EnableConfigurationProperties({PreviewProperties.class,PreviewRunnerConfiguration.Properties.class})
 public class PreviewRunnerConfiguration {
     @Validated @ConfigurationProperties("platform.preview.runner")
     public record Properties(@NotNull Path stagingRoot,@NotNull Path runtimeAttestation) {}
-    @Bean(destroyMethod="close") @Profile("workspace-runner")
+    @Bean(destroyMethod="close") @Profile({"workspace-runner","preview-runner"})
     PreviewRuntime previewRuntime(PreviewProperties properties,Properties runner,UUID runnerInstanceNonce){
         var policy=new PreviewRuntimePolicy(properties.imageId(),runner.stagingRoot(),runner.runtimeAttestation(),properties.bundle());
         if(!policy.hash().equals(properties.policyHash()))throw new IllegalArgumentException("Frozen preview policy mismatch");

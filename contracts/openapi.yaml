@@ -1132,6 +1132,19 @@ paths:
           schema:
             type: string
             format: uuid
+  /api/v1/tasks/{id}/context:
+    get:
+      operationId: getTaskContextSummary
+      security: [{session: []}]
+      parameters:
+        - {$ref: "#/components/parameters/SpaceSelector"}
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Owner-only redacted context estimate and projection lineage
+          headers: {Cache-Control: {schema: {type: string}}}
+          content: {application/json: {schema: {$ref: "#/components/schemas/TaskContextSummary"}}}
+        default: {$ref: "#/components/responses/IdentityProblem"}
   /api/v1/tasks/{id}/diagnostics:
     get:
       operationId: getTaskDiagnostics
@@ -2549,6 +2562,169 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/DocumentExtraction" }
         default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/knowledge-bases:
+    get:
+      operationId: listKnowledgeBases
+      tags: [Knowledge]
+      security: [{ session: [] }]
+      parameters: [{ $ref: "#/components/parameters/SpaceSelector" }]
+      responses:
+        "200":
+          description: Knowledge bases in the current personal space
+          headers: { Cache-Control: { schema: { type: string } } }
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/KnowledgeBase" } } } }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+    post:
+      operationId: createKnowledgeBase
+      tags: [Knowledge]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/SpaceSelector" }
+        - { $ref: "#/components/parameters/CsrfToken" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateKnowledgeBase" } } }
+      responses:
+        "201":
+          description: Knowledge base created
+          headers: { Cache-Control: { schema: { type: string } } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeBase" } } }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/knowledge-bases/{id}/documents:
+    get:
+      operationId: listKnowledgeDocuments
+      tags: [Knowledge]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PreviewId" }
+        - { $ref: "#/components/parameters/SpaceSelector" }
+      responses:
+        "200":
+          description: Authorized document index status
+          headers: { Cache-Control: { schema: { type: string } } }
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/KnowledgeDocument" } } } }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+    post:
+      operationId: addKnowledgeDocument
+      tags: [Knowledge]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PreviewId" }
+        - { $ref: "#/components/parameters/SpaceSelector" }
+        - { $ref: "#/components/parameters/CsrfToken" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AddKnowledgeDocument" } } }
+      responses:
+        "202":
+          description: Index build durably accepted
+          headers: { Cache-Control: { schema: { type: string } } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeDocument" } } }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/knowledge-documents/{id}/rebuild:
+    post:
+      operationId: rebuildKnowledgeDocument
+      tags: [Knowledge]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PreviewId" }
+        - { $ref: "#/components/parameters/SpaceSelector" }
+        - { $ref: "#/components/parameters/CsrfToken" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      responses:
+        "202":
+          description: Rebuild durably accepted
+          headers: { Cache-Control: { schema: { type: string } } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeDocument" } } }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/knowledge-documents/{id}:
+    delete:
+      operationId: deleteKnowledgeDocument
+      tags: [Knowledge]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PreviewId" }
+        - { $ref: "#/components/parameters/SpaceSelector" }
+        - { $ref: "#/components/parameters/CsrfToken" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      responses:
+        "202": { description: Document immediately hidden from search; historical index facts retained }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/knowledge/search:
+    post:
+      operationId: searchKnowledge
+      tags: [Knowledge]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/SpaceSelector" }
+        - { $ref: "#/components/parameters/CsrfToken" }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeSearchRequest" } } }
+      responses:
+        "200":
+          description: Authorized hybrid search with fixed source identity and locator
+          headers: { Cache-Control: { schema: { type: string } } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeSearchResult" } } }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/me/memories:
+    get:
+      operationId: listPersonalMemories
+      tags: [Memory]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/SpaceSelector" }
+        - name: status
+          in: query
+          schema: { type: string, enum: [ALL, PENDING, ACTIVE, REJECTED, SUPERSEDED, REVIEW_REQUIRED, EXPIRED, DELETED] }
+        - name: workspaceId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Owner-only memory management projection
+          headers: { Cache-Control: { schema: { type: string } } }
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/PersonalMemory" } } } }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/me/memories/candidates:
+    post:
+      operationId: createPersonalMemoryCandidate
+      tags: [Memory]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/SpaceSelector" }
+        - { $ref: "#/components/parameters/CsrfToken" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreatePersonalMemoryCandidate" } } }
+      responses:
+        "201":
+          description: Candidate created in PENDING state
+          headers: { Cache-Control: { schema: { type: string } } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/PersonalMemory" } } }
+        default: { $ref: "#/components/responses/IdentityProblem" }
+  /api/v1/me/memories/{id}/actions:
+    post:
+      operationId: changePersonalMemory
+      tags: [Memory]
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PreviewId" }
+        - { $ref: "#/components/parameters/SpaceSelector" }
+        - { $ref: "#/components/parameters/CsrfToken" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ChangePersonalMemory" } } }
+      responses:
+        "200":
+          description: Versioned memory action result
+          headers: { Cache-Control: { schema: { type: string } } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/PersonalMemory" } } }
+        default: { $ref: "#/components/responses/IdentityProblem" }
   /api/v1/me/storage-usage:
     get:
       operationId: getPersonalStorageUsage
@@ -3957,6 +4133,34 @@ components:
         - bundleId
         - values
         - restrictions
+    TaskContextSummary:
+      type: object
+      additionalProperties: false
+      required: [taskId, modelWindow, taskWindow, maxOutput, safetyTokens, inputLimit, estimatedInputTokens, estimateOnly, projection, degradationCodes]
+      properties:
+        taskId: {type: string, format: uuid}
+        modelWindow: {type: integer, minimum: 1}
+        taskWindow: {type: integer, minimum: 1}
+        maxOutput: {type: integer, minimum: 1}
+        safetyTokens: {type: integer, minimum: 0}
+        inputLimit: {type: integer, minimum: 1}
+        estimatedInputTokens: {type: [integer, 'null'], minimum: 0}
+        estimateOnly: {const: true}
+        degradationCodes: {type: array, items: {type: string, pattern: '^[A-Z0-9_]{1,64}$'}}
+        projection:
+          oneOf:
+            - {type: 'null'}
+            - type: object
+              additionalProperties: false
+              required: [epoch, bundleHash, sourceManifestSha256, summarySha256, estimatedInputTokens, policyVersion, createdAt]
+              properties:
+                epoch: {type: integer, minimum: 1}
+                bundleHash: {type: string, pattern: '^[a-f0-9]{64}$'}
+                sourceManifestSha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+                summarySha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+                estimatedInputTokens: {type: integer, minimum: 0}
+                policyVersion: {type: string, maxLength: 64}
+                createdAt: {type: string, format: date-time}
     TaskDiagnostics:
       type: object
       additionalProperties: false
@@ -4730,3 +4934,103 @@ components:
               category: { type: string, enum: [file-version, chat-attachment, preview, text-extraction] }
               bytes: { type: integer, minimum: 0 }
               objects: { type: integer, minimum: 0 }
+    CreateKnowledgeBase:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties: { name: { type: string, minLength: 1, maxLength: 512 } }
+    KnowledgeBase:
+      type: object
+      additionalProperties: false
+      required: [id, name, state, revision]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        state: { type: string, enum: [ACTIVE, DELETED] }
+        revision: { type: integer, minimum: 1 }
+    AddKnowledgeDocument:
+      type: object
+      additionalProperties: false
+      required: [extractionId]
+      properties: { extractionId: { type: string, format: uuid } }
+    KnowledgeDocument:
+      type: object
+      additionalProperties: false
+      required: [id, sourceKind, fileId, versionId, attachmentId, extractionId, name, state, activeIndexVersion, revision]
+      properties:
+        id: { type: string, format: uuid }
+        sourceKind: { type: string, enum: [FILE_VERSION, CHAT_ATTACHMENT] }
+        fileId: { type: [string, 'null'], format: uuid }
+        versionId: { type: [string, 'null'], format: uuid }
+        attachmentId: { type: [string, 'null'], format: uuid }
+        extractionId: { type: string, format: uuid }
+        name: { type: string }
+        state: { type: string, enum: [QUEUED, BUILDING, READY, FAILED, BLOCKED, DELETED] }
+        activeIndexVersion: { type: [string, 'null'], format: uuid }
+        revision: { type: integer, minimum: 1 }
+    KnowledgeSearchRequest:
+      type: object
+      additionalProperties: false
+      required: [query, baseIds, semanticRequired]
+      properties:
+        query: { type: string, minLength: 1, maxLength: 8192 }
+        baseIds: { type: array, minItems: 1, maxItems: 20, uniqueItems: true, items: { type: string, format: uuid } }
+        limit: { type: integer, minimum: 1, maximum: 20, default: 8 }
+        semanticRequired: { type: boolean }
+    KnowledgeSearchResult:
+      type: object
+      additionalProperties: false
+      required: [hits, semanticAvailable, degradationReason]
+      properties:
+        hits: { type: array, maxItems: 20, items: { $ref: '#/components/schemas/KnowledgeSearchHit' } }
+        semanticAvailable: { type: boolean }
+        degradationReason: { type: [string, 'null'], enum: [SEMANTIC_ENCODER_UNAVAILABLE, null] }
+    KnowledgeSearchHit:
+      type: object
+      additionalProperties: false
+      required: [documentId, sourceKind, versionId, attachmentId, name, text, location, score, sourceSha256]
+      properties:
+        documentId: { type: string, format: uuid }
+        sourceKind: { type: string, enum: [FILE_VERSION, CHAT_ATTACHMENT] }
+        versionId: { type: [string, 'null'], format: uuid }
+        attachmentId: { type: [string, 'null'], format: uuid }
+        name: { type: string }
+        text: { type: string, maxLength: 1000 }
+        location: { type: string, maxLength: 4096, description: JSON location metadata fixed to the indexed source version }
+        score: { type: number }
+        sourceSha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+    CreatePersonalMemoryCandidate:
+      type: object
+      additionalProperties: false
+      required: [scopeKind, category, topicKey, content]
+      properties:
+        scopeKind: { type: string, enum: [PERSONAL, WORKSPACE] }
+        workspaceId: { type: [string, 'null'], format: uuid }
+        category: { type: string, enum: [PREFERENCE, FACT, PROCEDURE] }
+        topicKey: { type: string, minLength: 1, maxLength: 256 }
+        content: { type: string, minLength: 1, maxLength: 8192 }
+    ChangePersonalMemory:
+      type: object
+      additionalProperties: false
+      required: [action, expectedRevision]
+      properties:
+        action: { type: string, enum: [CONFIRM, REJECT, EDIT, SUPERSEDE, DELETE] }
+        category: { type: [string, 'null'], enum: [PREFERENCE, FACT, PROCEDURE, null] }
+        topicKey: { type: [string, 'null'], maxLength: 256 }
+        content: { type: [string, 'null'], maxLength: 8192 }
+        expectedRevision: { type: integer, minimum: 1 }
+    PersonalMemory:
+      type: object
+      additionalProperties: false
+      required: [id, scopeKind, workspaceId, category, topicKey, content, status, revision, expiresAt, confirmedAt]
+      properties:
+        id: { type: string, format: uuid }
+        scopeKind: { type: string, enum: [PERSONAL, WORKSPACE] }
+        workspaceId: { type: [string, 'null'], format: uuid }
+        category: { type: string, enum: [PREFERENCE, FACT, PROCEDURE] }
+        topicKey: { type: string }
+        content: { type: string, maxLength: 8192 }
+        status: { type: string, enum: [PENDING, ACTIVE, REJECTED, SUPERSEDED, REVIEW_REQUIRED, EXPIRED, DELETED] }
+        revision: { type: integer, minimum: 1 }
+        expiresAt: { type: string, format: date-time }
+        confirmedAt: { type: [string, 'null'], format: date-time }

@@ -23,7 +23,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /** Reuses the proven asset job/runner lifecycle with independent typed extraction facts. */
-@Configuration(proxyBeanMethods=false) @Profile({"workspace-api","workspace-worker","workspace-runner"})
+@Configuration(proxyBeanMethods=false) @Profile({"workspace-api","workspace-worker","workspace-runner","preview-runner"})
 @ConditionalOnProperty(name={"platform.attachments.enabled","platform.preview.enabled"},havingValue="true")
 public class ExtractionConfiguration {
     public static final String PATH="/internal/extractions/v1";
@@ -31,7 +31,7 @@ public class ExtractionConfiguration {
         return new TransactionalPreviewRepository(new MyBatisPreviewRepository(mapper,files,properties.imageId(),properties.bundle(),properties.policyHash(),true),tx);
     }
     @Bean @Profile("workspace-api") DocumentExtractionApi documentExtractionApi(@Qualifier("extractionRepository")PreviewRepository repository){return new DocumentExtractionService(repository);}
-    @Bean(destroyMethod="close") @Profile("workspace-runner") PreviewRunnerApi extractionRunnerApi(@Qualifier("extractionRepository")PreviewRepository repository,PreviewRuntime runtime,AssetStore assets,RunnerSignatures signatures,PreviewRunnerConfiguration.Properties properties){
+    @Bean(destroyMethod="close") @Profile({"workspace-runner","preview-runner"}) PreviewRunnerApi extractionRunnerApi(@Qualifier("extractionRepository")PreviewRepository repository,PreviewRuntime runtime,AssetStore assets,RunnerSignatures signatures,PreviewRunnerConfiguration.Properties properties){
         return new PreviewRunnerService(repository,runtime,assets,signatures,properties.stagingRoot(),PATH);
     }
     @Bean(destroyMethod="close") @Profile("workspace-worker") PreviewRunnerPort extractionRunnerPort(WorkspaceControlProperties control,RunnerSignatures signatures){return new SignedPreviewRunnerClient(control.runnerBase(),signatures,PATH);}

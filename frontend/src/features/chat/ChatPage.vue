@@ -29,6 +29,7 @@ const configurationChoices = ref<ConfigurationChoices>({ model: '', source: '', 
 const planMode = ref(false);
 const permissionsEnabled = import.meta.env.VITE_PERMISSIONS_ENABLED === 'true';
 const workspaceToolsEnabled = import.meta.env.VITE_WORKSPACE_TOOLS_ENABLED === 'true';
+const knowledgeEnabled = import.meta.env.VITE_KNOWLEDGE_ENABLED === 'true';
 const permissionMode = ref<'RISK_BASED' | 'FULL'>('RISK_BASED');const workspaceId = ref('');
 const draft = ref(''); const error = ref(''); const busy = ref(false);
 const attachmentsEnabled = import.meta.env.VITE_WORKSPACE_FILES_ENABLED === 'true';
@@ -124,6 +125,7 @@ const stopLabel = computed(() => {
   return '';
 });
 const config = useQuery({ queryKey: computed(() => ['chat', actor.value, 'configuration', lastTask.value?.taskId, lastTask.value?.version]), enabled: computed(() => !!lastTask.value), queryFn: async () => (await api.GET('/api/v1/tasks/{id}/configuration', { params: { path: { id: lastTask.value!.taskId } } })).data! });
+const contextSummary = useQuery({ queryKey: computed(() => ['chat', actor.value, space.value, 'context-summary', lastTask.value?.taskId, lastTask.value?.version]), enabled: computed(() => knowledgeEnabled && !!lastTask.value), queryFn: async ({ signal }) => (await api.GET('/api/v1/tasks/{id}/context', { signal, params: { path: { id: lastTask.value!.taskId }, header: { 'X-Space-Id': space.value } } })).data! });
 const snapshotResolution = computed(() => config.data.value?.values.resolution as { resolverVersion?: string; sources?: Record<string,string>; effectiveHash?: string } | undefined);
 const running = computed(() => snapshot.data.value?.tasks.some(item => ['QUEUED', 'RUNNING', 'WAITING_INPUT'].includes(item.status)) ?? false);
 const diagnostics = useQuery({ queryKey: computed(() => ['chat', actor.value, space.value, 'diagnostics', lastTask.value?.taskId, lastTask.value?.version]), enabled: computed(() => !!lastTask.value && !running.value), queryFn: async () => (await api.GET('/api/v1/tasks/{id}/diagnostics', { params: { path: { id: lastTask.value!.taskId } } })).data! });
@@ -381,6 +383,7 @@ async function cancel() {
         <div class="chat-actions"><button type="submit" :disabled="busy || (!pending && (running || !draft.trim() || attachmentsProcessing || !modelAvailable))">{{ pending ? '重试同一条消息' : '发送' }}</button><button v-if="running" type="button" :disabled="busy || lastTask?.cancelRequested" @click="cancel">取消回复</button></div>
       </form>
       <details v-if="config.data.value"><summary>当前任务配置</summary><p>模型：{{ config.data.value.values.modelName }}；来源：{{ config.data.value.values.credentialSource }}</p><p v-if="snapshotResolution?.resolverVersion === 'LEGACY'">历史任务：没有配置来源记录。</p><p v-else-if="snapshotResolution?.sources">冻结来源：模型 {{ snapshotResolution.sources.modelId }}、凭据 {{ snapshotResolution.sources.credentialSource }}、计划 {{ snapshotResolution.sources.planMode }}、权限 {{ snapshotResolution.sources.permissionMode }}。</p><p>冻结上下文 {{ config.data.value.values.window }} tokens，输出上限 {{ config.data.value.values.maxOutput }}。</p><p v-if="config.data.value.contextUsage">最近请求输入估算：{{ config.data.value.contextUsage.estimatedInputTokens?.toLocaleString() ?? '调用前计算' }} tokens；估算不等于计费值。</p><p class="chat-text">快照 {{ config.data.value.configSnapshotId }} · {{ config.data.value.configHash }}</p><p v-if="!config.data.value.restrictions.credentialActive">此任务凭据已撤销。</p></details>
+      <details v-if="knowledgeEnabled && contextSummary.data.value"><summary>任务上下文摘要</summary><p>有效输入上限 {{ contextSummary.data.value.inputLimit.toLocaleString() }} tokens；当前估算 {{ contextSummary.data.value.estimatedInputTokens?.toLocaleString() ?? '尚无估算' }}。估算值不等于计费值。</p><p v-if="contextSummary.data.value.projection">已提交压缩投影 {{ contextSummary.data.value.projection.epoch }} · 来源 {{ contextSummary.data.value.projection.sourceManifestSha256 }} · 摘要 {{ contextSummary.data.value.projection.summarySha256 }}</p><p v-else>当前没有压缩投影；任务原始历史保持不变。</p></details>
       <ModelSettings v-if="actor" :actor="actor" />
     </section>
     <aside v-if="attachmentsEnabled" class="workbench-files" aria-label="文件工作台">

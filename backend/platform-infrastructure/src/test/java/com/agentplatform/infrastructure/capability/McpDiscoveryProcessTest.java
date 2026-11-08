@@ -34,7 +34,8 @@ class McpDiscoveryProcessTest {
             var auth = new McpDiscovery.Authentication(McpDiscovery.AuthKind.BEARER, null, "private-fixture-sentinel");
             var failure = assertThrows(FileFailure.class, () -> process.discover("https://fixture.invalid/mcp", auth));
             assertEquals(503, failure.status()); assertFalse(failure.toString().contains("private-fixture-sentinel"));
-            assertTrue(request.get(15, TimeUnit.SECONDS).startsWith("CONNECT fixture.invalid:443 "));
+            // The Windows child JVM can be cold after the full Maven reactor; give the local proxy handshake one bounded startup window.
+            assertTrue(request.get(30, TimeUnit.SECONDS).startsWith("CONNECT fixture.invalid:443 "));
         }
     }
     @Test void timeoutStopsExactChildBeforeSlotCanBeReused() throws Exception {
@@ -44,19 +45,19 @@ class McpDiscoveryProcessTest {
         var process = fixture("sleep", pid, Duration.ofSeconds(8), 1024);
         var auth = new McpDiscovery.Authentication(McpDiscovery.AuthKind.NONE, null, null);
         assertEquals(503, assertThrows(FileFailure.class, () -> process.discover("https://fixture.invalid/mcp", auth)).status());
-        long original = Long.parseLong(Files.readString(pid));
-        assertFalse(ProcessHandle.of(original).map(ProcessHandle::isAlive).orElse(false));
+        String original = Files.readString(pid);
+        assertFalse(ProcessHandle.of(processId(original)).map(ProcessHandle::isAlive).orElse(false));
         assertEquals(503, assertThrows(FileFailure.class, () -> process.discover("https://fixture.invalid/mcp", auth)).status());
-        long next = Long.parseLong(Files.readString(pid));
+        String next = Files.readString(pid);
         assertNotEquals(original, next, "a confirmed stopped child must not poison the slot");
-        assertFalse(ProcessHandle.of(next).map(ProcessHandle::isAlive).orElse(false));
+        assertFalse(ProcessHandle.of(processId(next)).map(ProcessHandle::isAlive).orElse(false));
     }
     @Test void oversizedChildOutputIsRejectedAndChildIsStopped() throws Exception {
         Path pid = temporary.resolve("pid");
         var process = fixture("oversize", pid, Duration.ofSeconds(10), 1024);
         var auth = new McpDiscovery.Authentication(McpDiscovery.AuthKind.NONE, null, null);
         assertEquals(503, assertThrows(FileFailure.class, () -> process.discover("https://fixture.invalid/mcp", auth)).status());
-        assertFalse(ProcessHandle.of(Long.parseLong(Files.readString(pid))).map(ProcessHandle::isAlive).orElse(false));
+        assertFalse(ProcessHandle.of(processId(Files.readString(pid))).map(ProcessHandle::isAlive).orElse(false));
     }
     @Test void boundedChildResultCanBeReadWithoutLeakingTheCredential() {
         var process = fixture("valid", temporary.resolve("pid"), Duration.ofSeconds(10), 4096);
@@ -72,7 +73,7 @@ class McpDiscoveryProcessTest {
         assertEquals("[\\\"ok\\\"]", result.contentJson());
         assertFalse(result.toString().contains("ok"));
         assertFalse(result.toString().contains("private-fixture-sentinel"));
-        assertFalse(ProcessHandle.of(Long.parseLong(Files.readString(temporary.resolve("call-pid"))))
+        assertFalse(ProcessHandle.of(processId(Files.readString(temporary.resolve("call-pid"))))
                 .map(ProcessHandle::isAlive).orElse(false));
     }
     @Test void protectedCallRejectsOversizedArgumentsBeforeStartingChild() {
@@ -90,12 +91,13 @@ class McpDiscoveryProcessTest {
         return new McpDiscoveryProcess(new InetSocketAddress("127.0.0.1", 12345), timeout, maxOutput,
                 List.of(java, "-Xmx32m", "-cp", cp, Fixture.class.getName(), action, pid.toString()));
     }
+    private static long processId(String identity) { return Long.parseLong(identity.substring(0, identity.indexOf('|'))); }
     public static final class Fixture {
         public static void main(String[] args) throws Exception {
             byte[] input = System.in.readAllBytes();
             var request = tools.jackson.databind.json.JsonMapper.builder().build().readTree(input);
             java.util.Arrays.fill(input, (byte) 0);
-            Files.writeString(Path.of(args[1]), Long.toString(ProcessHandle.current().pid()));
+            Files.writeString(Path.of(args[1]), ProcessHandle.current().pid()+"|"+java.util.UUID.randomUUID());
             if ("valid".equals(args[0])) {
                 System.out.print("{\"status\":200,\"code\":null,\"tools\":[{\"name\":\"fixture\",\"description\":\"ok\",\"schemaJson\":\"{}\",\"schemaSha256\":\"" + "a".repeat(64) + "\"}]}");
             } else if ("call".equals(args[0]) && "CALL".equals(request.path("action").asText())) {

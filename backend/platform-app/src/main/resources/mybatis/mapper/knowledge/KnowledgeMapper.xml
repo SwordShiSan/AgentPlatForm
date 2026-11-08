@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.knowledge.KnowledgeMapper">
+ <resultMap id="base" type="com.agentplatform.domain.knowledge.KnowledgeData$Base">
+  <constructor><arg name="id" column="id" javaType="java.util.UUID"/><arg name="spaceId" column="space_id" javaType="java.util.UUID"/>
+   <arg name="ownerId" column="owner_user_id" javaType="java.util.UUID"/><arg name="workspaceId" column="workspace_id" javaType="java.util.UUID"/>
+   <arg name="name" column="name" javaType="java.lang.String"/><arg name="state" column="state" javaType="java.lang.String"/>
+   <arg name="revision" column="revision" javaType="_long"/></constructor>
+ </resultMap>
+ <resultMap id="document" type="com.agentplatform.domain.knowledge.KnowledgeData$Document">
+  <constructor><arg name="id" column="id" javaType="java.util.UUID"/><arg name="baseId" column="knowledge_base_id" javaType="java.util.UUID"/>
+   <arg name="sourceKind" column="source_kind" javaType="java.lang.String"/><arg name="fileId" column="file_id" javaType="java.util.UUID"/>
+   <arg name="versionId" column="version_id" javaType="java.util.UUID"/><arg name="attachmentId" column="attachment_id" javaType="java.util.UUID"/>
+   <arg name="extractionId" column="extraction_id" javaType="java.util.UUID"/><arg name="name" column="display_name" javaType="java.lang.String"/>
+   <arg name="state" column="status" javaType="java.lang.String"/><arg name="activeIndexVersion" column="active_index_version" javaType="java.util.UUID"/>
+   <arg name="sourceSha256" column="source_sha256" javaType="java.lang.String"/><arg name="revision" column="revision" javaType="_long"/></constructor>
+ </resultMap>
+ <resultMap id="source" type="com.agentplatform.domain.knowledge.KnowledgeData$ExtractedSource">
+  <constructor><arg name="extractionId" column="extraction_id" javaType="java.util.UUID"/><arg name="sourceKind" column="source_kind" javaType="java.lang.String"/>
+   <arg name="workspaceId" column="workspace_id" javaType="java.util.UUID"/><arg name="fileId" column="file_id" javaType="java.util.UUID"/>
+   <arg name="versionId" column="version_id" javaType="java.util.UUID"/><arg name="attachmentId" column="attachment_id" javaType="java.util.UUID"/>
+   <arg name="sourceAssetId" column="source_asset_id" javaType="java.util.UUID"/><arg name="sourceSha256" column="source_sha256" javaType="java.lang.String"/>
+   <arg name="extractionSha256" column="output_sha256" javaType="java.lang.String"/><arg name="extractionBytes" column="output_bytes" javaType="_long"/>
+   <arg name="extractedObjectKey" column="output_object_key" javaType="java.lang.String"/><arg name="name" column="name" javaType="java.lang.String"/>
+   <arg name="sourceFormat" column="source_format" javaType="java.lang.String"/></constructor>
+ </resultMap>
+ <resultMap id="publication" type="com.agentplatform.domain.knowledge.KnowledgeData$Publication">
+  <constructor><arg name="id" column="id" javaType="java.util.UUID"/><arg name="buildId" column="build_id" javaType="java.util.UUID"/>
+   <arg name="spaceId" column="space_id" javaType="java.util.UUID"/><arg name="generation" column="generation" javaType="_long"/>
+   <arg name="relayOwner" column="relay_owner" javaType="java.util.UUID"/></constructor>
+ </resultMap>
+ <resultMap id="command" type="com.agentplatform.domain.knowledge.KnowledgeData$BuildCommand">
+  <constructor><arg name="id" column="id" javaType="java.util.UUID"/><arg name="buildId" column="build_id" javaType="java.util.UUID"/>
+   <arg name="documentId" column="document_id" javaType="java.util.UUID"/><arg name="indexVersion" column="index_version" javaType="java.util.UUID"/>
+   <arg name="spaceId" column="space_id" javaType="java.util.UUID"/><arg name="actorId" column="actor_id" javaType="java.util.UUID"/>
+   <arg name="ownerId" column="owner_id" javaType="java.util.UUID"/>
+   <arg name="generation" column="generation" javaType="_long"/><arg name="fence" column="fence" javaType="_long"/>
+   <arg name="leaseUntil" column="lease_until" javaType="java.time.Instant"/><arg name="extractionId" column="extraction_id" javaType="java.util.UUID"/>
+   <arg name="extractedObjectKey" column="output_object_key" javaType="java.lang.String"/><arg name="extractedBytes" column="output_bytes" javaType="_long"/>
+   <arg name="extractedSha256" column="output_sha256" javaType="java.lang.String"/><arg name="sourceKind" column="source_kind" javaType="java.lang.String"/>
+   <arg name="sourceFormat" column="source_format" javaType="java.lang.String"/><arg name="displayName" column="display_name" javaType="java.lang.String"/>
+   <arg name="modelSha256" column="model_sha256" javaType="java.lang.String"/><arg name="tokenizerSha256" column="tokenizer_sha256" javaType="java.lang.String"/></constructor>
+ </resultMap>
+ <resultMap id="hit" type="com.agentplatform.domain.knowledge.KnowledgeData$Hit">
+  <constructor><arg name="documentId" column="document_id" javaType="java.util.UUID"/><arg name="indexVersion" column="index_version" javaType="java.util.UUID"/>
+   <arg name="sourceKind" column="source_kind" javaType="java.lang.String"/><arg name="versionId" column="version_id" javaType="java.util.UUID"/>
+   <arg name="attachmentId" column="attachment_id" javaType="java.util.UUID"/><arg name="name" column="name" javaType="java.lang.String"/>
+   <arg name="body" column="body" javaType="java.lang.String"/><arg name="locationJson" column="source_location" javaType="java.lang.String"/>
+   <arg name="score" column="score" javaType="_double"/><arg name="sourceSha256" column="source_sha256" javaType="java.lang.String"/></constructor>
+ </resultMap>
+
+ <select id="authorized" resultType="boolean">SELECT pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}) AND EXISTS(SELECT 1 FROM pf.space s WHERE s.id=#{actor.spaceId} AND s.owner_user_id=#{actor.userId} AND s.type='PERSONAL')</select>
+ <select id="workspaceOwned" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.workspace w WHERE w.id=#{workspace} AND w.space_id=#{actor.spaceId} AND w.actor_id=#{actor.userId} AND w.state='READY')</select>
+ <select id="request" resultType="com.agentplatform.infrastructure.dao.knowledge.KnowledgeMapper$KnowledgeMutation">
+  SELECT action,request_hash,resource_id FROM pf.knowledge_mutation_request WHERE space_id=#{actor.spaceId} AND actor_id=#{actor.userId} AND request_id=#{request}
+ </select>
+ <insert id="insertRequest">INSERT INTO pf.knowledge_mutation_request(space_id,actor_id,request_id,action,request_hash,resource_id) VALUES(#{actor.spaceId},#{actor.userId},#{request},#{action},#{hash},#{resource})</insert>
+ <select id="base" resultMap="base">SELECT * FROM pf.knowledge_base WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND id=#{id} AND state='ACTIVE'</select>
+ <select id="bases" resultMap="base">SELECT * FROM pf.knowledge_base WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND state='ACTIVE' ORDER BY created_at DESC,id LIMIT 100</select>
+ <insert id="insertBase">INSERT INTO pf.knowledge_base(id,space_id,owner_user_id,name,normalized_name) VALUES(#{id},#{actor.spaceId},#{actor.userId},#{name},#{normalized})</insert>
+ <select id="extraction" resultMap="source">
+  SELECT e.id AS extraction_id,e.source_kind,e.workspace_id,e.file_id,e.version_id,e.attachment_id,e.source_asset_id,e.source_sha256,
+   e.output_sha256,e.output_bytes,e.output_object_key,COALESCE(fe.name,a.filename) AS name,e.source_format
+  FROM pf.document_extraction e LEFT JOIN pf.file_entry fe ON fe.space_id=e.space_id AND fe.workspace_id=e.workspace_id AND fe.id=e.file_id
+   LEFT JOIN pf.chat_attachment a ON a.space_id=e.space_id AND a.id=e.attachment_id
+  WHERE e.id=#{extraction} AND e.space_id=#{actor.spaceId} AND e.actor_id=#{actor.userId} AND e.status='READY' AND e.requested_format='TEXT_EXTRACT'
+   AND e.output_bytes BETWEEN 1 AND 2097152 AND pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId})
+   AND EXISTS(SELECT 1 FROM pf.knowledge_base b WHERE b.id=#{base} AND b.space_id=e.space_id AND b.owner_user_id=#{actor.userId} AND b.state='ACTIVE')
+   AND ((e.source_kind='FILE_VERSION' AND EXISTS(SELECT 1 FROM pf.workspace w JOIN pf.file_version v ON v.space_id=w.space_id AND v.workspace_id=w.id AND v.file_id=e.file_id AND v.id=e.version_id WHERE w.id=e.workspace_id AND w.space_id=e.space_id AND w.actor_id=#{actor.userId}))
+     OR (e.source_kind='CHAT_ATTACHMENT' AND EXISTS(SELECT 1 FROM pf.chat_attachment a2 WHERE a2.id=e.attachment_id AND a2.space_id=e.space_id AND a2.actor_id=#{actor.userId} AND a2.status='AVAILABLE')))
+ </select>
+ <select id="document" resultMap="document">
+  SELECT d.id,d.knowledge_base_id,d.source_kind,d.file_id,d.version_id,d.attachment_id,d.extraction_id,d.display_name,d.status,d.active_index_version,d.source_sha256,d.revision
+  FROM pf.knowledge_document d LEFT JOIN pf.file_entry fe ON fe.space_id=d.space_id AND fe.workspace_id=d.workspace_id AND fe.id=d.file_id
+   LEFT JOIN pf.chat_attachment a ON a.space_id=d.space_id AND a.id=d.attachment_id
+  WHERE d.id=#{id} AND d.space_id=#{actor.spaceId} AND d.owner_user_id=#{actor.userId} AND d.status&lt;&gt;'DELETED'
+   AND pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId})
+   AND (d.workspace_id IS NULL OR EXISTS(SELECT 1 FROM pf.workspace w WHERE w.id=d.workspace_id AND w.space_id=d.space_id AND w.actor_id=#{actor.userId}))
+ </select>
+ <select id="documents" resultMap="document">
+  SELECT d.id,d.knowledge_base_id,d.source_kind,d.file_id,d.version_id,d.attachment_id,d.extraction_id,d.display_name,d.status,d.active_index_version,d.source_sha256,d.revision
+  FROM pf.knowledge_document d JOIN pf.knowledge_base b ON b.id=d.knowledge_base_id AND b.space_id=d.space_id
+   LEFT JOIN pf.file_entry fe ON fe.space_id=d.space_id AND fe.workspace_id=d.workspace_id AND fe.id=d.file_id
+   LEFT JOIN pf.chat_attachment a ON a.space_id=d.space_id AND a.id=d.attachment_id
+  WHERE d.space_id=#{actor.spaceId} AND d.owner_user_id=#{actor.userId} AND d.knowledge_base_id=#{base} AND d.status&lt;&gt;'DELETED'
+   AND b.owner_user_id=#{actor.userId} AND b.state='ACTIVE' AND pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId})
+  ORDER BY d.created_at DESC,d.id LIMIT 500
+ </select>
+ <insert id="insertDocument">INSERT INTO pf.knowledge_document(id,space_id,owner_user_id,knowledge_base_id,source_kind,workspace_id,file_id,version_id,attachment_id,
+   source_asset_id,source_sha256,extraction_id,display_name,extraction_sha256,status)
+  VALUES(#{id},#{actor.spaceId},#{actor.userId},#{base},#{source.sourceKind},#{source.workspaceId},#{source.fileId},#{source.versionId},#{source.attachmentId},
+   #{source.sourceAssetId},#{source.sourceSha256},#{source.extractionId},#{source.name},#{source.extractionSha256},'QUEUED')</insert>
+ <insert id="insertIndex">INSERT INTO pf.knowledge_index_version(space_id,document_id,index_version,embedding_profile,model_sha256,tokenizer_sha256,parser_bundle,chunker_version,state)
+  VALUES(#{space},#{document},#{version},'multilingual-e5-small-int8-v1',#{modelHash},#{tokenizerHash},'r63-text-extract-v1','e5-384-v1','BUILDING')</insert>
+ <insert id="insertBuild">INSERT INTO pf.knowledge_index_build(id,space_id,document_id,index_version,generation,state) VALUES(#{id},#{space},#{document},#{version},1,'QUEUED')</insert>
+ <insert id="insertOutbox">INSERT INTO pf.knowledge_index_outbox(id,space_id,build_id,generation) VALUES(#{id},#{space},#{build},1)</insert>
+ <update id="setRebuildState">UPDATE pf.knowledge_document SET status=CASE WHEN active_index_version IS NULL THEN 'QUEUED' ELSE 'BUILDING' END,revision=revision+1,updated_at=clock_timestamp()
+  WHERE id=#{document} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND status IN('READY','FAILED') AND pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId})</update>
+ <update id="deleteDocument">UPDATE pf.knowledge_document SET status='DELETED',revision=revision+1,updated_at=clock_timestamp()
+  WHERE id=#{document} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND status&lt;&gt;'DELETED' AND pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId})</update>
+ <select id="publications" resultMap="publication" affectData="true" flushCache="true" useCache="false">
+  WITH picked AS (SELECT o.id FROM pf.knowledge_index_outbox o WHERE o.state='PENDING'
+    OR (o.state='PUBLISHING' AND o.relay_until&lt;clock_timestamp())
+    OR (o.state='PUBLISHED' AND EXISTS(SELECT 1 FROM pf.knowledge_index_build b WHERE b.id=o.build_id AND b.generation=o.generation
+       AND b.state='RUNNING' AND b.lease_until&lt;=clock_timestamp()))
+   ORDER BY created_at LIMIT 20 FOR UPDATE SKIP LOCKED), claimed AS (
+   UPDATE pf.knowledge_index_outbox o SET state='PUBLISHING',relay_owner=#{owner},relay_until=clock_timestamp()+interval '15 seconds'
+   FROM picked p WHERE o.id=p.id RETURNING o.id,o.build_id,o.space_id,o.generation,o.relay_owner)
+  SELECT * FROM claimed
+ </select>
+ <update id="markPublished">UPDATE pf.knowledge_index_outbox SET state=CASE WHEN #{confirmed} THEN 'PUBLISHED' ELSE 'PENDING' END,
+  relay_owner=CASE WHEN #{confirmed} THEN relay_owner ELSE NULL END,relay_until=NULL WHERE id=#{item.id} AND build_id=#{item.buildId} AND generation=#{item.generation} AND relay_owner=#{item.relayOwner}</update>
+ <!-- RabbitMQ may deliver a durable message before the correlated publisher confirm is
+      committed to this row. Accept only the exact live relay owner during PUBLISHING;
+      late/stale owners remain rejected. The consumer claim/inbox stays idempotent. -->
+ <select id="knownPublication" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.knowledge_index_outbox WHERE id=#{item.id} AND build_id=#{item.buildId} AND space_id=#{item.spaceId} AND generation=#{item.generation} AND relay_owner=#{item.relayOwner}
+  AND (state='PUBLISHED' OR (state='PUBLISHING' AND relay_until&gt;clock_timestamp())))</select>
+ <select id="knownInbox" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.knowledge_index_inbox WHERE event_id=#{item.id} AND build_id=#{item.buildId})</select>
+ <select id="buildState" resultType="com.agentplatform.infrastructure.dao.knowledge.KnowledgeMapper$BuildState">
+  SELECT state,coalesce(lease_until&gt;clock_timestamp(),false) AS lease_live FROM pf.knowledge_index_build WHERE id=#{item.buildId}
+   AND space_id=#{item.spaceId} AND generation=#{item.generation}
+ </select>
+ <insert id="quarantine">INSERT INTO pf.knowledge_index_delivery_quarantine(id,body_hash) VALUES(#{id},#{hash}) ON CONFLICT DO NOTHING</insert>
+ <insert id="insertInbox">INSERT INTO pf.knowledge_index_inbox(event_id,build_id) VALUES(#{item.id},#{item.buildId}) ON CONFLICT(event_id) DO NOTHING</insert>
+ <select id="heavy" resultType="com.agentplatform.infrastructure.dao.knowledge.KnowledgeMapper$Heavy">SELECT kind,reference_id,generation,owner_id,fence,revision FROM pf.heavy_runtime_slot WHERE id=1 FOR UPDATE</select>
+ <update id="acquireHeavy">UPDATE pf.heavy_runtime_slot SET kind='KNOWLEDGE',reference_id=#{build},generation=#{generation},owner_id=#{owner},fence=fence+1,
+  lease_until=clock_timestamp()+interval '60 seconds',revision=revision+1 WHERE id=1 AND (kind IS NULL OR
+   (kind='KNOWLEDGE' AND reference_id=#{build} AND generation=#{generation} AND lease_until&lt;=clock_timestamp()) OR
+   (kind='KNOWLEDGE' AND lease_until&lt;=clock_timestamp() AND NOT EXISTS(SELECT 1 FROM pf.knowledge_index_build b
+     WHERE b.id=pf.heavy_runtime_slot.reference_id AND b.state='RUNNING' AND b.lease_until&gt;clock_timestamp())))</update>
+ <update id="releaseHeavy">UPDATE pf.heavy_runtime_slot SET kind=NULL,reference_id=NULL,generation=NULL,owner_id=NULL,revision=revision+1
+  ,lease_until=NULL WHERE id=1 AND kind='KNOWLEDGE' AND reference_id=#{command.buildId} AND generation=#{command.generation} AND owner_id=#{command.ownerId} AND fence=#{command.fence}</update>
+ <select id="acquireQueryHeavy" resultType="java.lang.Long" affectData="true" flushCache="true" useCache="false">
+  UPDATE pf.heavy_runtime_slot SET kind='KNOWLEDGE',reference_id=#{query},generation=1,owner_id=#{owner},fence=fence+1,
+   lease_until=clock_timestamp()+interval '30 seconds',revision=revision+1 WHERE id=1 AND
+   (kind IS NULL OR(kind='KNOWLEDGE' AND lease_until&lt;=clock_timestamp() AND NOT EXISTS(SELECT 1 FROM pf.knowledge_index_build b
+     WHERE b.id=pf.heavy_runtime_slot.reference_id AND b.state='RUNNING' AND b.lease_until&gt;clock_timestamp()))) RETURNING fence
+ </select>
+ <select id="queryHeavyCurrent" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.heavy_runtime_slot WHERE id=1 AND kind='KNOWLEDGE'
+  AND reference_id=#{query} AND owner_id=#{owner} AND fence=#{fence} AND lease_until&gt;clock_timestamp()
+  AND pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}))</select>
+ <update id="releaseQueryHeavy">UPDATE pf.heavy_runtime_slot SET kind=NULL,reference_id=NULL,generation=NULL,owner_id=NULL,lease_until=NULL,revision=revision+1
+  WHERE id=1 AND kind='KNOWLEDGE' AND reference_id=#{query} AND owner_id=#{owner} AND fence=#{fence}</update>
+ <update id="claim">UPDATE pf.knowledge_index_build b SET state='RUNNING',owner_id=#{owner},fence=#{fence},lease_until=clock_timestamp()+interval '60 seconds',updated_at=clock_timestamp()
+  FROM pf.knowledge_document d WHERE b.id=#{item.buildId} AND b.space_id=#{item.spaceId} AND b.generation=#{item.generation}
+   AND (b.state='QUEUED' OR(b.state='RUNNING' AND b.lease_until&lt;=clock_timestamp()))
+   AND d.id=b.document_id AND d.space_id=b.space_id AND d.status IN('QUEUED','BUILDING') AND d.owner_user_id=(SELECT owner_user_id FROM pf.knowledge_base WHERE id=d.knowledge_base_id)
+   AND pf.authorize_workspace_actor(d.owner_user_id,d.space_id)</update>
+ <select id="command" resultMap="command">
+  SELECT b.id,b.id AS build_id,b.document_id,b.index_version,b.space_id,d.owner_user_id AS actor_id,b.owner_id,b.generation,b.fence,b.lease_until,d.extraction_id,
+   e.output_object_key,e.output_bytes,e.output_sha256,d.source_kind,e.source_format,d.display_name,v.model_sha256,v.tokenizer_sha256
+  FROM pf.knowledge_index_build b JOIN pf.knowledge_document d ON d.id=b.document_id AND d.space_id=b.space_id
+   JOIN pf.knowledge_index_version v ON v.space_id=b.space_id AND v.document_id=b.document_id AND v.index_version=b.index_version
+   JOIN pf.document_extraction e ON e.id=d.extraction_id AND e.space_id=d.space_id AND e.status='READY'
+   LEFT JOIN pf.file_entry fe ON fe.space_id=d.space_id AND fe.workspace_id=d.workspace_id AND fe.id=d.file_id
+   LEFT JOIN pf.chat_attachment a ON a.space_id=d.space_id AND a.id=d.attachment_id
+  WHERE b.id=#{build} AND b.state='RUNNING'
+ </select>
+ <insert id="insertChunk">INSERT INTO pf.knowledge_index_chunk(space_id,document_id,index_version,ordinal,chunk_sha256,body,embedding,source_location,source_start,source_end)
+  VALUES(#{command.spaceId},#{command.documentId},#{command.indexVersion},#{chunk.ordinal},#{chunk.sha256},#{chunk.body},#{chunk.vector}::pf.vector,#{chunk.locationJson}::jsonb,#{chunk.start},#{chunk.end})
+  ON CONFLICT(space_id,document_id,index_version,ordinal) DO NOTHING</insert>
+ <select id="chunkMatches" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.knowledge_index_chunk WHERE space_id=#{command.spaceId}
+  AND document_id=#{command.documentId} AND index_version=#{command.indexVersion} AND ordinal=#{chunk.ordinal}
+  AND chunk_sha256=#{chunk.sha256} AND body=#{chunk.body})</select>
+ <update id="progress">WITH renewed AS(UPDATE pf.knowledge_index_build SET next_ordinal=GREATEST(next_ordinal,#{ordinal}),lease_until=clock_timestamp()+interval '60 seconds',updated_at=clock_timestamp()
+  WHERE id=#{command.buildId} AND state='RUNNING' AND owner_id=#{command.ownerId} AND generation=#{command.generation} AND fence=#{command.fence} AND lease_until&gt;clock_timestamp() RETURNING id)
+  UPDATE pf.heavy_runtime_slot h SET lease_until=clock_timestamp()+interval '60 seconds' WHERE h.id=1 AND h.kind='KNOWLEDGE'
+   AND h.reference_id=#{command.buildId} AND h.owner_id=#{command.ownerId} AND h.generation=#{command.generation} AND h.fence=#{command.fence} AND EXISTS(SELECT 1 FROM renewed)</update>
+ <select id="live" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.knowledge_index_build b JOIN pf.knowledge_document d ON d.id=b.document_id AND d.space_id=b.space_id
+  WHERE b.id=#{command.buildId} AND b.state='RUNNING' AND b.owner_id=#{command.ownerId} AND b.generation=#{command.generation} AND b.fence=#{command.fence}
+   AND b.lease_until&gt;clock_timestamp() AND d.status&lt;&gt;'DELETED' AND d.extraction_id=#{command.extractionId}
+   AND pf.authorize_workspace_actor(d.owner_user_id,d.space_id) AND d.owner_user_id=#{command.actorId})</select>
+ <update id="renew">WITH renewed AS(UPDATE pf.knowledge_index_build SET lease_until=clock_timestamp()+interval '60 seconds',updated_at=clock_timestamp()
+  WHERE id=#{command.buildId} AND state='RUNNING' AND owner_id=#{command.ownerId} AND generation=#{command.generation} AND fence=#{command.fence} AND lease_until&gt;clock_timestamp() RETURNING id)
+  UPDATE pf.heavy_runtime_slot h SET lease_until=clock_timestamp()+interval '60 seconds' WHERE h.id=1 AND h.kind='KNOWLEDGE'
+   AND h.reference_id=#{command.buildId} AND h.owner_id=#{command.ownerId} AND h.generation=#{command.generation} AND h.fence=#{command.fence} AND EXISTS(SELECT 1 FROM renewed)</update>
+ <update id="commitIndex">UPDATE pf.knowledge_index_version SET state='READY',chunk_count=#{count},content_manifest_sha256=#{manifest},completed_at=clock_timestamp()
+  WHERE space_id=#{command.spaceId} AND document_id=#{command.documentId} AND index_version=#{command.indexVersion} AND state='BUILDING'</update>
+ <update id="retirePrevious">UPDATE pf.knowledge_index_version SET state='RETIRED' WHERE space_id=#{command.spaceId} AND document_id=#{command.documentId}
+  AND index_version&lt;&gt;#{command.indexVersion} AND state='READY'</update>
+ <update id="commitDocument">UPDATE pf.knowledge_document SET active_index_version=#{command.indexVersion},status='READY',revision=revision+1,updated_at=clock_timestamp()
+  WHERE space_id=#{command.spaceId} AND id=#{command.documentId} AND owner_user_id=#{command.actorId} AND status IN('QUEUED','BUILDING') AND extraction_id=#{command.extractionId}</update>
+ <update id="completeBuild">UPDATE pf.knowledge_index_build SET state='COMMITTED',owner_id=NULL,lease_until=NULL,updated_at=clock_timestamp()
+  WHERE id=#{command.buildId} AND state='RUNNING' AND owner_id=#{command.ownerId} AND generation=#{command.generation} AND fence=#{command.fence}</update>
+ <update id="failIndex">UPDATE pf.knowledge_index_version SET state='FAILED' WHERE space_id=#{command.spaceId} AND document_id=#{command.documentId} AND index_version=#{command.indexVersion} AND state='BUILDING'</update>
+ <update id="failDocument">UPDATE pf.knowledge_document SET status=CASE WHEN active_index_version IS NULL THEN 'FAILED' ELSE 'READY' END,revision=revision+1,updated_at=clock_timestamp()
+  WHERE space_id=#{command.spaceId} AND id=#{command.documentId} AND owner_user_id=#{command.actorId} AND status&lt;&gt;'DELETED'</update>
+ <update id="failBuild">UPDATE pf.knowledge_index_build SET state='FAILED',owner_id=NULL,lease_until=NULL,error_code=#{error},updated_at=clock_timestamp()
+  WHERE id=#{command.buildId} AND state='RUNNING' AND owner_id=#{command.ownerId} AND generation=#{command.generation} AND fence=#{command.fence}</update>
+ <select id="search" resultMap="hit">
+  WITH eligible_documents AS MATERIALIZED (
+   SELECT d.space_id,d.id AS document_id,d.active_index_version AS index_version,d.source_kind,d.version_id,d.attachment_id,d.source_sha256,d.display_name AS name
+   FROM pf.knowledge_document d
+   JOIN pf.knowledge_base b ON b.space_id=d.space_id AND b.id=d.knowledge_base_id AND b.owner_user_id=d.owner_user_id AND b.state='ACTIVE'
+   JOIN pf.knowledge_index_version iv ON iv.space_id=d.space_id AND iv.document_id=d.id AND iv.index_version=d.active_index_version AND iv.state='READY'
+   WHERE d.space_id=#{actor.spaceId} AND d.owner_user_id=#{actor.userId} AND d.knowledge_base_id IN
+     <foreach collection="baseIds" item="baseId" open="(" separator="," close=")">#{baseId}</foreach>
+    AND d.status IN('READY','BUILDING') AND pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId})
+    AND ((d.source_kind='FILE_VERSION' AND EXISTS(SELECT 1 FROM pf.file_version fv JOIN pf.workspace w ON w.id=fv.workspace_id AND w.space_id=fv.space_id
+          WHERE fv.space_id=d.space_id AND fv.workspace_id=d.workspace_id AND fv.file_id=d.file_id AND fv.id=d.version_id AND w.actor_id=#{actor.userId}))
+      OR (d.source_kind='CHAT_ATTACHMENT' AND EXISTS(SELECT 1 FROM pf.chat_attachment ca WHERE ca.id=d.attachment_id AND ca.space_id=d.space_id AND ca.actor_id=#{actor.userId} AND ca.status='AVAILABLE')))
+  ), sem AS (
+   SELECT * FROM (SELECT ed.space_id,ed.document_id,ed.index_version,c.ordinal,c.body,c.source_location,
+       ed.source_kind,ed.version_id,ed.attachment_id,ed.source_sha256,ed.name,
+       row_number() OVER(ORDER BY c.embedding OPERATOR(pf.&lt;=&gt;) CAST(#{vector,jdbcType=VARCHAR} AS pf.vector),c.document_id,c.ordinal) AS rnk
+    FROM eligible_documents ed JOIN pf.knowledge_index_chunk c ON c.space_id=ed.space_id AND c.document_id=ed.document_id AND c.index_version=ed.index_version
+    WHERE CAST(#{vector,jdbcType=VARCHAR} AS text) IS NOT NULL
+     AND c.embedding OPERATOR(pf.&lt;=&gt;) CAST(#{vector,jdbcType=VARCHAR} AS pf.vector) &lt;= 0.20
+    ORDER BY c.embedding OPERATOR(pf.&lt;=&gt;) CAST(#{vector,jdbcType=VARCHAR} AS pf.vector),c.document_id,c.ordinal LIMIT 20) ranked
+  ), lex AS (
+   SELECT * FROM (SELECT ed.space_id,ed.document_id,ed.index_version,c.ordinal,c.body,c.source_location,
+       ed.source_kind,ed.version_id,ed.attachment_id,ed.source_sha256,ed.name,
+       row_number() OVER(ORDER BY ts_rank(c.normalized,plainto_tsquery('simple',#{query})) DESC,c.document_id,c.ordinal) AS rnk
+    FROM eligible_documents ed JOIN pf.knowledge_index_chunk c ON c.space_id=ed.space_id AND c.document_id=ed.document_id AND c.index_version=ed.index_version
+    WHERE (c.normalized @@ plainto_tsquery('simple',#{query})
+     <if test="terms != null and !terms.isEmpty()"><foreach collection="terms" item="term"> OR c.normalized @@ plainto_tsquery('simple',#{term})</foreach></if>)
+    ORDER BY ts_rank(c.normalized,plainto_tsquery('simple',#{query})) DESC,c.document_id,c.ordinal LIMIT 20) ranked
+  ), fused AS (
+   SELECT COALESCE(s.space_id,l.space_id) space_id,COALESCE(s.document_id,l.document_id) document_id,COALESCE(s.index_version,l.index_version) index_version,
+    COALESCE(s.ordinal,l.ordinal) ordinal,COALESCE(s.body,l.body) body,COALESCE(s.source_location,l.source_location) source_location,
+    COALESCE(s.source_kind,l.source_kind) source_kind,COALESCE(s.version_id,l.version_id) version_id,COALESCE(s.attachment_id,l.attachment_id) attachment_id,
+    COALESCE(s.source_sha256,l.source_sha256) source_sha256,COALESCE(s.name,l.name) name,
+    COALESCE(1.0/(60+s.rnk),0)+COALESCE(1.0/(60+l.rnk),0) score
+   FROM sem s FULL OUTER JOIN lex l ON l.space_id=s.space_id AND l.document_id=s.document_id AND l.index_version=s.index_version AND l.ordinal=s.ordinal
+  ) SELECT document_id,index_version,source_kind,version_id,attachment_id,name,body,source_location::text AS source_location,score,source_sha256 FROM fused ORDER BY score DESC,document_id,ordinal LIMIT #{limit}
+ </select>
+</mapper>

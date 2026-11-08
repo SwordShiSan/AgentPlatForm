@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agentplatform.infrastructure.dao.knowledge.MemoryMapper">
+ <resultMap id="memory" type="com.agentplatform.domain.knowledge.KnowledgeData$Memory">
+  <constructor><arg name="id" column="id" javaType="java.util.UUID"/><arg name="scopeKind" column="scope_kind" javaType="java.lang.String"/>
+   <arg name="workspaceId" column="workspace_id" javaType="java.util.UUID"/><arg name="category" column="category" javaType="java.lang.String"/>
+   <arg name="topicKey" column="topic_key" javaType="java.lang.String"/><arg name="content" column="content" javaType="java.lang.String"/>
+   <arg name="status" column="status" javaType="java.lang.String"/><arg name="revision" column="revision" javaType="_long"/>
+   <arg name="expiresAt" column="expires_at" javaType="java.time.Instant"/><arg name="confirmedAt" column="confirmed_at" javaType="java.time.Instant"/></constructor>
+ </resultMap>
+ <select id="authorized" resultType="boolean">SELECT pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}) AND EXISTS(SELECT 1 FROM pf.space s WHERE s.id=#{actor.spaceId} AND s.owner_user_id=#{actor.userId} AND s.type='PERSONAL')</select>
+ <select id="workspaceOwned" resultType="boolean">SELECT EXISTS(SELECT 1 FROM pf.workspace w WHERE w.id=#{workspace} AND w.space_id=#{actor.spaceId} AND w.actor_id=#{actor.userId})</select>
+ <select id="request" resultType="com.agentplatform.infrastructure.dao.knowledge.MemoryMapper$MemoryRequest">
+  SELECT action,request_hash,memory_id,result_revision FROM pf.memory_mutation_request WHERE space_id=#{actor.spaceId} AND actor_id=#{actor.userId} AND request_id=#{request}
+ </select>
+ <insert id="insertRequest">INSERT INTO pf.memory_mutation_request(space_id,actor_id,request_id,action,request_hash,memory_id,result_revision)
+  VALUES(#{actor.spaceId},#{actor.userId},#{request},#{action},#{hash},#{memory},#{revision})</insert>
+ <insert id="insert">INSERT INTO pf.personal_memory(id,space_id,owner_user_id,scope_kind,workspace_id,category,topic_key,content,content_sha256,source_kind,status,expires_at)
+  VALUES(#{input.id},#{input.actor.spaceId},#{input.actor.userId},#{input.scope},#{input.workspace},#{input.category},#{input.topic},#{input.content},#{input.contentHash},'USER_PROVIDED','PENDING',
+   clock_timestamp()+CASE #{input.category} WHEN 'PREFERENCE' THEN interval '180 days' WHEN 'PROCEDURE' THEN interval '90 days' ELSE interval '30 days' END)</insert>
+ <select id="memory" resultMap="memory">SELECT * FROM pf.personal_memory WHERE id=#{id} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId})</select>
+ <select id="lockMemory" resultMap="memory">SELECT * FROM pf.personal_memory WHERE id=#{id} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}) FOR UPDATE</select>
+ <select id="list" resultMap="memory">
+  SELECT * FROM pf.personal_memory WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId}
+   <if test="status != null and status != 'ALL'">AND status=#{status}</if>
+   <if test="workspace != null">AND workspace_id=#{workspace}</if>
+   AND pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}) ORDER BY created_at DESC,id LIMIT 500
+ </select>
+ <select id="recall" resultMap="memory">
+  SELECT * FROM pf.personal_memory WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND status='ACTIVE'
+   AND expires_at&gt;clock_timestamp() AND (scope_kind='PERSONAL' OR workspace_id=#{workspace})
+   AND (workspace_id IS NULL OR EXISTS(SELECT 1 FROM pf.workspace w WHERE w.id=personal_memory.workspace_id AND w.space_id=personal_memory.space_id AND w.actor_id=#{actor.userId}))
+   AND pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}) ORDER BY updated_at DESC,id LIMIT #{limit}
+ </select>
+ <update id="expire">WITH changed AS (
+  UPDATE pf.personal_memory SET status=CASE WHEN category IN('PREFERENCE','PROCEDURE') THEN 'REVIEW_REQUIRED' ELSE 'EXPIRED' END,
+   revision=revision+1,updated_at=clock_timestamp()
+  WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND status='ACTIVE' AND expires_at&lt;=clock_timestamp()
+   AND pf.authorize_workspace_actor(#{actor.userId},#{actor.spaceId}) RETURNING id,space_id,owner_user_id,category,revision,content_sha256
+ ) INSERT INTO pf.personal_memory_audit(id,space_id,owner_user_id,memory_id,action,revision,content_sha256)
+   SELECT gen_random_uuid(),space_id,owner_user_id,id,CASE WHEN category IN('PREFERENCE','PROCEDURE') THEN 'REVIEW' ELSE 'EXPIRE' END,revision,content_sha256 FROM changed</update>
+ <update id="supersedeTopic">WITH changed AS (UPDATE pf.personal_memory SET status='SUPERSEDED',revision=revision+1,updated_at=clock_timestamp()
+  WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND status='ACTIVE' AND scope_kind=#{target.scopeKind}
+   AND workspace_id IS NOT DISTINCT FROM #{target.workspaceId} AND topic_key=#{target.topicKey} AND id&lt;&gt;#{target.id}
+  RETURNING id,space_id,owner_user_id,revision,content_sha256)
+  INSERT INTO pf.personal_memory_audit(id,space_id,owner_user_id,memory_id,action,revision,content_sha256)
+   SELECT gen_random_uuid(),space_id,owner_user_id,id,'SUPERSEDE',revision,content_sha256 FROM changed</update>
+ <select id="activeTopic" resultMap="memory">SELECT * FROM pf.personal_memory WHERE space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId}
+  AND status='ACTIVE' AND scope_kind=#{target.scopeKind} AND workspace_id IS NOT DISTINCT FROM #{target.workspaceId} AND topic_key=#{target.topicKey} FOR UPDATE</select>
+ <update id="activate">UPDATE pf.personal_memory SET status='ACTIVE',confirmed_at=clock_timestamp(),revision=revision+1,updated_at=clock_timestamp()
+  WHERE id=#{id} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND revision=#{revision} AND status='PENDING' AND expires_at&gt;clock_timestamp()</update>
+ <update id="transition">UPDATE pf.personal_memory SET status=#{to},confirmed_at=NULL,revision=revision+1,updated_at=clock_timestamp()
+  WHERE id=#{id} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND revision=#{revision} AND status=#{from}</update>
+ <update id="edit">UPDATE pf.personal_memory SET category=COALESCE(#{category},category),topic_key=COALESCE(#{topic},topic_key),content=#{content},content_sha256=#{hash},
+  expires_at=clock_timestamp()+CASE COALESCE(#{category},category) WHEN 'PREFERENCE' THEN interval '180 days' WHEN 'PROCEDURE' THEN interval '90 days' ELSE interval '30 days' END,
+  revision=revision+1,updated_at=clock_timestamp() WHERE id=#{id} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId} AND revision=#{revision} AND status IN('PENDING','ACTIVE')</update>
+ <insert id="audit">INSERT INTO pf.personal_memory_audit(id,space_id,owner_user_id,memory_id,action,revision,content_sha256)
+  SELECT #{id},#{actor.spaceId},#{actor.userId},id,#{action},#{revision},#{hash} FROM pf.personal_memory WHERE id=#{memory} AND space_id=#{actor.spaceId} AND owner_user_id=#{actor.userId}</insert>
+</mapper>

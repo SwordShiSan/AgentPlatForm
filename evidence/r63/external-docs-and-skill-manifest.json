@@ -1,0 +1,58 @@
+{
+  "stage": "R6.3",
+  "updatedAt": "2026-11-09",
+  "entries": [
+    {
+      "path": "项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R6.3-知识索引个人记忆与上下文压缩实施计划.md",
+      "sha256": "20522bcf732cf61cb42a6869859dd2b74f60a2b25eeb0630253f3408d4199f06"
+    },
+    {
+      "path": "项目文档/06-AgentScope重构专项/08-重构进度管控/01-全局重构进度.md",
+      "sha256": "9614f1a9ff8a6a0e6fc46f022881b05e1b10aa29852dc7677bc7485eaf09667a"
+    },
+    {
+      "path": "项目文档/06-AgentScope重构专项/08-重构进度管控/阶段/R6-个人能力与知识.md",
+      "sha256": "da3cfddd1e35d17945810dfd8de52ae9aa360509c2c427ca6c4b6e92f81702e6"
+    },
+    {
+      "path": "项目文档/06-AgentScope重构专项/07-交付与验收/阶段/R6-个人能力与知识.md",
+      "sha256": "79b0c3acefea0891d32b29a8d223ef1db14a0e03a7ae717cd0a33e591679f382"
+    },
+    {
+      "path": "项目文档/06-AgentScope重构专项/08-重构进度管控/03-风险问题与决策台账.md",
+      "sha256": "8d9c652a6c4d3c51e471e8b6794c25ce97e954be43cba409a1528c4864f8de8c"
+    },
+    {
+      "path": "项目文档/06-AgentScope重构专项/08-重构进度管控/05-变更与交接记录.md",
+      "sha256": "91f2708f57d84c77d53f722d0168f4b22785e6c76aea75548ec945d2d1581fbf"
+    },
+    {
+      "path": "项目文档/06-AgentScope重构专项/00-总体方案/04-技术选型与ADR.md",
+      "sha256": "638957eb8be697455811c524c89744e73498ab1e18a7d85234e02546a83f867d"
+    },
+    {
+      "path": "项目文档/06-AgentScope重构专项/02-核心执行/06-上下文与记忆.md",
+      "sha256": "b86325344c6dc6b99d5dea39c77029818cbb0d8b6a213092ace9cf14c2bec21e"
+    },
+    {
+      "path": "项目文档/06-AgentScope重构专项/02-核心执行/08-上下文引擎与渐进加载.md",
+      "sha256": "aea65a043b577477c73ebc337838ebcc40e62401186b3c4970ab36712938d6cc"
+    },
+    {
+      "path": "项目文档/06-AgentScope重构专项/02-核心执行/09-长期记忆生命周期.md",
+      "sha256": "c69b5095f903dd9790dc8cc00dc457b55fdaa8947d6a8927d51b740e330b2797"
+    },
+    {
+      "path": "项目文档/06-AgentScope重构专项/04-个人能力与协作/03-知识与主动检索.md",
+      "sha256": "ff23ab8625ab59feafe4f98d38b58ecffef17e1abe16e856c1a762a1d6d3c1bc"
+    },
+    {
+      "path": "CodexSkill/ai-agent-platform/references/acceptance-efficiency.md",
+      "sha256": "a63ae71be31cae19ce8c1bc72f2cca0c10873f7fbad13885a4aaa85c4fad4181"
+    },
+    {
+      "path": "CodexSkill/ai-agent-platform/references/reconstruction-learning-loop.md",
+      "sha256": "faf3d3e1bd3d29173605ccd05da40e9462b053b8854b19e8439a348c64261efb"
+    }
+  ]
+}
