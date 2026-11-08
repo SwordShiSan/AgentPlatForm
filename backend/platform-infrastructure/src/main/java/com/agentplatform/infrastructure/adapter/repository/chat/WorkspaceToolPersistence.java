@@ -14,21 +14,33 @@ final class WorkspaceToolPersistence extends ChatPersistenceSupport {
     static final UUID BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000020");
     static final UUID CONTEXT_BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000021");
     static final UUID CONTEXT_WORKSPACE_BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000022");
+    static final UUID COMPACTION_BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000023");
+    static final UUID COMPACTION_WORKSPACE_BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000024");
+    static final UUID EVIDENCE_BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000025");
+    static final UUID EVIDENCE_WORKSPACE_BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000026");
+    static final UUID EVIDENCE_COMPACTION_BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000027");
+    static final UUID EVIDENCE_COMPACTION_WORKSPACE_BUNDLE=UUID.fromString("0199e000-0000-7000-8000-000000000028");
     WorkspaceToolPersistence(ChatMappers mappers){super(mappers);}
     static boolean enabled(ChatMappers c,UUID space,UUID task) {
         var catalog=c.workspaceTools().catalog(space,task);
         if(catalog==null)return false;
-        if(!WorkspaceTools.VERSION.equals(catalog.catalogVersion())||!BUNDLE.equals(catalog.runtimeBundleId())&&!CONTEXT_WORKSPACE_BUNDLE.equals(catalog.runtimeBundleId()))
+        if(!WorkspaceTools.VERSION.equals(catalog.catalogVersion())||!Set.of(BUNDLE,CONTEXT_WORKSPACE_BUNDLE,COMPACTION_WORKSPACE_BUNDLE,EVIDENCE_WORKSPACE_BUNDLE,EVIDENCE_COMPACTION_WORKSPACE_BUNDLE).contains(catalog.runtimeBundleId()))
             throw new ChatFailure(409,"TOOL_CATALOG_INCOMPATIBLE");
         return true;
     }
     static Bundle bundle(ChatMappers c,UUID space,UUID task){
         boolean workspace=enabled(c,space,task);
-        return ContextPolicy.CURRENT_VERSION.equals(ContextPolicy.fromSnapshot(frozen(c,task,space)).version())?ChatRuntime.contextBundle(workspace):(workspace?ChatRuntime.workspaceBundle():ChatRuntime.bundle());
+        var snapshot=frozen(c,task,space);var policy=ContextPolicy.fromSnapshot(snapshot);
+        if(Boolean.TRUE.equals(snapshot.get("contextEvidenceEnabled")))return ChatRuntime.evidenceBundle(workspace,policy.compactionEnabled());
+        if(policy.compactionEnabled())return ChatRuntime.compactionBundle(workspace);
+        return policy.supportsLargeWindow()?ChatRuntime.contextBundle(workspace):(workspace?ChatRuntime.workspaceBundle():ChatRuntime.bundle());
     }
     static UUID bundleId(ChatMappers c,UUID space,UUID task){
         boolean workspace=enabled(c,space,task);
-        if(ContextPolicy.CURRENT_VERSION.equals(ContextPolicy.fromSnapshot(frozen(c,task,space)).version()))return workspace?CONTEXT_WORKSPACE_BUNDLE:CONTEXT_BUNDLE;
+        var snapshot=frozen(c,task,space);var policy=ContextPolicy.fromSnapshot(snapshot);
+        if(Boolean.TRUE.equals(snapshot.get("contextEvidenceEnabled")))return policy.compactionEnabled()?(workspace?EVIDENCE_COMPACTION_WORKSPACE_BUNDLE:EVIDENCE_COMPACTION_BUNDLE):(workspace?EVIDENCE_WORKSPACE_BUNDLE:EVIDENCE_BUNDLE);
+        if(policy.compactionEnabled())return workspace?COMPACTION_WORKSPACE_BUNDLE:COMPACTION_BUNDLE;
+        if(policy.supportsLargeWindow())return workspace?CONTEXT_WORKSPACE_BUNDLE:CONTEXT_BUNDLE;
         return workspace?BUNDLE:ChatPersistenceSupport.BUNDLE;
     }
     static void resourceGuard(ChatMappers c,Lease lease) {

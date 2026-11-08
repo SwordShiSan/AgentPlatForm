@@ -24,9 +24,15 @@ public final class HarnessData {
     public enum OperationStatus { PREPARED, RUNNING, SUCCEEDED, UNKNOWN, DENIED, FAILED }
 
     public record Scope(String spaceId, String actorId, String conversationId, String taskId,
-                        String attemptId, long fence, boolean planMode) {
+                        String attemptId, long fence, boolean planMode, String workspaceId) {
+        /** Source compatibility for callers and historical probes without a workspace binding. */
+        public Scope(String spaceId, String actorId, String conversationId, String taskId,
+                     String attemptId, long fence, boolean planMode) {
+            this(spaceId, actorId, conversationId, taskId, attemptId, fence, planMode, null);
+        }
         public Scope {
             for (String id : List.of(spaceId, actorId, conversationId, taskId, attemptId)) UUID.fromString(id);
+            if (workspaceId != null) UUID.fromString(workspaceId);
             if (fence < 1) throw new IllegalArgumentException("Invalid fence");
         }
     }

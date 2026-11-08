@@ -22,8 +22,10 @@ public class AttachmentConfiguration {
             @org.springframework.beans.factory.annotation.Value("${platform.chat.context-v2.enabled:false}")boolean contextEnabled,
             @org.springframework.beans.factory.annotation.Value("${platform.chat.context.window-tokens:262144}")int window,
             @org.springframework.beans.factory.annotation.Value("${platform.chat.context.max-output-tokens:4096}")int output,
+            @org.springframework.beans.factory.annotation.Value("${platform.chat.context.compaction.enabled:false}")boolean compactionEnabled,
             @org.springframework.beans.factory.annotation.Value("${platform.workspace.tools.enabled:false}")boolean tools){
         if(!contextEnabled)throw new IllegalArgumentException("Attachments require the validated context-v2 bundle");
-        return new AttachmentSubmission(mapper,transactions,new AttachmentAdmission(mapper,transactions,chat,assets,com.agentplatform.domain.chat.ContextPolicy.current(window,output),tools));
+        var contextPolicy=compactionEnabled?com.agentplatform.domain.chat.ContextPolicy.compaction(window,output):com.agentplatform.domain.chat.ContextPolicy.current(window,output);
+        return new AttachmentSubmission(mapper,transactions,new AttachmentAdmission(mapper,transactions,chat,assets,contextPolicy,tools));
     }
 }

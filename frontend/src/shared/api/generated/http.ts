@@ -812,6 +812,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tasks/{id}/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTaskContextSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tasks/{id}/diagnostics": {
         parameters: {
             query?: never;
@@ -1669,6 +1685,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/knowledge-bases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listKnowledgeBases"];
+        put?: never;
+        post: operations["createKnowledgeBase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge-bases/{id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listKnowledgeDocuments"];
+        put?: never;
+        post: operations["addKnowledgeDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge-documents/{id}/rebuild": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["rebuildKnowledgeDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge-documents/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteKnowledgeDocument"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["searchKnowledge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/memories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listPersonalMemories"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/memories/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createPersonalMemoryCandidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/memories/{id}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["changePersonalMemory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/storage-usage": {
         parameters: {
             query?: never;
@@ -2385,6 +2529,29 @@ export interface components {
                 modelActive: boolean;
             };
         };
+        TaskContextSummary: {
+            /** Format: uuid */
+            taskId: string;
+            modelWindow: number;
+            taskWindow: number;
+            maxOutput: number;
+            safetyTokens: number;
+            inputLimit: number;
+            estimatedInputTokens: number | null;
+            /** @constant */
+            estimateOnly: true;
+            degradationCodes: string[];
+            projection: null | {
+                epoch: number;
+                bundleHash: string;
+                sourceManifestSha256: string;
+                summarySha256: string;
+                estimatedInputTokens: number;
+                policyVersion: string;
+                /** Format: date-time */
+                createdAt: string;
+            };
+        };
         TaskDiagnostics: {
             /** Format: uuid */
             taskId: string;
@@ -2863,6 +3030,108 @@ export interface components {
                 bytes: number;
                 objects: number;
             }[];
+        };
+        CreateKnowledgeBase: {
+            name: string;
+        };
+        KnowledgeBase: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            state: "ACTIVE" | "DELETED";
+            revision: number;
+        };
+        AddKnowledgeDocument: {
+            /** Format: uuid */
+            extractionId: string;
+        };
+        KnowledgeDocument: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            sourceKind: "FILE_VERSION" | "CHAT_ATTACHMENT";
+            /** Format: uuid */
+            fileId: string | null;
+            /** Format: uuid */
+            versionId: string | null;
+            /** Format: uuid */
+            attachmentId: string | null;
+            /** Format: uuid */
+            extractionId: string;
+            name: string;
+            /** @enum {string} */
+            state: "QUEUED" | "BUILDING" | "READY" | "FAILED" | "BLOCKED" | "DELETED";
+            /** Format: uuid */
+            activeIndexVersion: string | null;
+            revision: number;
+        };
+        KnowledgeSearchRequest: {
+            query: string;
+            baseIds: string[];
+            /** @default 8 */
+            limit: number;
+            semanticRequired: boolean;
+        };
+        KnowledgeSearchResult: {
+            hits: components["schemas"]["KnowledgeSearchHit"][];
+            semanticAvailable: boolean;
+            /** @enum {string|null} */
+            degradationReason: "SEMANTIC_ENCODER_UNAVAILABLE" | null;
+        };
+        KnowledgeSearchHit: {
+            /** Format: uuid */
+            documentId: string;
+            /** @enum {string} */
+            sourceKind: "FILE_VERSION" | "CHAT_ATTACHMENT";
+            /** Format: uuid */
+            versionId: string | null;
+            /** Format: uuid */
+            attachmentId: string | null;
+            name: string;
+            text: string;
+            /** @description JSON location metadata fixed to the indexed source version */
+            location: string;
+            score: number;
+            sourceSha256: string;
+        };
+        CreatePersonalMemoryCandidate: {
+            /** @enum {string} */
+            scopeKind: "PERSONAL" | "WORKSPACE";
+            /** Format: uuid */
+            workspaceId?: string | null;
+            /** @enum {string} */
+            category: "PREFERENCE" | "FACT" | "PROCEDURE";
+            topicKey: string;
+            content: string;
+        };
+        ChangePersonalMemory: {
+            /** @enum {string} */
+            action: "CONFIRM" | "REJECT" | "EDIT" | "SUPERSEDE" | "DELETE";
+            /** @enum {string|null} */
+            category?: "PREFERENCE" | "FACT" | "PROCEDURE" | null;
+            topicKey?: string | null;
+            content?: string | null;
+            expectedRevision: number;
+        };
+        PersonalMemory: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            scopeKind: "PERSONAL" | "WORKSPACE";
+            /** Format: uuid */
+            workspaceId: string | null;
+            /** @enum {string} */
+            category: "PREFERENCE" | "FACT" | "PROCEDURE";
+            topicKey: string;
+            content: string;
+            /** @enum {string} */
+            status: "PENDING" | "ACTIVE" | "REJECTED" | "SUPERSEDED" | "REVIEW_REQUIRED" | "EXPIRED" | "DELETED";
+            revision: number;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date-time */
+            confirmedAt: string | null;
         };
     };
     responses: {
@@ -4524,6 +4793,33 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+        };
+    };
+    getTaskContextSummary: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Owner-only redacted context estimate and projection lineage */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskContextSummary"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
         };
     };
     getTaskDiagnostics: {
@@ -6330,6 +6626,312 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentExtraction"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    listKnowledgeBases: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Knowledge bases in the current personal space */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeBase"][];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    createKnowledgeBase: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateKnowledgeBase"];
+            };
+        };
+        responses: {
+            /** @description Knowledge base created */
+            201: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeBase"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    listKnowledgeDocuments: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path: {
+                id: components["parameters"]["PreviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized document index status */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeDocument"][];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    addKnowledgeDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: components["parameters"]["PreviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddKnowledgeDocument"];
+            };
+        };
+        responses: {
+            /** @description Index build durably accepted */
+            202: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeDocument"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    rebuildKnowledgeDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: components["parameters"]["PreviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rebuild durably accepted */
+            202: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeDocument"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    deleteKnowledgeDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: components["parameters"]["PreviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Document immediately hidden from search; historical index facts retained */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    searchKnowledge: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeSearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Authorized hybrid search with fixed source identity and locator */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeSearchResult"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    listPersonalMemories: {
+        parameters: {
+            query?: {
+                status?: "ALL" | "PENDING" | "ACTIVE" | "REJECTED" | "SUPERSEDED" | "REVIEW_REQUIRED" | "EXPIRED" | "DELETED";
+                workspaceId?: string;
+            };
+            header?: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Owner-only memory management projection */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalMemory"][];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    createPersonalMemoryCandidate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePersonalMemoryCandidate"];
+            };
+        };
+        responses: {
+            /** @description Candidate created in PENDING state */
+            201: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalMemory"];
+                };
+            };
+            default: components["responses"]["IdentityProblem"];
+        };
+    };
+    changePersonalMemory: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional selector; current membership and credential policy are always checked. */
+                "X-Space-Id"?: components["parameters"]["SpaceSelector"];
+                /** @description Session-bound token; writes also require an exact allowed Origin */
+                "X-CSRF-Token": components["parameters"]["CsrfToken"];
+                /** @description Reuse for an uncertain response. Same actor/space/path/key with another body returns409. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: components["parameters"]["PreviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePersonalMemory"];
+            };
+        };
+        responses: {
+            /** @description Versioned memory action result */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalMemory"];
                 };
             };
             default: components["responses"]["IdentityProblem"];

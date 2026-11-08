@@ -24,10 +24,10 @@ final class ExecutionPersistence extends ChatPersistenceSupport {
         String instructions=c.executionPolicy().policy(l.taskId()).planMode()
                 ? "You are in text-only Plan mode. Use only the provided platform CONTROL tools. Ask platform_ask_user only when essential information is missing. Save a concrete plan with platform_plan_write, then request review with platform_plan_review in a SEPARATE model round. At most one CONTROL invocation per round. Do not begin execution before the explicit review result. Approval permits text continuation only; no file, shell, workspace or business tools exist. Never invent a user answer. A revision or rejection means discuss and prepare a revised plan for another explicit review."
                 : "You are a helpful assistant. Answer ordinary text questions. No tools or filesystem access are available.";
-        if(ContextPolicy.CURRENT_VERSION.equals(contextPolicy.version()))instructions=ChatInstructions.current(c.executionPolicy().policy(l.taskId()).planMode(),WorkspaceToolPersistence.enabled(c,l.spaceId(),l.taskId()));
+        if(contextPolicy.supportsLargeWindow())instructions=ChatInstructions.current(c.executionPolicy().policy(l.taskId()).planMode(),WorkspaceToolPersistence.enabled(c,l.spaceId(),l.taskId()));
         messages.add(HarnessData.Message.text(HarnessData.Role.SYSTEM,instructions));
         { var rows37 = c.conversation().selectMessage37(l.spaceId(), l.conversationId(), l.taskId());
-            long byteLimit=ContextPolicy.CURRENT_VERSION.equals(contextPolicy.version())?contextPolicy.stateBytes():6144;
+            long byteLimit=contextPolicy.supportsLargeWindow()?contextPolicy.stateBytes():6144;
             long estimate=512;for (var row37 : rows37){var content=blocks(row37.value2());String text=String.valueOf(content.getFirst().get("text"));
                 for(var block:content)if("FILE_REFERENCE".equals(block.get("type")))text+=com.agentplatform.domain.attachment.AttachmentContext.marker(UUID.fromString((String)block.get("extractionId")),(String)block.get("textSha256"));
                 estimate+=text.getBytes(StandardCharsets.UTF_8).length+32;if(estimate>byteLimit)throw new ChatFailure(422,"CONTEXT_REQUIRED_TOO_LARGE");messages.add(HarnessData.Message.text(HarnessData.Role.valueOf(row37.value1()),text));}
@@ -54,7 +54,7 @@ final class ExecutionPersistence extends ChatPersistenceSupport {
     public Call beginCall(Lease l,boolean real,long estimatedInput){return tx(c->{
         owned(c,l,false);authorizeCredential(c,l);activeModel(c,l);RecoveryPersistence.requireTime(c,l);
         var policy=ContextPolicy.fromSnapshot(frozen(c,l));
-        if(!ContextPolicy.CURRENT_VERSION.equals(policy.version()))return beginCall(l,real);
+        if(!policy.supportsLargeWindow())return beginCall(l,real);
         if(!daily(c,l.taskId()))throw new ChatFailure(409,"CONTEXT_QUOTA_MODE_INCOMPATIBLE");
         long tokens=policy.reserveTokens(estimatedInput);long reservedInput=tokens-policy.maxOutput();
         var snapshot=frozen(c,l);long inPrice=((Number)snapshot.get("inputPrice")).longValue(),outPrice=((Number)snapshot.get("outputPrice")).longValue();

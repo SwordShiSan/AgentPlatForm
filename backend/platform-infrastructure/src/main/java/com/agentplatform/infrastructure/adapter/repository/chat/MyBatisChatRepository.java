@@ -49,12 +49,18 @@ public final class MyBatisChatRepository implements ChatRepository {
             com.agentplatform.infrastructure.dao.chat.WorkspaceConfigurationMapper workspaceConfiguration,
             com.agentplatform.infrastructure.dao.chat.SubmissionIdentityMapper submissionIdentity,ConfigurationResolver.Layer locks,
             boolean planCapability,boolean permissionsCapability) {
+        this(mappers,workspaceTools,contextPolicy,workspaceConfiguration,submissionIdentity,locks,planCapability,permissionsCapability,false);
+    }
+    public MyBatisChatRepository(ChatMappers mappers,boolean workspaceTools,ContextPolicy contextPolicy,
+            com.agentplatform.infrastructure.dao.chat.WorkspaceConfigurationMapper workspaceConfiguration,
+            com.agentplatform.infrastructure.dao.chat.SubmissionIdentityMapper submissionIdentity,ConfigurationResolver.Layer locks,
+            boolean planCapability,boolean permissionsCapability,boolean contextEvidenceEnabled) {
         this.workspaceConfiguration=workspaceConfiguration;this.configurationLocks=locks;
         this.planCapability=planCapability;this.permissionsCapability=permissionsCapability;
         this.mappers=mappers;plans=new PlanPersistence(mappers);
         controls = new ControlPersistence(mappers);
         recovery = new RecoveryPersistence(mappers);
-        conversations = new ConversationPersistence(mappers,workspaceTools,contextPolicy,workspaceConfiguration,submissionIdentity,locks,planCapability,permissionsCapability);
+        conversations = new ConversationPersistence(mappers,workspaceTools,contextPolicy,workspaceConfiguration,submissionIdentity,locks,planCapability,permissionsCapability,contextEvidenceEnabled);
         configurations = new ConfigurationPersistence(mappers,contextPolicy);
         dispatches = new DispatchPersistence(mappers);
         executions = new ExecutionPersistence(mappers);
@@ -171,6 +177,7 @@ public final class MyBatisChatRepository implements ChatRepository {
     @Override public First firstPlan(Actor a,UUID k,String title,UUID model,String source,String text,boolean plan){return conversations.firstPlan(a,k,title,model,source,text,plan);}
     @Override public Task submitPlan(Actor a,UUID conversation,UUID k,UUID model,String source,String text,boolean plan){return conversations.submitPlan(a,conversation,k,model,source,text,plan);}
 
+    @Override public UUID boundWorkspace(Lease lease){return new PermissionPersistence(mappers).boundWorkspace(lease);}
     @Override public com.agentplatform.types.TaskPermissionData.View permissions(Actor a,UUID t){return new PermissionPersistence(mappers).permissions(a,t);}
     @Override public com.agentplatform.types.TaskPermissionData.Scopes permissionScopes(Actor a,UUID t){return new PermissionPersistence(mappers).scopes(a,t);}
     @Override public com.agentplatform.types.TaskPermissionData.Scopes permissionScopes(Actor a,UUID t,String cursor){return new PermissionPersistence(mappers).scopes(a,t,cursor);}

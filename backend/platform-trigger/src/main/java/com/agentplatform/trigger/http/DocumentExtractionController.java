@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 
 @RestController @Profile("workspace-api") @RequestMapping("/api/v1")
-@ConditionalOnProperty(name="platform.attachments.enabled",havingValue="true")
+@ConditionalOnProperty(name={"platform.attachments.enabled","platform.preview.enabled"},havingValue="true")
 public final class DocumentExtractionController {
     private final DocumentExtractionApi service;
     public DocumentExtractionController(DocumentExtractionApi service){this.service=service;}

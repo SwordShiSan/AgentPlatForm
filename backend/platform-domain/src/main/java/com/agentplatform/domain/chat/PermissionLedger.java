@@ -6,6 +6,8 @@ import com.agentplatform.types.harness.HarnessData;
 import java.util.UUID;
 
 public interface PermissionLedger {
+    /** Frozen workspace binding used for task-scoped context sources; legacy tasks are unbound. */
+    default UUID boundWorkspace(Lease lease) { return null; }
     View permissions(Actor actor, UUID task);
     Scopes permissionScopes(Actor actor, UUID task);
     Scopes permissionScopes(Actor actor, UUID task, String cursor);

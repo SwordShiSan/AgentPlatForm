@@ -32,6 +32,7 @@ public final class TransactionalChatRepository implements ChatRepository {
     @Override public Task submitV2(Actor a,UUID conversation,UUID key,com.agentplatform.domain.chat.TaskSubmissionFingerprint.Request request,String hash){return tx(transactions,()->delegate.submitV2(a,conversation,key,request,hash));}
     @Override public List<com.agentplatform.domain.attachment.AttachmentSource> attachmentSources(Lease lease){return tx(transactions,()->delegate.attachmentSources(lease));}
     @Override public UUID commitAttachmentCheckpoint(Lease lease,Bundle bundle,HarnessData.CheckpointDraft draft,Map<UUID,String> texts){return tx(transactions,()->delegate.commitAttachmentCheckpoint(lease,bundle,draft,texts));}
+    @Override public UUID boundWorkspace(Lease lease){return tx(transactions,()->delegate.boundWorkspace(lease));}
     @Override public java.util.List<com.agentplatform.types.WorkspaceOperationData.Artifact> workspaceOperationArtifacts(Actor actor,UUID operation){return tx(snapshots,()->delegate.workspaceOperationArtifacts(actor,operation));}
     @Override public Bundle executionBundle(Lease lease){return tx(transactions,()->delegate.executionBundle(lease));}
     @Override public boolean workspaceToolTask(Lease lease){return tx(transactions,()->delegate.workspaceToolTask(lease));}

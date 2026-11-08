@@ -12,7 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
-@RestController @Profile("workspace-runner")
+@RestController @Profile({"workspace-runner","preview-runner"})
 @ConditionalOnProperty(name="platform.attachments.enabled",havingValue="true")
 @RequestMapping("/internal/extractions/v1")
 public final class ExtractionRunnerController {

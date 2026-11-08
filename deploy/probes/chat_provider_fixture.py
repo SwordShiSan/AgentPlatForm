@@ -165,6 +165,12 @@ class Handler(BaseHTTPRequestHandler):
             elif prompt.startswith('fixture:recovery-tool') and not any(message.get('role') == 'tool' for message in messages):
                 chunk({'tool_calls': [{'index': 0, 'id': 'recovery-operation-1', 'type': 'function',
                        'function': {'name': 'recovery_probe', 'arguments': '{"text":"one"}'}}]}, 'tool_calls')
+            elif any('fixture:r63-context-evidence' in str(message.get('content','')) for message in messages if message.get('role')=='user'):
+                references=[str(message.get('content','')) for message in messages if message.get('role')=='assistant'
+                            and '[PLATFORM_REFERENCE ' in str(message.get('content',''))]
+                memory=sum(('kind=PERSONAL_MEMORY' in item or 'kind=WORKSPACE_MEMORY' in item) for item in references)
+                knowledge=sum('kind=KNOWLEDGE' in item for item in references)
+                chunk({'content':f'context-evidence-memory={memory};knowledge={knowledge}'},'stop')
             elif prompt.startswith('fixture:empty'):
                 chunk({}, 'stop')
             else:

@@ -2,6 +2,7 @@ package com.agentplatform.domain.harness;
 
 import com.agentplatform.types.harness.HarnessData.*;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
@@ -26,8 +27,21 @@ public final class HarnessPorts {
         }
     }
     public interface ContextAssembler { CompletionStage<List<Message>> assemble(Scope scope, List<Message> history, List<Message> candidates); }
-    public interface MemoryPort { CompletionStage<List<Message>> recall(Scope scope); }
-    public interface RetrievalPort { CompletionStage<List<Message>> search(Scope scope); }
+    /** Source-bound reference data; it is context material, never a tool result or runtime fact. */
+    public record EvidenceReference(String sourceKind, String sourceId, String sourceVersion,
+                                    String contentSha256, String location, String text, boolean required) {
+        public EvidenceReference {
+            Objects.requireNonNull(sourceKind); Objects.requireNonNull(sourceId); Objects.requireNonNull(sourceVersion);
+            Objects.requireNonNull(contentSha256); Objects.requireNonNull(location); Objects.requireNonNull(text);
+            if (!contentSha256.matches("[a-f0-9]{64}") || text.isBlank()) throw new IllegalArgumentException("Invalid evidence reference");
+        }
+    }
+    public record EvidenceResult(List<EvidenceReference> references, boolean degraded, String degradationReason) {
+        public EvidenceResult { references=List.copyOf(references); if (degraded!=(degradationReason!=null)) throw new IllegalArgumentException("Invalid evidence status"); }
+    }
+    public interface MemoryPort { CompletionStage<EvidenceResult> recall(Scope scope); }
+    public interface RetrievalPort { CompletionStage<EvidenceResult> search(Scope scope, String query); }
+    public interface EvidenceValidationPort { void validate(Scope scope, List<EvidenceReference> references); }
     public interface CompletionPolicy { CompletionStage<Completion> evaluate(Scope scope, Message candidate); }
     public interface PolicyPort { Decision decide(Scope scope, Call call); }
     /** Physical termination is independent of result delivery or cancellation of a Java Future. */

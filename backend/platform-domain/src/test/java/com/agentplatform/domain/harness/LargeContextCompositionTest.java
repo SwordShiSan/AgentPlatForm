@@ -8,7 +8,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class LargeContextCompositionTest {
     @Test void bothFrozenProductionContextBundlesAndLegacyBundlesAreAvailable() {
-        for(var bundle:new Bundle[]{ChatRuntime.bundle(),ChatRuntime.workspaceBundle(),ChatRuntime.contextBundle(false),ChatRuntime.contextBundle(true)})
+        for(var bundle:new Bundle[]{ChatRuntime.bundle(),ChatRuntime.workspaceBundle(),ChatRuntime.contextBundle(false),ChatRuntime.contextBundle(true),
+                ChatRuntime.evidenceBundle(false,false),ChatRuntime.evidenceBundle(true,false),ChatRuntime.evidenceBundle(false,true),ChatRuntime.evidenceBundle(true,true)})
             assertDoesNotThrow(()->CompositionRules.validate(bundle,1,1,false));
     }
     @Test void newContextIdentityDoesNotPermitOtherComponentOrAuthorityChanges() {

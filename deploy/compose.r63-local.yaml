@@ -1,0 +1,264 @@
+name: agentplatform-r63-local
+x-app: &app
+  image: ${R63_API_IMAGE:?Build the local API image first}
+  user: "10001:10001"
+  read_only: true
+  restart: "no"
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  pids_limit: 128
+  tmpfs: ["/tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001,mode=700", "/var/run/platform-native:rw,exec,nosuid,nodev,size=128m,uid=10001,gid=10001,mode=700"]
+  networks: [r63]
+  logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.1-pg17-trixie@sha256:137f044b0efe3d57f39b972b9b53641b1f2045b99d879e298bbf514a25787dcf
+    restart: "no"
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: 1
+    environment: {POSTGRES_DB: r63_app, POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password}
+    secrets: [postgres_password]
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    networks: [r63]
+    healthcheck: {test: [CMD, pg_isready, -U, postgres, -d, r63_app], interval: 2s, timeout: 3s, retries: 30}
+  rabbitmq:
+    image: rabbitmq:4.3.6-management@sha256:8dd6e3570ddaa2ef82a6c3a8950e79c1f73893adfbdddbc374fc1f1ac8a0f5dd
+    hostname: agentplatform-r63-mq
+    restart: "no"
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: 1
+    environment: {RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 1:1 +A 4"}
+    volumes:
+      - "mq-data:/var/lib/rabbitmq"
+      - "${R63_ROOT:?Set fixture directory}/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro"
+      - "${R63_ROOT}/rabbitmq-definitions.json:/etc/rabbitmq/definitions.json:ro"
+    networks: [r63]
+    healthcheck: {test: [CMD, rabbitmq-diagnostics, -q, ping], interval: 5s, timeout: 5s, retries: 24}
+  seaweedfs:
+    image: chrislusf/seaweedfs@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+    restart: "no"
+    mem_limit: 160m
+    memswap_limit: 160m
+    cpus: 1
+    entrypoint: [weed]
+    command: [server, "-dir=/data", "-ip=seaweedfs", "-ip.bind=0.0.0.0", "-filer", "-s3", "-s3.ip.bind=0.0.0.0", "-master.volumeSizeLimitMB=64", "-volume.max=4", "-volume.minFreeSpace=1"]
+    environment: {GOMAXPROCS: "1", GOMEMLIMIT: 128MiB, WEED_MASTER_VOLUME_GROWTH_COPY_1: "1"}
+    volumes: ["s3-data:/data"]
+    networks: [r63]
+  mcp-proxy:
+    image: ubuntu/squid@sha256:031d51a433928cf7476611f6138af85681ce4eec8568d1d9a4dcd28d16289c78
+    restart: "no"
+    mem_limit: 32m
+    memswap_limit: 32m
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    ulimits: {nofile: {soft: 1024, hard: 1024}}
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=8m,mode=1777", "/var/log/squid:rw,nosuid,size=8m", "/var/spool/squid:rw,nosuid,size=8m"]
+    volumes: ["${R63_ROOT}/squid.conf:/etc/squid/squid.conf:ro"]
+    extra_hosts: ["fixture.invalid:${R63_MCP_FIXTURE_IP}"]
+    entrypoint: [/usr/sbin/squid-gnutls, -N, -f, /etc/squid/squid.conf]
+    healthcheck: {test: [CMD, /usr/sbin/squid-gnutls, -k, check, -f, /etc/squid/squid.conf], interval: 5s, timeout: 3s, retries: 20}
+    networks:
+      mcp-control: {ipv4_address: "${R63_PROXY_IP}"}
+      mcp-egress: {}
+      mcp-fixture: {}
+  mcp-fixture:
+    image: "${R63_MCP_FIXTURE_ID}"
+    user: "10001:10001"
+    restart: "no"
+    mem_limit: 24m
+    memswap_limit: 24m
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - "${R63_ROOT}/fixture.key:/fixture/fixture.key:ro"
+      - "${R63_ROOT}/fixture.crt:/fixture/fixture.crt:ro"
+      - "./probes/r63-mcp-tls-fixture.py:/fixture-server.py:ro"
+    entrypoint: [python3, -u, /fixture-server.py]
+    healthcheck: {test: [CMD, python3, -c, "import socket; s=socket.create_connection(('127.0.0.1',8443),2); s.close()"], interval: 5s, timeout: 3s, retries: 20}
+    networks:
+      mcp-fixture: {ipv4_address: "${R63_MCP_FIXTURE_IP}"}
+  api:
+    <<: *app
+    mem_limit: 960m
+    memswap_limit: 960m
+    cpus: 1
+    entrypoint: [java, -Djava.io.tmpdir=/var/run/platform-native, -Xms32m, -Xmx224m, -jar, /app/platform.jar]
+    environment:
+      SPRING_PROFILES_ACTIVE: identity-local,chat-local,workspace-api,workspace-maintenance
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/${R63_DATABASE}?connectTimeout=2&socketTimeout=15
+      PLATFORM_STORAGE_USER: ap_api
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/api_password
+      PLATFORM_IDENTITY_ORIGINS: http://127.0.0.1:${R63_PORT},http://localhost:${R63_PORT}
+      PLATFORM_IDENTITY_SECURE_COOKIE: "false"
+      PLATFORM_CHAT_PLAN_ENABLED: "true"
+      PLATFORM_CHAT_PERMISSIONS_ENABLED: "true"
+      PLATFORM_CHAT_CONTEXT_V2_ENABLED: "true"
+      PLATFORM_CHAT_CONTEXT_COMPACTION_ENABLED: "true"
+      PLATFORM_CHAT_CONTEXT_EVIDENCE_ENABLED: "true"
+      PLATFORM_CHAT_CONTEXT_WINDOW_TOKENS: "262144"
+      PLATFORM_CHAT_CONTEXT_MAX_OUTPUT_TOKENS: "4096"
+      PLATFORM_ATTACHMENTS_ENABLED: "true"
+      PLATFORM_KNOWLEDGE_ENABLED: "true"
+      PLATFORM_KNOWLEDGE_MODEL_ENABLED: "true"
+      PLATFORM_KNOWLEDGE_MODEL_MODEL_FILE: /models/onnx/model_quantized.onnx
+      PLATFORM_KNOWLEDGE_MODEL_TOKENIZER_FILE: /models/tokenizer.json
+      PLATFORM_PERSONAL_CONFIG_ENABLED: "true"
+      PLATFORM_WORKSPACE_ENABLED: "true"
+      PLATFORM_WORKSPACE_LIFECYCLE_ENABLED: "false"
+      PLATFORM_WORKSPACE_FILES_ENABLED: "true"
+      PLATFORM_WORKSPACE_FILES_MAINTENANCE_SCAN_ADMISSION_ENABLED: "false"
+      PLATFORM_WORKSPACE_FILES_HELPER_IMAGE: "${R63_HELPER_ID}"
+      PLATFORM_WORKSPACE_FILES_POLICY_HASH: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      PLATFORM_FILES_ASSETS_ENDPOINT: http://seaweedfs:8333
+      PLATFORM_FILES_ASSETS_BUCKET: r63-assets
+      PLATFORM_FILES_ASSETS_ACCESS_KEY_FILE: /run/secrets/s3_access
+      PLATFORM_FILES_ASSETS_SECRET_KEY_FILE: /run/secrets/s3_secret
+      PLATFORM_CAPABILITIES_ENABLED: "true"
+      PLATFORM_MCP_ENABLED: "true"
+      PLATFORM_MCP_POLICY_HASH: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      PLATFORM_MCP_MASTER_KEY_FILE: /run/secrets/mcp_master_key
+      PLATFORM_CHAT_MQ_HOST: rabbitmq
+      PLATFORM_CHAT_MQ_USER: ap_api
+      PLATFORM_CHAT_MQ_PASSWORD_FILE: /run/secrets/mq_api_password
+      PLATFORM_CHAT_CURSOR_KEY_FILE: /run/secrets/cursor_key
+      PLATFORM_CHAT_MASTER_KEY_FILE: /run/secrets/master_key
+    volumes: ["${R63_MODEL_ROOT:?Set model directory}:/models:ro"]
+    secrets: [api_password,mq_api_password,cursor_key,master_key,mcp_master_key,s3_access,s3_secret]
+    healthcheck: {test: [CMD, java, -cp, /app/health, HttpHealthcheck, "http://127.0.0.1:8080/api/v1/readiness"], interval: 5s, timeout: 4s, retries: 24, start_period: 240s}
+  worker:
+    <<: *app
+    mem_limit: 960m
+    memswap_limit: 960m
+    cpus: 1
+    entrypoint: [java, -Djava.io.tmpdir=/var/run/platform-native, -Xms32m, -Xmx160m, -XX:MaxDirectMemorySize=64m, -jar, /app/platform.jar]
+    environment:
+      SPRING_PROFILES_ACTIVE: chat-worker,workspace-worker,workspace-maintenance
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/${R63_DATABASE}?connectTimeout=2&socketTimeout=15
+      PLATFORM_STORAGE_USER: ap_worker
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/worker_password
+      PLATFORM_CHAT_MQ_HOST: rabbitmq
+      PLATFORM_CHAT_MQ_USER: ap_worker
+      PLATFORM_CHAT_MQ_PASSWORD_FILE: /run/secrets/mq_worker_password
+      PLATFORM_CHAT_MASTER_KEY_FILE: /run/secrets/master_key
+      PLATFORM_CHAT_PROVIDER_BASE: http://fixture:8080
+      PLATFORM_CHAT_FIXTURE_PROVIDER: "true"
+      PLATFORM_CHAT_CONTEXT_V2_ENABLED: "true"
+      PLATFORM_CHAT_CONTEXT_COMPACTION_ENABLED: "true"
+      PLATFORM_CHAT_CONTEXT_WINDOW_TOKENS: "262144"
+      PLATFORM_CHAT_CONTEXT_MAX_OUTPUT_TOKENS: "4096"
+      PLATFORM_KNOWLEDGE_ENABLED: "true"
+      PLATFORM_KNOWLEDGE_MODEL_ENABLED: "true"
+      PLATFORM_KNOWLEDGE_MODEL_MODEL_FILE: /models/onnx/model_quantized.onnx
+      PLATFORM_KNOWLEDGE_MODEL_TOKENIZER_FILE: /models/tokenizer.json
+      PLATFORM_CHAT_CONTEXT_EVIDENCE_ENABLED: "true"
+      PLATFORM_WORKSPACE_ENABLED: "true"
+      PLATFORM_WORKSPACE_LIFECYCLE_ENABLED: "false"
+      PLATFORM_WORKSPACE_FILES_ENABLED: "true"
+      PLATFORM_WORKSPACE_FILES_MAINTENANCE_SCAN_ADMISSION_ENABLED: "false"
+      PLATFORM_WORKSPACE_FILES_HELPER_IMAGE: "${R63_HELPER_ID}"
+      PLATFORM_WORKSPACE_FILES_POLICY_HASH: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      PLATFORM_FILES_ASSETS_ENDPOINT: http://seaweedfs:8333
+      PLATFORM_FILES_ASSETS_BUCKET: r63-assets
+      PLATFORM_FILES_ASSETS_ACCESS_KEY_FILE: /run/secrets/s3_access
+      PLATFORM_FILES_ASSETS_SECRET_KEY_FILE: /run/secrets/s3_secret
+      PLATFORM_CAPABILITIES_ENABLED: "true"
+      PLATFORM_MCP_ENABLED: "true"
+      PLATFORM_MCP_POLICY_HASH: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      PLATFORM_MCP_MASTER_KEY_FILE: /run/secrets/mcp_master_key
+      PLATFORM_MCP_EGRESS_HOST: mcp-proxy
+      PLATFORM_MCP_EGRESS_PORT: "3128"
+      PLATFORM_MCP_TRUST_STORE: /run/secrets/mcp_trust
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_BASE: http://127.0.0.1:1
+      PLATFORM_WORKSPACE_CONTROL_PRIVATE_KEY_FILE: /run/secrets/control_private
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_PUBLIC_KEY_FILE: /run/secrets/runner_public
+      PLATFORM_WORKSPACE_CONTROL_KEY_ID: r63-control
+      PLATFORM_WORKSPACE_CONTROL_RUNNER_KEY_ID: r63-runner
+    volumes: ["${R63_MODEL_ROOT:?Set model directory}:/models:ro"]
+    secrets: [worker_password,mq_worker_password,master_key,mcp_master_key,s3_access,s3_secret,control_private,runner_public,mcp_trust]
+    networks:
+      r63: {}
+      mcp-control: {ipv4_address: "${R63_WORKER_IP}"}
+    healthcheck: {test: [CMD-SHELL, "test -s /tmp/chat-worker-ready"], interval: 5s, timeout: 3s, retries: 24, start_period: 240s}
+  operator:
+    <<: *app
+    profiles: [operator]
+    mem_limit: 320m
+    memswap_limit: 320m
+    entrypoint: [java, -Xms16m, -Xmx160m, -jar, /app/platform.jar]
+    environment:
+      SPRING_PROFILES_ACTIVE: chat-ops
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      PLATFORM_STORAGE_JDBC_URL: jdbc:postgresql://postgres:5432/${R63_DATABASE}?connectTimeout=2&socketTimeout=15
+      PLATFORM_STORAGE_USER: postgres
+      PLATFORM_STORAGE_PASSWORD_FILE: /run/secrets/postgres_password
+      PLATFORM_CHAT_MASTER_KEY_FILE: /run/secrets/master_key
+    secrets: [postgres_password,master_key]
+  gateway:
+    image: ${R63_GATEWAY_IMAGE:?Build the local gateway first}
+    user: "101:101"
+    read_only: true
+    restart: "no"
+    mem_limit: 16m
+    memswap_limit: 16m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=8m"]
+    ports: ["127.0.0.1:${R63_PORT}:8080"]
+    networks: [r63, ingress]
+  fixture:
+    image: ${R63_FIXTURE_IMAGE:?Build the deterministic fixture first}
+    user: "10001:10001"
+    read_only: true
+    restart: "no"
+    mem_limit: 64m
+    memswap_limit: 64m
+    environment: {AP_FIXTURE_PROFILE: R54}
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [r63]
+    healthcheck:
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/status',timeout=2).read()"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 2s
+secrets:
+  postgres_password: {file: "${R63_ROOT:?Set fixture directory}/postgres-password"}
+  api_password: {file: "${R63_ROOT}/api-password"}
+  worker_password: {file: "${R63_ROOT}/worker-password"}
+  mq_api_password: {file: "${R63_ROOT}/mq-api-password"}
+  mq_worker_password: {file: "${R63_ROOT}/mq-worker-password"}
+  master_key: {file: "${R63_ROOT}/master-key"}
+  cursor_key: {file: "${R63_ROOT}/cursor-key"}
+  mcp_master_key: {file: "${R63_ROOT}/mcp-master-key"}
+  s3_access: {file: "${R63_ROOT}/s3-access"}
+  s3_secret: {file: "${R63_ROOT}/s3-secret"}
+  control_private: {file: "${R63_ROOT}/control-3072-private.pem"}
+  runner_public: {file: "${R63_ROOT}/runner-3072-public.pem"}
+  mcp_trust: {file: "${R63_ROOT}/fixture-trust.jks"}
+volumes: {postgres-data: {}, mq-data: {}, s3-data: {}}
+networks:
+  r63:
+    internal: true
+    ipam:
+      config: [{subnet: "${R63_SUBNET:?Set isolated subnet}"}]
+  mcp-control:
+    internal: true
+    ipam:
+      config: [{subnet: "${R63_MCP_SUBNET:?Set isolated MCP subnet}"}]
+  mcp-egress:
+    ipam:
+      config: [{subnet: "${R63_EGRESS_SUBNET:?Set isolated egress subnet}"}]
+  mcp-fixture:
+    internal: true
+    ipam:
+      config: [{subnet: "${R63_MCP_FIXTURE_SUBNET:?Set isolated fixture subnet}"}]
+  ingress:
+    ipam:
+      config: [{subnet: "${R63_INGRESS_SUBNET:?Set isolated ingress subnet}"}]
