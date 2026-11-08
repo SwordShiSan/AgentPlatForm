@@ -2,7 +2,7 @@
 
 ## Closeout update — 2026-11-09
 
-**Current state: acceptance complete with explicit PASS_LIMITED boundaries; protected promotion, archive, and final package remain pending.** Candidate source commit: `545bcfb` (implementation and bounded evidence). The R6.3 code and local/isolated-cloud acceptance candidate are ready for step→phase→main promotion. Until those protected promotions and archive/package are complete, this change is not VERIFIED; R6 remains 2/4 VERIFIED and not RELEASED. Cloud production is restored to the original R5 containers. R6.3 has not been deployed or tagged. Real supplier calls: 0.
+**Current state: step PR #164 is merged to phase; archive/ledger closeout promotion and phase→main promotion remain pending.** The archive is prepared in the local closeout tree but is not yet on the protected phase branch. Repository-wide strict validation passed (34 items). The evidence package is still pending. Until the remaining protected PRs and clean-main hash-checked package complete, R6.3 is not VERIFIED; R6 remains 2/4 VERIFIED and not RELEASED. Cloud production is restored to the original R5 containers. R6.3 has not been deployed or tagged. Real supplier calls: 0.
 
 The signed cloud application path is now proven end-to-end: attachment upload → signed TEXT_EXTRACT on cloud runsc → private S3 hash readback → knowledge index READY → semantic marker hit. Result SHA256 `21de780cd1fda9ed36c41009706b9f95084147882fc1210d622a9e3c075053ab`; journal SHA256 `abd71f8a4248243cbcacb03b7026ed767df88371ed1158c7efb51c4c7e7fea8f`. The physical sandbox exists only on cloud Linux. The local workstation has no runsc, did not install it, and did not start a local sandbox.
 
@@ -10,7 +10,7 @@ Additional bounded evidence: injected extraction-identity mismatch preserved the
 
 Boundaries remain explicit: no separate knowledge-route ACK-loss/redelivery injection; the failed-build case uses a controlled pre-extracted fixture; source revocation and memory expiry are bounded to recorded API/test fixtures rather than every live ACL race or long wall-clock soak; projection cancel/in-flight DB failure was not injected; the shared-slot receipt is admission logic, not simultaneous full-stack plus physical sandbox stress; browser testing used CSS viewport widths and a keyboard subset, not true 200% zoom, full keyboard, or a visual contrast review. These remain PASS_LIMITED/NOT_RUN as applicable and are not described as completed test cases. Retrieval quality/scale uses the bounded corpus stated in the evidence index. Compression remains a deterministic derived projection, not semantic summarization and makes no extra model call.
 
-The machine-readable evidence index is `evidence/r63/acceptance-index.json` (current candidate status is pending protected promotion). Existing detailed records below are the 2026-11-08 initial snapshot and are retained for history; this closeout update supersedes their old current-status and remaining-gates statements.
+The machine-readable evidence index is `evidence/r63/acceptance-index.json` (current candidate status is pending phase-to-main promotion and final package). Existing detailed records below are the 2026-11-08 initial snapshot and are retained for history; this closeout update supersedes their old current-status and remaining-gates statements.
 
 ---
 
@@ -76,4 +76,4 @@ The local workstation intentionally has no `runsc` sandbox. Physical gVisor rend
 5. Full browser keyboard/200%-zoom review if retained as a hard requirement, then final checks and evidence freeze.
 6. Only after all mandatory gates pass: protected step→phase→main promotion, OpenSpec archive, final clean-main evidence/body package and hash-checked protected copies.
 
-Until these gates are completed, keep the change open and **do not mark R6.3 VERIFIED or R6 RELEASED**. Any unresolved/unrun item remains explicit; no R6.4 work starts.
+Historical hold instruction from the initial snapshot. The archive is prepared locally; its protected phase promotion, phase-to-main promotion, and package verification remain. Any bounded or unrun item stays explicit; no R6.4 work starts.
