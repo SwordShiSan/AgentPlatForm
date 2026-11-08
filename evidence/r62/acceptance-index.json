@@ -2,7 +2,7 @@
   "stage": "R6.2",
   "change": "r6-2-skills-mcp",
   "status": "VERIFIED",
-  "promotion": "PENDING_PROTECTED_PHASE_TO_MAIN",
+  "promotion": "COMPLETE_PROTECTED_STEP_PHASE_MAIN",
   "release": "NOT_RELEASED",
   "cloudRelease": "R5_UNCHANGED",
   "sourceRevisionBeforeCloseout": "b1142c82abd027a9fa272690c76e6d7cd8833740",
@@ -102,8 +102,12 @@
       "mergeCommit": "f8b75fe7bd5f051d70822b8e8b24c7abadce9a72"
     },
     "phaseToMain": {
-      "status": "PENDING"
+      "pr": 161,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/161",
+      "status": "MERGED",
+      "mergeCommit": "dc579db2427f3c1b076036ea0b0fbfd9bae7bc56"
     }
   },
+  "finalMainCommit": "dc579db2427f3c1b076036ea0b0fbfd9bae7bc56",
   "openspecArchive": "2026-11-08-r6-2-skills-mcp"
 }
