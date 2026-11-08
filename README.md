@@ -1,6 +1,6 @@
-## R6.2 本地验收完成，晋级待办（2026-11-08）
+## R6.2 本地验收通过，step→phase 已合并，phase→main 待晋级（2026-11-08）
 
-R6.2 功能与本地验收 PASS，正在完成受保护的 step→phase→main 晋级；R6 仍为 2/4、未 RELEASED，云端继续 R5。Skill 版本、能力绑定、受控 MCP 和受保护物化入口已实施；聊天自动装配留 R6.4。证据见 [R6.2 验收索引](evidence/r62/acceptance-index.json)。单次签名 HTTP＋数据库＋物理容器组合 canary 未运行，分项证据边界见索引，不将其表述为端到端通过。
+R6.2 功能与本地验收 PASS，step→phase 的受保护 PR #160 已合并（f8b75fe）；当前正在完成 phase→main，R6 仍为 2/4、未 RELEASED，云端继续 R5。Skill 版本、能力绑定、受控 MCP 和受保护物化入口已实施；聊天自动装配留 R6.4。证据见 [R6.2 验收索引](evidence/r62/acceptance-index.json)。单次签名 HTTP＋数据库＋物理容器组合 canary 未运行，分项证据边界见索引，不将其表述为端到端通过。
 
 ## R5 当前有效结论（2026-11-06）
 

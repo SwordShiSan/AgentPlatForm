@@ -2,7 +2,7 @@
   "stage": "R6.2",
   "change": "r6-2-skills-mcp",
   "status": "VERIFIED",
-  "promotion": "PENDING_PROTECTED_STEP_TO_PHASE_TO_MAIN",
+  "promotion": "PENDING_PROTECTED_PHASE_TO_MAIN",
   "release": "NOT_RELEASED",
   "cloudRelease": "R5_UNCHANGED",
   "sourceRevisionBeforeCloseout": "b1142c82abd027a9fa272690c76e6d7cd8833740",
@@ -71,7 +71,7 @@
   "evidenceFiles": {
     "browser-acceptance.json": "sha256:584c0240583ebf4431d545a8d715d5b76f12b0f0cc2149beee4107382e04fce2",
     "java-capability-mount-poc.json": "sha256:08be7005a196a5e34c81c4e3e0098956c0059c6e171c698cbc81783098eed1c4",
-    "resource-observation.json": "sha256:eeb97d33a7f77d988b53962e20e48fbff06fb120816cdd5b3d673076a72e82bc"
+    "resource-observation.json": "sha256:f5d2c14d1bb1b517714a4d01f7d353c7a32d1e71a64ee9d123d0180e289e0606"
   },
   "historicalFailures": "Retained under the change verification log; initial stale-fixture browser failures and harness/tool invocation failures were not rewritten as passes. Fresh-database browser run passed.",
   "unrun": [
@@ -92,5 +92,18 @@
       }
     ],
     "scope": "R6.2 confirmed PowerShell/Maven parsing, docker-java input framing, fixture freshness, one-click launcher, and evidence-boundary lessons."
-  }
+  },
+  "candidateSourceCommit": "cd5d615af5e59b8fbdf84f5599645823536163d1",
+  "promotions": {
+    "stepToPhase": {
+      "pr": 160,
+      "url": "https://github.com/SwordShiSan/AgentPlatForm/pull/160",
+      "status": "MERGED",
+      "mergeCommit": "f8b75fe7bd5f051d70822b8e8b24c7abadce9a72"
+    },
+    "phaseToMain": {
+      "status": "PENDING"
+    }
+  },
+  "openspecArchive": "2026-11-08-r6-2-skills-mcp"
 }
